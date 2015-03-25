@@ -6,6 +6,7 @@ bin
 target
 .ispace
 .settings
+.*
 
 #
 # Various temporary files 
