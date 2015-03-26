@@ -136,6 +136,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	protected Concept moduleConcept;
 	private String nameSpace;
 	private String reservationName;
+	private boolean uniquenessCheckEnabled = true;
 
 	/**returns with a set of allowed concepts' ID. concept is allowed as preferred description type concept if 
 	 * has an associated active description type reference set member and is synonym or descendant of the synonym */
@@ -1539,30 +1540,6 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		return relationship;
 	}
 	
-	/**
-	 * Returns a unique SNOMED CT component Id with the namespace specified.
-	 * The method does not take into account components in the transaction, only in
-	 * the db.
-	 * 
-	 * @param componentNature type of the component (Concept|Description|Relationship)
-	 * @param namespace namespace for the id
-	 * @param validator the component uniqueness validator.
-	 * 
-	 * @return SNOMED CT component Id
-	 * @deprecated - use new {@link ISnomedIdentifierService}
-	 */
-	private String generateComponentId(final ComponentCategory componentNature, final String namespace, final ComponentIdUniquenessValidator validator) {
-		checkNotNull(componentNature, "componentNature");
-		checkNotNull(validator, "validator");
-
-		String componentId = identifiers.generateId(componentNature, namespace);
-		//generate it until it is unique
-		while (!validator.isUniqueInDatabase(componentId)) {
-			componentId = identifiers.generateId(componentNature, namespace);
-		}
-		return componentId;
-	}
-	
 	@Override
 	public void preCommit() {
 		
@@ -1570,13 +1547,15 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		 * IDs both among themselves and the components already persisted in the database.
 		 * Non-unique IDs will be overwritten with ones which are guaranteed to be unique 
 		 * as of the time of this check. */
-		List<CDOIDAndVersion> newObjects = transaction.getChangeSetData().getNewObjects();
-		ComponentIdUniquenessValidator uniquenessEnforcer = new ComponentIdUniquenessValidator(this);
-		for (CDOIDAndVersion newCdoIdAndVersion : newObjects) {
-			CDOObject newObject = transaction.getObject(newCdoIdAndVersion.getID());
-			if (newObject instanceof Component) {
-				Component newComponent = (Component) newObject;
-				uniquenessEnforcer.validateAndReplaceComponentId(newComponent);
+		if (isUniquenessCheckEnabled()) {
+			List<CDOIDAndVersion> newObjects = transaction.getChangeSetData().getNewObjects();
+			ComponentIdUniquenessValidator uniquenessEnforcer = new ComponentIdUniquenessValidator(this);
+			for (CDOIDAndVersion newCdoIdAndVersion : newObjects) {
+				CDOObject newObject = transaction.getObject(newCdoIdAndVersion.getID());
+				if (newObject instanceof Component) {
+					Component newComponent = (Component) newObject;
+					uniquenessEnforcer.validateAndReplaceComponentId(newComponent);
+				}
 			}
 		}
 		
@@ -1589,6 +1568,15 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		dependencyRefSetService.updateModuleDependenciesDuringPreCommit(getTransaction());
 	}
 	
+	public boolean isUniquenessCheckEnabled() {
+		return uniquenessCheckEnabled;
+	}
+	
+	public SnomedEditingContext setUniquenessCheckEnabled(boolean uniquenessCheckEnabled) {
+		this.uniquenessCheckEnabled = uniquenessCheckEnabled;
+		return this;
+	}
+
 	/**
 	 * This method makes a validation for a new Is-a relationship. If the destination concept is
 	 * a subtype of the source one, the return value is false, otherwise true.
@@ -1658,23 +1646,20 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	 * @deprecated - use new {@link ISnomedIdentifierService}
 	 */
 	public String generateComponentId(Component component) {
-		checkNotNull(component, "component");
-		return generateComponentId(component, new ComponentIdUniquenessValidator(this));
+		if (component instanceof Relationship) {
+			return generateComponentId(ComponentCategory.RELATIONSHIP, getNamespace());
+		} else if (component instanceof Concept) {
+			return generateComponentId(ComponentCategory.CONCEPT, getNamespace());
+		} else if (component instanceof Description) {
+			return generateComponentId(ComponentCategory.DESCRIPTION, getNamespace());
+		}
+		throw new IllegalArgumentException(MessageFormat.format("Unexpected component class ''{0}''.", component));
 	}
 	
-	/*default*/ String generateComponentId(final Component component, final ComponentIdUniquenessValidator validator) {
-		checkNotNull(component, "component");
-		checkNotNull(validator, "validator");
-		if (component instanceof Relationship) {
-			return generateComponentId(ComponentCategory.RELATIONSHIP, getNamespace(), validator);
-		} else if (component instanceof Concept) {
-			return generateComponentId(ComponentCategory.CONCEPT, getNamespace(), validator);
-		} else if (component instanceof Description) {
-			return generateComponentId(ComponentCategory.DESCRIPTION, getNamespace(), validator);
-		}
-		throw new IllegalArgumentException(MessageFormat.format("Unexpected component class ''{0}''.", component.getClass()));
+	private String generateComponentId(final ComponentCategory componentNature, final String namespace) {
+		return identifiers.generateId(componentNature, namespace);
 	}
-
+	
 	public boolean isUniqueInTransaction(SnomedIdentifier identifier) {
 		for (Component component : Iterables.filter(getTransaction().getNewObjects().values(), getSnomedComponentClass(identifier.getComponentCategory()))) {
 			if (identifier.toString().equals(component.getId())) {

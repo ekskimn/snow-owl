@@ -554,11 +554,11 @@
 
 	<distributionManagement>
 		<repository>
-			<id>${repo.id}</id>
+			<id>${maven.repository.id}</id>
 			<url>${nexus.releases.url}</url>
 		</repository>
 		<snapshotRepository>
-			<id>${repo.id}</id>
+			<id>${maven.repository.id}</id>
 			<url>${nexus.snapshots.url}</url>
 		</snapshotRepository>
 	</distributionManagement>
