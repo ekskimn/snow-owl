@@ -49,7 +49,6 @@ import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
-import com.b2international.snowowl.snomed.datastore.SnomedEditingContext.ComponentNature;
 import com.b2international.snowowl.snomed.datastore.SnomedRelationshipLookupService;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedValidationDefect;
@@ -309,8 +308,8 @@ public abstract class AbstractSnomedValidator {
 			return true;
 		}
 		
-		for (final ComponentNature nature : ComponentNature.values()) {
-			if (nature.isNatureId(componentId)) {
+		for (final ComponentCategory nature : newArrayList(ComponentCategory.CONCEPT, ComponentCategory.DESCRIPTION, ComponentCategory.RELATIONSHIP)) {
+			if (isNatureId(nature, componentId)) {
 				switch (nature) {
 					case CONCEPT:
 						return isConceptNotExist(componentId);
