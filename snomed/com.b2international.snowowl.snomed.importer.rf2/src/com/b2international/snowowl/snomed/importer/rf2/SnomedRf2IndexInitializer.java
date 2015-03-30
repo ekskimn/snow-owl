@@ -95,6 +95,7 @@ import static com.b2international.snowowl.snomed.datastore.browser.SnomedIndexBr
 import static com.b2international.snowowl.snomed.datastore.browser.SnomedIndexBrowserConstants.RELATIONSHIP_UNIVERSAL;
 import static com.b2international.snowowl.snomed.datastore.browser.SnomedIndexBrowserConstants.RELATIONSHIP_VALUE_ID;
 import static com.b2international.snowowl.snomed.datastore.browser.SnomedIndexBrowserConstants.ROOT_ID;
+import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
@@ -193,13 +194,13 @@ import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentSer
 import com.b2international.snowowl.snomed.datastore.services.SnomedBranchRefSetMembershipLookupService;
 import com.b2international.snowowl.snomed.importer.rf2.model.ComponentImportType;
 import com.b2international.snowowl.snomed.importer.rf2.model.ComponentImportUnit;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
@@ -214,9 +215,9 @@ public class SnomedRf2IndexInitializer extends Job {
 	private static final CsvSettings CSV_SETTINGS = new CsvSettings('\0', '\t', EOL.LF, true);
 	private static final String ACTIVE_STATUS = "1";
 	private static final float DEFAULT_DOI = 1.0F;
-	private final boolean slicingDisabled;
+	private final boolean slicingEnabled;
 	private final Date effectiveTime;
-	private final List<ComponentImportUnit> importUnit;
+	private final List<ComponentImportUnit> importUnits;
 	private final IBranchPath branchPath;
 
 	private Multimap<Long, String> conceptIdToPredicateMap;
@@ -226,6 +227,7 @@ public class SnomedRf2IndexInitializer extends Job {
 	private Multimap<String, String> detachedRefSetMemberships;
 	private Multimap<String, String> detachedMappingMemberships;
 	private Set<String> visitedConcepts;
+	private Set<String> visitedMembers;
 	private Set<String> visitedConceptsViaMemberships;
 	private Set<String> visitedConceptsViaLanguageMemberships;
 	private Set<String> visitedConceptsViaIsAStatements;
@@ -237,12 +239,12 @@ public class SnomedRf2IndexInitializer extends Job {
 	//when a reference set is imported where the concept is being created on the fly
 	private final Map<String, SnomedRefSetType> identifierConceptIdsForNewRefSets = newHashMap();
 
-	public SnomedRf2IndexInitializer(final IBranchPath branchPath, final boolean slicingDisabled, final Date effectiveTime, final List<ComponentImportUnit> units, final String languageRefSetId) {
+	public SnomedRf2IndexInitializer(final IBranchPath branchPath, final boolean slicingEnabled, final Date effectiveTime, final List<ComponentImportUnit> importUnits, final String languageRefSetId) {
 		super("SNOMED CT RF2 based index initializer...");
 		this.branchPath = branchPath;
-		this.slicingDisabled = slicingDisabled;
+		this.slicingEnabled = slicingEnabled;
 		this.effectiveTime = effectiveTime;
-		this.importUnit = Collections.unmodifiableList(units);
+		this.importUnits = Collections.unmodifiableList(importUnits);
 		//check services
 		getImportIndexService();
 		getTaxonomyBuilder();
@@ -260,8 +262,13 @@ public class SnomedRf2IndexInitializer extends Job {
 		final List<ComponentImportUnit> importUnits = collectImportUnits();
 		
 		delegateMonitor.beginTask("Indexing SNOMED CT...", importUnits.size() + 3);
-		final String formettedDate = EffectiveTimes.format(effectiveTime);
-		LOGGER.info("Initializing SNOMED CT semantic content from RF2 release format for '" + formettedDate + "'...");
+		
+		final String formattedDate = EffectiveTimes.format(effectiveTime);
+		if (slicingEnabled) {
+			LOGGER.info("Initializing SNOMED CT semantic content from RF2 release format for '{}'...", formattedDate);
+		} else {
+			LOGGER.info("Initializing SNOMED CT semantic content from RF2 release format...");
+		}
 		
 		LOGGER.info("Pre-processing phase [1 of 3]...");
 		
@@ -279,6 +286,7 @@ public class SnomedRf2IndexInitializer extends Job {
 		detachedRefSetMemberships = HashMultimap.create();
 		detachedMappingMemberships = HashMultimap.create();
 		visitedConcepts = Sets.newHashSet();
+		visitedMembers = Sets.newHashSet();
 		visitedConceptsViaMemberships = Sets.newHashSet();
 		visitedConceptsViaLanguageMemberships = newHashSet();
 		LOGGER.info("Gathering mappings between descriptions and concepts...");
@@ -297,7 +305,7 @@ public class SnomedRf2IndexInitializer extends Job {
 		LOGGER.info("Indexing phase [2 of 3]...");
 		doImport(importUnits, delegateMonitor);
 		
-		LOGGER.info("SNOMED CT semantic content for '" + formettedDate + "' have been successfully initialized.");
+		LOGGER.info("SNOMED CT semantic content for '" + formattedDate + "' have been successfully initialized.");
 		
 		return Status.OK_STATUS;
 	}
@@ -410,7 +418,9 @@ public class SnomedRf2IndexInitializer extends Job {
 					@Override
 					public void handleRecord(final int recordCount, final List<String> record) {
 						
-						
+							final String uuid = record.get(0);
+							visitedMembers.add(uuid);
+							
 							final String refSetId = record.get(4);
 							final String id = record.get(5);
 							if (SnomedTerminologyComponentConstants.CONCEPT_NUMBER == SnomedTerminologyComponentConstants.getTerminologyComponentIdValueSafe(id)) {
@@ -474,24 +484,21 @@ public class SnomedRf2IndexInitializer extends Job {
 	
 	private List<ComponentImportUnit> collectImportUnits() {
 		
-		if (slicingDisabled) {
-			return Collections.unmodifiableList(importUnit);
-		} else {
+		if (slicingEnabled) {
+
+			final List<ComponentImportUnit> importUnitsForCurrentEffectiveTime = newArrayList();
 			
-			final List<ComponentImportUnit> $ = Lists.newArrayList();
-			
-			for (final ComponentImportUnit unit : importUnit) {
-				
+			for (final ComponentImportUnit unit : importUnits) {
 				if (Objects.equal(effectiveTime, unit.getEffectiveTime())) {
-					$.add(unit);
+					importUnitsForCurrentEffectiveTime.add(unit);
 				}
-				
 			}
 			
-			Collections.sort($, ComponentImportUnit.ORDERING);
+			Collections.sort(importUnitsForCurrentEffectiveTime, ComponentImportUnit.ORDERING);
+			return Collections.unmodifiableList(importUnitsForCurrentEffectiveTime);
 			
-			return Collections.unmodifiableList($);
-			
+		} else {
+			return Collections.unmodifiableList(importUnits);
 		}
 	}
 	
@@ -1079,14 +1086,19 @@ public class SnomedRf2IndexInitializer extends Job {
 					final LongSet referringMemberStorageKeys = new LongOpenHashSet();
 					
 					for (final SnomedRefSetMemberIndexEntry referringMember : referringMembers) {
-						referringMemberStorageKeys.add(referringMember.getStorageKey());
+						if (!visitedMembers.contains(referringMember.getId())) {
+							referringMemberStorageKeys.add(referringMember.getStorageKey());
+						}
 					}
 			
 					forEach(referringMemberStorageKeys, new LongCollectionProcedure() {
 						@Override
 						public void apply(final long referringMemberStorageKey) {
 							final CDOObject referringMember = CDOUtils.getObjectIfExists(view, referringMemberStorageKey);
-							if (referringMember instanceof SnomedRefSetMember) {
+							if (referringMember instanceof SnomedConcreteDataTypeRefSetMember) {
+								final SnomedConcreteDataTypeRefSetMember cdtMember = (SnomedConcreteDataTypeRefSetMember) referringMember;
+								getSnomedIndexService().index(branchPath, new SnomedRefSetMemberIndexMappingStrategy(cdtMember, cdtMember.getLabel()));
+							} else if (referringMember instanceof SnomedRefSetMember) {
 								getSnomedIndexService().index(branchPath, new SnomedRefSetMemberIndexMappingStrategy((SnomedRefSetMember) referringMember, conceptLabel));
 							}
 						}
