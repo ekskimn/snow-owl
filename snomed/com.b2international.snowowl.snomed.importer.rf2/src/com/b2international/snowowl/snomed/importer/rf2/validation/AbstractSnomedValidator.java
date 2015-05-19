@@ -47,6 +47,7 @@ import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.snomed.SnomedConstants;
+import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
 import com.b2international.snowowl.snomed.datastore.SnomedRelationshipLookupService;
@@ -461,6 +462,11 @@ public abstract class AbstractSnomedValidator {
 	
 	private void validateEffectiveTime(final List<String> row, final int lineNumber) {
 		final String effectiveTime = row.get(1);
+		
+		if (ContentSubType.DELTA.equals(configuration.getVersion()) && effectiveTime.isEmpty()) {
+			return;
+		}
+		
 		try {
 			EffectiveTimes.parse(effectiveTime, SnomedConstants.RF2_EFFECTIVE_TIME_FORMAT);
 		} catch (final SnowowlRuntimeException e) {
