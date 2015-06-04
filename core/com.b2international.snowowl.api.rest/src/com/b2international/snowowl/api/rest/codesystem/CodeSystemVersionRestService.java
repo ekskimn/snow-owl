@@ -38,6 +38,7 @@ import com.b2international.snowowl.api.rest.codesystem.domain.VersionInput;
 import com.b2international.snowowl.api.rest.domain.CollectionResource;
 import com.b2international.snowowl.api.rest.domain.RestApiError;
 import com.b2international.snowowl.api.rest.util.Responses;
+import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -51,7 +52,7 @@ import com.wordnik.swagger.annotations.ApiResponses;
 @RestController
 @RequestMapping(
 		value = "/codesystems/{shortName}/versions",
-		produces={ AbstractRestService.V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+		produces={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 public class CodeSystemVersionRestService extends AbstractRestService {
 
 	@Autowired
@@ -97,9 +98,10 @@ public class CodeSystemVersionRestService extends AbstractRestService {
 			notes="Creates a new code system version in the specified terminology.")
 	@ApiResponses({
 		@ApiResponse(code = 201, message = "Created"),
-		@ApiResponse(code = 404, message = "Code system not found", response = RestApiError.class)
+		@ApiResponse(code = 404, message = "Code system not found", response = RestApiError.class),
+		@ApiResponse(code = 409, message = "Code system version conflicts with existing branch", response = RestApiError.class)
 	})
-	@RequestMapping(method=RequestMethod.POST, consumes = { AbstractRestService.V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+	@RequestMapping(method=RequestMethod.POST, consumes = { AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	@ResponseStatus(value=HttpStatus.CREATED)
 	public ResponseEntity<Void> createVersion(
 			@ApiParam(value="The code system short name")
@@ -108,7 +110,7 @@ public class CodeSystemVersionRestService extends AbstractRestService {
 			
 			@ApiParam(value="Version parameters")
 			@RequestBody final VersionInput input) {
-
+		ApiValidation.checkInput(input);
 		final ICodeSystemVersion version = delegate.createVersion(shortName, input);
 		return Responses.created(getVersionURI(shortName, version.getVersion())).build();
 	}

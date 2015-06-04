@@ -1,20 +1,37 @@
-/*******************************************************************************
+/*
  * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
- *******************************************************************************/
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.b2international.snowowl.test.commons.rest
 
+import com.b2international.commons.platform.PlatformUtil
+import com.google.common.base.Preconditions
+import com.google.common.base.Splitter
+import com.jayway.restassured.RestAssured
 import com.jayway.restassured.http.ContentType
 import com.jayway.restassured.response.Response
 import com.jayway.restassured.specification.RequestSpecification
-import java.util.Collection
+import java.io.File
+import java.util.List
 import java.util.Map
+import java.util.concurrent.atomic.AtomicBoolean
 import org.apache.commons.lang.text.StrSubstitutor
+import org.hamcrest.CoreMatchers
 
 import static com.jayway.restassured.RestAssured.*
 
 import static extension com.b2international.snowowl.test.commons.json.JsonExtensions.*
-import com.google.common.base.Preconditions
-import org.hamcrest.CoreMatchers
 
 /**
  * Useful extension methods when testing Snow Owl's RESTful API. High level REST related syntactic sugars and stuff like 
@@ -25,6 +42,7 @@ import org.hamcrest.CoreMatchers
 class RestExtensions {
 
 	// HTTP and REST API
+	static AtomicBoolean BASE_URI_CHANGED = new AtomicBoolean(false) 
 	public static final String CONTEXT = "snowowl"
 
 	public static final int OK = 200
@@ -37,19 +55,39 @@ class RestExtensions {
 	public static final String LOCATION = "Location"
 
 	// Auth
-	public static final String USER = "snowowl"
-	public static final String PASS = "snowowl"
+	public static final String DEFAULT_USER = "snowowl"
+	public static final String DEFAULT_PASS = "snowowl"
+	
 	public static final String WRONG_PASS = "wrong"
+	
+	static final String USER = if (!System.getProperty("test.user").nullOrEmpty) {
+		System.getProperty("test.user")
+	} else {
+		DEFAULT_USER
+	}
+		
+	static final String PASS = if (!System.getProperty("test.password").nullOrEmpty) {
+		System.getProperty("test.password")
+	} else {
+		DEFAULT_PASS
+	}
 
 	def static RequestSpecification givenUnauthenticatedRequest(String api) {
+		if (BASE_URI_CHANGED.compareAndSet(false, true)) {
+			// change Base URI if defined as sysarg
+			val serverLocation = System.getProperty("test.server.location")
+			if (!serverLocation.nullOrEmpty) {
+				RestAssured.baseURI = serverLocation
+			}
+		}
 		Preconditions.checkArgument(api.startsWith("/"), "Api param should start with a forward slash: '/'")
-		given().port(getPort()).basePath(CONTEXT + api)
+		return given().port(getPort()).basePath(CONTEXT + api)
 	}
 
 	def static RequestSpecification givenAuthenticatedRequest(String api) {
 		givenRequestWithPassword(api, PASS)
 	}
-
+	
 	def static RequestSpecification givenInvalidPasswordRequest(String api) {
 		givenRequestWithPassword(api, WRONG_PASS)
 	}
@@ -62,12 +100,12 @@ class RestExtensions {
 		contentType(ContentType.JSON).body(properties.asJson)
 	}
 
-	def static String asPath(Collection<? extends Object> values) {
-		"/" + values.join("/")
+	def static String asPath(List<? extends String> values) {
+		("/" + values.join("/")).replaceAll("//", "/")
 	}
 
 	def static String location(Response it) {
-		header(LOCATION)
+		header(LOCATION) ?: ""
 	}
 
 	def static String renderWithFields(String it, Object object) {
@@ -95,6 +133,38 @@ class RestExtensions {
 	def static int getPort() {
 		val jettyPortProp = System.getProperty("jetty.port")
 		return if(jettyPortProp != null) Integer.valueOf(jettyPortProp) else 8080
+	}
+	
+	def static expectStatus(Response it, int expectedStatus) {
+		if (statusCode() != expectedStatus) {
+			System.err.println("Web server may reject your request, check access log")
+			System.err.println("Headers: " + headers())
+			System.err.println("Content-Type: " + getContentType)
+			System.err.println("Body: " + body().asString)
+		}
+		then.statusCode(expectedStatus)
+	}
+	
+	def static String lastPathSegment(String path) {
+		Splitter.on("/").split(path).last
+	}
+	
+	def static RequestSpecification withFile(RequestSpecification it, String file, Class<?> cp) {
+		multiPart(new File(PlatformUtil.toAbsolutePath(cp, file)))
+	}
+	
+	// Simple REST operations
+	
+	def static Response get(String api, String...segments) {
+		givenAuthenticatedRequest(api).get(asPath(segments))
+	}
+	
+	def static Response delete(String api, String...segments) {
+		givenAuthenticatedRequest(api).delete(asPath(segments))
+	}
+	
+	def static Response postJson(String api, Map<String, ?> json, String...segments) {
+		givenAuthenticatedRequest(api).withJson(json).post(asPath(segments))
 	}
 
 }

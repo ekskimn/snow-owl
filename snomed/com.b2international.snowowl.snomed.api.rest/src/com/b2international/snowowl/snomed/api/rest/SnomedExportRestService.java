@@ -44,8 +44,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.b2international.snowowl.api.codesystem.ICodeSystemVersionService;
-import com.b2international.snowowl.api.exception.BadRequestException;
 import com.b2international.snowowl.api.impl.domain.StorageRef;
+import com.b2international.snowowl.core.exceptions.ApiValidation;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.ISnomedExportService;
 import com.b2international.snowowl.snomed.api.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.api.exception.ExportRunNotFoundException;
@@ -64,10 +65,10 @@ import com.wordnik.swagger.annotations.ApiResponses;
 /**
  * @since 1.0
  */
+@Api("Exports")
 @RestController
 @RequestMapping(
-		value="/exports", produces = { AbstractRestService.V1_MEDIA_TYPE })
-@Api("SNOMED CT Export")
+		value="/exports", produces = { AbstractRestService.SO_MEDIA_TYPE })
 public class SnomedExportRestService extends AbstractSnomedRestService {
 
 	@Autowired
@@ -86,25 +87,19 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 		@ApiResponse(code=400, message="Configuration object failed validation"),
 		@ApiResponse(code=404, message="Code system version and/or task not found")
 	})
-	@RequestMapping(method=RequestMethod.POST, consumes = { AbstractRestService.V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+	@RequestMapping(method=RequestMethod.POST, consumes = { AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	@ResponseStatus(HttpStatus.CREATED)
 	public ResponseEntity<Void> beginExport(
 			@ApiParam(value="Export configuration")
 			@RequestBody
 			final SnomedExportRestConfiguration configuration) throws IOException {
 
-		if (configuration.getType() == null) {
-			throw new BadRequestException("RF2 release type was missing from the export configuration.");
-		}
-
+		ApiValidation.checkInput(configuration);
+		
 		if (!Rf2ReleaseType.DELTA.equals(configuration.getType())) {
 			if (configuration.getDeltaStartEffectiveTime() != null || configuration.getDeltaEndEffectiveTime() != null) {
 				throw new BadRequestException("Export date ranges can only be set if the export mode is set to DELTA.");
 			}
-		}
-		
-		if (Strings.isNullOrEmpty(configuration.getNamespaceId())) {
-			throw new BadRequestException("Namespace ID was missing from the export configuration.");
 		}
 		
 		final String transientEffectiveTime = configuration.getTransientEffectiveTime();
@@ -113,8 +108,7 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 		final StorageRef exportStorageRef = new StorageRef();
 		
 		exportStorageRef.setShortName("SNOMEDCT");
-		exportStorageRef.setVersion(configuration.getVersion());
-		exportStorageRef.setTaskId(configuration.getTaskId());
+		exportStorageRef.setBranchPath(configuration.getBranchPath());
 		
 		// Check version and branch existence
 		exportStorageRef.checkStorageExists();
@@ -173,7 +167,7 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 		@ApiResponse(code=200, message="OK"),
 		@ApiResponse(code=404, message="Export run not found")
 	})
-	@RequestMapping(value="/{id}/archive", method=RequestMethod.GET, produces = { AbstractRestService.V1_MEDIA_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
+	@RequestMapping(value="/{id}/archive", method=RequestMethod.GET, produces = { AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
 	public @ResponseBody ResponseEntity<?> getArchive(
 			@ApiParam(value="Export run ID")
 			@PathVariable(value="id")
@@ -198,7 +192,7 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 	private SnomedExportConfiguration toExportConfiguration(final SnomedExportRestConfiguration configuration) {
 		final SnomedExportConfiguration conf = new SnomedExportConfiguration(
 				configuration.getType(), 
-				configuration.getVersion(), configuration.getTaskId(),
+				configuration.getBranchPath(),
 				configuration.getNamespaceId(), configuration.getModuleIds(),
 				configuration.getDeltaStartEffectiveTime(), configuration.getDeltaEndEffectiveTime(),
 				configuration.getTransientEffectiveTime());

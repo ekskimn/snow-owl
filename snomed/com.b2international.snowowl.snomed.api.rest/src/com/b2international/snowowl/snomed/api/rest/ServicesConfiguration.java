@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import java.io.File;
+import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 import java.util.TimeZone;
@@ -32,13 +34,21 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.ResourceHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
+import com.b2international.commons.platform.PlatformUtil;
+import com.b2international.snowowl.core.Metadata;
+import com.b2international.snowowl.core.MetadataHolder;
+import com.b2international.snowowl.core.MetadataHolderMixin;
+import com.b2international.snowowl.core.MetadataMixin;
+import com.b2international.snowowl.datastore.server.branch.Branch;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.domain.ISnomedComponent;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponent;
+import com.b2international.snowowl.snomed.api.rest.domain.BranchMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.ISnomedComponentMixin;
 import com.fasterxml.classmate.TypeResolver;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -47,6 +57,9 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.module.scala.DefaultScalaModule;
+import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
+import com.google.common.io.Files;
 import com.mangofactory.swagger.configuration.SpringSwaggerConfig;
 import com.mangofactory.swagger.models.alternates.AlternateTypeRule;
 import com.mangofactory.swagger.paths.RelativeSwaggerPathProvider;
@@ -70,7 +83,6 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	private String apiVersion;
 
 	private String apiTitle;
-	private String apiDescription;
 	private String apiTermsOfServiceUrl;
 	private String apiContact;
 	private String apiLicense;
@@ -96,12 +108,6 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	@Value("${api.title}")
 	public void setApiTitle(final String apiTitle) {
 		this.apiTitle = apiTitle;
-	}
-
-	@Autowired
-	@Value("${api.description}")
-	public void setApiDescription(final String apiDescription) {
-		this.apiDescription = apiDescription;
 	}
 
 	@Autowired
@@ -131,16 +137,27 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	@Bean
 	public SwaggerSpringMvcPlugin swaggerSpringMvcPlugin() {
 		final SwaggerSpringMvcPlugin swaggerSpringMvcPlugin = new SwaggerSpringMvcPlugin(springSwaggerConfig);
-		swaggerSpringMvcPlugin.apiInfo(new ApiInfo(apiTitle, apiDescription, apiTermsOfServiceUrl, apiContact, apiLicense, apiLicenseUrl));
+		swaggerSpringMvcPlugin.apiInfo(new ApiInfo(apiTitle, readApiDescription(), apiTermsOfServiceUrl, apiContact, apiLicense, apiLicenseUrl));
 		swaggerSpringMvcPlugin.apiVersion(apiVersion);
 		swaggerSpringMvcPlugin.pathProvider(new RelativeSwaggerPathProvider(servletContext));
 		swaggerSpringMvcPlugin.useDefaultResponseMessages(false);
 		swaggerSpringMvcPlugin.ignoredParameterTypes(Principal.class, Void.class);
 		final TypeResolver resolver = new TypeResolver();
 		swaggerSpringMvcPlugin.genericModelSubstitutes(ResponseEntity.class);
+		swaggerSpringMvcPlugin.genericModelSubstitutes(DeferredResult.class);
 		swaggerSpringMvcPlugin.alternateTypeRules(new AlternateTypeRule(resolver.resolve(UUID.class), resolver.resolve(String.class)));
+		swaggerSpringMvcPlugin.directModelSubstitute(Branch.class, BranchMixin.class);
 
 		return swaggerSpringMvcPlugin;
+	}
+
+	private String readApiDescription() {
+		try {
+			final File apiDesc = new File(PlatformUtil.toAbsolutePath(ServicesConfiguration.class, "api-description.html"));
+			return Joiner.on("\n").join(Files.readLines(apiDesc, Charsets.UTF_8));
+		} catch (IOException e) {
+			throw new RuntimeException("Failed to read api-description.html file", e);
+		}
 	}
 
 	@Bean
@@ -155,6 +172,9 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 		objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 		objectMapper.addMixInAnnotations(ISnomedComponent.class, ISnomedComponentMixin.class);
 		objectMapper.addMixInAnnotations(ISnomedBrowserComponent.class, ISnomedComponentMixin.class);
+		objectMapper.addMixInAnnotations(Branch.class, BranchMixin.class);
+		objectMapper.addMixInAnnotations(Metadata.class, MetadataMixin.class);
+		objectMapper.addMixInAnnotations(MetadataHolder.class, MetadataHolderMixin.class);
 		return objectMapper;
 	}
 	
@@ -180,5 +200,6 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	@Override
 	public void configurePathMatch(final PathMatchConfigurer configurer) {
 		configurer.setUseRegisteredSuffixPatternMatch(true);
+		configurer.setPathMatcher(new AntPathWildcardMatcher());
 	}
 }

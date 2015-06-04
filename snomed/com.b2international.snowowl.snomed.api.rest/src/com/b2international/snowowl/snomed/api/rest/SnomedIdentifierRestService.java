@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 
+import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
 import com.b2international.snowowl.eventbus.IMessage;
@@ -40,9 +41,9 @@ import com.wordnik.swagger.annotations.ApiResponses;
 /**
  * @since 1.0
  */
-@Api("SNOMED CT Identifiers")
+@Api("Identifiers")
 @RestController
-@RequestMapping(value="/ids", produces = { AbstractRestService.V1_MEDIA_TYPE })
+@RequestMapping(value="/ids", produces = { AbstractRestService.SO_MEDIA_TYPE })
 public class SnomedIdentifierRestService extends AbstractRestService {
 
 	@Autowired
@@ -54,9 +55,10 @@ public class SnomedIdentifierRestService extends AbstractRestService {
 	@ApiResponses({
 		@ApiResponse(code = 201, message = "Created")
 	})
-	@RequestMapping(method = RequestMethod.POST, consumes = { AbstractRestService.V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+	@RequestMapping(method = RequestMethod.POST, consumes = { AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	@ResponseStatus(value = HttpStatus.CREATED)
 	public DeferredResult<SnomedIdentifierResponse> generate(@RequestBody final SnomedIdentifierRequest request) {
+		ApiValidation.checkInput(request);
 		final DeferredResult<SnomedIdentifierResponse> result = new DeferredResult<SnomedIdentifierResponse>();
 		bus.send("/snomed-ct/ids", new SnomedIdentifierRequestEvent(request.getType(), request.getNamespace()), new IHandler<IMessage>() {
 			@Override

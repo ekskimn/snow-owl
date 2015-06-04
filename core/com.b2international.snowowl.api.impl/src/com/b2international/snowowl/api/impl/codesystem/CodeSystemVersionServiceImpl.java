@@ -28,13 +28,16 @@ import com.b2international.snowowl.api.codesystem.domain.ICodeSystemVersion;
 import com.b2international.snowowl.api.codesystem.domain.ICodeSystemVersionProperties;
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemNotFoundException;
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemVersionNotFoundException;
-import com.b2international.snowowl.api.exception.AlreadyExistsException;
-import com.b2international.snowowl.api.exception.BadRequestException;
 import com.b2international.snowowl.api.exception.LockedException;
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystemVersion;
+import com.b2international.snowowl.api.impl.domain.StorageRef;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
+import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.ConflictException;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.ICodeSystem;
 import com.b2international.snowowl.datastore.TerminologyRegistryService;
 import com.b2international.snowowl.datastore.UserBranchPathMap;
@@ -133,7 +136,7 @@ public class CodeSystemVersionServiceImpl implements ICodeSystemVersionService {
 			}
 			throw new SnowowlRuntimeException("Version creation failed due to " + result.getMessage());
 		} catch (SnowowlServiceException e) {
-			throw new LockedException(String.format("Cannot create version as %s is locked. Details: %s", shortName, e.getMessage()));
+			throw new LockedException(String.format("Cannot create version. %s is locked. Details: %s", shortName, e.getMessage()));
 		} finally {
 			try {
 				versioningService.releaseLock();
@@ -149,9 +152,21 @@ public class CodeSystemVersionServiceImpl implements ICodeSystemVersionService {
 		if (!dateResult.isOK()) {
 			throw new BadRequestException("The specified %s effective time is invalid. %s", properties.getEffectiveDate(), dateResult.getMessage());
 		}
+
 		final IStatus versionResult = versioningService.configureNewVersionId(properties.getVersion(), false);
 		if (!versionResult.isOK()) {
 			throw new AlreadyExistsException("Version", properties.getVersion());
+		}
+		
+		final StorageRef ref = new StorageRef();
+		ref.setShortName("SNOMEDCT");
+		ref.setBranchPath("MAIN/" + properties.getVersion());
+		
+		try {
+			ref.getBranch();
+			throw new ConflictException("An existing branch with path '%s' conflicts with the specified version identifier.", ref.getBranchPath());
+		} catch (NotFoundException expected) {
+			// fall-through
 		}
 	}
 
