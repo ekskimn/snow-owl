@@ -17,12 +17,8 @@ package com.b2international.snowowl.snomed.api.impl;
 
 import static com.google.common.collect.Maps.newHashMap;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import com.b2international.commons.ClassUtils;
 import com.b2international.snowowl.api.domain.IComponentRef;
@@ -30,6 +26,7 @@ import com.b2international.snowowl.api.impl.domain.InternalComponentRef;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ComponentIdentifierPair;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.Description;
@@ -37,11 +34,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.SnomedFactory;
 import com.b2international.snowowl.snomed.api.ISnomedDescriptionService;
-import com.b2international.snowowl.snomed.api.domain.Acceptability;
-import com.b2international.snowowl.snomed.api.domain.CaseSignificance;
-import com.b2international.snowowl.snomed.api.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.api.domain.ISnomedDescriptionInput;
-import com.b2international.snowowl.snomed.api.domain.ISnomedDescriptionUpdate;
+import com.b2international.snowowl.snomed.api.domain.*;
 import com.b2international.snowowl.snomed.api.exception.FullySpecifiedNameNotFoundException;
 import com.b2international.snowowl.snomed.api.exception.PreferredTermNotFoundException;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -56,11 +49,7 @@ import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentSer
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedStructuralRefSet;
-import com.google.common.collect.Collections2;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableBiMap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.*;
 import com.google.common.primitives.Longs;
 
 public class SnomedDescriptionServiceImpl 
@@ -88,33 +77,39 @@ public class SnomedDescriptionServiceImpl
 	@Override
 	protected boolean componentExists(final IComponentRef ref) {
 		final InternalComponentRef internalRef = ClassUtils.checkAndCast(ref, InternalComponentRef.class);
-		return snomedDescriptionLookupService.exists(internalRef.getBranchPath(), internalRef.getComponentId());
+		final IBranchPath branch = internalRef.getBranch().branchPath();
+		return snomedDescriptionLookupService.exists(branch, internalRef.getComponentId());
 	}
 
 	@Override
 	protected Description convertAndRegister(final ISnomedDescriptionInput input, final SnomedEditingContext editingContext) {
-		final Description description = SnomedFactory.eINSTANCE.createDescription();
-
-		description.setId(input.getIdGenerationStrategy().getId());
-		description.setActive(true);
-		description.unsetEffectiveTime();
-		description.setReleased(false);
-		description.setModule(getModuleConcept(input, editingContext));
-		description.setConcept(getConcept(input.getConceptId(), editingContext));
-		description.setCaseSignificance(getConcept(input.getCaseSignificance().getConceptId(), editingContext));
-		description.setType(getConcept(input.getTypeId(), editingContext));
-		description.setTerm(input.getTerm());
-		description.setLanguageCode(input.getLanguageCode());
-
-		updateAcceptabilityMap(input.getAcceptability(), description, editingContext);
-		return description;
+		try {
+			final Description description = SnomedFactory.eINSTANCE.createDescription();
+			
+			description.setId(input.getIdGenerationStrategy().getId());
+			description.setActive(true);
+			description.unsetEffectiveTime();
+			description.setReleased(false);
+			description.setModule(getModuleConcept(input, editingContext));
+			description.setConcept(getConcept(input.getConceptId(), editingContext));
+			description.setCaseSignificance(getConcept(input.getCaseSignificance().getConceptId(), editingContext));
+			description.setType(getConcept(input.getTypeId(), editingContext));
+			description.setTerm(input.getTerm());
+			description.setLanguageCode(input.getLanguageCode());
+			
+			updateAcceptabilityMap(input.getAcceptability(), description, editingContext);
+			return description;
+		} catch (ComponentNotFoundException e) {
+			throw e.toBadRequestException();
+		}
 	}
 
 	@Override
 	protected ISnomedDescription doRead(final IComponentRef ref) {
 		final InternalComponentRef internalRef = ClassUtils.checkAndCast(ref, InternalComponentRef.class);
-		final SnomedDescriptionIndexEntry descriptionIndexEntry = snomedDescriptionLookupService.getComponent(internalRef.getBranchPath(), internalRef.getComponentId());
-		return getDescriptionConverter(internalRef.getBranchPath()).apply(descriptionIndexEntry);
+		final IBranchPath branch = internalRef.getBranch().branchPath();
+		final SnomedDescriptionIndexEntry descriptionIndexEntry = snomedDescriptionLookupService.getComponent(branch, internalRef.getComponentId());
+		return getDescriptionConverter(branch).apply(descriptionIndexEntry);
 	}
 
 	@Override
@@ -123,8 +118,10 @@ public class SnomedDescriptionServiceImpl
 
 		final InternalComponentRef internalConceptRef = ClassUtils.checkAndCast(conceptRef, InternalComponentRef.class);
 		final SnomedDescriptionIndexQueryAdapter queryAdapter = SnomedDescriptionIndexQueryAdapter.findByConceptId(internalConceptRef.getComponentId());
-		final Collection<SnomedDescriptionIndexEntry> descriptionIndexEntries = getIndexService().searchUnsorted(internalConceptRef.getBranchPath(), queryAdapter);
-		final Collection<ISnomedDescription> transformedDescriptions = Collections2.transform(descriptionIndexEntries, getDescriptionConverter(internalConceptRef.getBranchPath()));
+		final IBranchPath branch = internalConceptRef.getBranch().branchPath();
+		
+		final Collection<SnomedDescriptionIndexEntry> descriptionIndexEntries = getIndexService().searchUnsorted(branch, queryAdapter);
+		final Collection<ISnomedDescription> transformedDescriptions = Collections2.transform(descriptionIndexEntries, getDescriptionConverter(branch));
 
 		return SnomedComponentOrdering.id().immutableSortedCopy(transformedDescriptions);
 	}
@@ -259,8 +256,8 @@ public class SnomedDescriptionServiceImpl
 		final InternalComponentRef internalRef = ClassUtils.checkAndCast(conceptRef, InternalComponentRef.class);
 //		internalRef.checkStorageExists();
 
-		final IBranchPath branchPath = internalRef.getBranchPath();
-		final ImmutableBiMap<Locale, String> languageIdMap = createLanguageIdMap(locales, branchPath);
+		final IBranchPath branch = internalRef.getBranch().branchPath();
+		final ImmutableBiMap<Locale, String> languageIdMap = getLanguageIdMap(locales, branch);
 		final Multimap<Locale, ISnomedDescription> descriptionsByLocale = HashMultimap.create();
 		final List<ISnomedDescription> descriptions = readConceptDescriptions(conceptRef);
 
@@ -281,7 +278,7 @@ public class SnomedDescriptionServiceImpl
 			}
 		}
 
-		for (final Locale locale : languageIdMap.keySet()) {
+		for (final Locale locale : locales) {
 			final Collection<ISnomedDescription> matchingDescriptions = descriptionsByLocale.get(locale);
 			if (!matchingDescriptions.isEmpty()) {
 				return matchingDescriptions.iterator().next();
@@ -331,11 +328,11 @@ public class SnomedDescriptionServiceImpl
 		final InternalComponentRef internalRef = ClassUtils.checkAndCast(conceptRef, InternalComponentRef.class);
 		internalRef.checkStorageExists();
 
-		final IBranchPath branchPath = internalRef.getBranchPath();
-		final ImmutableBiMap<Locale, String> languageIdMap = createLanguageIdMap(locales, branchPath);
+		final IBranchPath branch = internalRef.getBranch().branchPath();
+		final ImmutableBiMap<Locale, String> languageIdMap = getLanguageIdMap(locales, branch);
 		final Multimap<Locale, ISnomedDescription> descriptionsByLocale = HashMultimap.create();
 		final List<ISnomedDescription> descriptions = readConceptDescriptions(conceptRef);
-		final Set<String> synonymAndDescendantIds = getSnomedComponentService().getSynonymAndDescendantIds(branchPath);
+		final Set<String> synonymAndDescendantIds = getSnomedComponentService().getSynonymAndDescendantIds(branch);
 
 		for (final ISnomedDescription description : descriptions) {
 			if (!description.isActive()) {
@@ -354,7 +351,7 @@ public class SnomedDescriptionServiceImpl
 			}
 		}
 
-		for (final Locale locale : languageIdMap.keySet()) {
+		for (final Locale locale : locales) {
 			final Collection<ISnomedDescription> matchingDescriptions = descriptionsByLocale.get(locale);
 			if (!matchingDescriptions.isEmpty()) {
 				return matchingDescriptions.iterator().next();
@@ -373,7 +370,8 @@ public class SnomedDescriptionServiceImpl
 	 * - Different branch paths can have different available language refsets, looks like something which could be added to SnomedComponentService
 	 * - Better fallback mechanism?
 	 */
-	private ImmutableBiMap<Locale, String> createLanguageIdMap(final List<Locale> locales, final IBranchPath branchPath) {
+	@Override
+	public ImmutableBiMap<Locale, String> getLanguageIdMap(final List<Locale> locales, final IBranchPath branchPath) {
 		final ImmutableBiMap.Builder<Locale, String> resultBuilder = ImmutableBiMap.builder();
 
 		for (final Locale locale : locales) {

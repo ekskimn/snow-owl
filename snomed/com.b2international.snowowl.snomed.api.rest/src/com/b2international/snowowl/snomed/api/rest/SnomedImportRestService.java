@@ -39,7 +39,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.b2international.snowowl.snomed.api.ISnomedRf2ImportService;
 import com.b2international.snowowl.snomed.api.domain.ISnomedImportConfiguration;
-import com.b2international.snowowl.snomed.api.impl.domain.SnomedImportConfiguration;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedImportDetails;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedImportRestConfiguration;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
@@ -52,11 +51,11 @@ import com.wordnik.swagger.annotations.ApiResponses;
 /**
  * @since 1.0
  */
+@Api("Imports")
 @RestController
 @RequestMapping(
 		value="/imports",
-		produces={ AbstractRestService.V1_MEDIA_TYPE })
-@Api(value="SNOMED CT Import")
+		produces={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 public class SnomedImportRestService extends AbstractSnomedRestService {
 
 	@Autowired
@@ -65,21 +64,22 @@ public class SnomedImportRestService extends AbstractSnomedRestService {
 	@ApiOperation(
 			value="Import SNOMED CT content", 
 			notes="Configures processes to import RF2 based archives. The configured process will wait until the archive actually uploaded via the <em>/archive</em> endpoint. "
-					+ "The actual import process will start after the file upload completed.")
+					+ "The actual import process will start after the file upload completed. Note: unpublished components (with no value entered in the 'effectiveTime' column) are "
+					+ "only allowed in DELTA import mode.")
 	@ApiResponses({
 		@ApiResponse(code = 201, message = "Created"),
 		@ApiResponse(code = 404, message = "Code system version not found"),
 		@ApiResponse(code = 404, message = "Task not found"),
 	})
 	@RequestMapping(method=RequestMethod.POST,
-		consumes={ AbstractRestService.V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+		consumes={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	@ResponseStatus(HttpStatus.CREATED)
 	public ResponseEntity<Void> create(
 			@ApiParam(value="Import parameters")
 			@RequestBody 
 			final SnomedImportRestConfiguration importConfiguration) {
 
-		final UUID importId = delegate.create(convertToConfiguration(importConfiguration));
+		final UUID importId = delegate.create(importConfiguration.toConfig());
 		return Responses.created(linkTo(methodOn(SnomedImportRestService.class).getImportDetails(importId)).toUri()).build();
 	}
 
@@ -155,20 +155,9 @@ public class SnomedImportRestService extends AbstractSnomedRestService {
 		details.setLanguageRefSetId(configuration.getLanguageRefSetId());
 		details.setStartDate(configuration.getStartDate());
 		details.setStatus(getImportStatus(configuration.getStatus()));
-		details.setTaskId(configuration.getTaskId());
 		details.setType(configuration.getRf2ReleaseType());
-		details.setVersion(configuration.getVersion());
+		details.setBranchPath(configuration.getBranchPath());
 		return details;
-	}
-	
-	private ISnomedImportConfiguration convertToConfiguration(final SnomedImportRestConfiguration configuration) {
-		
-		return new SnomedImportConfiguration(
-				configuration.getType(), 
-				configuration.getVersion(),
-				configuration.getTaskId(),
-				configuration.getLanguageRefSetId(), 
-				configuration.getCreateVersions());
 	}
 	
 }

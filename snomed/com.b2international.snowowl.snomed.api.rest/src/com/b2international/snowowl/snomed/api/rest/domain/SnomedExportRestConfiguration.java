@@ -18,6 +18,10 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 import java.util.Collection;
 import java.util.Date;
 
+import javax.validation.constraints.NotNull;
+
+import org.hibernate.validator.constraints.NotEmpty;
+
 import com.b2international.snowowl.snomed.api.domain.Rf2ReleaseType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonFormat.Shape;
@@ -27,13 +31,18 @@ import com.fasterxml.jackson.annotation.JsonFormat.Shape;
  */
 public class SnomedExportRestConfiguration {
 
+	@NotNull(message = "RF2 release type was missing from the export configuration.")
 	private Rf2ReleaseType type;
-	private String version;
-	private String taskId;
+	
+	@NotEmpty
+	private String branchPath;
+	
+	@NotEmpty
+	private String namespaceId = "INT";
+	
 	private Collection<String> moduleIds;
 	private Date deltaStartEffectiveTime;
 	private Date deltaEndEffectiveTime;
-	private String namespaceId = "INT";
 	private String transientEffectiveTime;
 
 	/**
@@ -49,27 +58,15 @@ public class SnomedExportRestConfiguration {
 	}
 	
 	/** 
-	 * Returns the version to run the export on.
-	 * @return the version to export
+	 * Returns the branch to run the export on.
+	 * @return the branch to export
 	 */
-	public String getVersion() {
-		return version;
+	public String getBranchPath() {
+		return branchPath;
 	}
-	
-	public void setVersion(String version) {
-		this.version = version;
-	}
-	
-	/**
-	 * Returns the identifier of the task from which content should be exported.
-	 * @return the task identifier, or {@code null} when exporting from a version
-	 */
-	public String getTaskId() {
-		return taskId;
-	}
-	
-	public void setTaskId(String taskId) {
-		this.taskId = taskId;
+
+	public void setBranchPath(String branchPath) {
+		this.branchPath = branchPath;
 	}
 	
 	/**

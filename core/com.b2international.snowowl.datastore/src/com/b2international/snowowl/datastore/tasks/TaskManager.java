@@ -49,7 +49,7 @@ import com.b2international.snowowl.datastore.IBranchPathMap;
 import com.b2international.snowowl.datastore.TaskBranchPathMap;
 import com.b2international.snowowl.datastore.UserBranchPathMap;
 import com.b2international.snowowl.datastore.cdo.CustomConflictException;
-import com.b2international.snowowl.datastore.cdo.ICDOBranchManager;
+import com.b2international.snowowl.datastore.cdo.ICDOBranchActionManager;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.IPostStoreUpdateManager;
@@ -59,7 +59,7 @@ import com.google.common.base.Preconditions;
 /**
  * The TaskManager service is responsible of handling all the branch switching.
  * <p>
- * It wraps a {@link ICDOBranchManager}, which contains the CDO related logic.
+ * It wraps a {@link ICDOBranchActionManager}, which contains the CDO related logic.
  * </p>
  * 
  */
@@ -263,35 +263,26 @@ public class TaskManager {
 	public UserBranchPathMap getUserBranchPathMap() {
 		return userBranchPathMap;
 	}
-
-	/**
-	 * Synchronize the active task with its version-specific MAIN branch in a new job. All the changes which have been done on the
-	 * version-specific MAIN branch after the creation of the task will be merged. If there is a conflict in these changes, a
-	 * {@link ConflictException} will be thrown.
-	 * 
-	 * @param monitor monitor for the process.
-	 */
-	public void synchronizeActiveTask(final IProgressMonitor monitor) throws CustomConflictException, SnowowlServiceException {
-		synchronizeTask(activeTask, monitor);
-	}
-	
 	
 	/**
 	 * Synchronize the active task with its version-specific MAIN branch in a new job. All the changes which have been done on the
 	 * version-specific MAIN branch after the creation of the task will be merged. If there is a conflict in these changes, a
 	 * {@link ConflictException} will be thrown.
 	 * 
-	 * @param monitor monitor for the process.
+	 * @param taskId
+	 * @param commitComment 
+	 * @param progressMonitor monitor for the process.
 	 */
-	public void synchronizeTask(Task task, final IProgressMonitor monitor) throws CustomConflictException, SnowowlServiceException {
+	public void synchronizeTask(String taskId, String commitComment, IProgressMonitor progressMonitor) throws CustomConflictException, SnowowlServiceException {
 
 		Throwable exc = null;
 		
 		try {
 			
-			checkState(null != task, "Task doesn't exist.");
-			monitor.beginTask(MessageFormat.format("Synchronizing Task {0}...", task.getTaskId()), IProgressMonitor.UNKNOWN);
-			exc = getBranchManager().synchronize(task.getTaskBranchPathMap(), getUserId());
+			Task taskToSynchronize = getTask(taskId);
+			checkState(null != taskToSynchronize, "Task doesn't exist.");
+			progressMonitor.beginTask(MessageFormat.format("Synchronizing Task {0}...", taskId), IProgressMonitor.UNKNOWN);
+			exc = getBranchManager().synchronize(taskToSynchronize.getTaskBranchPathMap(), getUserId(), commitComment);
 			
 		} catch (final Throwable t) {
 			exc = t;
@@ -328,30 +319,22 @@ public class TaskManager {
 				 * should still be updated.
 				 */
 				getServiceForClass(IPostStoreUpdateManager.class).notifyListeners(null);
-				LOGGER.info(MessageFormat.format("User {0} has synchronized Task {1}.", getUserId(), task.getTaskId()));
+				LOGGER.info(MessageFormat.format("User {0} has synchronized Task {1}.", getUserId(), taskId));
 			}
 		}
 	}
 
-	/**
-	 * Promotes the changes done on the active task with the given comment. The task has to be in a synchronized state.
-	 * 
-	 * @param commitComment the commit comment.
-	 * @param monitor monitor for the promotion process.
-	 * @throws SnowowlServiceException if the underlying active task is {@code null}.
-	 */
-	public void promoteActiveTask(final String commitComment, final IProgressMonitor monitor) throws SnowowlServiceException {
-		checkState(null != activeTask, "Trying to promote changes while no task is active.");
-		promoteTask(activeTask, commitComment, monitor);
-	}
-
-	public void promoteTask(final Task taskToPromote, final String commitComment, final IProgressMonitor monitor) throws SnowowlServiceException {
+	public void promoteTask(final String taskId, final String commitComment, final IProgressMonitor monitor) throws SnowowlServiceException {
 		
 		Throwable exc = null;
 		
 		try {
-			monitor.beginTask(MessageFormat.format("Promoting changes made in Task {0}...", taskToPromote.getTaskId()), IProgressMonitor.UNKNOWN);
+			
+			Task taskToPromote = getTask(taskId);
+			checkState(null != taskToPromote, "Task doesn't exist.");
+			monitor.beginTask(MessageFormat.format("Promoting changes made in Task {0}...", taskId), IProgressMonitor.UNKNOWN);
 			exc = getBranchManager().promote(taskToPromote.getTaskBranchPathMap(), getUserId(), commitComment);
+
 		} catch (final Throwable t) {
 			exc = t;
 		} finally {
@@ -473,8 +456,8 @@ public class TaskManager {
 	}
 	
 	/*returns with the branch manager service*/
-	private ICDOBranchManager getBranchManager() {
-		return getServiceForClass(ICDOBranchManager.class);
+	private ICDOBranchActionManager getBranchManager() {
+		return getServiceForClass(ICDOBranchActionManager.class);
 	}
 	
 	/*returns with the CDO connection manager service.*/

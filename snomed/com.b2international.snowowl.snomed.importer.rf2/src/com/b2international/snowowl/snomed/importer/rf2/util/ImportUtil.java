@@ -61,9 +61,7 @@ import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.cdo.CDOTransactionAggregator;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
-import com.b2international.snowowl.datastore.cdo.ICDOTransactionAggregator;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.oplock.IOperationLockManager;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
@@ -106,8 +104,6 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicates;
 import com.google.common.base.Strings;
-import com.google.common.base.Supplier;
-import com.google.common.base.Suppliers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -329,7 +325,7 @@ public final class ImportUtil {
 		final CDOBranch branch = connectionManager.get(SnomedPackage.eINSTANCE).getBranch(branchPath);
 
 		if (null == branch) {
-			throw new ImportException("Branch does not exist. [" + branchPath.getPath() + "]");
+			throw new ImportException("Branch does not exist. [" + branchPath + "]");
 		}
 
 		final SnomedEditingContext editingContext = new SnomedEditingContext(branchPath);
@@ -337,17 +333,7 @@ public final class ImportUtil {
 		final Connection connection = ServerDbUtils.createConnection(SnomedPackage.eINSTANCE, config);
 		context.setEditingContext(editingContext);
 		context.setConnection(connection);
-
-		if (context.isSlicingEnabled()) {
-			context.setAggregatorSupplier(new EffectiveTimeBaseTransactionAggregatorSupplier(editingContext.getTransaction()));
-		} else {
-			//we will handle the whole delta/snapshot imports as one, or at least we will create one single commit for it
-			context.setAggregatorSupplier(Suppliers.memoize(new Supplier<ICDOTransactionAggregator>() {
-				@Override public ICDOTransactionAggregator get() {
-					return CDOTransactionAggregator.create(context.getEditingContext().getTransaction());
-				}
-			}));
-		}
+		context.setAggregatorSupplier(new EffectiveTimeBaseTransactionAggregatorSupplier(editingContext.getTransaction()));
 
 		final IOperationLockTarget lockTarget = new SingleRepositoryAndBranchLockTarget(editingContext.getTransaction().getSession().getRepositoryInfo().getUUID(), branchPath);
 		final DatastoreLockContext lockContext = new DatastoreLockContext(requestingUserId, DatastoreLockContextDescriptions.IMPORT);

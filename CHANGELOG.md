@@ -1,6 +1,38 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 2015-05-27
+### Added
+- Deep branching support has been implemented
+  * `POST` `/branches` endpoint
+  * `GET` `/branches` endpoint
+  * `DELETE` `/branches/{path}` endpoint
+  * `GET` `/branches/{path}` endpoint
+  * `GET` `/branches/{path}/children` endpoint
+  * `POST` `/merges` endpoint
+
+### Changed
+- Added support for Unpublished component import. RF2 rows with empty effectiveTime column can be imported into Snow Owl SNOMED CT repository.
+- Breaking RESTful API changes
+  * `/{tag}[/tasks/{taskId}]/...` URLs are replaced with URL beginning with `/{path}/...`, where "path" may include an arbitrary number of `/`-separated segments
+- Separate API documentation for each RESTful API
+  * `Administrative`: http://localhost:8080/snowowl/admin/
+  * `SNOMED CT`: http://localhost:8080/snowowl/snomed-ct/v2/
+- API documentation layout
+  * Two column layout, one for the API docs and one for the Swagger UI
+- Deep branching support for Import/Export configuration (new `branchPath`)
+- API version is now included in SNOMED CT REST service URLs; the accepted media type is `application/vnd.com.b2international.snowowl+json` for both Administrative and SNOMED CT terminology services
+- Deployment changes: The preferred transaction isolation level is READ-COMMITTED for MySQL databases. For changing the corresponding server variable, refer to https://dev.mysql.com/doc/refman/5.6/en/set-transaction.html.
+
+### Removed
+- Breaking RESTful API changes
+  * Removed /tasks API endpoints
+
+### Known issues
+- Associated index directories are not purged when a branch and any children are deleted
+- Reopening a branch can not be rolled back; if applying changes fails after reopening a branch during rebase or merge operations, previous changes will be lost
+- No additional metadata is present on version tag branches
+
 ## 2015-03-26
 ### Added
 - `WRP-89`: both `FULL` and `DELTA` imports are now separating incoming import files into "layers" based on the effective time columns, and individual layers get imported in order. This enables importing the `20150131` INT RF2 release delta, which includes components from `20140731` as well. The import process can now create versions after importing each "layer" for all import types.

@@ -23,10 +23,14 @@ import org.junit.runners.Suite.SuiteClasses;
 
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.api.rest.concept.SnomedConceptCreateOnTaskApiFeature;
-import com.b2international.snowowl.snomed.api.rest.concept.SnomedConceptCreateOnVersionApiFeature;
-import com.b2international.snowowl.snomed.api.rest.id.SnomedIdentifierRESTfulAPIFeature;
-import com.b2international.snowowl.snomed.api.rest.tasks.SnomedTasksApiFeature;
+import com.b2international.snowowl.snomed.api.rest.branches.SnomedBranchingApiFeature;
+import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeApiFeature;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedConceptApiFeature;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedDescriptionApiFeature;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedRelationshipApiFeature;
+import com.b2international.snowowl.snomed.api.rest.id.SnomedIdentifierApiFeature;
+import com.b2international.snowowl.snomed.api.rest.io.SnomedImportApiExamplesFeature;
+import com.b2international.snowowl.snomed.api.rest.io.SnomedImportApiFeature;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.test.commons.BundleStartRule;
 import com.b2international.snowowl.test.commons.Resources;
@@ -38,16 +42,22 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
  */
 @RunWith(Suite.class)
 @SuiteClasses({ 
-	SnomedConceptCreateOnTaskApiFeature.class,
-	SnomedConceptCreateOnVersionApiFeature.class,
-	SnomedTasksApiFeature.class,
-	SnomedIdentifierRESTfulAPIFeature.class
+	SnomedBranchingApiFeature.class,
+	SnomedMergeApiFeature.class,
+	SnomedConceptApiFeature.class,
+	SnomedDescriptionApiFeature.class,
+	SnomedRelationshipApiFeature.class,
+	SnomedIdentifierApiFeature.class,
+	SnomedImportApiFeature.class,
+	SnomedImportApiExamplesFeature.class
+//	SnomedVersioningApiFeature.class
 })
 public class AllSnomedApiTests {
 
 	@ClassRule
 	public static final RuleChain appRule = RuleChain
 			.outerRule(SnowOwlAppRule.snowOwl().clearResources(true).config(PlatformUtil.toAbsolutePath(AllSnomedApiTests.class, "rest-configuration.yml")))
+			.around(new BundleStartRule("com.b2international.snowowl.api.rest"))
 			.around(new BundleStartRule("com.b2international.snowowl.snomed.api.rest"))
 			.around(new SnomedContentRule(Resources.Snomed.MINI_RF2_INT, Concepts.REFSET_LANGUAGE_TYPE_UK, ContentSubType.FULL));
 	
