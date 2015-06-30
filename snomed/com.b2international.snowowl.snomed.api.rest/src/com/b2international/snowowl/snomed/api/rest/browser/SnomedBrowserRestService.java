@@ -12,23 +12,24 @@
  */
 package com.b2international.snowowl.snomed.api.rest.browser;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-
+import com.b2international.snowowl.api.domain.IComponentRef;
+import com.b2international.snowowl.api.impl.domain.StorageRef;
+import com.b2international.snowowl.snomed.api.ISnomedConceptService;
+import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
+import com.b2international.snowowl.snomed.api.domain.browser.*;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
+import com.wordnik.swagger.annotations.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import com.b2international.snowowl.api.domain.IComponentRef;
-import com.b2international.snowowl.api.impl.domain.StorageRef;
-import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
-import com.b2international.snowowl.snomed.api.domain.browser.*;
-import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
-import com.wordnik.swagger.annotations.*;
+import java.security.Principal;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * @since 1.0
@@ -36,7 +37,7 @@ import com.wordnik.swagger.annotations.*;
 @Api("IHTSDO SNOMED CT Browser")
 @Controller
 @RequestMapping(
-		value="/{path:**}", 
+		value="/browser/{path:**}", 
 		produces={ SnomedBrowserRestService.IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
@@ -46,8 +47,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	public static final String IHTSDO_V1_MEDIA_TYPE = "application/vnd.org.ihtsdo.browser+json";
 
 	@Autowired
-	protected ISnomedBrowserService delegate;
-
+	protected ISnomedBrowserService browserService;
+	
+	@Autowired
+	private ISnomedConceptService conceptService;
+	
 	@ApiOperation(
 			value="Retrieve single concept properties",
 			notes="Retrieves a single concept and related information on a branch.")
@@ -72,7 +76,35 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final HttpServletRequest request) {
 
 		final IComponentRef conceptRef = createComponentRef(branchPath, conceptId);
-		return delegate.getConceptDetails(conceptRef, Collections.list(request.getLocales()));
+		return browserService.getConceptDetails(conceptRef, Collections.list(request.getLocales()));
+	}
+
+	@ApiOperation(
+			value="Create a concept",
+			notes="Creates a new Concept on a branch.")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK", response = Void.class),
+		@ApiResponse(code = 404, message = "Code system version or concept not found")
+	})
+	@RequestMapping(value="/browser/concepts", method=RequestMethod.POST)
+	public @ResponseBody ISnomedBrowserConcept createConcept(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+//			@ApiParam(value="Language codes and reference sets, in order of preference")
+//			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+//			final String languageSetting,
+			
+			@RequestBody
+			final SnomedBrowserConcept concept,
+
+			final Principal principal,
+			
+			final HttpServletRequest request) {
+
+		final String userId = principal.getName();
+		return browserService.create(branchPath, concept, userId, Collections.list(request.getLocales()));
 	}
 
 	@ApiOperation(
@@ -102,7 +134,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final HttpServletRequest request) {
 		
 		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return delegate.getConceptParents(ref, Collections.list(request.getLocales()));
+		return browserService.getConceptParents(ref, Collections.list(request.getLocales()));
 	}
 	
 	@ApiOperation(
@@ -132,7 +164,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final HttpServletRequest request) {
 
 		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return delegate.getConceptChildren(ref, Collections.list(request.getLocales()));
+		return browserService.getConceptChildren(ref, Collections.list(request.getLocales()));
 	}
 
 	@ApiOperation(
@@ -172,7 +204,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		final StorageRef ref = new StorageRef();
 		ref.setShortName("SNOMEDCT");
 		ref.setBranchPath(branchPath);
-		return delegate.getDescriptions(ref, query, Collections.list(request.getLocales()), offset, limit);
+		return browserService.getDescriptions(ref, query, Collections.list(request.getLocales()), offset, limit);
 	}
 
 	@ApiOperation(
@@ -196,7 +228,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		final StorageRef ref = new StorageRef();
 		ref.setShortName("SNOMEDCT");
 		ref.setBranchPath(branchPath);
-		return delegate.getConstants(ref, Collections.list(request.getLocales()));
+		return browserService.getConstants(ref, Collections.list(request.getLocales()));
 	}
 
 }
