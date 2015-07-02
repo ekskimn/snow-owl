@@ -37,7 +37,7 @@ import javax.servlet.http.HttpServletRequest;
 @Api("IHTSDO SNOMED CT Browser")
 @Controller
 @RequestMapping(
-		value="/browser/{path:**}", 
+		value="/browser/{path:**}",
 		produces={ SnomedBrowserRestService.IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
@@ -86,7 +86,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 200, message = "OK", response = Void.class),
 		@ApiResponse(code = 404, message = "Code system version or concept not found")
 	})
-	@RequestMapping(value="/browser/concepts", method=RequestMethod.POST)
+	@RequestMapping(value="/concepts", method=RequestMethod.POST)
 	public @ResponseBody ISnomedBrowserConcept createConcept(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
