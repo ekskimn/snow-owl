@@ -14,6 +14,7 @@ package com.b2international.snowowl.snomed.api.rest.browser;
 
 import com.b2international.snowowl.api.domain.IComponentRef;
 import com.b2international.snowowl.api.impl.domain.StorageRef;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.ISnomedConceptService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.*;
@@ -100,6 +101,9 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final HttpServletRequest request) {
 
 		final String userId = principal.getName();
+		if (concept.getConceptId() != null) {
+			throw new BadRequestException("The concept in the request body should not have an ID when creating. When performing an update include the concept ID in the URL.");
+		}
 		return browserService.create(branchPath, concept, userId, Collections.list(request.getLocales()));
 	}
 
@@ -116,12 +120,20 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@PathVariable(value="path")
 			final String branchPath,
 
+			@ApiParam(value="The SCTID of the concept being updated")
+			@PathVariable(value="conceptId")
+			final String conceptId,
+
 			@RequestBody
 			final SnomedBrowserConcept concept,
 
 			final Principal principal,
 
 			final HttpServletRequest request) {
+
+		if (!conceptId.equals(concept.getConceptId())) {
+			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
+		}
 
 		final String userId = principal.getName();
 		return browserService.update(branchPath, concept, userId, Collections.list(request.getLocales()));
