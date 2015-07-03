@@ -144,7 +144,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 404, message = "Code system version or concept not found")
 	})
 	@RequestMapping(
-			value="/descriptions",
+			value="/descriptions-fsn",
 			method = RequestMethod.GET)
 	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
 			@ApiParam(value="The branch path")
@@ -184,7 +184,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 404, message = "Code system version or concept not found")
 	})
 	@RequestMapping(
-			value="/descriptions-pt",
+			value="/descriptions",
 			method = RequestMethod.GET)
 	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
 			@ApiParam(value="The branch path")
