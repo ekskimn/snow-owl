@@ -529,7 +529,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 				final String term;
 				switch (resultConceptTermType) {
-					case FNS:
+					case FSN:
 						final IComponentRef conceptRef = createConceptRef(storageRef, descriptionIndexEntry.getConceptId());
 						term = descriptionService.getFullySpecifiedName(conceptRef, locales).getTerm();
 						break;
