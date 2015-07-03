@@ -136,12 +136,12 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	}
 
 	@ApiOperation(
-			value = "Retrieve descriptions matching a query",
+			value = "Retrieve descriptions matching a query (hits DB to fetch FSN in concept section)",
 			notes = "Returns a list of descriptions which have a term matching the specified query string on a version.",
 			response=Void.class)
 	@ApiResponses({
-		@ApiResponse(code = 200, message = "OK"),
-		@ApiResponse(code = 404, message = "Code system version or concept not found")
+			@ApiResponse(code = 200, message = "OK"),
+			@ApiResponse(code = 404, message = "Code system version or concept not found")
 	})
 	@RequestMapping(
 			value="/descriptions",
@@ -156,15 +156,15 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String query,
 
 			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false) 
+			@RequestParam(value="offset", defaultValue="0", required=false)
 			final int offset,
 
 			@ApiParam(value="The maximum number of items to return")
-			@RequestParam(value="limit", defaultValue="50", required=false) 
+			@RequestParam(value="limit", defaultValue="50", required=false)
 			final int limit,
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
-			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
 			final String languageSetting,
 
 			final HttpServletRequest request) {
@@ -172,7 +172,47 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		final StorageRef ref = new StorageRef();
 		ref.setShortName("SNOMEDCT");
 		ref.setBranchPath(branchPath);
-		return delegate.getDescriptions(ref, query, Collections.list(request.getLocales()), offset, limit);
+		return browserService.getDescriptions(ref, query, Collections.list(request.getLocales()), ISnomedBrowserDescriptionResult.TermType.FNS, offset, limit);
+	}
+
+	@ApiOperation(
+			value = "Retrieve descriptions matching a query (returns indexed fields only - PT not FSN within concept section)",
+			notes = "Returns a list of descriptions which have a term matching the specified query string on a version.",
+			response=Void.class)
+	@ApiResponses({
+			@ApiResponse(code = 200, message = "OK"),
+			@ApiResponse(code = 404, message = "Code system version or concept not found")
+	})
+	@RequestMapping(
+			value="/descriptions-pt",
+			method = RequestMethod.GET)
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="The query string")
+			@RequestParam(value="query")
+			final String query,
+
+			@ApiParam(value="The starting offset in the list")
+			@RequestParam(value="offset", defaultValue="0", required=false)
+			final int offset,
+
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="50", required=false)
+			final int limit,
+
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
+			final String languageSetting,
+
+			final HttpServletRequest request) {
+
+		final StorageRef ref = new StorageRef();
+		ref.setShortName("SNOMEDCT");
+		ref.setBranchPath(branchPath);
+		return delegate.getDescriptions(ref, query, Collections.list(request.getLocales()), ISnomedBrowserDescriptionResult.TermType.PT, offset, limit);
 	}
 
 	@ApiOperation(
