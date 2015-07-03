@@ -146,7 +146,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/descriptions-fsn",
 			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsFSN(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -186,7 +186,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/descriptions",
 			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsPT(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
