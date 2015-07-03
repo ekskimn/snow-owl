@@ -15,16 +15,17 @@
  */
 package com.b2international.snowowl.snomed.api.browser;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemNotFoundException;
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemVersionNotFoundException;
 import com.b2international.snowowl.api.domain.IComponentRef;
 import com.b2international.snowowl.api.domain.IStorageRef;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * The interface for the IHTSDO SNOMED CT Browser service.
@@ -94,4 +95,7 @@ public interface ISnomedBrowserService {
 	 */
 	Map<String, ISnomedBrowserConstant> getConstants(IStorageRef storageRef, List<Locale> locales);
 
+	ISnomedBrowserConcept create(String branchPath, ISnomedBrowserConcept concept, String userId, List<Locale> locales);
+
+	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConcept concept, String userId, ArrayList<Locale> locales);
 }
