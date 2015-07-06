@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
+<<<<<<< HEAD
    <feature url="features/com.b2international.snowowl.scripting.server.feature_4.2.2.qualifier.jar" id="com.b2international.snowowl.scripting.server.feature" version="4.2.2.qualifier">
       <category name="scripting"/>
    </feature>
