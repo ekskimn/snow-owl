@@ -15,6 +15,19 @@ To run the test cases, simply run:
 
 The distribution package can be found in the `releng/distribution/target` folder, when the build completes.
 
+## Release
+
+It is not possible to use JGitFlow to perform a release from the develop to master branch because although it will try to update the pom files, it is not set up to set the same versions in the various MANIFEST.MF files, and so a manual merge and version update must be performed.
+
+Is it important when an update to version numbers is done in the master branch, that this is merged back to the develop branch (and then the versions updated further to develop versions) so that future merges from develop to master can be performed without conflicts.
+
+To modify versions, use Tycho:
+```
+mvn -Pdependencies -Dtycho.mode=maven org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion=4.2.2-SNAPSHOT
+```
+
+In addition, the package org.eclipse.equinox.bundles may need updating since it will try to deploy with the rest of the code, and if the release version is not updated, Nexus will reject it as it rejects all attempted overwrites.
+
 ### Additional Build Improvements
 
 Here are few tips to improve the quality of the default build process.
