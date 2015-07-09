@@ -23,7 +23,8 @@ Is it important when an update to version numbers is done in the master branch, 
 
 To modify versions, use Tycho:
 ```
-mvn -Pdependencies -Dtycho.mode=maven org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion=4.2.2-SNAPSHOT
+mvn -Pdependencies -Dtycho.mode=maven \
+org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion=4.2.2-SNAPSHOT
 ```
 
 In addition, the package org.eclipse.equinox.bundles may need updating since it will try to deploy with the rest of the code, and if the release version is not updated, Nexus will reject it as it rejects all attempted overwrites.
