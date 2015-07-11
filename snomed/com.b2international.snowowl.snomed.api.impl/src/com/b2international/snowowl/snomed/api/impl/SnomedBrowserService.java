@@ -267,7 +267,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		});
 		
 		for (final SnomedRelationshipIndexEntry relationship : relationships) {
-			final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship();
+			final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship(relationship.getId());
 
 			final SnomedBrowserRelationshipType type = new SnomedBrowserRelationshipType();
 			type.setConceptId(relationship.getAttributeId());
