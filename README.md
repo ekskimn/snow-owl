@@ -23,7 +23,8 @@ Is it important when an update to version numbers is done in the master branch, 
 
 To modify versions, use Tycho:
 ```
-mvn -Pdependencies -Dtycho.mode=maven org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion=4.2.2-SNAPSHOT
+mvn -Pdependencies -Dtycho.mode=maven \
+org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion=4.2.2-SNAPSHOT
 ```
 
 In addition, the package org.eclipse.equinox.bundles may need updating since it will try to deploy with the rest of the code, and if the release version is not updated, Nexus will reject it as it rejects all attempted overwrites.
@@ -53,3 +54,9 @@ While this should be enough to run the process, in production builds we recommen
 3. Copy the `target_platform_<version>` folder to a webserver, or use `Nexus` to serve the site as unzipped p2 (requires Nexus OSS with Unzip Plugin installed, see previous section)
 4. Define an `http` URL as `target.platform.url` parameter in the global Maven `.m2/settings.xml` file
 5. Run Snow Owl maven process with `mvn clean verify -Ptp_dependencies -Psite -Pdist` (*NOTE: the tp_dependencies profile will use the prefetched local p2 repository instead of querying all remote sites*)
+6. The target_platform directory is equivalent to the runtime directory in a server installation, and so an existing Snow-Owl repository can be accessed by symlinking the target_platform/resources/indexes to an existing /opt/termserver/resources/indexes folder.   You may also need to run a mysql "source" command on a snomedStore.sql file if that data is not already available locally.
+7. Copy one of these two files (for H2 or MySQL support) into .../target_platform/.  Note these files also contain the username and password that will be required when you access some of the APIs
+```
+./releng/com.b2international.snowowl.server.update/assembly/h2/snowowl_config.yml
+./releng/com.b2international.snowowl.server.update/assembly/mysql/snowowl_config.yml
+```
