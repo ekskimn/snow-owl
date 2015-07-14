@@ -20,6 +20,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 
 import org.eclipse.core.net.proxy.IProxyService;
@@ -149,10 +150,20 @@ public class PlatformUtil {
 	 */
 	public static String toAbsolutePath(URL fileURL) {
 		try {
-			return new File(fileURL.toURI()).getAbsolutePath();
+			return new File(toSafeURI(fileURL)).getAbsolutePath();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+	
+	/**
+	 * @param u
+	 * @return The URL as a URI in a way that's safe for use with path names containing spaces.
+	 * The previous fileURL.toURI() method would blow up with java.net.URISyntaxException: Illegal character in path
+	 */
+	public static URI toSafeURI(URL u) {
+	    if (!"file".equals(u.getProtocol())) throw new IllegalArgumentException();
+	    return new File(u.getFile()).toURI();
 	}
 	
 	/**
