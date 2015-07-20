@@ -90,7 +90,7 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 	}
 
 	public IClassificationRun getClassificationRun(final StorageRef storageRef, final String classificationId, final String userId) throws IOException {
-		final BooleanQuery query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, storageRef, userId);
+		final BooleanQuery query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, storageRef, null, userId);
 
 		try {
 			return Iterables.getOnlyElement(search(query, ClassificationRun.class, 1));
@@ -172,7 +172,7 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 			convertedEquivalenceSet.setUnsatisfiable(equivalenceSet.isUnsatisfiable());
 			convertedEquivalenceSet.setEquivalentConcepts(convertedEquivalentConcepts);
 
-			indexResult(id, branchPath, userId, EquivalentConceptSet.class, convertedEquivalenceSet);
+			indexResult(id, branchPath, userId, EquivalentConceptSet.class, equivalenceSet.getConcepts().get(0).getId(), convertedEquivalenceSet);
 		}
 
 		for (final RelationshipChangeEntry relationshipChange : changes.getRelationshipEntries()) {
@@ -189,7 +189,7 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 			convertedRelationshipChange.setTypeId(Long.toString(relationshipChange.getType().getId()));
 			convertedRelationshipChange.setUnionGroup(relationshipChange.getUnionGroup());
 
-			indexResult(id, branchPath, userId, RelationshipChange.class, convertedRelationshipChange);
+			indexResult(id, branchPath, userId, RelationshipChange.class, convertedRelationshipChange.getSourceId(), convertedRelationshipChange);
 		}
 
 		commit();
@@ -211,37 +211,39 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 	 */
 	public List<IEquivalentConceptSet> getEquivalentConceptSets(final StorageRef storageRef, final String classificationId, final String userId) throws IOException {
 
-		final BooleanQuery query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, storageRef, userId);
+		final BooleanQuery query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, storageRef, null, userId);
 		return this.<IEquivalentConceptSet>search(query, EquivalentConceptSet.class);
 	}
 
 	/**
 	 * @param storageRef
 	 * @param classificationId
+	 * @param sourceConceptId used to restrict results, can be null
 	 * @param userId
-	 * @param limit 
-	 * @param offset 
+	 * @param limit
+	 * @param offset
 	 * @return
 	 */
-	public IRelationshipChangeList getRelationshipChanges(final StorageRef storageRef, final String classificationId, final String userId, final int offset, final int limit) throws IOException {
+	public IRelationshipChangeList getRelationshipChanges(final StorageRef storageRef, final String classificationId, final String sourceConceptId, final String userId, final int offset, final int limit) throws IOException {
 
-		final BooleanQuery query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, storageRef, userId);
+		final BooleanQuery query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, storageRef, sourceConceptId, userId);
 		final RelationshipChangeList result = new RelationshipChangeList();
-		
+
 		result.setTotal(getHitCount(query));
 		result.setChanges(this.<IRelationshipChange>search(query, RelationshipChange.class, offset, limit));
-		
+
 		return result;
 	}
 
-	private <T> void indexResult(final UUID id, final IBranchPath branchPath, final String userId, 
-			final Class<T> clazz, final T value) throws IOException {
+	private <T> void indexResult(final UUID id, final IBranchPath branchPath, final String userId,
+			final Class<T> clazz, String componentId, final T value) throws IOException {
 
 		final Document updateDocument = new Document();
 		updateDocument.add(new StringField("class", clazz.getSimpleName(), Store.NO));
 		updateDocument.add(new StringField("id", id.toString(), Store.NO));
 		updateDocument.add(new StringField("userId", userId, Store.NO));
 		updateDocument.add(new StringField("branchPath", branchPath.getPath(), Store.NO));
+		updateDocument.add(new StringField("componentId", componentId, Store.NO));
 		updateDocument.add(new StoredField("source", objectMapper.writer().writeValueAsString(value)));
 
 		writer.addDocument(updateDocument);
@@ -256,13 +258,16 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 		return sourceDocument;
 	}
 
-	private BooleanQuery createClassQuery(final String className, final String classificationId, final StorageRef storageRef, final String userId) {
+	private BooleanQuery createClassQuery(final String className, final String classificationId, final StorageRef storageRef, String componentId, final String userId) {
 
 		final BooleanQuery query = new BooleanQuery(true);
 		query.add(new TermQuery(new Term("class", className)), Occur.MUST);
 		query.add(new TermQuery(new Term("id", classificationId)), Occur.MUST);
 		query.add(new TermQuery(new Term("userId", userId)), Occur.MUST);
 		query.add(new TermQuery(new Term("branchPath", storageRef.getBranchPath())), Occur.MUST);
+		if (componentId != null) {
+			query.add(new TermQuery(new Term("componentId", componentId)), Occur.MUST);
+		}
 		return query;
 	}
 
