@@ -15,46 +15,39 @@
  */
 package com.b2international.snowowl.snomed.api.impl;
 
-import java.io.File;
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-
 import com.b2international.commons.status.SerializableStatus;
 import com.b2international.snowowl.api.impl.domain.StorageRef;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
-import com.b2international.snowowl.datastore.remotejobs.AbstractRemoteJobEvent;
-import com.b2international.snowowl.datastore.remotejobs.IRemoteJobManager;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobChangedEvent;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventBusHandler;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventSwitch;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobRemovedEvent;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobState;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobUtils;
+import com.b2international.snowowl.datastore.remotejobs.*;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
 import com.b2international.snowowl.eventbus.IMessage;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
-import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
-import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
-import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
-import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
+import com.b2international.snowowl.snomed.api.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.api.domain.classification.*;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.ClassificationRun;
+import com.b2international.snowowl.snomed.datastore.SnomedConceptIndexEntry;
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
-import com.b2international.snowowl.snomed.reasoner.classification.ClassificationRequest;
-import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
-import com.b2international.snowowl.snomed.reasoner.classification.PersistChangesResponse;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
+import com.b2international.snowowl.snomed.reasoner.classification.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.*;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.annotation.Resource;
 
 /**
  */
@@ -185,6 +178,15 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private ClassificationIndexServerService indexService;
 	private RemoteJobChangeHandler changeHandler;
 
+	@Resource
+	private SnomedBrowserService browserService;
+
+	@Resource
+	private SnomedConceptServiceImpl conceptService;
+
+	@Resource
+	private SnomedDescriptionServiceImpl descriptionService;
+
 	@PostConstruct
 	protected void init() {
 		final File dir = new File(new File(SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory(), "indexes"), "classification_runs");
@@ -287,16 +289,71 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String userId, final int offset, final int limit) {
+		return getRelationshipChanges(branchPath, classificationId, null, userId, offset, limit);
+	}
+
+	private IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit) {
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
 
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			return indexService.getRelationshipChanges(storageRef, classificationId, userId, offset, limit);
+			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, userId, offset, limit);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	@Override
+	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<Locale> locales, String userId) {
+		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), locales);
+
+		// Replace ImmutableCollection of relationships
+		final List<ISnomedBrowserRelationship> relationships = new ArrayList<ISnomedBrowserRelationship>(conceptDetails.getRelationships());
+		conceptDetails.setRelationships(relationships);
+
+		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, userId, 0, 10000);
+		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+			switch (relationshipChange.getChangeNature()) {
+				case REDUNDANT:
+					relationships.remove(findRelationship(relationships, relationshipChange));
+					break;
+				case INFERRED:
+					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();
+					inferred.setType(new SnomedBrowserRelationshipType(relationshipChange.getTypeId()));
+					inferred.setSourceId(relationshipChange.getSourceId());
+
+					final SnomedConceptIndexEntry targetConcept = getTerminologyBrowser().getConcept(BranchPathUtils.createPath(branchPath), relationshipChange.getDestinationId());
+					final SnomedBrowserRelationshipTarget relationshipTarget = browserService.getSnomedBrowserRelationshipTarget(targetConcept, branchPath, locales);
+					inferred.setTarget(relationshipTarget);
+
+					inferred.setGroupId(relationshipChange.getGroup());
+					inferred.setModifier(relationshipChange.getModifier());
+					inferred.setActive(true);
+					inferred.setCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP);
+
+					relationships.add(inferred);
+					break;
+			}
+		}
+		return conceptDetails;
+	}
+
+	private static SnomedTerminologyBrowser getTerminologyBrowser() {
+		return ApplicationContext.getServiceForClass(SnomedTerminologyBrowser.class);
+	}
+
+	private ISnomedBrowserRelationship findRelationship(List<ISnomedBrowserRelationship> relationships, IRelationshipChange relationshipChange) {
+		for (ISnomedBrowserRelationship relationship : relationships) {
+			if (relationship.getType().getConceptId().equals(relationshipChange.getTypeId())
+					&& relationship.getSourceId().equals(relationshipChange.getSourceId())
+					&& relationship.getTarget().getConceptId().equals(relationshipChange.getDestinationId())
+					&& relationship.getGroupId() == relationshipChange.getGroup()) {
+				return relationship;
+			}
+		}
+		return null;
 	}
 
 	@Override

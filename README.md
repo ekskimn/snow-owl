@@ -108,6 +108,7 @@ While this should be enough to run the process, in production builds we recommen
 5. Run Snow Owl maven process with `mvn clean verify -Ptp_dependencies -Psite -Pdist` (*NOTE: the tp_dependencies profile will use the prefetched local p2 repository instead of querying all remote sites*)
 6. The target_platform directory is equivalent to the runtime directory in a server installation, and so an existing Snow-Owl repository can be accessed by symlinking the target_platform/resources/indexes to an existing /opt/termserver/resources/indexes folder.   You may also need to run a mysql "source" command on a snomedStore.sql file if that data is not already available locally.
 7. Copy one of these two files (for H2 or MySQL support) into .../target_platform/.  Note these files also contain the username and password that will be required when you access some of the APIs
+8. IHTSDO use SnoRocket as a classifier.   To include this in the Eclipse environment,  add it to the target_platform/plugins directory, and reload the target platform with the Set as Target platform action and add the classifier JAR to the launch configuration. You can verify that the JAR picked up by the runtime via the 'ontology list' command in the console.   The Jar can be copied from a production environment eg /opt/termserver/repository/usr/snorocket-protege-plugin-2.5.5.jar
 ```
 ./releng/com.b2international.snowowl.server.update/assembly/h2/snowowl_config.yml
 ./releng/com.b2international.snowowl.server.update/assembly/mysql/snowowl_config.yml
