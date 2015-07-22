@@ -363,13 +363,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	private IComponentRef createConceptRef(final IStorageRef sourceRef, final String newComponentId) {
-		final ComponentRef conceptRef = new ComponentRef();
-
-		conceptRef.setShortName(sourceRef.getShortName());
-		conceptRef.setBranchPath(sourceRef.getBranchPath());
-		conceptRef.setComponentId(newComponentId);
-
-		return conceptRef;
+		return new ComponentRef(sourceRef, newComponentId);
 	}
 
 	@Override
