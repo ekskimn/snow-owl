@@ -24,6 +24,10 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.snomed.datastore.SnomedRelationshipIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
+import com.b2international.snowowl.snomed.datastore.index.SnomedRelationshipIndexQueryAdapter;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StoredField;
@@ -118,6 +122,10 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 	}
 
 	public void updateClassificationRunStatus(final UUID id, final ClassificationStatus newStatus) throws IOException {
+		updateClassificationRunStatus(id, newStatus, null);
+	}
+
+	public void updateClassificationRunStatus(final UUID id, final ClassificationStatus newStatus, final GetResultResponseChanges changes) throws IOException {
 
 		final Document sourceDocument = getClassificationRunDocument(id);
 		if (null == sourceDocument) {
@@ -133,11 +141,37 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 
 		classificationRun.setStatus(newStatus);
 
-		if (ClassificationStatus.COMPLETED.equals(newStatus) && null == classificationRun.getCompletionDate()) {
-			classificationRun.setCompletionDate(new Date());
+		if (ClassificationStatus.COMPLETED.equals(newStatus)) {
+			if(null == classificationRun.getCompletionDate()) {
+				classificationRun.setCompletionDate(new Date());
+			}
+			classificationRun.setEquivalentConceptsFound(!changes.getEquivalenceSets().isEmpty());
+			boolean redundantStatedFound = false;
+			for (RelationshipChangeEntry relationshipChange : changes.getRelationshipEntries()) {
+				if(isRedundantStatedRelationship(branchPath, relationshipChange)) {
+					redundantStatedFound = true;
+					break;
+				}
+			}
+			classificationRun.setRedundantStatedRelationshipsFound(redundantStatedFound);
 		}
 
 		insertOrUpdateClassificationRun(branchPath, classificationRun);
+	}
+
+	private boolean isRedundantStatedRelationship(IBranchPath branchPath, RelationshipChangeEntry relationshipChange) {
+		if (relationshipChange.getNature().equals(Nature.REDUNDANT)) {
+			final Long sourceId = relationshipChange.getSource().getId();
+			final List<SnomedRelationshipIndexEntry> relationshipIndexEntries = getIndexService().search(branchPath, new SnomedRelationshipIndexQueryAdapter(sourceId.toString(), SnomedRelationshipIndexQueryAdapter.SEARCH_SOURCE_ID));
+			for (SnomedRelationshipIndexEntry relationshipIndexEntry : relationshipIndexEntries) {
+				if (relationshipIndexEntry.getValueId().equals(relationshipChange.getDestination().getId().toString())
+					&& relationshipIndexEntry.getAttributeId().equals(relationshipChange.getType().getId().toString())
+					&& relationshipIndexEntry.getGroup() == relationshipChange.getGroup()) {
+					return Concepts.STATED_RELATIONSHIP.equals(relationshipIndexEntry.getCharacteristicTypeId());
+				}
+			}
+		}
+		return false;
 	}
 
 	public void deleteClassificationData(final UUID id) throws IOException {
@@ -356,4 +390,9 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 			}
 		}
 	}
+
+	private static SnomedIndexService getIndexService() {
+		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
+	}
+
 }

@@ -158,7 +158,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.STALE);
 							break;
 						case SUCCESS:
-							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.COMPLETED);
+							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.COMPLETED, result.getChanges());
 							indexService.indexChanges(result.getChanges());
 							break;
 						default:
