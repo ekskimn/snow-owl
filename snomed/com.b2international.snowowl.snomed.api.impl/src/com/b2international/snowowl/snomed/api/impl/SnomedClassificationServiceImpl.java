@@ -158,8 +158,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.STALE);
 							break;
 						case SUCCESS:
-							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.COMPLETED, result.getChanges());
-							indexService.indexChanges(result.getChanges());
+							indexService.updateClassificationRunStatusAndIndexChanges(remoteJobId, ClassificationStatus.COMPLETED, result.getChanges());
 							break;
 						default:
 							throw new IllegalStateException(MessageFormat.format("Unexpected response type ''{0}''.", responseType));
@@ -180,12 +179,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Resource
 	private SnomedBrowserService browserService;
-
-	@Resource
-	private SnomedConceptServiceImpl conceptService;
-
-	@Resource
-	private SnomedDescriptionServiceImpl descriptionService;
 
 	@PostConstruct
 	protected void init() {

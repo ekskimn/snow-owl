@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.impl;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Lists.newArrayList;
 
 import java.io.File;
@@ -122,10 +123,10 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 	}
 
 	public void updateClassificationRunStatus(final UUID id, final ClassificationStatus newStatus) throws IOException {
-		updateClassificationRunStatus(id, newStatus, null);
+		updateClassificationRunStatusAndIndexChanges(id, newStatus, null);
 	}
 
-	public void updateClassificationRunStatus(final UUID id, final ClassificationStatus newStatus, final GetResultResponseChanges changes) throws IOException {
+	public void updateClassificationRunStatusAndIndexChanges(final UUID id, final ClassificationStatus newStatus, final GetResultResponseChanges changes) throws IOException {
 
 		final Document sourceDocument = getClassificationRunDocument(id);
 		if (null == sourceDocument) {
@@ -145,33 +146,27 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 			if(null == classificationRun.getCompletionDate()) {
 				classificationRun.setCompletionDate(new Date());
 			}
-			classificationRun.setEquivalentConceptsFound(!changes.getEquivalenceSets().isEmpty());
-			boolean redundantStatedFound = false;
-			for (RelationshipChangeEntry relationshipChange : changes.getRelationshipEntries()) {
-				if(isRedundantStatedRelationship(branchPath, relationshipChange)) {
-					redundantStatedFound = true;
-					break;
-				}
-			}
-			classificationRun.setRedundantStatedRelationshipsFound(redundantStatedFound);
+			checkNotNull(changes, "GetResultResponseChanges are required to update a completed classification.");
+			final ClassificationIssueFlags issueFlags = indexChanges(sourceDocument, changes);
+			classificationRun.setRedundantStatedRelationshipsFound(issueFlags.isRedundantStatedFound());
+			classificationRun.setEquivalentConceptsFound(issueFlags.isEquivalentConceptsFound());
 		}
 
 		insertOrUpdateClassificationRun(branchPath, classificationRun);
 	}
 
-	private boolean isRedundantStatedRelationship(IBranchPath branchPath, RelationshipChangeEntry relationshipChange) {
-		if (relationshipChange.getNature().equals(Nature.REDUNDANT)) {
-			final Long sourceId = relationshipChange.getSource().getId();
-			final List<SnomedRelationshipIndexEntry> relationshipIndexEntries = getIndexService().search(branchPath, new SnomedRelationshipIndexQueryAdapter(sourceId.toString(), SnomedRelationshipIndexQueryAdapter.SEARCH_SOURCE_ID));
-			for (SnomedRelationshipIndexEntry relationshipIndexEntry : relationshipIndexEntries) {
-				if (relationshipIndexEntry.getValueId().equals(relationshipChange.getDestination().getId().toString())
-					&& relationshipIndexEntry.getAttributeId().equals(relationshipChange.getType().getId().toString())
-					&& relationshipIndexEntry.getGroup() == relationshipChange.getGroup()) {
-					return Concepts.STATED_RELATIONSHIP.equals(relationshipIndexEntry.getCharacteristicTypeId());
-				}
+	private SnomedRelationshipIndexEntry getSnomedRelationshipIndexEntry(IBranchPath branchPath, RelationshipChangeEntry relationshipChange) {
+		SnomedRelationshipIndexEntry foundRelationshipIndexEntry = null;
+		final Long sourceId = relationshipChange.getSource().getId();
+		final List<SnomedRelationshipIndexEntry> relationshipIndexEntries = getIndexService().search(branchPath, new SnomedRelationshipIndexQueryAdapter(sourceId.toString(), SnomedRelationshipIndexQueryAdapter.SEARCH_SOURCE_ID));
+		for (SnomedRelationshipIndexEntry relationshipIndexEntry : relationshipIndexEntries) {
+			if (relationshipIndexEntry.getValueId().equals(relationshipChange.getDestination().getId().toString())
+				&& relationshipIndexEntry.getAttributeId().equals(relationshipChange.getType().getId().toString())
+				&& relationshipIndexEntry.getGroup() == relationshipChange.getGroup()) {
+				foundRelationshipIndexEntry = relationshipIndexEntry;
 			}
 		}
-		return false;
+		return foundRelationshipIndexEntry;
 	}
 
 	public void deleteClassificationData(final UUID id) throws IOException {
@@ -180,18 +175,15 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 		commit();
 	}
 
-	public void indexChanges(final GetResultResponseChanges changes) throws IOException {
-
+	private ClassificationIssueFlags indexChanges(Document sourceDocument, final GetResultResponseChanges changes) throws IOException {
 		final UUID id = changes.getClassificationId();
-		final Document sourceDocument = getClassificationRunDocument(id);
-		if (null == sourceDocument) {
-			return;
-		}
-
 		final IBranchPath branchPath = BranchPathUtils.createPath(sourceDocument.get("branchPath"));
 		final String userId = sourceDocument.get("userId");
+		final ClassificationIssueFlags classificationIssueFlags = new ClassificationIssueFlags();
 
-		for (final AbstractEquivalenceSet equivalenceSet : changes.getEquivalenceSets()) {
+		final List<AbstractEquivalenceSet> equivalenceSets = changes.getEquivalenceSets();
+		classificationIssueFlags.setEquivalentConceptsFound(!equivalenceSets.isEmpty());
+		for (final AbstractEquivalenceSet equivalenceSet : equivalenceSets) {
 
 			final List<IEquivalentConcept> convertedEquivalentConcepts = newArrayList();
 			for (final SnomedConceptIndexEntry equivalentEntry : equivalenceSet.getConcepts()) {
@@ -212,9 +204,22 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 		for (final RelationshipChangeEntry relationshipChange : changes.getRelationshipEntries()) {
 
 			final RelationshipChange convertedRelationshipChange = new RelationshipChange();
-			convertedRelationshipChange.setChangeNature(Nature.INFERRED.equals(relationshipChange.getNature()) ? ChangeNature.INFERRED : ChangeNature.REDUNDANT);
+			final ChangeNature changeNature = Nature.INFERRED.equals(relationshipChange.getNature()) ? ChangeNature.INFERRED : ChangeNature.REDUNDANT;
+			convertedRelationshipChange.setChangeNature(changeNature);
 			convertedRelationshipChange.setDestinationId(Long.toString(relationshipChange.getDestination().getId()));
 			convertedRelationshipChange.setDestinationNegated(relationshipChange.isDestinationNegated());
+
+			final String characteristicTypeId;
+			if (changeNature == ChangeNature.INFERRED) {
+				characteristicTypeId = Concepts.INFERRED_RELATIONSHIP;
+			} else {
+				final SnomedRelationshipIndexEntry snomedRelationshipIndexEntry = getSnomedRelationshipIndexEntry(branchPath, relationshipChange);
+				characteristicTypeId = snomedRelationshipIndexEntry.getCharacteristicTypeId();
+				if (changeNature == ChangeNature.REDUNDANT && characteristicTypeId.equals(Concepts.STATED_RELATIONSHIP)) {
+					classificationIssueFlags.setRedundantStatedFound(true);
+				}
+			}
+			convertedRelationshipChange.setCharacteristicTypeId(characteristicTypeId);
 			convertedRelationshipChange.setGroup(relationshipChange.getGroup());
 
 			final String modifierId = Long.toString(relationshipChange.getModifier().getId());
@@ -227,6 +232,7 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 		}
 
 		commit();
+		return classificationIssueFlags;
 	}
 
 	private void addEquivalentConcept(final List<IEquivalentConcept> convertedEquivalentConcepts, final SnomedConceptIndexEntry equivalentEntry) {
@@ -395,4 +401,24 @@ public class ClassificationIndexServerService extends SingleDirectoryIndexServer
 		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
 	}
 
+	private class ClassificationIssueFlags {
+		private boolean redundantStatedFound;
+		private boolean equivalentConceptsFound;
+
+		public boolean isRedundantStatedFound() {
+			return redundantStatedFound;
+		}
+
+		public void setRedundantStatedFound(boolean redundantStatedFound) {
+			this.redundantStatedFound = redundantStatedFound;
+		}
+
+		public boolean isEquivalentConceptsFound() {
+			return equivalentConceptsFound;
+		}
+
+		public void setEquivalentConceptsFound(boolean equivalentConceptsFound) {
+			this.equivalentConceptsFound = equivalentConceptsFound;
+		}
+	}
 }
