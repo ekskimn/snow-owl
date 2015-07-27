@@ -46,6 +46,7 @@ Make sure you have the following preferences enabled/disabled.
 3. Open Run Configurations and find the launch config `so_server.product`
 4. Open Arguments tab
  * Add `-Djetty.home.bundle=org.eclipse.jetty.osgi.boot` to the end of VM arguments
+ * Problems may be encountered when running classiciations.  If so, check the VM arguments against the following list which should work.  Important settings are "headless" and "server", plus the memory options (Xmx):  -Djava.awt.headless=true -Dosgi.requiredJavaVersion=1.7 -XX:MaxPermSize=512m -Xms5g -Xmx10g -server -Declipse.ignoreApp=true -Dosgi.noShutdown=true -Dorg.osgi.service.http.port=8080 -XX:+AlwaysLockClassLoader -Dosgi.classloader.type=nonparallel -XstartOnFirstThread -Dorg.eclipse.swt.internal.carbon.smallFonts -Djetty.home.bundle=org.eclipse.jetty.osgi.boot
 5. Open Plug-ins tab
  1. Add `org.eclipse.jetty.osgi.boot` bundle (set Auto-Start to `true`, and Start Level to `5`)
  2. Click on Add required bundles
