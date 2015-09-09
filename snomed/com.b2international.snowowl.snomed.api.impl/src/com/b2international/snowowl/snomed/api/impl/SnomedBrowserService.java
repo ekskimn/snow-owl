@@ -134,7 +134,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return getConceptDetails(componentRef, locales);
 	}
 
-	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConcept newVersionConcept, String userId, ArrayList<Locale> locales) {
+	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, ArrayList<Locale> locales) {
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
 		final IComponentRef componentRef = SnomedServiceHelper.createComponentRef(branchPath, newVersionConcept.getConceptId());
 		final ISnomedBrowserConcept existingVersionConcept = getConceptDetails(componentRef, locales);
@@ -162,10 +162,14 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 
 		// Add updates to editing context
-		if (conceptUpdate != null) {
-			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
+		boolean inactivatingConcept = Boolean.FALSE.equals(conceptUpdate.isActive());
+		// In the case of inactivation, other updates seem to go more smoothly if this is done later
+		if (!inactivatingConcept) {
+			if (conceptUpdate != null) {
+				conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
+			}
 		}
-
+		
 		for (String descriptionDeletionId : descriptionDeletionIds) {
 			descriptionService.doDelete(SnomedServiceHelper.createComponentRef(branchPath, descriptionDeletionId), editingContext);
 		}
@@ -186,7 +190,15 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		for (ISnomedRelationshipInput relationshipInput : relationshipInputs) {
 			relationshipService.convertAndRegister(relationshipInput, editingContext);
 		}
+		
+		if (inactivatingConcept) {
+			// Inactivate concept last
+			if (conceptUpdate != null) {
+				conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
+			}
+		}
 
+		
 		// TODO - Add MRCM checks here
 
 		// Commit
@@ -195,7 +207,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		return getConceptDetails(componentRef, locales);
 	}
-
+	
 	private String getCommitComment(String userId, ISnomedBrowserConcept snomedConceptInput, String action) {
 		String fsn = getFsn(snomedConceptInput);
 		return userId + " " + action + " concept " + fsn;

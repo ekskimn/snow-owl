@@ -41,6 +41,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConst
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -141,7 +142,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String conceptId,
 
 			@RequestBody
-			final SnomedBrowserConcept concept,
+			final SnomedBrowserConceptUpdate concept,
 
 			final Principal principal,
 
