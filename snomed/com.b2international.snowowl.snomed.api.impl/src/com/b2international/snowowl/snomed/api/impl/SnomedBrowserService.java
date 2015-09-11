@@ -47,13 +47,16 @@ import com.b2international.snowowl.snomed.api.domain.*;
 import com.b2international.snowowl.snomed.api.domain.browser.*;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.*;
 import com.b2international.snowowl.snomed.datastore.index.*;
+import com.b2international.snowowl.snomed.datastore.*;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 
 public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private static final List<ConceptEnum> CONCEPT_ENUMS;
-
 	static {
 		final ImmutableList.Builder<ConceptEnum> conceptEnumsBuilder = ImmutableList.builder();
 		
@@ -112,11 +115,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		result.setDefinitionStatus(concept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
 		result.setEffectiveTime(new Date(concept.getEffectiveTimeAsLong()));
 		result.setModuleId(concept.getModuleId());
-
 		result.setIsLeafInferred(inferredDescendantCount < 1);
 
 		result.setDescriptions(convertDescriptions(newArrayList(iSnomedDescriptions)));
-
 		result.setFsn(fullySpecifiedName.getTerm());
 		result.setPreferredSynonym(preferredSynonym.getTerm());
 
@@ -245,7 +246,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			convertedDescription.setTerm(description.getTerm());
 			convertedDescription.setType(descriptionType);
 			convertedDescription.setAcceptabilityMap(description.getAcceptabilityMap());
-
 			convertedDescriptionBuilder.add(convertedDescription);
 		}
 
@@ -536,5 +536,4 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	private static SnomedIndexService getIndexService() {
 		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
 	}
-
 }

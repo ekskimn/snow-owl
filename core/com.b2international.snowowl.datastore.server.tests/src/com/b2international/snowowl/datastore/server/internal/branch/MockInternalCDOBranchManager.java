@@ -34,7 +34,7 @@ import org.eclipse.net4j.util.lifecycle.LifecycleState;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import com.b2international.snowowl.datastore.server.branch.Branch;
+import com.b2international.snowowl.datastore.branch.Branch;
 
 /**
  * @since 4.1
@@ -174,6 +174,7 @@ public class MockInternalCDOBranchManager implements InternalCDOBranchManager {
 			mockBranchPath(branch, parent.getPathName().concat(Branch.SEPARATOR), name);
 		}
 		mockBranchCreation(branch);
+		mockChildren(branch);
 		return branch;
 	}
 
@@ -194,4 +195,7 @@ public class MockInternalCDOBranchManager implements InternalCDOBranchManager {
 		when(branch.getBasePath()).thenReturn(basePath);
 	}
 
+	private void mockChildren(InternalCDOBranch branch) {
+		when(branch.getBranches()).thenReturn(new InternalCDOBranch[0]);
+	}
 }
