@@ -302,7 +302,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				target.setActive(destinationConcept.isActive());
 				target.setConceptId(destinationConcept.getId());
 				target.setDefinitionStatus(destinationConcept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-				target.setEffectiveTime(new Date(destinationConcept.getEffectiveTimeAsLong()));
+				target.setEffectiveTime(EffectiveTimes.toDate(destinationConcept.getEffectiveTimeAsLong()));
 				target.setModuleId(destinationConcept.getModuleId());
 				target.setFsn(optionalFsn.or(destinationConcept.getId()));
 				return target;
@@ -331,7 +331,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		target.setActive(destinationConcept.isActive());
 		target.setConceptId(destinationConcept.getId());
 		target.setDefinitionStatus(destinationConcept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-		target.setEffectiveTime(new Date(destinationConcept.getEffectiveTimeAsLong()));
+		target.setEffectiveTime(EffectiveTimes.toDate(destinationConcept.getEffectiveTimeAsLong()));
 		target.setModuleId(destinationConcept.getModuleId());
 
 		final IComponentRef targetConceptRef = SnomedServiceHelper.createComponentRef(branchPathPath, destinationConcept.getId());
