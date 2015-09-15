@@ -22,6 +22,7 @@ import java.util.*;
 
 import javax.annotation.Resource;
 
+import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.snomed.api.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.api.impl.domain.*;
 import com.b2international.snowowl.snomed.datastore.*;
@@ -110,7 +111,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		result.setActive(concept.isActive());
 		result.setConceptId(concept.getId());
 		result.setDefinitionStatus(concept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-		result.setEffectiveTime(new Date(concept.getEffectiveTimeAsLong()));
+		result.setEffectiveTime(EffectiveTimes.toDate(concept.getEffectiveTimeAsLong()));
 		result.setModuleId(concept.getModuleId());
 
 		result.setIsLeafInferred(inferredDescendantCount < 1);
@@ -250,7 +251,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship(relationship.getId());
 			convertedRelationship.setActive(relationship.isActive());
 			convertedRelationship.setCharacteristicType(CharacteristicType.getByConceptId(relationship.getCharacteristicTypeId()));
-			convertedRelationship.setEffectiveTime(new Date(relationship.getEffectiveTimeAsLong()));
+			convertedRelationship.setEffectiveTime(EffectiveTimes.toDate(relationship.getEffectiveTimeAsLong()));
 			convertedRelationship.setGroupId(relationship.getGroup());
 			convertedRelationship.setModifier(relationship.isUniversal() ? RelationshipModifier.UNIVERSAL : RelationshipModifier.EXISTENTIAL);
 			convertedRelationship.setModuleId(relationship.getModuleId());
@@ -301,7 +302,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				target.setActive(destinationConcept.isActive());
 				target.setConceptId(destinationConcept.getId());
 				target.setDefinitionStatus(destinationConcept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-				target.setEffectiveTime(new Date(destinationConcept.getEffectiveTimeAsLong()));
+				target.setEffectiveTime(EffectiveTimes.toDate(destinationConcept.getEffectiveTimeAsLong()));
 				target.setModuleId(destinationConcept.getModuleId());
 				target.setFsn(optionalFsn.or(destinationConcept.getId()));
 				return target;
@@ -330,7 +331,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		target.setActive(destinationConcept.isActive());
 		target.setConceptId(destinationConcept.getId());
 		target.setDefinitionStatus(destinationConcept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-		target.setEffectiveTime(new Date(destinationConcept.getEffectiveTimeAsLong()));
+		target.setEffectiveTime(EffectiveTimes.toDate(destinationConcept.getEffectiveTimeAsLong()));
 		target.setModuleId(destinationConcept.getModuleId());
 
 		final IComponentRef targetConceptRef = SnomedServiceHelper.createComponentRef(branchPathPath, destinationConcept.getId());
