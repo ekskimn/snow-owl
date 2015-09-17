@@ -23,6 +23,7 @@ import java.util.*;
 import javax.annotation.Resource;
 
 import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.api.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.api.impl.domain.*;
 import com.b2international.snowowl.snomed.datastore.*;
@@ -440,7 +441,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		
 		final Map<String, SnomedBrowserDescriptionResultDetails> detailCache = newHashMap();
 		final ImmutableList.Builder<ISnomedBrowserDescriptionResult> resultBuilder = ImmutableList.builder();
-		
+		final Set<SnomedConceptIndexEntry> conceptsNeedingFsnLookup = newHashSet();
+				
 		for (final SnomedDescriptionIndexEntry descriptionIndexEntry : descriptionIndexEntries) {
 			
 			final String typeId = descriptionIndexEntry.getType();
@@ -461,17 +463,16 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			} else {
 				details = new SnomedBrowserDescriptionResultDetails();
 
-				final String term;
 				switch (resultConceptTermType) {
 					case FSN:
-						final IComponentRef conceptRef = createConceptRef(storageRef, descriptionIndexEntry.getConceptId());
-						term = descriptionService.getFullySpecifiedName(conceptRef, locales).getTerm();
+						if (conceptIndexEntry != null) {
+							conceptsNeedingFsnLookup.add(conceptIndexEntry);
+						}
 						break;
 					default:
-						term = descriptionIndexEntry.getLabel();
+						details.setFsn(descriptionIndexEntry.getLabel());
 						break;
 				}
-				details.setFsn(term);
 
 				if (conceptIndexEntry != null) {
 	
@@ -490,6 +491,22 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 			descriptionResult.setConcept(details);
 			resultBuilder.add(descriptionResult);
+		}
+		
+		if (!conceptsNeedingFsnLookup.isEmpty()) {
+			new FsnJoinerOperation<SnomedBrowserDescriptionResultDetails>(new ComponentRef(storageRef, SnomedConstants.Concepts.ROOT_CONCEPT), locales, descriptionService) {
+				@Override
+				protected Collection<SnomedConceptIndexEntry> getConceptEntries(String conceptId) {
+					return conceptsNeedingFsnLookup;
+				}
+	
+				@Override
+				protected SnomedBrowserDescriptionResultDetails convertConceptEntry(SnomedConceptIndexEntry conceptEntry, Optional<String> optionalFsn) {
+					SnomedBrowserDescriptionResultDetails details = detailCache.get(conceptEntry.getId());
+					details.setFsn(optionalFsn.or(conceptEntry.getId()));
+					return details;
+				}
+			}.run();
 		}
 
 		return resultBuilder.build();
