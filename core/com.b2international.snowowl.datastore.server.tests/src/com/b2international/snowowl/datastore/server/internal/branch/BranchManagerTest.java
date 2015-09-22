@@ -36,9 +36,9 @@ import com.b2international.snowowl.core.MetadataImpl;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
-import com.b2international.snowowl.datastore.server.branch.Branch;
-import com.b2international.snowowl.datastore.server.branch.Branch.BranchState;
-import com.b2international.snowowl.datastore.server.branch.BranchMergeException;
+import com.b2international.snowowl.datastore.branch.Branch;
+import com.b2international.snowowl.datastore.branch.BranchMergeException;
+import com.b2international.snowowl.datastore.branch.Branch.BranchState;
 import com.b2international.snowowl.datastore.store.MemStore;
 import com.b2international.snowowl.datastore.store.Store;
 
@@ -50,7 +50,8 @@ public class BranchManagerTest {
 	private class BranchManagerImplTest extends BranchManagerImpl {
 
 		private BranchManagerImplTest(Store<InternalBranch> branchStore, long mainBranchTimestamp) {
-			super(branchStore, mainBranchTimestamp);
+			super(branchStore);
+			initBranchStore(new MainBranchImpl(mainBranchTimestamp));
 		}
 
 		@Override
@@ -189,8 +190,8 @@ public class BranchManagerTest {
 		for (String name : newArrayList("/", "/a", "a/", "a/b")) {
 			try {
 				main.createChild(name);
-				fail("IllegalArgumentException should be thrown when creating child branch " + name);
-			} catch (IllegalArgumentException e) {
+				fail("BadRequestException should be thrown when creating child branch " + name);
+			} catch (BadRequestException e) {
 				// success
 			}
 		}

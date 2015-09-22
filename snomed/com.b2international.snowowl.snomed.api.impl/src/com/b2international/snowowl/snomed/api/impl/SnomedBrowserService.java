@@ -49,13 +49,16 @@ import com.b2international.snowowl.snomed.api.domain.*;
 import com.b2international.snowowl.snomed.api.domain.browser.*;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.*;
 import com.b2international.snowowl.snomed.datastore.index.*;
+import com.b2international.snowowl.snomed.datastore.*;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 
 public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private static final List<ConceptEnum> CONCEPT_ENUMS;
-
 	static {
 		final ImmutableList.Builder<ConceptEnum> conceptEnumsBuilder = ImmutableList.builder();
 		
@@ -114,11 +117,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		result.setDefinitionStatus(concept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
 		result.setEffectiveTime(EffectiveTimes.toDate(concept.getEffectiveTimeAsLong()));
 		result.setModuleId(concept.getModuleId());
-
 		result.setIsLeafInferred(inferredDescendantCount < 1);
 
 		result.setDescriptions(convertDescriptions(newArrayList(iSnomedDescriptions)));
-
 		result.setFsn(fullySpecifiedName.getTerm());
 		result.setPreferredSynonym(preferredSynonym.getTerm());
 
@@ -136,7 +137,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return getConceptDetails(componentRef, locales);
 	}
 
-	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConcept newVersionConcept, String userId, ArrayList<Locale> locales) {
+	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, ArrayList<Locale> locales) {
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
 		final IComponentRef componentRef = SnomedServiceHelper.createComponentRef(branchPath, newVersionConcept.getConceptId());
 		final ISnomedBrowserConcept existingVersionConcept = getConceptDetails(componentRef, locales);
@@ -164,10 +165,14 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 
 		// Add updates to editing context
-		if (conceptUpdate != null) {
-			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
+		boolean inactivatingConcept = Boolean.FALSE.equals(conceptUpdate.isActive());
+		// In the case of inactivation, other updates seem to go more smoothly if this is done later
+		if (!inactivatingConcept) {
+			if (conceptUpdate != null) {
+				conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
+			}
 		}
-
+		
 		for (String descriptionDeletionId : descriptionDeletionIds) {
 			descriptionService.doDelete(SnomedServiceHelper.createComponentRef(branchPath, descriptionDeletionId), editingContext);
 		}
@@ -188,7 +193,15 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		for (ISnomedRelationshipInput relationshipInput : relationshipInputs) {
 			relationshipService.convertAndRegister(relationshipInput, editingContext);
 		}
+		
+		if (inactivatingConcept) {
+			// Inactivate concept last
+			if (conceptUpdate != null) {
+				conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
+			}
+		}
 
+		
 		// TODO - Add MRCM checks here
 
 		// Commit
@@ -197,7 +210,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		return getConceptDetails(componentRef, locales);
 	}
-
+	
 	private String getCommitComment(String userId, ISnomedBrowserConcept snomedConceptInput, String action) {
 		String fsn = getFsn(snomedConceptInput);
 		return userId + " " + action + " concept " + fsn;
@@ -235,7 +248,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			convertedDescription.setTerm(description.getTerm());
 			convertedDescription.setType(descriptionType);
 			convertedDescription.setAcceptabilityMap(description.getAcceptabilityMap());
-
 			convertedDescriptionBuilder.add(convertedDescription);
 		}
 
@@ -542,5 +554,4 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	private static SnomedIndexService getIndexService() {
 		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
 	}
-
 }
