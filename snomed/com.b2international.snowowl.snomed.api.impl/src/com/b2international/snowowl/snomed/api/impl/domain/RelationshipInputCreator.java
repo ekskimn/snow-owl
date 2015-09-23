@@ -25,6 +25,9 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 		final SnomedRelationshipUpdate update = new SnomedRelationshipUpdate();
 		update.setModuleId(newVersion.getModuleId());
 		update.setActive(newVersion.isActive());
+		update.setGroup(newVersion.getGroupId());
+		update.setCharacteristicType(newVersion.getCharacteristicType());
+		update.setModifier(newVersion.getModifier());
 		return update;
 	}
 
