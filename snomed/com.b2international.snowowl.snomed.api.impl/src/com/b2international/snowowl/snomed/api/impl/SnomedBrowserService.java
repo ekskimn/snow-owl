@@ -27,7 +27,6 @@ import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.api.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.api.impl.domain.*;
 import com.b2international.snowowl.snomed.datastore.*;
-import com.google.common.collect.*;
 
 import org.apache.lucene.search.Sort;
 import org.slf4j.Logger;
@@ -49,7 +48,6 @@ import com.b2international.snowowl.snomed.api.domain.*;
 import com.b2international.snowowl.snomed.api.domain.browser.*;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.*;
 import com.b2international.snowowl.snomed.datastore.index.*;
-import com.b2international.snowowl.snomed.datastore.*;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
@@ -164,13 +162,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		List<ISnomedRelationshipInput> relationshipInputs = inputFactory.createComponentInputs(branchPath, newVersionRelationships, ISnomedRelationshipInput.class);
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 
-		// Add updates to editing context
-		boolean inactivatingConcept = Boolean.FALSE.equals(conceptUpdate.isActive());
 		// In the case of inactivation, other updates seem to go more smoothly if this is done later
-		if (!inactivatingConcept) {
-			if (conceptUpdate != null) {
-				conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
-			}
+		if (conceptUpdate != null && Boolean.TRUE.equals(conceptUpdate.isActive())) {
+			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
 		}
 		
 		for (String descriptionDeletionId : descriptionDeletionIds) {
@@ -194,13 +188,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			relationshipService.convertAndRegister(relationshipInput, editingContext);
 		}
 		
-		if (inactivatingConcept) {
-			// Inactivate concept last
-			if (conceptUpdate != null) {
-				conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
-			}
+		// Inactivate concept last
+		if (conceptUpdate != null && Boolean.FALSE.equals(conceptUpdate.isActive())) {
+			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
 		}
-
 		
 		// TODO - Add MRCM checks here
 
