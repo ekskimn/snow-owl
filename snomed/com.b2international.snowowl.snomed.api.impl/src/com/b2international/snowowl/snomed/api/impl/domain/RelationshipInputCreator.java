@@ -23,12 +23,16 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 	@Override
 	public SnomedRelationshipUpdate createUpdate(SnomedBrowserRelationship existingVersion, SnomedBrowserRelationship newVersion) {
 		final SnomedRelationshipUpdate update = new SnomedRelationshipUpdate();
-		update.setModuleId(newVersion.getModuleId());
-		update.setActive(newVersion.isActive());
-		update.setGroup(newVersion.getGroupId());
-		update.setCharacteristicType(newVersion.getCharacteristicType());
-		update.setModifier(newVersion.getModifier());
-		return update;
+		boolean change = false;
+		if (!existingVersion.getModuleId().equals(newVersion.getModuleId())) {
+			change = true;
+			update.setModuleId(newVersion.getModuleId());
+		}
+		if (existingVersion.isActive() != newVersion.isActive()) {
+			change = true;
+			update.setActive(newVersion.isActive());
+		}
+		return change ? update : null;
 	}
 
 	@Override

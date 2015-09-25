@@ -206,11 +206,17 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String languageSetting,
+			
+			@ApiParam(value="Stated or inferred form", allowableValues="stated, inferred")
+			@RequestParam(value="form", defaultValue="inferred")
+			final String form,
 
 			final HttpServletRequest request) {
-
-		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptChildren(ref, Collections.list(request.getLocales()));
+		if ("stated".equals(form) || "inferred".equals(form)) {
+			final IComponentRef ref = createComponentRef(branchPath, conceptId);
+			return browserService.getConceptChildren(ref, Collections.list(request.getLocales()), "stated".equals(form));
+		}
+		throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
 	}
 
 	@ApiOperation(
