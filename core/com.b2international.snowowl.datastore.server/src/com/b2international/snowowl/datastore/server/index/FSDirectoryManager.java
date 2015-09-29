@@ -58,6 +58,7 @@ import com.b2international.snowowl.datastore.cdo.CDOUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.index.IndexUtils;
+import com.b2international.snowowl.datastore.index.mapping.Mappings;
 import com.b2international.snowowl.datastore.server.internal.lucene.store.CompositeDirectory;
 import com.b2international.snowowl.datastore.server.internal.lucene.store.ReadOnlyDirectory;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
@@ -195,6 +196,7 @@ public class FSDirectoryManager implements IDirectoryManager {
 				for (final String rootResourceName : rootResourceNameProvider.getRootResourceNames()) {
 
 					final boolean metaRoot = any(rootResourceNameProviders, new Predicate<CDORootResourceNameProvider>() {
+						@Override
 						public boolean apply(final CDORootResourceNameProvider provider) {
 							return provider.isMetaRootResource(rootResourceName);
 						}
@@ -204,6 +206,7 @@ public class FSDirectoryManager implements IDirectoryManager {
 
 						final ICDOConnection connection = getServiceForClass(ICDOConnectionManager.class).getByUuid(repositoryUuid);
 						CDOUtils.apply(new CDOTransactionFunction<Void>(connection.getMainBranch()) {
+							@Override
 							protected Void apply(final CDOTransaction transaction) {
 
 								final CDOResource resource = transaction.getOrCreateResource(rootResourceName);
@@ -212,6 +215,7 @@ public class FSDirectoryManager implements IDirectoryManager {
 
 									final CDOResource cdoResource = (CDOResource) resource;
 									final EObject object = find(cdoResource.getContents(), new Predicate<EObject>() {
+										@Override
 										public boolean apply(final EObject eObject) {
 											return TerminologymetadataPackage.eINSTANCE.getCodeSystemVersionGroup().isSuperTypeOf(eObject.eClass());
 										}
@@ -225,7 +229,8 @@ public class FSDirectoryManager implements IDirectoryManager {
 											final CodeSystemVersionIndexMappingStrategy mappingStrategy = new CodeSystemVersionIndexMappingStrategy(version);
 											final Document doc = mappingStrategy.createDocument();
 											try {
-												service.updateDocument(IndexUtils.getStorageKeyTerm(CDOIDUtils.asLong(group.cdoID())), doc);
+												final long storageKey = CDOIDUtils.asLong(group.cdoID());
+												service.updateDocument(storageKey, doc);
 											} catch (IOException e) {
 												throw new IndexException("Failed to initialize index branch service for " + repositoryUuid);
 											}
