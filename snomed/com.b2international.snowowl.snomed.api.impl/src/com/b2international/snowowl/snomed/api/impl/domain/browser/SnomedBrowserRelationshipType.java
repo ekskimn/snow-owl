@@ -18,14 +18,14 @@ public class SnomedBrowserRelationshipType implements ISnomedBrowserRelationship
 
 	private String conceptId;
 	private String fsn;
-
+	
 	public SnomedBrowserRelationshipType() {
 	}
-
+	
 	public SnomedBrowserRelationshipType(String conceptId) {
 		this.conceptId = conceptId;
 	}
-
+	
 	@Override
 	public String getConceptId() {
 		return conceptId;

@@ -4,6 +4,7 @@ import com.b2international.snowowl.snomed.api.domain.ISnomedComponentInput;
 import com.b2international.snowowl.snomed.api.domain.ISnomedComponentUpdate;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponentWithId;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
 import com.google.common.collect.Sets;
 
 import java.util.*;
@@ -34,7 +35,7 @@ public class InputFactory {
 		return inputs;
 	}
 
-	public <U extends ISnomedComponentUpdate> U createComponentUpdate(ISnomedBrowserConcept existingVersion, ISnomedBrowserConcept newVersion, Class<U> updateType) {
+	public <U extends ISnomedComponentUpdate> U createComponentUpdate(ISnomedBrowserConcept existingVersion, ISnomedBrowserConceptUpdate newVersion, Class<U> updateType) {
 		return (U) getUpdateDelegate(updateType).createUpdate(existingVersion, newVersion);
 	}
 
@@ -48,7 +49,9 @@ public class InputFactory {
 				final String existingVersionId = existingVersion.getId();
 				if (existingVersionId.equals(newVersion.getId())) {
 					final U update = (U) getUpdateDelegate(updateType).createUpdate(existingVersion, newVersion);
-					updateMap.put(existingVersionId, update);
+					if (update != null) {
+						updateMap.put(existingVersionId, update);
+					}
 				}
 			}
 		}

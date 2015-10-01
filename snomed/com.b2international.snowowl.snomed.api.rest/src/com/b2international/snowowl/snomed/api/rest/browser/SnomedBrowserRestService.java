@@ -41,6 +41,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConst
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -117,9 +118,6 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final HttpServletRequest request) {
 
 		final String userId = principal.getName();
-		if (concept.getConceptId() != null) {
-			throw new BadRequestException("The concept in the request body should not have an ID when creating. When performing an update include the concept ID in the URL.");
-		}
 		return browserService.create(branchPath, concept, userId, Collections.list(request.getLocales()));
 	}
 
@@ -141,7 +139,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String conceptId,
 
 			@RequestBody
-			final SnomedBrowserConcept concept,
+			final SnomedBrowserConceptUpdate concept,
 
 			final Principal principal,
 
@@ -208,11 +206,17 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String languageSetting,
+			
+			@ApiParam(value="Stated or inferred form", allowableValues="stated, inferred")
+			@RequestParam(value="form", defaultValue="inferred")
+			final String form,
 
 			final HttpServletRequest request) {
-
-		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptChildren(ref, Collections.list(request.getLocales()));
+		if ("stated".equals(form) || "inferred".equals(form)) {
+			final IComponentRef ref = createComponentRef(branchPath, conceptId);
+			return browserService.getConceptChildren(ref, Collections.list(request.getLocales()), "stated".equals(form));
+		}
+		throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
 	}
 
 	@ApiOperation(
@@ -224,7 +228,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 404, message = "Code system version or concept not found")
 	})
 	@RequestMapping(
-			value="/descriptions-fsn",
+			value="/descriptions",
 			method = RequestMethod.GET)
 	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsFSN(
 			@ApiParam(value="The branch path")
@@ -262,7 +266,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 404, message = "Code system version or concept not found")
 	})
 	@RequestMapping(
-			value="/descriptions",
+			value="/descriptions-pt",
 			method = RequestMethod.GET)
 	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsPT(
 			@ApiParam(value="The branch path")
