@@ -254,7 +254,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 
 		// In the case of inactivation, other updates seem to go more smoothly if this is done later
-		if (conceptUpdate != null && Boolean.TRUE.equals(conceptUpdate.isActive())) {
+		boolean conceptInactivation = conceptUpdate != null && conceptUpdate.isActive() != null && Boolean.FALSE.equals(conceptUpdate.isActive());
+		if (!conceptInactivation) {
 			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
 		}
 		
@@ -280,7 +281,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}
 		
 		// Inactivate concept last
-		if (conceptUpdate != null && Boolean.FALSE.equals(conceptUpdate.isActive())) {
+		if (conceptInactivation) {
 			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
 		}
 		
