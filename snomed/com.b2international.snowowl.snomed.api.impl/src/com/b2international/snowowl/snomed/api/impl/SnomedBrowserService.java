@@ -255,7 +255,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		// In the case of inactivation, other updates seem to go more smoothly if this is done later
 		boolean conceptInactivation = conceptUpdate != null && conceptUpdate.isActive() != null && Boolean.FALSE.equals(conceptUpdate.isActive());
-		if (!conceptInactivation) {
+		if (conceptUpdate != null && !conceptInactivation) {
 			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
 		}
 		
@@ -281,7 +281,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}
 		
 		// Inactivate concept last
-		if (conceptInactivation) {
+		if (conceptUpdate != null && conceptInactivation) {
 			conceptService.doUpdate(componentRef, conceptUpdate, editingContext);
 		}
 		
