@@ -19,6 +19,8 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.ihtsdo.validation.InvalidContent;
+import org.ihtsdo.validation.RuleExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -70,6 +72,8 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@Autowired
 	private ISnomedConceptService conceptService;
 	
+	private RuleExecutor ruleExecutor = new RuleExecutor();
+	
 	@ApiOperation(
 			value="Retrieve single concept properties",
 			notes="Retrieves a single concept and related information on a branch.")
@@ -117,6 +121,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			final HttpServletRequest request) {
 
+		List<InvalidContent> invalidContentList = ruleExecutor.execute(new RuleConceptWrapper(concept));
+		if (!invalidContentList.isEmpty()) {
+			throw new BadRequestException("Validation error: %s", invalidContentList.toString());
+		}
+		
 		final String userId = principal.getName();
 		return browserService.create(branchPath, concept, userId, Collections.list(request.getLocales()));
 	}
@@ -149,6 +158,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
 		}
 
+		List<InvalidContent> invalidContentList = ruleExecutor.execute(new RuleConceptWrapper(concept));
+		if (!invalidContentList.isEmpty()) {
+			throw new BadRequestException("Validation error: %s", invalidContentList.toString());
+		}
+		
 		final String userId = principal.getName();
 		return browserService.update(branchPath, concept, userId, Collections.list(request.getLocales()));
 	}
