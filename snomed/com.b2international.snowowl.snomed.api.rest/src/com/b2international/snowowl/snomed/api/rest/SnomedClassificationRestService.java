@@ -21,10 +21,12 @@ import java.net.URI;
 import java.security.Principal;
 import java.util.Collections;
 
+import com.b2international.snowowl.api.domain.IComponentRef;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -98,7 +100,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/{path:**}/classifications", 
 			method=RequestMethod.POST,
-			consumes={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.APPLICATION_JSON_VALUE })
+			consumes={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	@ResponseStatus(value=HttpStatus.CREATED)
 	public ResponseEntity<Void> beginClassification(
 			@ApiParam(value="The branch path")
@@ -167,8 +169,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 200, message = "OK"),
 		@ApiResponse(code = 404, message = "Branch or classification not found", response=RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/classifications/{classificationId}/relationship-changes", method=RequestMethod.GET, 
-		produces={ AbstractRestService.APPLICATION_JSON_VALUE, AbstractRestService.APPLICATION_CSV_VALUE })
+	@RequestMapping(value="/{path:**}/classifications/{classificationId}/relationship-changes", method=RequestMethod.GET, produces={"application/json", "text/csv"})
 	public @ResponseBody PageableCollectionResource<IRelationshipChange> getRelationshipChanges(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path") 
@@ -238,7 +239,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/{path:**}/classifications/{classificationId}", 
 			method=RequestMethod.PUT,
-			consumes={ AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.APPLICATION_JSON_VALUE })
+			consumes={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	@ResponseStatus(value=HttpStatus.NO_CONTENT)
 	public void updateClassificationRun(
 			@ApiParam(value="The branch path")

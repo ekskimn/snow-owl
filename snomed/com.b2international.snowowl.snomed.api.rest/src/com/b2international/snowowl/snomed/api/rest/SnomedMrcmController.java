@@ -38,7 +38,7 @@ import com.wordnik.swagger.annotations.ApiResponses;
  */
 @Api("MRCM")
 @RestController
-@RequestMapping(value="/mrcm", produces={AbstractRestService.SO_MEDIA_TYPE, AbstractRestService.APPLICATION_JSON_VALUE})
+@RequestMapping(value="/mrcm", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
 public class SnomedMrcmController extends AbstractRestService {
 
 	@Autowired 
