@@ -1,8 +1,7 @@
 package com.b2international.snowowl.snomed.api.rest.util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.util.Collection;
 
@@ -35,14 +34,14 @@ public class CsvMessageConverter extends AbstractHttpMessageConverter<Collection
 		if (!items.isEmpty()) {
 			output.getHeaders().setContentType(MEDIA_TYPE);
 			output.getHeaders().set("Content-Disposition", "attachment");
-			try (OutputStream out = output.getBody()) {
-				final CsvMapper mapper = new CsvMapper();
-				CsvSchema schema = mapper.schemaFor(items.iterator().next().getClass()).withHeader();
-				ObjectWriter writer = mapper.writer(schema);
-				for (Object item : items) {
-					writer.writeValue(out,  item);
-				}
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			final CsvMapper mapper = new CsvMapper();
+			CsvSchema schema = mapper.schemaFor(items.iterator().next().getClass()).withHeader();
+			ObjectWriter writer = mapper.writer(schema);
+			for (Object item : items) {
+				writer.writeValue(out,  item);
 			}
+			output.getBody().write(out.toByteArray());
 		}
 	}
 	

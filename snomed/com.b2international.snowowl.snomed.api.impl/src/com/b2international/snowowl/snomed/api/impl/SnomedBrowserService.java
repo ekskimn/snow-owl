@@ -222,7 +222,26 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final ISnomedConceptInput snomedConceptInput = inputFactory.createComponentInput(branchPath, concept, ISnomedConceptInput.class);
 		String commitComment = getCommitComment(userId, concept, "creating");
 		final ISnomedConcept iSnomedConcept = conceptService.create(snomedConceptInput, userId, commitComment);
+		
 		final IComponentRef componentRef = createComponentRef(branchPath, iSnomedConcept.getId());
+		List<ISnomedBrowserRelationship> additionalRelationships = new ArrayList<ISnomedBrowserRelationship>();
+		for (ISnomedBrowserRelationship iSnomedBrowserRelationship : concept.getRelationships()) {
+			if (!(snomedConceptInput.getParentId().equals(iSnomedBrowserRelationship.getTarget().getConceptId()) && SnomedConstants.Concepts.IS_A.equals(iSnomedBrowserRelationship.getType().getConceptId()))) {
+				SnomedBrowserRelationship relationship = (SnomedBrowserRelationship) iSnomedBrowserRelationship;
+				relationship.setSourceId(iSnomedConcept.getId());
+				additionalRelationships.add(iSnomedBrowserRelationship);
+			}
+		}
+		if (!additionalRelationships.isEmpty()) {
+			LOGGER.info("Persisting {} additional relationships.", additionalRelationships.size());
+			List<ISnomedRelationshipInput> relationshipInputs = inputFactory.createComponentInputs(branchPath, additionalRelationships, ISnomedRelationshipInput.class);
+			try (final SnomedEditingContext editingContext = conceptService.createEditingContext(componentRef)) {
+				for (ISnomedRelationshipInput relationshipInput : relationshipInputs) {
+					relationshipService.convertAndRegister(relationshipInput, editingContext);				
+				}
+				conceptService.doCommit(userId, getCommitComment(userId, concept, "adding addiontional relationships of"), editingContext);
+			}
+		}
 		return getConceptDetails(componentRef, locales);
 	}
 

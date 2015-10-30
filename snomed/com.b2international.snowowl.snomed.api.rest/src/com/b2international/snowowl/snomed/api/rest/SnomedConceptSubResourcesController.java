@@ -40,6 +40,7 @@ import com.b2international.snowowl.snomed.api.rest.domain.PageableCollectionReso
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptDescriptions;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedInboundRelationships;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedOutboundRelationships;
+import com.google.common.collect.Lists;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -65,8 +66,8 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	protected ISnomedTerminologyBrowserService terminology;
 
 	@Autowired
-	protected SnomedResourceExpander relationshipExpander;
-
+	protected SnomedResourceExpander resourceExpander;
+	
 	@ApiOperation(
 			value="Retrieve descriptions of a concept", 
 			notes="Returns all descriptions associated with the specified concept.",
@@ -110,9 +111,9 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@PathVariable(value="conceptId")
 			final String conceptId,
 
-			@ApiParam(value="What parts of the response information to expand.")
+			@ApiParam(value="What parts of the response information to expand.", allowableValues="source.fsn, type.fsn", allowMultiple=true)
 			@RequestParam(value="expand", defaultValue="", required=false)
-			final String[] expand,
+			final List<String> expand,
 
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 
@@ -130,7 +131,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 		final SnomedInboundRelationships result = new SnomedInboundRelationships();
 		result.setTotal(inboundEdges.getTotalMembers());
 		List<ISnomedRelationship> members = inboundEdges.getMembers();
-		members = relationshipExpander.expandRelationships(conceptRef, members, Collections.list(request.getLocales()), expand);
+		members = resourceExpander.expandRelationships(conceptRef, members, Collections.list(request.getLocales()), expand);
 		result.setInboundRelationships(members);
 		return result;
 	}
@@ -189,6 +190,10 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@ApiParam(value="The concept identifier")
 			@PathVariable(value="conceptId")
 			final String conceptId,
+			
+			@ApiParam(value="What parts of the response information to expand.", allowableValues="fsn")
+			@RequestParam(value="expand", defaultValue="", required=false)
+			final List<String> expand,
 
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 
@@ -200,10 +205,13 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 
 			@ApiParam(value="Return direct descendants only")
 			@RequestParam(value="direct", defaultValue="false", required=false) 
-			final boolean direct) {
+			final boolean direct,
+			
+			final HttpServletRequest request) {
 
-		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		final IComponentList<ISnomedConcept> descendants = terminology.getDescendants(ref, direct, offset, limit);
+		final IComponentRef conceptRef = createComponentRef(branchPath, conceptId);
+		IComponentList<ISnomedConcept> descendants = terminology.getDescendants(conceptRef, direct, offset, limit);
+		descendants = resourceExpander.expandConcepts(conceptRef, descendants, Collections.list(request.getLocales()), Lists.newArrayList(expand));
 		return toPageable(descendants, offset, limit);
 	}
 
