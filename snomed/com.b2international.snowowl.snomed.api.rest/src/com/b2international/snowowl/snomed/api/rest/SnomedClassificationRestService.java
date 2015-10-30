@@ -20,6 +20,7 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 import java.net.URI;
 import java.security.Principal;
 import java.util.Collections;
+import java.util.List;
 
 import com.b2international.snowowl.api.domain.IComponentRef;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
@@ -69,6 +70,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 
 	@Autowired
 	protected ISnomedClassificationService delegate;
+	
+	@Autowired
+	protected SnomedResourceExpander resourceExpander;
 
 	@ApiOperation(
 			value="Retrieve classification runs from branch", 
@@ -178,6 +182,10 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The classification identifier")
 			@PathVariable(value="classificationId") 
 			final String classificationId,
+			
+			@ApiParam(value="What parts of the response information to expand.", allowableValues="source.fsn, type.fsn, destination.fsn", allowMultiple=true)
+			@RequestParam(value="expand", defaultValue="", required=false)
+			final List<String> expand,
 
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 
@@ -187,10 +195,17 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
 
-			final Principal principal) {
+			final Principal principal,
+			
+			final HttpServletRequest request) {
 
 		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, principal.getName(), offset, limit);
-		return PageableCollectionResource.of(relationshipChangeList.getChanges(), offset, limit, relationshipChangeList.getTotal());
+		List<IRelationshipChange> changes = relationshipChangeList.getChanges();
+		if (!changes.isEmpty()) {
+			IComponentRef componentRef = createComponentRef(branchPath, changes.get(0).getSourceId());
+			changes = resourceExpander.expandRelationshipChanges(componentRef, changes, Collections.list(request.getLocales()), expand);
+		}
+		return PageableCollectionResource.of(changes, offset, limit, relationshipChangeList.getTotal());
 	}
 
 	@ApiOperation(

@@ -1,9 +1,11 @@
 package com.b2international.snowowl.snomed.api.rest;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -12,7 +14,9 @@ import com.b2international.snowowl.api.domain.IComponentRef;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.api.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
 import com.b2international.snowowl.snomed.api.impl.FsnService;
+import com.b2international.snowowl.snomed.api.rest.domain.ExpandableRelationshipChange;
 import com.b2international.snowowl.snomed.api.rest.domain.ExpandableSnomedConcept;
 import com.b2international.snowowl.snomed.api.rest.domain.ExpandableSnomedRelationship;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptMini;
@@ -26,10 +30,9 @@ public class SnomedResourceExpander {
 
 	private static final String SOURCE_FSN = "source.fsn";
 	private static final String TYPE_FSN = "type.fsn";
-	public static final String[] RELATIONSHIP_EXPANTIONS = {SOURCE_FSN, TYPE_FSN};
+	private static final String DESTINATION_FSN = "destination.fsn";
 
 	private static final String FSN = "fsn";
-	public static final String[] CONCEPT_EXPANTIONS = {FSN};	
 
 	public List<ISnomedRelationship> expandRelationships(IComponentRef conceptRef, List<ISnomedRelationship> members, final List<Locale> locales, List<String> expantions) {
 		if (expantions.isEmpty()) {
@@ -50,8 +53,7 @@ public class SnomedResourceExpander {
 				});
 				Map<String, String> conceptIdFsnMap = fsnService.getConceptIdFsnMap(conceptRef, conceptIds, locales);
 				for (ExpandableSnomedRelationship relationship : expandedMembers) {
-					String sourceId = relationship.getSourceId();
-					relationship.setSource(new SnomedConceptMini(sourceId, conceptIdFsnMap.get(sourceId)));
+					relationship.setSource(createConceptMini(relationship.getSourceId(), conceptIdFsnMap));
 				}
 			} else if (expantion.equals(TYPE_FSN)) {
 				List<String> conceptIds = Lists.transform(expandedMembers, new Function<ExpandableSnomedRelationship, String>() {
@@ -62,8 +64,7 @@ public class SnomedResourceExpander {
 				});
 				Map<String, String> conceptIdFsnMap = fsnService.getConceptIdFsnMap(conceptRef, conceptIds, locales);
 				for (ExpandableSnomedRelationship relationship : expandedMembers) {
-					String typeId = relationship.getTypeId();
-					relationship.setType(new SnomedConceptMini(typeId, conceptIdFsnMap.get(typeId)));
+					relationship.setType(createConceptMini(relationship.getTypeId(), conceptIdFsnMap));
 				}
 			} else {
 				throw new BadRequestException("Unrecognised expand parameter '%s'.", expantion);
@@ -103,6 +104,64 @@ public class SnomedResourceExpander {
 		return new ConceptList(concepts.getTotalMembers(), expandedConcepts);
 	}
 	
+	public List<IRelationshipChange> expandRelationshipChanges(IComponentRef componentRef, List<IRelationshipChange> changes, ArrayList<Locale> locales, List<String> expantions) {
+		if (expantions.isEmpty() || changes.isEmpty()) {
+			return changes;
+		}
+		List<IRelationshipChange> changesExtended = new ArrayList<IRelationshipChange>();
+		for (IRelationshipChange iRelationshipChange : changes) {
+			changesExtended.add(new ExpandableRelationshipChange(iRelationshipChange));
+		}
+
+		boolean expandSource = false;
+		boolean expandType = false;
+		boolean expandDestination = false;
+		for (String expantion : expantions) {
+			if (expantion.equals(SOURCE_FSN)) {
+				expandSource = true;
+			} else if (expantion.equals(TYPE_FSN)) {
+				expandType = true;
+			} else if (expantion.equals(DESTINATION_FSN)) {
+				expandDestination = true;
+			} else {
+				throw new BadRequestException("Unrecognised expand parameter '%s'.", expantion);
+			}
+		}
+		
+		Set<String> conceptIds = new HashSet<>();
+		for (IRelationshipChange change : changes) {
+			if (expandSource) {
+				conceptIds.add(change.getSourceId());
+			}
+			if (expandType) {
+				conceptIds.add(change.getTypeId());
+			}
+			if (expandDestination) {
+				conceptIds.add(change.getDestinationId());
+			}			
+		}
+		
+		Map<String, String> conceptIdFsnMap = fsnService.getConceptIdFsnMap(componentRef, conceptIds, locales);
+		for (IRelationshipChange iChange : changesExtended) {
+			ExpandableRelationshipChange change = (ExpandableRelationshipChange) iChange;
+			if (expandSource) {
+				change.setSource(createConceptMini(change.getSourceId(), conceptIdFsnMap));
+			}
+			if (expandType) {
+				change.setType(createConceptMini(change.getTypeId(), conceptIdFsnMap));
+			}
+			if (expandDestination) {
+				change.setDestination(createConceptMini(change.getDestinationId(), conceptIdFsnMap));
+			}			
+		}
+		
+		return changesExtended;
+	}
+	
+	private SnomedConceptMini createConceptMini(String conceptId, Map<String, String> conceptIdFsnMap) {
+		return new SnomedConceptMini(conceptId, conceptIdFsnMap.get(conceptId));
+	}
+
 	private static final class ConceptList implements IComponentList<ISnomedConcept> {
 
 		private int total;

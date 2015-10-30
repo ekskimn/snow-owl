@@ -15,7 +15,6 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
