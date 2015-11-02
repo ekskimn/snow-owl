@@ -32,4 +32,9 @@ public abstract class BranchEvent extends BaseBranchEvent {
 	public final String getBranchPath() {
 		return branchPath;
 	}
+	
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + " " + branchPath;
+	}
 }

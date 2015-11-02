@@ -17,6 +17,9 @@ package com.b2international.snowowl.core.events.util;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.b2international.snowowl.core.events.Event;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
@@ -32,13 +35,16 @@ public final class AsyncSupport<T> {
 	private IEventBus bus;
 	private Class<T> clazz;
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(AsyncSupport.class);
+
 	public AsyncSupport(IEventBus bus, Class<T> clazz) {
 		this.bus = checkNotNull(bus, "bus");
 		this.clazz = checkNotNull(clazz, "clazz");
 	}
 
-	public Promise<T> send(Event event) {
+	public Promise<T> send(final Event event) {
 		final SettablePromise<T> promise = new SettablePromise<>();
+		final long startTime = System.currentTimeMillis();
 		event.send(bus, new IHandler<IMessage>() {
 			@Override
 			public void handle(IMessage message) {
@@ -50,10 +56,23 @@ public final class AsyncSupport<T> {
 					}
 				} catch (Throwable e) {
 					promise.reject(e);
+				} finally {
+					logTimeTakenWithCallStack(event, startTime);
 				}
 			}
+
 		});
 		return promise;
+	}
+	
+	private void logTimeTakenWithCallStack(Event event, long startTime) {
+		StringBuilder builder = new StringBuilder();
+		for (StackTraceElement stackTraceElement : new RuntimeException().getStackTrace()) {
+			String className = stackTraceElement.getClassName();
+			if (className.contains("Controller") || className.contains("RestService")) break;
+			builder.append(className + "." + stackTraceElement.getMethodName() + "():" + stackTraceElement.getLineNumber() + " ");
+		}
+		LOGGER.info("Event took {} ms. Info {}. Stack {}" ,System.currentTimeMillis() - startTime, event.toString(), builder.toString());
 	}
 
 }
