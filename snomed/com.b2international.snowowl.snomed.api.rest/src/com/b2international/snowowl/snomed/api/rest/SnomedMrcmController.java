@@ -15,21 +15,32 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import java.util.Collections;
 import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b2international.snowowl.api.domain.IComponentList;
+import com.b2international.snowowl.api.domain.IComponentRef;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.api.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.api.impl.SnomedMrcmService;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.api.rest.domain.CollectionResource;
+import com.b2international.snowowl.snomed.api.rest.domain.PageableCollectionResource;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptMini;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
+import com.wordnik.swagger.annotations.ApiParam;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
 
@@ -39,13 +50,16 @@ import com.wordnik.swagger.annotations.ApiResponses;
 @Api("MRCM")
 @RestController
 @RequestMapping(value="/mrcm", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
-public class SnomedMrcmController extends AbstractRestService {
+public class SnomedMrcmController extends AbstractSnomedRestService {
 
-	@Autowired 
+	@Autowired
 	private IEventBus bus;
 	
-	@Autowired 
+	@Autowired
 	private SnomedMrcmService mrcmService;
+	
+	@Autowired
+	private SnomedResourceExpander resourceExpander;
 	
 	@ApiOperation(
 		value = "Retrieve MRCM relationship rules for a concept.", 
@@ -56,6 +70,38 @@ public class SnomedMrcmController extends AbstractRestService {
 	@RequestMapping(value="/{conceptId}", method=RequestMethod.GET)
 	public List<Predicate> getPredicates(@PathVariable String conceptId) {
 		return mrcmService.getPredicates(conceptId);
+	}
+	
+	@RequestMapping(value="/{path:**}/domain-attributes", method=RequestMethod.GET)
+	public @ResponseBody PageableCollectionResource<ISnomedConcept> getDomainAttributes(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@RequestParam(required = true)
+			List<String> parentIds,
+			
+			@ApiParam(value="What parts of the response information to expand.", allowableValues="fsn", allowMultiple=true)
+			@RequestParam(value="expand", defaultValue="", required=false)
+			final List<String> expand,
+			
+			@ApiParam(value="The starting offset in the list")
+			@RequestParam(value="offset", defaultValue="0", required=false) 
+			final int offset,
+
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="50", required=false) 
+			final int limit,
+
+			HttpServletRequest request) {
+		
+		IComponentList<ISnomedConcept> domainAttributes = mrcmService.getDomainAttributes(branchPath, parentIds, offset, limit);
+		if (domainAttributes.getTotalMembers() > 0) {
+			IComponentRef componentRef = createComponentRef(branchPath, domainAttributes.getMembers().get(0).getId());
+			domainAttributes = resourceExpander.expandConcepts(componentRef, domainAttributes, Collections.list(request.getLocales()), expand);
+			
+		}
+		return PageableCollectionResource.of(domainAttributes.getMembers(), offset, limit, domainAttributes.getTotalMembers());
 	}
 	
 }

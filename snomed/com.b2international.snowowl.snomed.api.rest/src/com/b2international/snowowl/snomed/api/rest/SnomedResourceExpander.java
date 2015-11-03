@@ -32,9 +32,11 @@ public class SnomedResourceExpander {
 	private static final String TYPE_FSN = "type.fsn";
 	private static final String DESTINATION_FSN = "destination.fsn";
 
-	private static final String FSN = "fsn";
+	public static final String FSN = "fsn";
 
-	public List<ISnomedRelationship> expandRelationships(IComponentRef conceptRef, List<ISnomedRelationship> members, final List<Locale> locales, List<String> expantions) {
+	public List<ISnomedRelationship> expandRelationships(IComponentRef conceptRef, List<ISnomedRelationship> members, 
+			final List<Locale> locales, List<String> expantions) {
+		
 		if (expantions.isEmpty()) {
 			return members;			
 		}
@@ -73,10 +75,8 @@ public class SnomedResourceExpander {
 		return new ArrayList<ISnomedRelationship>(expandedMembers);
 	}
 
-	public IComponentList<ISnomedConcept> expandConcepts(
-			IComponentRef conceptRef,
-			IComponentList<ISnomedConcept> concepts, ArrayList<Locale> locales,
-			List<String> expantions) {
+	public IComponentList<ISnomedConcept> expandConcepts(IComponentRef conceptRef, IComponentList<ISnomedConcept> concepts, 
+				List<Locale> locales, List<String> expantions) {
 
 		if (expantions.isEmpty()) {
 			return concepts;
@@ -104,7 +104,9 @@ public class SnomedResourceExpander {
 		return new ConceptList(concepts.getTotalMembers(), expandedConcepts);
 	}
 	
-	public List<IRelationshipChange> expandRelationshipChanges(IComponentRef componentRef, List<IRelationshipChange> changes, ArrayList<Locale> locales, List<String> expantions) {
+	public List<IRelationshipChange> expandRelationshipChanges(IComponentRef componentRef, List<IRelationshipChange> changes, 
+			List<Locale> locales, List<String> expantions) {
+		
 		if (expantions.isEmpty() || changes.isEmpty()) {
 			return changes;
 		}
