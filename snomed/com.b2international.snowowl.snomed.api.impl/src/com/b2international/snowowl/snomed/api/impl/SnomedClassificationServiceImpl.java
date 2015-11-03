@@ -15,6 +15,24 @@
  */
 package com.b2international.snowowl.snomed.api.impl;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.b2international.commons.status.SerializableStatus;
 import com.b2international.snowowl.api.impl.domain.StorageRef;
 import com.b2international.snowowl.core.ApplicationContext;
@@ -22,7 +40,15 @@ import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
-import com.b2international.snowowl.datastore.remotejobs.*;
+import com.b2international.snowowl.datastore.remotejobs.AbstractRemoteJobEvent;
+import com.b2international.snowowl.datastore.remotejobs.IRemoteJobManager;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobChangedEvent;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventBusHandler;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventSwitch;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobRemovedEvent;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobState;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobUtils;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
@@ -31,7 +57,11 @@ import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
 import com.b2international.snowowl.snomed.api.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
-import com.b2international.snowowl.snomed.api.domain.classification.*;
+import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
+import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
+import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
+import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
+import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
@@ -40,21 +70,19 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Classif
 import com.b2international.snowowl.snomed.datastore.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
-import com.b2international.snowowl.snomed.reasoner.classification.*;
+import com.b2international.snowowl.snomed.reasoner.classification.ClassificationRequest;
+import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
+import com.b2international.snowowl.snomed.reasoner.classification.PersistChangesResponse;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
 
-import java.io.File;
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.*;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.annotation.Resource;
 
 /**
  */
 public class SnomedClassificationServiceImpl implements ISnomedClassificationService {
 
+	private static final Logger LOG = LoggerFactory.getLogger(SnomedClassificationServiceImpl.class);
+	
 	private final class PersistenceCompletionHandler implements IHandler<IMessage> {
 
 		private final UUID uuid;
@@ -75,7 +103,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				}
 
 			} catch (final IOException e) {
-				throw new RuntimeException(e);
+				LOG.error("Caught IOException while updating classification status after save.", e);
 			} finally {
 				getEventBus().unregisterHandler(SnomedReasonerServiceUtil.getChangesPersistedAddress(uuid), this);
 			}
@@ -118,7 +146,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 						}
 
 					} catch (final IOException e) {
-						e.printStackTrace();
+						LOG.error("Caught IOException while updating classification status.", e);
 					}
 				}
 
@@ -128,7 +156,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					try {
 						indexService.deleteClassificationData(event.getId());
 					} catch (final IOException e) {
-						e.printStackTrace();
+						LOG.error("Caught IOException while deleting classification data.", e);
 					}					
 				}
 
@@ -144,40 +172,44 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 		@Override
 		protected void handleResult(final UUID remoteJobId, final boolean cancelRequested) {
+			executorService.submit(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						
+						if (cancelRequested) {
+							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.CANCELED);
+							return;
+						} 
 
-			try {
+						final GetResultResponse result = getReasonerService().getResult(remoteJobId);
+						final Type responseType = result.getType();
 
-				if (!cancelRequested) {
+						switch (responseType) {
+							case NOT_AVAILABLE: 
+								indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.FAILED);
+								break;
+							case STALE: 
+								indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.STALE);
+								break;
+							case SUCCESS:
+								indexService.updateClassificationRunStatusAndIndexChanges(remoteJobId, ClassificationStatus.COMPLETED, result.getChanges());
+								break;
+							default:
+								throw new IllegalStateException(MessageFormat.format("Unexpected response type ''{0}''.", responseType));
+						}
 
-					final GetResultResponse result = getReasonerService().getResult(remoteJobId);
-					final Type responseType = result.getType();
-
-					switch (responseType) {
-						case NOT_AVAILABLE:
-							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.FAILED);
-							break;
-						case STALE:
-							indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.STALE);
-							break;
-						case SUCCESS:
-							indexService.updateClassificationRunStatusAndIndexChanges(remoteJobId, ClassificationStatus.COMPLETED, result.getChanges());
-							break;
-						default:
-							throw new IllegalStateException(MessageFormat.format("Unexpected response type ''{0}''.", responseType));
+					} catch (final IOException e) {
+						LOG.error("Caught IOException while registering classification data.", e);
 					}
-
-				} else {
-					indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.CANCELED);
 				}
-
-			} catch (final IOException e) {
-				e.printStackTrace();
-			}
+			});
 		}
 	}
 
 	private ClassificationRunIndex indexService;
 	private RemoteJobChangeHandler changeHandler;
+	private ExecutorService executorService;
 
 	@Resource
 	private SnomedBrowserService browserService;
@@ -188,8 +220,11 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		indexService = new ClassificationRunIndex(dir);
 		ApplicationContext.getInstance().getServiceChecked(SingleDirectoryIndexManager.class).registerIndex(indexService);
 
+		// TODO: common ExecutorService for asynchronous work?
+		executorService = Executors.newCachedThreadPool(); 
 		changeHandler = new RemoteJobChangeHandler();
 		getEventBus().registerHandler(IRemoteJobManager.ADDRESS_REMOTE_JOB_CHANGED, changeHandler);
+		
 	}
 
 	@PreDestroy
@@ -197,6 +232,11 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		getEventBus().unregisterHandler(IRemoteJobManager.ADDRESS_REMOTE_JOB_CHANGED, changeHandler);
 		changeHandler = null;
 
+		if (null != executorService) {
+			executorService.shutdown();
+			executorService = null;
+		}
+		
 		if (null != indexService) {
 			ApplicationContext.getInstance().getServiceChecked(SingleDirectoryIndexManager.class).unregisterIndex(indexService);
 			indexService.dispose();
