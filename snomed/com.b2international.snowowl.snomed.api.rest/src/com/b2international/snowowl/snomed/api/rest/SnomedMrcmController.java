@@ -78,10 +78,11 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@PathVariable(value="path")
 			final String branchPath,
 
+			@ApiParam(value="The identifiers of the parent concepts")
 			@RequestParam(required = true)
 			List<String> parentIds,
 			
-			@ApiParam(value="What parts of the response information to expand.", allowableValues="fsn", allowMultiple=true)
+			@ApiParam(value="The parts of the response information to expand.", allowableValues="fsn", allowMultiple=true)
 			@RequestParam(value="expand", defaultValue="", required=false)
 			final List<String> expand,
 			
@@ -96,12 +97,51 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			HttpServletRequest request) {
 		
 		IComponentList<ISnomedConcept> domainAttributes = mrcmService.getDomainAttributes(branchPath, parentIds, offset, limit);
-		if (domainAttributes.getTotalMembers() > 0) {
-			IComponentRef componentRef = createComponentRef(branchPath, domainAttributes.getMembers().get(0).getId());
-			domainAttributes = resourceExpander.expandConcepts(componentRef, domainAttributes, Collections.list(request.getLocales()), expand);
-			
-		}
-		return PageableCollectionResource.of(domainAttributes.getMembers(), offset, limit, domainAttributes.getTotalMembers());
+		return toPageableCollection(branchPath, domainAttributes, expand, offset, limit, request);
 	}
-	
+
+	@RequestMapping(value="/{path:**}/attribute-values/{attributeId}", method=RequestMethod.GET)
+	public @ResponseBody PageableCollectionResource<ISnomedConcept> getAttributeValues(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="The attribute concept identifier")
+			@PathVariable
+			String attributeId,
+			
+			@ApiParam(value="The first few characters of the concept term to match.")
+			@RequestParam(value="termPrefix", defaultValue="", required=false)
+			String termPrefix,
+			
+			@ApiParam(value="The parts of the response information to expand.", allowableValues="fsn", allowMultiple=true)
+			@RequestParam(value="expand", defaultValue="", required=false)
+			final List<String> expand,
+			
+			@ApiParam(value="The starting offset in the list")
+			@RequestParam(value="offset", defaultValue="0", required=false) 
+			final int offset,
+
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="50", required=false) 
+			final int limit,
+
+			HttpServletRequest request) {
+		
+		IComponentList<ISnomedConcept> concepts = mrcmService.getAttributeValues(branchPath, attributeId, termPrefix, offset, limit);
+		return toPageableCollection(branchPath, concepts, expand, offset, limit, request);
+	}
+
+	private PageableCollectionResource<ISnomedConcept> toPageableCollection(
+			final String branchPath,
+			IComponentList<ISnomedConcept> concepts,
+			final List<String> expand, final int offset, final int limit,
+			HttpServletRequest request) {
+		if (concepts.getTotalMembers() > 0) {
+			IComponentRef componentRef = createComponentRef(branchPath, concepts.getMembers().get(0).getId());
+			concepts = resourceExpander.expandConcepts(componentRef, concepts, Collections.list(request.getLocales()), expand);
+		}
+		return PageableCollectionResource.of(concepts.getMembers(), offset, limit, concepts.getTotalMembers());
+	}
+
 }
