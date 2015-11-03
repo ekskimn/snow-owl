@@ -37,7 +37,6 @@ import com.b2international.snowowl.snomed.api.impl.SnomedMrcmService;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.api.rest.domain.CollectionResource;
 import com.b2international.snowowl.snomed.api.rest.domain.PageableCollectionResource;
-import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptMini;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;

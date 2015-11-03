@@ -1,5 +1,7 @@
 package com.b2international.snowowl.snomed.api.impl;
 
+import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,12 +19,14 @@ import com.b2international.snowowl.api.domain.IComponentList;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.datastore.editor.service.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.api.ISnomedConceptService;
 import com.b2international.snowowl.snomed.api.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.api.domain.SearchKind;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedConceptList;
 import com.b2international.snowowl.snomed.datastore.SnomedPredicateBrowser;
+import com.b2international.snowowl.snomed.datastore.SnomedTaxonomyService;
 import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
 import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry.PredicateType;
 
@@ -76,21 +80,35 @@ public class SnomedMrcmService {
 	public IComponentList<ISnomedConcept> getAttributeValues(String branchPath,
 			String attributeId, String termPrefix, int offset, int limit) {
 		
+		IBranchPath branch = getBranch(branchPath);
+		final Collection<String> ancestorIds = getServiceForClass(SnomedTaxonomyService.class).getAllSupertypes(branch, attributeId);
+		
 		String relationshipValueExpression = null;
+		String relationshipTypeExpression = null;
 		Collection<PredicateIndexEntry> predicates = getPredicateBrowser().getAllPredicates(getBranch(branchPath));
 		for (PredicateIndexEntry predicateIndexEntry : predicates) {
-			if (predicateIndexEntry.getType() == PredicateType.RELATIONSHIP 
-					&& predicateIndexEntry.getRelationshipTypeExpression().equals(attributeId)) {
-				relationshipValueExpression = predicateIndexEntry.getRelationshipValueExpression();
+			if (predicateIndexEntry.getType() == PredicateType.RELATIONSHIP) {
+				relationshipTypeExpression = predicateIndexEntry.getRelationshipTypeExpression();
+				if (relationshipTypeExpression.startsWith("<")) {
+					String relationshipTypeId = relationshipTypeExpression.replace("<", "");
+					if (ancestorIds.contains(relationshipTypeId)) {
+						relationshipValueExpression = predicateIndexEntry.getRelationshipValueExpression();
+						break;
+					}
+				} else if (relationshipTypeExpression.equals(attributeId)) {
+					relationshipValueExpression = predicateIndexEntry.getRelationshipValueExpression();
+					break;
+				}
 			}
 		}
+		if (relationshipValueExpression == null) {
+			logger.error("No MRCM predicate found for attribute {}", attributeId);
+			throw new ComponentNotFoundException("MRCM predicate for attribute", attributeId);
+		}
+		logger.info("Matched attribute predicate for attribute {}, type expression '{}', value expression '{}'", attributeId, relationshipTypeExpression, relationshipValueExpression);
 		
 		Map<SearchKind, String> queryParams = new HashMap<>();
-		if (relationshipValueExpression == null) {
-			queryParams.put(SearchKind.ESCG, relationshipValueExpression);			
-		} else {
-			logger.warn("No MRCM predicate matched for attribute {}", attributeId);
-		}
+		queryParams.put(SearchKind.ESCG, relationshipValueExpression);			
 		
 		if (termPrefix != null && !termPrefix.isEmpty()) {
 			queryParams.put(SearchKind.LABEL, termPrefix);
