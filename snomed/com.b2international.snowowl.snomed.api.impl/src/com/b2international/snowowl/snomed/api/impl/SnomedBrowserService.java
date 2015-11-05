@@ -41,6 +41,7 @@ import com.b2international.snowowl.api.impl.domain.InternalStorageRef;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.AbstractIndexQueryAdapter;
@@ -247,6 +248,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, ArrayList<Locale> locales) {
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
+		
+		assertHasAnIsARelationship(newVersionConcept);
+		
 		final IComponentRef componentRef = createComponentRef(branchPath, newVersionConcept.getConceptId());
 		final ISnomedBrowserConcept existingVersionConcept = getConceptDetails(componentRef, locales);
 
@@ -313,6 +317,19 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return getConceptDetails(componentRef, locales);
 	}
 	
+	private void assertHasAnIsARelationship(ISnomedBrowserConceptUpdate concept) {
+		List<ISnomedBrowserRelationship> relationships = concept.getRelationships();
+		if (relationships != null) {
+			for (ISnomedBrowserRelationship iSnomedBrowserRelationship : relationships) {
+				if (iSnomedBrowserRelationship.isActive() && Concepts.IS_A.equals(iSnomedBrowserRelationship.getType().getConceptId())
+						&& iSnomedBrowserRelationship.getGroupId() == 0) {
+					return;
+				}
+			}
+		}
+		throw new BadRequestException("At least one is-A relationships is required.");
+	}
+
 	private String getCommitComment(String userId, ISnomedBrowserConcept snomedConceptInput, String action) {
 		String fsn = getFsn(snomedConceptInput);
 		return userId + " " + action + " concept " + fsn;
