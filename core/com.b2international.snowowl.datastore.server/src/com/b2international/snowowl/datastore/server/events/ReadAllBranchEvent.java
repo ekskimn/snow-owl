@@ -23,4 +23,9 @@ public class ReadAllBranchEvent extends BaseBranchEvent {
 	public ReadAllBranchEvent(final String repositoryId) {
 		super(repositoryId);
 	}
+	
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
+	}
 }

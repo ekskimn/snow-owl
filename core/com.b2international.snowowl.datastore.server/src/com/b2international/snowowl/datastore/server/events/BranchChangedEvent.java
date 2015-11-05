@@ -39,4 +39,9 @@ public class BranchChangedEvent extends BaseBranchEvent {
 	protected String getAddress() {
 		return super.getAddress() + "/changes";
 	}
+	
+	@Override
+	public String toString() {
+		return "BranchChangedEvent " + branch.path(); 
+	}
 }

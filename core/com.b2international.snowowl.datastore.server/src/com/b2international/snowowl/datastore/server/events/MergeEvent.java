@@ -54,4 +54,10 @@ public class MergeEvent extends BaseBranchEvent {
 	public String getReviewId() {
 		return reviewId;
 	}
+	
+	@Override
+	public String toString() {
+		return getClass().getSimpleName() + " " + source + " > " + target; 
+	}
+	
 }
