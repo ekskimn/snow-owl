@@ -15,29 +15,33 @@
  */
 package com.b2international.snowowl.datastore.server.events;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import com.b2international.snowowl.core.events.BaseEvent;
-
 /**
- * Abstract superclass for events related to reviewing changes between branches.
+ * An event encapsulating a request to review differences between the specified source and target branch, identified by
+ * their corresponding branch paths.
  * 
  * @since 4.2
  */
-public abstract class BaseReviewEvent extends BaseEvent {
+public class CreateMergeReviewEvent extends BaseReviewEvent {
 
-	protected final String repositoryId;
+	private final String sourcePath;
+	private final String targetPath;
 
-	protected BaseReviewEvent(final String repositoryId) {
-		this.repositoryId = checkNotNull(repositoryId, "repositoryId");
+	public CreateMergeReviewEvent(final String repositoryId, final String sourcePath, final String targetPath) {
+		super(repositoryId);
+		this.sourcePath = sourcePath;
+		this.targetPath = targetPath;
 	}
 
-	public String getRepositoryId() {
-		return repositoryId;
+	public String getSourcePath() {
+		return sourcePath;
 	}
 
+	public String getTargetPath() {
+		return targetPath;
+	}
+	
 	@Override
 	protected String getAddress() {
-		return "/" + repositoryId + "/reviews";
+		return "/" + repositoryId + "/merge-reviews";
 	}
 }

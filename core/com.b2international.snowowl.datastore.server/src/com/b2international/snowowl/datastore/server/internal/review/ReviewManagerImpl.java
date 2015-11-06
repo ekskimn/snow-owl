@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.branch.Branch;
 import com.b2international.snowowl.datastore.branch.Branch.BranchState;
@@ -47,6 +48,7 @@ import com.b2international.snowowl.datastore.index.diff.VersionCompareConfigurat
 import com.b2international.snowowl.datastore.server.events.BranchChangedEvent;
 import com.b2international.snowowl.datastore.server.internal.IRepository;
 import com.b2international.snowowl.datastore.server.review.ConceptChanges;
+import com.b2international.snowowl.datastore.server.review.MergeReview;
 import com.b2international.snowowl.datastore.server.review.Review;
 import com.b2international.snowowl.datastore.server.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.review.ReviewStatus;
@@ -349,5 +351,15 @@ public class ReviewManagerImpl implements ReviewManager {
 		}
 
 		return review;
+	}
+
+	@Override
+	public MergeReview createMergeReview(Branch source, Branch target) {
+		throw new NotImplementedException();
+	}
+
+	@Override
+	public MergeReview getMergeReview(String mergeReviewId) {
+		throw new NotImplementedException();
 	}
 }

@@ -15,29 +15,22 @@
  */
 package com.b2international.snowowl.datastore.server.events;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import com.b2international.snowowl.core.events.BaseEvent;
+import com.b2international.snowowl.datastore.server.review.MergeReview;
 
 /**
- * Abstract superclass for events related to reviewing changes between branches.
+ * Sent when a terminology review object is successfully created, read or deleted.
  * 
  * @since 4.2
  */
-public abstract class BaseReviewEvent extends BaseEvent {
+public class MergeReviewReply {
 
-	protected final String repositoryId;
+	private final MergeReview mergeReview;
 
-	protected BaseReviewEvent(final String repositoryId) {
-		this.repositoryId = checkNotNull(repositoryId, "repositoryId");
+	public MergeReviewReply(final MergeReview mergeReview) {
+		this.mergeReview = mergeReview;
 	}
 
-	public String getRepositoryId() {
-		return repositoryId;
-	}
-
-	@Override
-	protected String getAddress() {
-		return "/" + repositoryId + "/reviews";
+	public MergeReview getMergeReview() {
+		return mergeReview;
 	}
 }

@@ -48,6 +48,7 @@ import com.b2international.snowowl.datastore.server.internal.branch.BranchSerial
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewEventHandler;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewEventHandler;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
@@ -187,7 +188,8 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		environment.service(IEventBus.class).registerHandler("/" + repositoryId + "/branches" , new BranchEventHandler(branchManager, reviewManager));
 		environment.service(IEventBus.class).registerHandler("/" + repositoryId + "/branches/changes" , reviewManager.getStaleHandler());
 		environment.service(IEventBus.class).registerHandler("/" + repositoryId + "/reviews" , new ReviewEventHandler(branchManager, reviewManager));
-		
+		environment.service(IEventBus.class).registerHandler("/" + repositoryId + "/merge-reviews" , new MergeReviewEventHandler(branchManager, reviewManager));
+
 		// register stores to index manager
 		final SingleDirectoryIndexManager indexManager = environment.service(SingleDirectoryIndexManager.class);
 		indexManager.registerIndex(branchStore);

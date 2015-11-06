@@ -58,4 +58,17 @@ public interface ReviewManager {
 	 * @throws NotFoundException if no change set exists currently for the review
 	 */
 	ConceptChanges getConceptChanges(String id);
+
+	/**
+	 * @param source
+	 * @param target
+	 * @return
+	 */
+	MergeReview createMergeReview(Branch source, Branch target);
+
+	/**
+	 * @param mergeReviewId
+	 * @return
+	 */
+	MergeReview getMergeReview(String mergeReviewId);
 }
