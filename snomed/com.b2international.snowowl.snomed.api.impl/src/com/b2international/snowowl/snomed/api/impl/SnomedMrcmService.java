@@ -96,7 +96,9 @@ public class SnomedMrcmService {
 				relationshipTypeExpression = predicateIndexEntry.getRelationshipTypeExpression();
 				if (relationshipTypeExpression.startsWith("<")) {
 					String relationshipTypeId = relationshipTypeExpression.replace("<", "");
-					if (ancestorIds.contains(relationshipTypeId)) {
+					if ((relationshipTypeExpression.startsWith("<<") && 
+							(relationshipTypeId.equals(attributeId) || ancestorIds.contains(relationshipTypeId)))
+							|| ancestorIds.contains(relationshipTypeId)) {
 						relationshipValueExpression = predicateIndexEntry.getRelationshipValueExpression();
 						break;
 					}
