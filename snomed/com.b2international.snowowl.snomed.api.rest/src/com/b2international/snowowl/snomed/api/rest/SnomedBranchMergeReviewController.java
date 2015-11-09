@@ -34,17 +34,11 @@ import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.collections.Procedure;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
-import com.b2international.snowowl.datastore.server.events.ConceptChangesReply;
-import com.b2international.snowowl.datastore.server.events.DeleteReviewEvent;
 import com.b2international.snowowl.datastore.server.events.MergeReviewReply;
-import com.b2international.snowowl.datastore.server.events.ReadConceptChangesEvent;
-import com.b2international.snowowl.datastore.server.events.ReadReviewEvent;
-import com.b2international.snowowl.datastore.server.events.ReviewReply;
-import com.b2international.snowowl.datastore.server.review.ConceptChanges;
-import com.b2international.snowowl.datastore.server.review.Review;
+import com.b2international.snowowl.datastore.server.events.ReadMergeReviewEvent;
+import com.b2international.snowowl.datastore.server.review.MergeReview;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.rest.domain.CreateMergeReviewRequest;
-import com.b2international.snowowl.snomed.api.rest.domain.CreateReviewRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.wordnik.swagger.annotations.Api;
@@ -88,7 +82,28 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 			}});
 		return result;
 	}
-
+	
+	@ApiOperation(
+			value = "Retrieve single merge review", 
+			notes = "Retrieves an existing terminology merge review with the specified identifier, if it exists.")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK"),
+		@ApiResponse(code = 404, message = "Merge Review not found", response=RestApiError.class),
+	})
+	@RequestMapping(value="/{id}", method=RequestMethod.GET)
+	public DeferredResult<MergeReview> getMergeReview(@PathVariable("id") final String mergeReviewId) {
+		final DeferredResult<MergeReview> result = new DeferredResult<>();
+		new ReadMergeReviewEvent(repositoryId, mergeReviewId)
+			.send(bus, MergeReviewReply.class)
+			.then(new Procedure<MergeReviewReply>() { @Override protected void doApply(final MergeReviewReply reply) {
+				result.setResult(reply.getMergeReview());
+			}})
+			.fail(new Procedure<Throwable>() { @Override protected void doApply(final Throwable t) {
+				result.setErrorResult(t);
+			}});
+		return result;
+	}
+	
 	private URI getLocationHeader(ControllerLinkBuilder linkBuilder, final MergeReviewReply reply) {
 		return linkBuilder.slash(reply.getMergeReview().id()).toUri();
 	}

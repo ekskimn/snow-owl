@@ -52,6 +52,7 @@ import com.b2international.snowowl.datastore.server.review.MergeReview;
 import com.b2international.snowowl.datastore.server.review.Review;
 import com.b2international.snowowl.datastore.server.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.review.ReviewStatus;
+import com.b2international.snowowl.datastore.store.IndexStore;
 import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.datastore.store.query.Query;
 import com.b2international.snowowl.datastore.store.query.QueryBuilder;
@@ -163,6 +164,7 @@ public class ReviewManagerImpl implements ReviewManager {
 
 	private final String repositoryId;
 	private final Store<ReviewImpl> reviewStore;
+	private final Store<MergeReviewImpl> mergeReviewStore;
 	private final Store<ConceptChangesImpl> conceptChangesStore;
 	private final IJobChangeListener jobChangeListener = new ReviewJobChangeListener();
 	private final StaleHandler staleHandler = new StaleHandler();
@@ -177,12 +179,12 @@ public class ReviewManagerImpl implements ReviewManager {
 		private static final Timer CLEANUP_TIMER = new Timer("Review cleanup", true);
 	}
 
-	public ReviewManagerImpl(final IRepository repository, final Store<ReviewImpl> reviewStore, final Store<ConceptChangesImpl> conceptChangesStore) {
-		this(repository, reviewStore, conceptChangesStore, 15, 5);
+	public ReviewManagerImpl(final IRepository repository, final Store<ReviewImpl> reviewStore, final Store<MergeReviewImpl> mergeReviewStore, final Store<ConceptChangesImpl> conceptChangesStore) {
+		this(repository, reviewStore, mergeReviewStore, conceptChangesStore, 15, 5);
 	}
 
 	public ReviewManagerImpl(final IRepository repository, 
-			final Store<ReviewImpl> reviewStore, final Store<ConceptChangesImpl> conceptChangesStore, 
+			final Store<ReviewImpl> reviewStore, Store<MergeReviewImpl> mergeReviewStore, final Store<ConceptChangesImpl> conceptChangesStore, 
 			final long keepCurrentMins, final int keepOtherMins) {
 
 		this.repositoryId = repository.getCdoRepositoryId();
@@ -195,6 +197,7 @@ public class ReviewManagerImpl implements ReviewManager {
 		reviewStore.configureSearchable("targetPath");
 		reviewStore.configureSearchable("lastUpdated");
 
+		this.mergeReviewStore = mergeReviewStore;
 		this.conceptChangesStore = conceptChangesStore;
 
 		// Check every minute if there's something to remove
@@ -355,11 +358,34 @@ public class ReviewManagerImpl implements ReviewManager {
 
 	@Override
 	public MergeReview createMergeReview(Branch source, Branch target) {
-		throw new NotImplementedException();
+		MergeReviewImpl mergeReview = new MergeReviewImpl(UUID.randomUUID().toString());
+		
+		Review sourceToTarget = createReview(source, target);
+		mergeReview.setSourceToTargetReviewId(sourceToTarget.id());
+		
+		Review targetToSource = createReview(target, source);
+		mergeReview.setTargetToSourceReviewId(targetToSource.id());
+		
+		mergeReview.setReviewManager(this);
+		synchronized (mergeReviewStore) {
+			mergeReviewStore.put(mergeReview.id(), mergeReview);
+		}
+		
+		return mergeReview;
 	}
 
 	@Override
-	public MergeReview getMergeReview(String mergeReviewId) {
-		throw new NotImplementedException();
+	public MergeReview getMergeReview(String id) {
+		final MergeReviewImpl mergeReview;
+		synchronized (mergeReviewStore) {
+			mergeReview = mergeReviewStore.get(id);
+		}
+
+		if (mergeReview == null) {
+			throw new NotFoundException(MergeReview.class.getSimpleName(), id);
+		} 
+
+		mergeReview.setReviewManager(this);
+		return mergeReview;
 	}
 }

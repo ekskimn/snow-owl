@@ -49,6 +49,8 @@ import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchMan
 import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewEventHandler;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewSerializer;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewEventHandler;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
@@ -148,17 +150,18 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		
 		final BranchSerializer branchSerializer = new BranchSerializer();
 		final ReviewSerializer reviewSerializer = new ReviewSerializer();
+		final MergeReviewSerializer mergeReviewSerializer = new MergeReviewSerializer();
 		
 		for (String repositoryId : cdoRepositoryManager.uuidKeySet()) {
 			final RepositoryWrapper wrapper = new RepositoryWrapper(repositoryId, cdoConnectionManager, cdoRepositoryManager, indexServerServiceManager, eventBus);
-			initializeBranchingSupport(environment, wrapper, branchSerializer, reviewSerializer, reviewConfiguration);
+			initializeBranchingSupport(environment, wrapper, branchSerializer, reviewSerializer, mergeReviewSerializer, reviewConfiguration);
 		}
 		
 		LOG.info("<<< Branch and review services registered. [{}]", branchStopwatch);
 	}
 
 	private void initializeBranchingSupport(Environment environment, RepositoryWrapper wrapper, BranchSerializer branchSerializer, 
-			ReviewSerializer reviewSerializer, ReviewConfiguration reviewConfiguration) {
+			ReviewSerializer reviewSerializer, MergeReviewSerializer mergeReviewSerializer, ReviewConfiguration reviewConfiguration) {
 		
 		final String repositoryId = wrapper.getCdoRepositoryId();
 		final File branchIndexDirectory = environment.getDataDirectory()
@@ -174,15 +177,21 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 				.resolve(Paths.get("indexes", "reviews", repositoryId))
 				.toFile();
 		
+		final File mergeReviewsIndexDirectory = environment.getDataDirectory()
+				.toPath()
+				.resolve(Paths.get("indexes", "mergeReviews", repositoryId))
+				.toFile();
+		
 		final File conceptChangesIndexDirectory = environment.getDataDirectory()
 				.toPath()
 				.resolve(Paths.get("indexes", "concept_changes", repositoryId))
 				.toFile();
 		
 		final IndexStore<ReviewImpl> reviewStore = new IndexStore<ReviewImpl>(reviewsIndexDirectory, reviewSerializer, ReviewImpl.class);
+		final IndexStore<MergeReviewImpl> mergeReviewStore = new IndexStore<MergeReviewImpl>(mergeReviewsIndexDirectory, mergeReviewSerializer, MergeReviewImpl.class);
 		final IndexStore<ConceptChangesImpl> conceptChangesStore = new IndexStore<ConceptChangesImpl>(conceptChangesIndexDirectory, reviewSerializer, ConceptChangesImpl.class);
 		
-		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(wrapper, reviewStore, conceptChangesStore,
+		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(wrapper, reviewStore, mergeReviewStore, conceptChangesStore,
 				reviewConfiguration.getKeepCurrentMins(), reviewConfiguration.getKeepOtherMins());
 
 		environment.service(IEventBus.class).registerHandler("/" + repositoryId + "/branches" , new BranchEventHandler(branchManager, reviewManager));

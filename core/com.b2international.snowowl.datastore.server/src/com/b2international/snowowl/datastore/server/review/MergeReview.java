@@ -27,38 +27,25 @@ public interface MergeReview {
 	 * Returns the unique identifier of this review.
 	 */
 	String id();
+	
+	/**
+	 * Sets the unique identifier of the source to target review
+	 */
+	void setSourceToTargetReviewId(String sourceToTargetReviewId);
+	
+	/**
+	 * Returns the unique identifier of the source to target review
+	 */
+	String getSourceToTargetReviewId();
 
 	/**
-	 * Returns the current status of this review.
+	 * Sets the unique identifier of the target to source review
 	 */
-	ReviewStatus status();
-
+	void setTargetToSourceReviewId(String targetToSourceReviewId);
+	
 	/**
-	 * Returns the branch used as the comparison source in the state it was when collection started.
-	 * <p>
-	 * Note that a separate retrieve request for the same branch may display different values, if it has been changed in
-	 * the meantime.
+	 * Returns the unique identifier of the target to source review
 	 */
-	BranchState source();
+	String getTargetToSourceReviewId();
 
-	/**
-	 * Returns the branch used as the comparison target in the state it was when collection started.
-	 * <p>
-	 * Note that a separate retrieve request for the same branch may display different values, if it has been changed in
-	 * the meantime.
-	 */
-	BranchState target();
-
-	/**
-	 * Deletes this review and corresponding concept changes from the review repository.
-	 */
-	MergeReview delete();
-
-	/**
-	 * Returns the last update time in ISO8601 format. Update time is registered at creation and whenever the review's
-	 * state changes.
-	 * 
-	 * @return the time of last update
-	 */
-	String lastUpdated();
 }

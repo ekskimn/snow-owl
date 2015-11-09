@@ -17,148 +17,82 @@ package com.b2international.snowowl.datastore.server.internal.review;
 
 import java.util.Date;
 
-import com.b2international.snowowl.core.exceptions.NotImplementedException;
-import com.b2international.snowowl.datastore.branch.Branch;
-import com.b2international.snowowl.datastore.server.review.BranchState;
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.datastore.server.review.MergeReview;
+import com.b2international.snowowl.datastore.server.review.Review;
 import com.b2international.snowowl.datastore.server.review.ReviewStatus;
-import com.fasterxml.jackson.databind.util.ISO8601Utils;
 
 /**
  * @since 4.2
  */
 public class MergeReviewImpl implements MergeReview {
 
-	private ReviewManagerImpl reviewManager;
-
 	private final String id;
-	private final String lastUpdated;
-	private final ReviewStatus status;
-	private final BranchStateImpl source;
-	private final BranchStateImpl target;
-
-	public static Builder builder(final String id, final Branch source, final Branch target) {
-		return new Builder(id, source, target);
-	}
-
-	public static Builder builder(final MergeReviewImpl review) {
-		return new Builder(review);
-	}
-
-	public static class Builder {
-
-		private static String getCurrentTimeISO8601() {
-			return ISO8601Utils.format(new Date());
-		}
-
-		private final String id;
-		private final BranchStateImpl source;
-		private final BranchStateImpl target;
-		private ReviewStatus status = ReviewStatus.PENDING;
-		private String lastUpdated = getCurrentTimeISO8601();
-
-		private Builder(final String id, final Branch source, final Branch target) {
-			this(id, new BranchStateImpl(source), new BranchStateImpl(target));
-		}
-
-		private Builder(final String id, final BranchStateImpl sourceState, final BranchStateImpl targetState) {
-			this.id = id;
-			this.source = sourceState;
-			this.target = targetState;
-		}
-
-		private Builder(final MergeReviewImpl review) {
-			this(review.id, review.source, review.target);
-			status = review.status;
-			lastUpdated = review.lastUpdated;
-		}
-
-		public Builder status(final ReviewStatus newStatus) {
-			status = newStatus;
-			return this;
-		}
-
-		public Builder refreshLastUpdated() {
-			return lastUpdated(getCurrentTimeISO8601());
-		}
-		
-		public Builder lastUpdated(final String newLastUpdated) {
-			lastUpdated = newLastUpdated;
-			return this;
-		}
-
-		public MergeReviewImpl build() {
-			return new MergeReviewImpl(this);
-		}
-	}
-
-	private MergeReviewImpl(final Builder builder) {
-		this(builder.id, builder.source, builder.target, builder.status, builder.lastUpdated);
-	}
-
-	private MergeReviewImpl(final String id, final BranchStateImpl source, final BranchStateImpl target, final ReviewStatus status, final String lastUpdated) {
+	private String sourceToTargetReviewId;
+	private String targetToSourceReviewId;
+	
+	private ReviewManagerImpl reviewManager;
+	private String lastUpdated;
+	private ReviewStatus status;
+	
+	public MergeReviewImpl(String id) {
 		this.id = id;
-		this.source = source;
-		this.target = target;
-		this.status = status;
-		this.lastUpdated = lastUpdated;
+	}
+	
+	public MergeReviewImpl(final String id, final String sourceToTargetReviewId, final String targetToSourceReviewId, final String lastUpdated, final String status) {
+		this.id = id;
+		this.sourceToTargetReviewId = sourceToTargetReviewId;
+		this.targetToSourceReviewId = targetToSourceReviewId;
+	}
+	
+	public String id() {
+		return this.id;
 	}
 
-	void setReviewManager(final ReviewManagerImpl reviewManager) {
+	public String getSourceToTargetReviewId() {
+		return sourceToTargetReviewId;
+	}
+
+	public void setSourceToTargetReviewId(String sourceToTargetReviewId) {
+		this.sourceToTargetReviewId = sourceToTargetReviewId;
+	}
+
+	public String getTargetToSourceReviewId() {
+		return targetToSourceReviewId;
+	}
+
+	public void setTargetToSourceReviewId(String targetToSourceReviewId) {
+		this.targetToSourceReviewId = targetToSourceReviewId;
+	}
+
+	public void setReviewManager(ReviewManagerImpl reviewManager) {
 		this.reviewManager = reviewManager;
 	}
-
-	@Override
-	public String id() {
-		return id;
+	
+	public String getLastUpdated() {
+		//return the later of the two reviews last updated
+		Review sourceToTargetReview = reviewManager.getReview(sourceToTargetReviewId);
+		Review targetToSourceReview = reviewManager.getReview(targetToSourceReviewId);
+		Date left = Dates.parse(sourceToTargetReview.lastUpdated(), DateFormats.ISO_8601);
+		Date right = Dates.parse(targetToSourceReview.lastUpdated(), DateFormats.ISO_8601);
+		return left.after(right) ? Dates.formatByGmt(left, DateFormats.ISO_8601) : Dates.formatByGmt(right, DateFormats.ISO_8601);
 	}
-
-	@Override
-	public ReviewStatus status() {
-		return status;
-	}
-
-	@Override
-	public BranchState source() {
-		return source;
-	}
-
-	@Override
-	public BranchState target() {
-		return target;
-	}
-
-	@Override
-	public String lastUpdated() {
-		return lastUpdated;
-	}
-
-	public String sourcePath() {
-		return source.path();
-	}
-
-	public String targetPath() {
-		return target.path();
-	}
-
-	@Override
-	public MergeReview delete() {
-		//return reviewManager.deleteReview(this);
-		throw new NotImplementedException();
-	}
-
-	@Override
-	public int hashCode() {
-		return 31 + id.hashCode();
-	}
-
-	@Override
-	public boolean equals(final Object obj) {
-		if (this == obj) { return true; }
-		if (obj == null) { return false; }
-		if (!(obj instanceof MergeReviewImpl)) { return false; }
-
-		final MergeReviewImpl other = (MergeReviewImpl) obj;
-		return id.equals(other.id);
+	
+	public ReviewStatus getStatus() {
+		//return the more relevant of the states of the two reviews
+		Review left = reviewManager.getReview(sourceToTargetReviewId);
+		Review right = reviewManager.getReview(targetToSourceReviewId);
+		if (left.status() == ReviewStatus.FAILED || right.status() == ReviewStatus.FAILED) {
+			return ReviewStatus.FAILED;
+		} else if (left.status() == ReviewStatus.PENDING || right.status() == ReviewStatus.PENDING) {
+			return ReviewStatus.PENDING;
+		} else if (left.status() == ReviewStatus.STALE || right.status() == ReviewStatus.STALE) {
+			return ReviewStatus.STALE;
+		} else  if (left.status() == ReviewStatus.CURRENT && right.status() == ReviewStatus.CURRENT) {
+			return ReviewStatus.CURRENT;
+		} else {
+			throw new IllegalStateException ("Unexpected state combination: " + left.status() + " / " + right.status());
+		}
 	}
 }
