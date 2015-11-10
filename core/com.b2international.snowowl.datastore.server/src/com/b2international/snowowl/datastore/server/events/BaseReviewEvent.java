@@ -26,7 +26,7 @@ import com.b2international.snowowl.core.events.BaseEvent;
  */
 public abstract class BaseReviewEvent extends BaseEvent {
 
-	private final String repositoryId;
+	protected final String repositoryId;
 
 	protected BaseReviewEvent(final String repositoryId) {
 		this.repositoryId = checkNotNull(repositoryId, "repositoryId");
@@ -37,7 +37,7 @@ public abstract class BaseReviewEvent extends BaseEvent {
 	}
 
 	@Override
-	protected final String getAddress() {
+	protected String getAddress() {
 		return "/" + repositoryId + "/reviews";
 	}
 }

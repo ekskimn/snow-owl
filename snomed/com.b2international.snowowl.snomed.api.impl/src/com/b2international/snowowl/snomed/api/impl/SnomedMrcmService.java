@@ -20,6 +20,7 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.editor.service.ComponentNotFoundException;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.ISnomedConceptService;
 import com.b2international.snowowl.snomed.api.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.api.domain.SearchKind;
@@ -55,22 +56,26 @@ public class SnomedMrcmService {
 	}
 
 	public IComponentList<ISnomedConcept> getDomainAttributes(String branchPath, List<String> parentIds, int offset, int limit) {
-		Collection<PredicateIndexEntry> predicates = getPredicateBrowser().getPredicates(getBranch(branchPath), parentIds, null);
-		Set<String> typeExpressions = new HashSet<>();
-		for (PredicateIndexEntry predicateIndexEntry : predicates) {
-			if (predicateIndexEntry.getType() == PredicateType.RELATIONSHIP) {
-				typeExpressions.add(predicateIndexEntry.getRelationshipTypeExpression());
-			}
-		}
-		if (typeExpressions.isEmpty()) {
-			return new SnomedConceptList();
-		}
 		StringBuilder builder = new StringBuilder();
-		for (String typeExpression : typeExpressions) {
-			if (builder.length() > 0) {
-				builder.append(" UNION ");
+		if (!parentIds.isEmpty()) {
+			Collection<PredicateIndexEntry> predicates = getPredicateBrowser().getPredicates(getBranch(branchPath), parentIds, null);
+			Set<String> typeExpressions = new HashSet<>();
+			for (PredicateIndexEntry predicateIndexEntry : predicates) {
+				if (predicateIndexEntry.getType() == PredicateType.RELATIONSHIP) {
+					typeExpressions.add(predicateIndexEntry.getRelationshipTypeExpression());
+				}
 			}
-			builder.append(typeExpression);
+			if (typeExpressions.isEmpty()) {
+				return new SnomedConceptList();
+			}
+			for (String typeExpression : typeExpressions) {
+				if (builder.length() > 0) {
+					builder.append(" UNION ");
+				}
+				builder.append(typeExpression);
+			}
+		} else {
+			builder.append(Concepts.IS_A);
 		}
 		Map<SearchKind, String> queryParams = new HashMap<>();
 		queryParams.put(SearchKind.ESCG, builder.toString());
@@ -91,7 +96,9 @@ public class SnomedMrcmService {
 				relationshipTypeExpression = predicateIndexEntry.getRelationshipTypeExpression();
 				if (relationshipTypeExpression.startsWith("<")) {
 					String relationshipTypeId = relationshipTypeExpression.replace("<", "");
-					if (ancestorIds.contains(relationshipTypeId)) {
+					if ((relationshipTypeExpression.startsWith("<<") && 
+							(relationshipTypeId.equals(attributeId) || ancestorIds.contains(relationshipTypeId)))
+							|| ancestorIds.contains(relationshipTypeId)) {
 						relationshipValueExpression = predicateIndexEntry.getRelationshipValueExpression();
 						break;
 					}
