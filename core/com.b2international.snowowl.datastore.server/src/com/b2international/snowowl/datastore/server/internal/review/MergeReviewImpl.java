@@ -33,8 +33,6 @@ public class MergeReviewImpl implements MergeReview {
 	private String targetToSourceReviewId;
 	
 	private ReviewManagerImpl reviewManager;
-	private String lastUpdated;
-	private ReviewStatus status;
 	
 	public MergeReviewImpl(String id) {
 		this.id = id;
@@ -79,6 +77,10 @@ public class MergeReviewImpl implements MergeReview {
 		return left.after(right) ? Dates.formatByGmt(left, DateFormats.ISO_8601) : Dates.formatByGmt(right, DateFormats.ISO_8601);
 	}
 	
+	public void setLastUpdated(String lastUpdated) {
+		//throw this away, we'll aways return a more up to date response
+	}
+	
 	public ReviewStatus getStatus() {
 		//return the more relevant of the states of the two reviews
 		Review left = reviewManager.getReview(sourceToTargetReviewId);
@@ -94,5 +96,9 @@ public class MergeReviewImpl implements MergeReview {
 		} else {
 			throw new IllegalStateException ("Unexpected state combination: " + left.status() + " / " + right.status());
 		}
+	}
+	
+	public void setStatus(ReviewStatus status) {
+		//throw this away, we'll aways return a more up to date response
 	}
 }

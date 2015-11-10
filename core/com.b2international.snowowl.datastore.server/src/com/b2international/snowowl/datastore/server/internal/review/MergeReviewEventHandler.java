@@ -26,6 +26,7 @@ import com.b2international.snowowl.datastore.branch.BranchManager;
 import com.b2international.snowowl.datastore.server.events.*;
 import com.b2international.snowowl.datastore.server.review.ConceptChanges;
 import com.b2international.snowowl.datastore.server.review.MergeReview;
+import com.b2international.snowowl.datastore.server.review.MergeReviewIntersection;
 import com.b2international.snowowl.datastore.server.review.ReviewManager;
 
 /**
@@ -61,9 +62,8 @@ public class MergeReviewEventHandler extends ApiEventHandler {
 	}
 
 	@Handler
-	protected ConceptChangesReply handle(final ReadConceptChangesEvent event) {
-		throw new NotImplementedException();
-		//return new ConceptChangesReply(getConceptChanges(event));
+	protected MergeReviewDetailsReply handle(final ReadMergeReviewDetailsEvent event) {
+		return new MergeReviewDetailsReply(getMergeReviewIntersection(event));
 	}
 
 
@@ -71,7 +71,7 @@ public class MergeReviewEventHandler extends ApiEventHandler {
 		return reviewManager.getMergeReview(event.getReviewId());
 	}
 
-	private ConceptChanges getConceptChanges(final MergeReviewEvent event) {
-		return reviewManager.getConceptChanges(event.getReviewId());
+	private MergeReviewIntersection getMergeReviewIntersection(final MergeReviewEvent event) {
+		return reviewManager.getMergeReviewIntersection(event.getReviewId());
 	}
 }

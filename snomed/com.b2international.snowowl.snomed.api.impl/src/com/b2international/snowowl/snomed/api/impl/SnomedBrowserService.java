@@ -67,6 +67,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserMergeReviewDetails;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
@@ -79,6 +80,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserC
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescriptionResultDetails;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserMergeReviewDetails;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
@@ -178,7 +180,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	public SnomedBrowserService() {
 		inputFactory = new InputFactory();
+		//Registering singleton for use with non-spring configured implementations
+		ApplicationContext.getInstance().registerService(ISnomedBrowserService.class, this);
 	}
+	
 
 	@Override
 	public ISnomedBrowserConcept getConceptDetails(final IComponentRef conceptRef, final List<Locale> locales) {
@@ -689,5 +694,29 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 	private static SnomedIndexService getIndexService() {
 		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
+	}
+
+
+	@Override
+	public ISnomedBrowserMergeReviewDetails getConceptDetails( String id,
+			Set<String> concepts, String sourcePath, String targetPath,
+			String codeSystem,
+			ArrayList<Locale> locals) {
+		SnomedBrowserMergeReviewDetails details = new SnomedBrowserMergeReviewDetails();
+		details.setId(id);
+		for (String thisConcept : concepts) {
+			IComponentRef conceptRef = new ComponentRef(codeSystem, sourcePath, thisConcept);
+			ISnomedBrowserConcept sourceConcept = getConceptDetails(conceptRef,locals);
+
+			conceptRef = new ComponentRef(codeSystem, targetPath, thisConcept);
+			ISnomedBrowserConcept targetConcept = getConceptDetails(conceptRef,locals);
+
+			details.getSourceChanges().add(sourceConcept);
+			details.getTargetChanges().add(targetConcept);
+			
+			//TODO - Add the merged concept
+		}
+	
+		return details;
 	}
 }

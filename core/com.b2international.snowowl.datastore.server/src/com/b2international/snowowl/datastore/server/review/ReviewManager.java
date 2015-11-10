@@ -15,8 +15,12 @@
  */
 package com.b2international.snowowl.datastore.server.review;
 
+import java.util.List;
+
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.branch.Branch;
+
+import java.util.Locale;
 
 /**
  * @since 4.2
@@ -71,4 +75,12 @@ public interface ReviewManager {
 	 * @return
 	 */
 	MergeReview getMergeReview(String mergeReviewId);
+
+	/**
+	 * Retrieve the intersection of concepts modified in both source and target
+	 * @param string 
+	 * @param id the merge review identifier to look for 
+	 * @return
+	 **/
+	MergeReviewIntersection getMergeReviewIntersection(String id);
 }
