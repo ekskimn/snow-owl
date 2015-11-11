@@ -43,6 +43,8 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParen
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
+import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
+import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -63,9 +65,12 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	 * The currently supported versioned media type of the IHTSDO SNOMED CT Browser RESTful API.
 	 */
 	public static final String IHTSDO_V1_MEDIA_TYPE = "application/vnd.org.ihtsdo.browser+json";
-
+	
 	@Autowired
 	protected ISnomedBrowserService browserService;
+	
+	@Autowired
+	private ISnomedBrowserValidationService validationService;
 	
 	@Autowired
 	private ISnomedConceptService conceptService;
@@ -119,6 +124,29 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 		final String userId = principal.getName();
 		return browserService.create(branchPath, concept, userId, Collections.list(request.getLocales()));
+	}
+
+	@ApiOperation(
+			value="Validate a concept",
+			notes="Validates a concept in the context of a branch, without persisting your changes.")
+	@ApiResponses({
+			@ApiResponse(code = 200, message = "OK", response = Void.class),
+			@ApiResponse(code = 404, message = "Code system version or concept not found")
+	})
+	@RequestMapping(value="/validate/concept", method=RequestMethod.POST)
+	public @ResponseBody List<ISnomedInvalidContent> validateNewConcept(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@RequestBody
+			final SnomedBrowserConcept concept,
+
+			final Principal principal,
+
+			final HttpServletRequest request) {
+
+		return validationService.validateConcept(branchPath, concept, Collections.list(request.getLocales()));
 	}
 
 	@ApiOperation(
