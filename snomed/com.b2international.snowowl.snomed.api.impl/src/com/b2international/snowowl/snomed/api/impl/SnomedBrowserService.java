@@ -74,6 +74,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelat
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.domain.browser.TaxonomyNode;
 import com.b2international.snowowl.snomed.api.impl.domain.InputFactory;
+import com.b2international.snowowl.snomed.api.impl.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedDescriptionInput;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
@@ -374,6 +375,28 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			convertedDescription.setModuleId(description.getModuleId());
 			convertedDescription.setTerm(description.getTerm());
 			convertedDescription.setType(descriptionType);
+			convertedDescription.setAcceptabilityMap(description.getAcceptabilityMap());
+			convertedDescriptionBuilder.add(convertedDescription);
+		}
+
+		return convertedDescriptionBuilder.build();
+	}
+	
+	private List<ISnomedDescription> convertDescriptionsBack(final List<ISnomedBrowserDescription> descriptions) {
+		final ImmutableList.Builder<ISnomedDescription> convertedDescriptionBuilder = ImmutableList.builder();
+
+		for (final ISnomedBrowserDescription description : descriptions) {
+			final SnomedDescription convertedDescription = new SnomedDescription();
+
+			convertedDescription.setActive(description.isActive());
+			convertedDescription.setCaseSignificance(description.getCaseSignificance());
+			convertedDescription.setConceptId(description.getConceptId());
+			convertedDescription.setId(description.getId());
+			convertedDescription.setEffectiveTime(description.getEffectiveTime());
+			convertedDescription.setLanguageCode(description.getLang());
+			convertedDescription.setModuleId(description.getModuleId());
+			convertedDescription.setTerm(description.getTerm());
+			convertedDescription.setTypeId(description.getType().getConceptId());
 			convertedDescription.setAcceptabilityMap(description.getAcceptabilityMap());
 			convertedDescriptionBuilder.add(convertedDescription);
 		}
@@ -699,19 +722,19 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	public ISnomedBrowserMergeReviewDetails getConceptDetails( String id,
 			Set<String> concepts, String sourcePath, String targetPath,
 			String codeSystem,
-			ArrayList<Locale> locals) {
+			ArrayList<Locale> locales) {
 		SnomedBrowserMergeReviewDetails details = new SnomedBrowserMergeReviewDetails();
 		details.setId(id);
 		for (String thisConcept : concepts) {
 			IComponentRef conceptRef = new ComponentRef(codeSystem, sourcePath, thisConcept);
-			ISnomedBrowserConcept sourceConcept = getConceptDetails(conceptRef,locals);
+			ISnomedBrowserConcept sourceConcept = getConceptDetails(conceptRef,locales);
 
 			conceptRef = new ComponentRef(codeSystem, targetPath, thisConcept);
-			ISnomedBrowserConcept targetConcept = getConceptDetails(conceptRef,locals);
+			ISnomedBrowserConcept targetConcept = getConceptDetails(conceptRef,locales);
 
 			details.getSourceChanges().add(sourceConcept);
 			details.getTargetChanges().add(targetConcept);
-			SnomedBrowserConcept mergedConcept = mergeConcepts(sourceConcept, targetConcept);
+			SnomedBrowserConcept mergedConcept = mergeConcepts(sourceConcept, targetConcept, locales, conceptRef);
 			details.getMergedChanges().add(mergedConcept);
 		}
 	
@@ -720,7 +743,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private SnomedBrowserConcept mergeConcepts(
 			ISnomedBrowserConcept sourceConcept,
-			ISnomedBrowserConcept targetConcept) {
+			ISnomedBrowserConcept targetConcept, 
+			ArrayList<Locale> locales, 
+			IComponentRef conceptRef) {
 		SnomedBrowserConcept mergedConcept = new SnomedBrowserConcept();
 		//If one of the concepts is unpublished, then it's values are newer.  If both are unpublished, source would win
 		ISnomedBrowserConcept winner = sourceConcept;
@@ -746,7 +771,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			}
 		}
 		mergedConcept.setDescriptions(new ArrayList<ISnomedBrowserDescription>(mergedDescriptions));
-		//TODO Work out the FSN and Preferred Term
+		//The concept reference is just used to find the appropriate language reference set
+		List<ISnomedDescription> descriptions = convertDescriptionsBack(mergedConcept.getDescriptions());
+		ISnomedDescription fsn = descriptionService.getFullySpecifiedName(descriptions, conceptRef, locales);
+		ISnomedDescription pt = descriptionService.getPreferredTerm(descriptions, conceptRef, locales);
+		
+		mergedConcept.setFsn(fsn.getTerm());
+		mergedConcept.setPreferredSynonym(pt.getTerm());
 		
 		//Merge Relationships  - same process using Set to remove duplicated
 		Set<ISnomedBrowserRelationship> mergedRelationships = new HashSet<ISnomedBrowserRelationship>(sourceConcept.getRelationships());
