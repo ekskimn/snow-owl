@@ -40,6 +40,8 @@ import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.collections.Procedure;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.ConflictException;
 import com.b2international.snowowl.datastore.server.events.ConceptChangesReply;
 import com.b2international.snowowl.datastore.server.events.MergeReviewDetailsReply;
 import com.b2international.snowowl.datastore.server.events.MergeReviewReply;
@@ -49,9 +51,11 @@ import com.b2international.snowowl.datastore.server.events.ReadMergeReviewEvent;
 import com.b2international.snowowl.datastore.server.review.ConceptChanges;
 import com.b2international.snowowl.datastore.server.review.MergeReview;
 import com.b2international.snowowl.datastore.server.review.MergeReviewIntersection;
+import com.b2international.snowowl.datastore.server.review.ReviewStatus;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserMergeReviewDetails;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserMergeReviewDetails;
 import com.b2international.snowowl.snomed.api.rest.domain.CreateMergeReviewRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
@@ -115,17 +119,9 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 	})
 	@RequestMapping(value="/{id}", method=RequestMethod.GET)
 	public DeferredResult<MergeReview> getMergeReview(@PathVariable("id") final String mergeReviewId) {
-		final DeferredResult<MergeReview> result = new DeferredResult<>();
-		new ReadMergeReviewEvent(repositoryId, mergeReviewId)
-			.send(bus, MergeReviewReply.class)
-			.then(new Procedure<MergeReviewReply>() { @Override protected void doApply(final MergeReviewReply reply) {
-				result.setResult(reply.getMergeReview());
-			}})
-			.fail(new Procedure<Throwable>() { @Override protected void doApply(final Throwable t) {
-				result.setErrorResult(t);
-			}});
-		return result;
+		return getDeferredMergeReview(mergeReviewId);
 	}
+
 	
 	@ApiOperation(
 			value = "Retrieve the details of a merge review", 
@@ -155,6 +151,45 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 																					Collections.list(request.getLocales()));
 		return details;
 	}
+	
+	@ApiOperation(
+			value = "Stores a concept against a merge review.", 
+			notes = "Stores a concept against a merge review for later replay after the merge has completed.  Checks the merge review is still current.")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK"),
+		@ApiResponse(code = 404, message = "Merge Review not found or changes are not yet available", response=RestApiError.class),
+	})
+	@RequestMapping(value="/{id}/{conceptId}", method=RequestMethod.POST)
+	public void storeMergeReviewConcept(@PathVariable("id") final String mergeReviewId, 
+			@PathVariable("conceptId") final String conceptId,
+			@RequestBody final SnomedBrowserConceptUpdate concept,
+			final HttpServletRequest request) throws Exception {
+		DeferredResult<MergeReview> deferredMergeReview = getDeferredMergeReview (mergeReviewId);
+		MergeReview mergeReview = (MergeReview)getResult(deferredMergeReview);
+		if (!mergeReview.getStatus().equals(ReviewStatus.CURRENT)) {
+			throw new ConflictException ("Unable to save concept against merge review at status " + mergeReview.getStatus());
+		}
+		
+		if (!conceptId.equals(concept.getConceptId())) {
+			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
+		}
+		
+		browserService.storeConceptChanges(mergeReview.getTargetPath(), mergeReviewId, concept);
+	}
+	
+	
+	private DeferredResult<MergeReview> getDeferredMergeReview(String mergeReviewId) {
+		final DeferredResult<MergeReview> result = new DeferredResult<>();
+		new ReadMergeReviewEvent(repositoryId, mergeReviewId)
+			.send(bus, MergeReviewReply.class)
+			.then(new Procedure<MergeReviewReply>() { @Override protected void doApply(final MergeReviewReply reply) {
+				result.setResult(reply.getMergeReview());
+			}})
+			.fail(new Procedure<Throwable>() { @Override protected void doApply(final Throwable t) {
+				result.setErrorResult(t);
+			}});
+		return result;
+	}	
 	
 	private Object getResult(
 			DeferredResult<?> deferred) throws Exception {

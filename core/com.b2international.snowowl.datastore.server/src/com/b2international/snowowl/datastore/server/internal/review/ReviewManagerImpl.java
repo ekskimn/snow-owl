@@ -364,9 +364,11 @@ public class ReviewManagerImpl implements ReviewManager {
 		
 		Review sourceToTarget = createReview(source, target);
 		mergeReview.setSourceToTargetReviewId(sourceToTarget.id());
+		mergeReview.setSourcePath(source.path());
 		
 		Review targetToSource = createReview(target, source);
 		mergeReview.setTargetToSourceReviewId(targetToSource.id());
+		mergeReview.setTargetPath(target.path());
 		
 		mergeReview.setReviewManager(this);
 		synchronized (mergeReviewStore) {

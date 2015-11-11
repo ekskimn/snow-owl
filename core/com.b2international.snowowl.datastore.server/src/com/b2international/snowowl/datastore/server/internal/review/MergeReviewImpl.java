@@ -29,7 +29,9 @@ import com.b2international.snowowl.datastore.server.review.ReviewStatus;
 public class MergeReviewImpl implements MergeReview {
 
 	private final String id;
+	private String sourcePath;
 	private String sourceToTargetReviewId;
+	private String targetPath;
 	private String targetToSourceReviewId;
 	
 	private ReviewManagerImpl reviewManager;
@@ -100,5 +102,21 @@ public class MergeReviewImpl implements MergeReview {
 	
 	public void setStatus(ReviewStatus status) {
 		//throw this away, we'll aways return a more up to date response
+	}
+
+	public String getTargetPath() {
+		return targetPath;
+	}
+
+	public void setTargetPath(String targetPath) {
+		this.targetPath = targetPath;
+	}
+
+	public String getSourcePath() {
+		return sourcePath;
+	}
+
+	public void setSourcePath(String sourcePath) {
+		this.sourcePath = sourcePath;
 	}
 }

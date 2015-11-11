@@ -18,6 +18,8 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import com.b2international.snowowl.api.impl.domain.ComponentRef;
 import com.b2international.snowowl.api.impl.domain.InternalComponentRef;
 import com.b2international.snowowl.api.impl.domain.InternalStorageRef;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
@@ -100,6 +103,9 @@ import com.b2international.snowowl.snomed.datastore.index.SnomedDescriptionReduc
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
 import com.b2international.snowowl.snomed.datastore.index.SnomedRelationshipIndexQueryAdapter;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
@@ -169,6 +175,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);
 
+	private static String MERGE_REVIEW_STORE = "mergeReviewStore";
+	
 	private final InputFactory inputFactory;
 
 	@Resource
@@ -789,5 +797,20 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		mergedConcept.setRelationships(new ArrayList<ISnomedBrowserRelationship>(mergedRelationships));
 		
 		return mergedConcept;
+	}
+	
+	public void storeConceptChanges (String branchPath, String mergeReviewId, ISnomedBrowserConceptUpdate conceptUpdate) throws JsonGenerationException, JsonMappingException, IOException {
+		
+		//TODO Add code to Index Manager to clean these up once associated merge review is deleted
+		String storePath = getStorePath(branchPath, mergeReviewId);
+		File conceptFile = new File (storePath, conceptUpdate.getConceptId() + ".json");
+		conceptFile.getParentFile().mkdirs();
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.writeValue(conceptFile, conceptUpdate);
+	}
+	
+	private String getStorePath (String branchPath, String mergeReviewId) {
+		File storeRoot = SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory();
+		return storeRoot + "/" + MERGE_REVIEW_STORE + "/" + branchPath + "/" + mergeReviewId;
 	}
 }
