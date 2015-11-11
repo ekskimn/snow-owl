@@ -20,6 +20,7 @@ import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -180,10 +181,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	public SnomedBrowserService() {
 		inputFactory = new InputFactory();
-		//Registering singleton for use with non-spring configured implementations
-		ApplicationContext.getInstance().registerService(ISnomedBrowserService.class, this);
 	}
-	
 
 	@Override
 	public ISnomedBrowserConcept getConceptDetails(final IComponentRef conceptRef, final List<Locale> locales) {
@@ -713,10 +711,52 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 			details.getSourceChanges().add(sourceConcept);
 			details.getTargetChanges().add(targetConcept);
-			
-			//TODO - Add the merged concept
+			SnomedBrowserConcept mergedConcept = mergeConcepts(sourceConcept, targetConcept);
+			details.getMergedChanges().add(mergedConcept);
 		}
 	
 		return details;
+	}
+
+	private SnomedBrowserConcept mergeConcepts(
+			ISnomedBrowserConcept sourceConcept,
+			ISnomedBrowserConcept targetConcept) {
+		SnomedBrowserConcept mergedConcept = new SnomedBrowserConcept();
+		//If one of the concepts is unpublished, then it's values are newer.  If both are unpublished, source would win
+		ISnomedBrowserConcept winner = sourceConcept;
+		if (targetConcept.getEffectiveTime()==null && sourceConcept.getEffectiveTime() != null) {
+			winner = targetConcept;
+		}
+		//Set directly owned values
+		mergedConcept.setConceptId(winner.getConceptId());
+		mergedConcept.setActive(winner.isActive());
+		mergedConcept.setDefinitionStatus(winner.getDefinitionStatus());
+		mergedConcept.setEffectiveTime(winner.getEffectiveTime());
+		mergedConcept.setModuleId(winner.getModuleId());
+		mergedConcept.setIsLeafInferred(winner.getIsLeafInferred());
+		mergedConcept.setIsLeafStated(winner.getIsLeafStated());
+		
+		//Merge Descriptions - take all the descriptions from source, and add in from target
+		//if they're unpublished, which will cause an overwrite in the Set if the Description Id matches
+		//TODO UNLESS the source description is also unpublished (Change to use map?)
+		Set<ISnomedBrowserDescription> mergedDescriptions = new HashSet<ISnomedBrowserDescription>(sourceConcept.getDescriptions());
+		for (ISnomedBrowserDescription thisDescription : targetConcept.getDescriptions()) {
+			if (thisDescription.getEffectiveTime() == null) {
+				mergedDescriptions.add(thisDescription);
+			}
+		}
+		mergedConcept.setDescriptions(new ArrayList<ISnomedBrowserDescription>(mergedDescriptions));
+		//TODO Work out the FSN and Preferred Term
+		
+		//Merge Relationships  - same process using Set to remove duplicated
+		Set<ISnomedBrowserRelationship> mergedRelationships = new HashSet<ISnomedBrowserRelationship>(sourceConcept.getRelationships());
+		for (ISnomedBrowserRelationship thisRelationship : targetConcept.getRelationships()) {
+			if (thisRelationship.getEffectiveTime() == null) {
+				mergedRelationships.add(thisRelationship);
+			}
+		}
+		mergedConcept.setRelationships(new ArrayList<ISnomedBrowserRelationship>(mergedRelationships));
+		
+		return mergedConcept;
 	}
 }
