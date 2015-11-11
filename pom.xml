@@ -501,6 +501,12 @@
 					<version>1.9.5</version>
 					<scope>provided</scope>
 				</dependency>
+				<dependency>
+					<groupId>org.ihtsdo.drools</groupId>
+					<artifactId>snomed-drools</artifactId>
+					<version>1.0.1-SNAPSHOT</version>
+					<scope>provided</scope>
+				</dependency>
 			</dependencies>
 			<repositories>
 				<repository>
@@ -547,6 +553,18 @@
 					<id>groovy</id>
 					<url>https://b2ihealthcare.github.io/snow-owl/updates/groovy_2.8.0</url>
 					<layout>p2</layout>
+				</repository>
+				<repository>
+					<id>${maven.repository.id}</id>
+					<releases><enabled>true</enabled></releases>
+					<snapshots><enabled>false</enabled></snapshots>
+					<url>${nexus.releases.url}</url>
+				</repository>
+				<repository>
+					<id>${maven.repository.id}-snapshots</id>
+					<releases><enabled>false</enabled></releases>
+					<snapshots><enabled>true</enabled></snapshots>
+					<url>${nexus.snapshots.url}</url>
 				</repository>
 			</repositories>
 		</profile>
