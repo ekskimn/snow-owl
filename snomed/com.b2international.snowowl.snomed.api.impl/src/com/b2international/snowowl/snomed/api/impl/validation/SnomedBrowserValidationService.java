@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import org.ihtsdo.drools.InvalidContent;
 import org.ihtsdo.drools.RuleExecutor;
+import org.ihtsdo.drools.service.DescriptionService;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
@@ -16,9 +17,15 @@ import com.google.common.collect.Lists;
 public class SnomedBrowserValidationService implements ISnomedBrowserValidationService {
 
 	private RuleExecutor ruleExecutor;
-	
+
 	public SnomedBrowserValidationService() {
-		ruleExecutor = new RuleExecutor("/opt/termserver/snomed-drools-rules");
+		ruleExecutor = new RuleExecutor("/opt/termserver/snomed-drools-rules", new DescriptionService() {
+			
+			@Override
+			public boolean isUniqueActiveTerm(String term) {
+				return false;// TODO: implement when we have a rule which needs it. (Waiting business)
+			}
+		});
 	}
 
 	@Override
@@ -31,10 +38,6 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 			}
 		});
 		return invalidContent;
-	}
-	
-	public static void main(String[] args) {
-		new SnomedBrowserValidationService();
 	}
 
 }

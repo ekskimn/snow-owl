@@ -1,5 +1,9 @@
 package com.b2international.snowowl.snomed.api.impl.validation;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import com.b2international.snowowl.snomed.api.domain.Acceptability;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 
 public class ValidationDescription implements org.ihtsdo.drools.domain.Description {
@@ -16,6 +20,16 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 	}
 
 	@Override
+	public boolean isActive() {
+		return browserDesciption.isActive();
+	}
+
+	@Override
+	public boolean isPublished() {
+		return browserDesciption.getEffectiveTime() != null;
+	}
+
+	@Override
 	public String getConceptId() {
 		return browserDesciption.getConceptId();
 	}
@@ -23,6 +37,21 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 	@Override
 	public String getTerm() {
 		return browserDesciption.getTerm();
+	}
+
+	@Override
+	public String getTypeId() {
+		return browserDesciption.getType().getConceptId();
+	}
+
+	@Override
+	public Map<String, String> getAcceptabilityMap() {
+		Map<String, String> langRefsetIdToAcceptabliltyIdMap = new HashMap<>();
+		Map<String, Acceptability> acceptabilityMap = browserDesciption.getAcceptabilityMap();
+		for (String langRefsetId : acceptabilityMap.keySet()) {
+			langRefsetIdToAcceptabliltyIdMap.put(langRefsetId, acceptabilityMap.get(langRefsetId).getConceptId());
+		}
+		return langRefsetIdToAcceptabliltyIdMap;
 	}
 
 }
