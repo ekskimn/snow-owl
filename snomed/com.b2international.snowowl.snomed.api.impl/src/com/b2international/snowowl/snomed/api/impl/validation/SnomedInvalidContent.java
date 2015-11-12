@@ -1,6 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl.validation;
 
-import org.ihtsdo.drools.InvalidContent;
+import org.ihtsdo.drools.response.InvalidContent;
 
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 
@@ -25,6 +25,11 @@ public class SnomedInvalidContent implements ISnomedInvalidContent {
 	@Override
 	public String getMessage() {
 		return invalidContent.getMessage();
+	}
+	
+	@Override
+	public String getSeverity() {
+		return invalidContent.getSeverity().toString();
 	}
 
 }

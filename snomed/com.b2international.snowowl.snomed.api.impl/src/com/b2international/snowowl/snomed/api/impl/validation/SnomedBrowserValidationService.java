@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import org.ihtsdo.drools.InvalidContent;
 import org.ihtsdo.drools.RuleExecutor;
+import org.ihtsdo.drools.response.InvalidContent;
 import org.ihtsdo.drools.service.DescriptionService;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;

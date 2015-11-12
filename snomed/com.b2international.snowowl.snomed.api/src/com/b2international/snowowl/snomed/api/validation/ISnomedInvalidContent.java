@@ -5,5 +5,6 @@ public interface ISnomedInvalidContent {
 	String getConceptId();
 	String getComponentId();
 	String getMessage();
+	String getSeverity();
 
 }

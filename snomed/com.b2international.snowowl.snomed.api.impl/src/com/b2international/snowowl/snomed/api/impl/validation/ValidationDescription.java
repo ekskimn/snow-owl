@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.b2international.snowowl.snomed.api.domain.Acceptability;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
+import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 
 public class ValidationDescription implements org.ihtsdo.drools.domain.Description {
 
@@ -35,15 +36,25 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 	}
 
 	@Override
+	public String getTypeId() {
+		return browserDesciption.getType().getConceptId();
+	}
+
+	@Override
+	public String getCaseSignificanceId() {
+		return browserDesciption.getCaseSignificance().getConceptId();
+	}
+	
+	@Override
 	public String getTerm() {
 		return browserDesciption.getTerm();
 	}
 
 	@Override
-	public String getTypeId() {
-		return browserDesciption.getType().getConceptId();
+	public boolean isTextDefinition() {
+		return browserDesciption.getType() == SnomedBrowserDescriptionType.TEXT_DEFINITION;
 	}
-
+	
 	@Override
 	public Map<String, String> getAcceptabilityMap() {
 		Map<String, String> langRefsetIdToAcceptabliltyIdMap = new HashMap<>();
