@@ -339,16 +339,20 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 	
 	private void assertHasAnIsARelationship(ISnomedBrowserConceptUpdate concept) {
-		List<ISnomedBrowserRelationship> relationships = concept.getRelationships();
-		if (relationships != null) {
-			for (ISnomedBrowserRelationship iSnomedBrowserRelationship : relationships) {
-				if (iSnomedBrowserRelationship.isActive() && Concepts.IS_A.equals(iSnomedBrowserRelationship.getType().getConceptId())
-						&& iSnomedBrowserRelationship.getGroupId() == 0) {
-					return;
+		if (concept.isActive()) {
+			List<ISnomedBrowserRelationship> relationships = concept.getRelationships();
+			if (relationships != null) {
+				for (ISnomedBrowserRelationship iSnomedBrowserRelationship : relationships) {
+					if (iSnomedBrowserRelationship.isActive()
+							&& iSnomedBrowserRelationship.getCharacteristicType() == CharacteristicType.STATED_RELATIONSHIP
+							&& Concepts.IS_A.equals(iSnomedBrowserRelationship.getType().getConceptId())
+							&& iSnomedBrowserRelationship.getGroupId() == 0) {
+						return;
+					}
 				}
 			}
+			throw new BadRequestException("At least one is-A relationships is required.");
 		}
-		throw new BadRequestException("At least one is-A relationships is required.");
 	}
 
 	private String getCommitComment(String userId, ISnomedBrowserConcept snomedConceptInput, String action) {
