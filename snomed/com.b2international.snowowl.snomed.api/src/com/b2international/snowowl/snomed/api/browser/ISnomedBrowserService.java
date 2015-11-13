@@ -15,10 +15,12 @@
  */
 package com.b2international.snowowl.snomed.api.browser;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemNotFoundException;
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemVersionNotFoundException;
@@ -26,6 +28,8 @@ import com.b2international.snowowl.api.domain.IComponentRef;
 import com.b2international.snowowl.api.domain.IStorageRef;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.*;
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 
 /**
  * The interface for the IHTSDO SNOMED CT Browser service.
@@ -99,4 +103,16 @@ public interface ISnomedBrowserService {
 	ISnomedBrowserConcept create(String branchPath, ISnomedBrowserConcept concept, String userId, List<Locale> locales);
 
 	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, ArrayList<Locale> locales);
+
+
+	ISnomedBrowserMergeReviewDetails getConceptDetails(
+			String id, 
+			Set<String> concepts,
+			String sourcePath,
+			String targetPath,
+			String codeSystem,
+			ArrayList<Locale> locals);
+	
+	void storeConceptChanges (String path, String mergeReviewId, ISnomedBrowserConceptUpdate conceptUpdate) throws JsonGenerationException, JsonMappingException, IOException;
+		
 }

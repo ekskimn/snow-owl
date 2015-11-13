@@ -203,6 +203,7 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		final SingleDirectoryIndexManager indexManager = environment.service(SingleDirectoryIndexManager.class);
 		indexManager.registerIndex(branchStore);
 		indexManager.registerIndex(reviewStore);
+		indexManager.registerIndex(mergeReviewStore);
 		indexManager.registerIndex(conceptChangesStore);
 	}
 	

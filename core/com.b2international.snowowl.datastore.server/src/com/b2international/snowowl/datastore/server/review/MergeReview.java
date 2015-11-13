@@ -47,5 +47,13 @@ public interface MergeReview {
 	 * Returns the unique identifier of the target to source review
 	 */
 	String getTargetToSourceReviewId();
+	
+	String getLastUpdated();
+	
+	ReviewStatus getStatus();
+	
+	String getSourcePath();
+	
+	String getTargetPath();
 
 }

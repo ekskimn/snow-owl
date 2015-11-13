@@ -19,7 +19,10 @@ import static com.b2international.snowowl.core.ApplicationContext.getServiceForC
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.text.MessageFormat;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -38,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
-import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.branch.Branch;
 import com.b2international.snowowl.datastore.branch.Branch.BranchState;
@@ -49,10 +51,10 @@ import com.b2international.snowowl.datastore.server.events.BranchChangedEvent;
 import com.b2international.snowowl.datastore.server.internal.IRepository;
 import com.b2international.snowowl.datastore.server.review.ConceptChanges;
 import com.b2international.snowowl.datastore.server.review.MergeReview;
+import com.b2international.snowowl.datastore.server.review.MergeReviewIntersection;
 import com.b2international.snowowl.datastore.server.review.Review;
 import com.b2international.snowowl.datastore.server.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.review.ReviewStatus;
-import com.b2international.snowowl.datastore.store.IndexStore;
 import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.datastore.store.query.Query;
 import com.b2international.snowowl.datastore.store.query.QueryBuilder;
@@ -362,9 +364,11 @@ public class ReviewManagerImpl implements ReviewManager {
 		
 		Review sourceToTarget = createReview(source, target);
 		mergeReview.setSourceToTargetReviewId(sourceToTarget.id());
+		mergeReview.setSourcePath(source.path());
 		
 		Review targetToSource = createReview(target, source);
 		mergeReview.setTargetToSourceReviewId(targetToSource.id());
+		mergeReview.setTargetPath(target.path());
 		
 		mergeReview.setReviewManager(this);
 		synchronized (mergeReviewStore) {
@@ -388,4 +392,34 @@ public class ReviewManagerImpl implements ReviewManager {
 		mergeReview.setReviewManager(this);
 		return mergeReview;
 	}
+
+	@Override
+	public MergeReviewIntersection getMergeReviewIntersection(String id) {
+		//Get the concept changes for both source to target 
+		//and target to source reviews and return a browser-like reply
+		//of the intersection
+		MergeReviewIntersectionImpl results = new MergeReviewIntersectionImpl();
+		MergeReviewImpl mergeReview = (MergeReviewImpl)getMergeReview(id);
+		Review sourceReview = getReview(mergeReview.getSourceToTargetReviewId());
+		
+		//Are we all complete and still relevant?
+		if (!mergeReview.getStatus().equals(ReviewStatus.CURRENT)){
+			throw new IllegalStateException ("Merge Review in invalid state - " + mergeReview.getStatus());
+		}
+		
+		ConceptChanges sourceChanges = getConceptChanges(mergeReview.getSourceToTargetReviewId());
+		ConceptChanges targetChanges = getConceptChanges(mergeReview.getTargetToSourceReviewId());
+		Set<String>commonChanges = new HashSet<String>(sourceChanges.changedConcepts());
+		//If concepts are new then they won't intersect.  Also if they're deleted, they won't
+		//conflict, so we're only interested in the change set.
+		commonChanges.retainAll(targetChanges.changedConcepts());
+		
+		results.setId(id);
+		results.setIntersectingConcepts(commonChanges);
+		results.setSourceBranch(sourceReview.source().path());
+		results.setTargetBranch(sourceReview.target().path());
+		
+		return results;
+	}
+	
 }
