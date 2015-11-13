@@ -47,6 +47,7 @@ import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.AbstractIndexQueryAdapter;
 import com.b2international.snowowl.snomed.SnomedConstants;
@@ -208,8 +209,16 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		
 		final List<ISnomedDescription> iSnomedDescriptions = descriptionService.readConceptDescriptions(conceptRef);
 
-		final ISnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(conceptRef, locales);
-		final ISnomedDescription preferredSynonym = descriptionService.getPreferredTerm(conceptRef, locales);
+		String fsn = null;
+		try {
+			fsn = descriptionService.getFullySpecifiedName(conceptRef, locales).getTerm();
+		} catch (NotFoundException e) {
+		}
+		String pt = null;
+		try {
+			pt = descriptionService.getPreferredTerm(conceptRef, locales).getTerm();
+		} catch (NotFoundException e) {
+		}
 		
 		final List<SnomedRelationshipIndexEntry> relationships = getStatementBrowser().getOutboundStatements(branchPath, concept);
 
@@ -222,8 +231,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		result.setModuleId(concept.getModuleId());
 		populateLeafFields(branchPath, conceptId, result);
 		result.setDescriptions(convertDescriptions(newArrayList(iSnomedDescriptions)));
-		result.setFsn(fullySpecifiedName.getTerm());
-		result.setPreferredSynonym(preferredSynonym.getTerm());
+		result.setFsn(fsn);
+		result.setPreferredSynonym(pt);
 
 		result.setRelationships(convertRelationships(relationships, conceptRef, locales));
 		
