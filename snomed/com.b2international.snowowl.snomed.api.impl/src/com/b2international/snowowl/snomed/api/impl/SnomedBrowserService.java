@@ -48,6 +48,7 @@ import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.core.exceptions.InvalidStateException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.AbstractIndexQueryAdapter;
 import com.b2international.snowowl.snomed.SnomedConstants;
@@ -69,6 +70,7 @@ import com.b2international.snowowl.snomed.api.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdateResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
@@ -82,6 +84,8 @@ import com.b2international.snowowl.snomed.api.impl.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedDescriptionInput;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdateResult;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescriptionResult;
@@ -267,7 +271,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return getConceptDetails(componentRef, locales);
 	}
 
-	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, ArrayList<Locale> locales) {
+	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, List<Locale> locales) {
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
 		
 		assertHasAnIsARelationship(newVersionConcept);
@@ -765,7 +769,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	private SnomedBrowserConcept mergeConcepts(
 			ISnomedBrowserConcept sourceConcept,
 			ISnomedBrowserConcept targetConcept, 
-			ArrayList<Locale> locales, 
+			List<Locale> locales, 
 			IComponentRef conceptRef) {
 		SnomedBrowserConcept mergedConcept = new SnomedBrowserConcept();
 		//If one of the concepts is unpublished, then it's values are newer.  If both are unpublished, source would win
@@ -825,5 +829,51 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	private String getStorePath (String branchPath, String mergeReviewId) {
 		File storeRoot = SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory();
 		return storeRoot + "/" + MERGE_REVIEW_STORE + "/" + branchPath + "/" + mergeReviewId;
+	}
+
+	@Override
+	public List<ISnomedBrowserConceptUpdateResult> replayConceptUpdates(
+			String mergeReviewId, String branchPath, String userId, List<Locale> locales) {
+		//Does the store for these changes exist?
+		File store = new File(getStorePath(branchPath, mergeReviewId));
+		if (!store.exists()) {
+			throw new InvalidStateException("Could not file store holding concept changes", store.getPath());
+		}
+		List<ISnomedBrowserConceptUpdateResult> changeResults = new ArrayList<ISnomedBrowserConceptUpdateResult>();
+		File[] files = store.listFiles();
+		LOGGER.info("Replaying " + files.length + " concept changes held in " + store.getPath() + " for user " + userId + " against branch " + branchPath );
+		for (File thisFile : files) {
+			try {
+				changeResults.add(replayConceptUpdate(thisFile, branchPath, userId, locales));
+			} catch (Exception e) {
+				LOGGER.error("Unable to cope with " + thisFile.getPath(), e);
+			}
+		}
+		//And tidy up 
+		LOGGER.info("Cleaning up merge review store: " + store.getAbsolutePath());
+		store.delete();
+		return changeResults;
+	}
+
+	private ISnomedBrowserConceptUpdateResult replayConceptUpdate(
+			File conceptUpdateFile, String branchPath, String userId, List<Locale> locales) {
+		SnomedBrowserConceptUpdateResult result = new SnomedBrowserConceptUpdateResult();
+		ISnomedBrowserConceptUpdate conceptUpdate = null;
+		ObjectMapper mapper = new ObjectMapper();
+		String action = "parse";
+		try{
+			//The filename is expected to be the concept sctid, so we can use that to report back
+			result.setConceptId(conceptUpdateFile.getName());
+			conceptUpdate = mapper.readValue(conceptUpdateFile, SnomedBrowserConceptUpdate.class);
+			action = "update";
+			update(branchPath, conceptUpdate, userId, locales);
+			result.setSuccess(true);
+		} catch (Exception e) {
+			String errorMsg = "Failed to " + action + " concept from file " + conceptUpdateFile.getAbsolutePath() + " due to " + e.getMessage();
+			result.setErrorMsg(errorMsg);
+			result.setSuccess(false);
+			LOGGER.error(errorMsg, e);
+		}
+		return result;
 	}
 }

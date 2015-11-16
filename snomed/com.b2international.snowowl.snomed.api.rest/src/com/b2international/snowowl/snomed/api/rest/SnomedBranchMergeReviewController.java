@@ -19,7 +19,6 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
 import java.net.URI;
 import java.util.Collections;
-import java.util.concurrent.TimeoutException;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -31,7 +30,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -42,13 +40,10 @@ import com.b2international.commons.collections.Procedure;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
-import com.b2international.snowowl.datastore.server.events.ConceptChangesReply;
 import com.b2international.snowowl.datastore.server.events.MergeReviewDetailsReply;
 import com.b2international.snowowl.datastore.server.events.MergeReviewReply;
-import com.b2international.snowowl.datastore.server.events.ReadConceptChangesEvent;
 import com.b2international.snowowl.datastore.server.events.ReadMergeReviewDetailsEvent;
 import com.b2international.snowowl.datastore.server.events.ReadMergeReviewEvent;
-import com.b2international.snowowl.datastore.server.review.ConceptChanges;
 import com.b2international.snowowl.datastore.server.review.MergeReview;
 import com.b2international.snowowl.datastore.server.review.MergeReviewIntersection;
 import com.b2international.snowowl.datastore.server.review.ReviewStatus;
@@ -56,13 +51,11 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserMergeReviewDetails;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserMergeReviewDetails;
 import com.b2international.snowowl.snomed.api.rest.domain.CreateMergeReviewRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
-import com.wordnik.swagger.annotations.ApiParam;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
 
@@ -165,6 +158,8 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 			@RequestBody final SnomedBrowserConceptUpdate concept,
 			final HttpServletRequest request) throws Exception {
 		DeferredResult<MergeReview> deferredMergeReview = getDeferredMergeReview (mergeReviewId);
+		
+		//We need to pass that information back down the BrowserService as it can't be called directly.
 		MergeReview mergeReview = (MergeReview)getResult(deferredMergeReview);
 		if (!mergeReview.getStatus().equals(ReviewStatus.CURRENT)) {
 			throw new ConflictException ("Unable to save concept against merge review at status " + mergeReview.getStatus());
@@ -176,7 +171,6 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 		
 		browserService.storeConceptChanges(mergeReview.getTargetPath(), mergeReviewId, concept);
 	}
-	
 	
 	private DeferredResult<MergeReview> getDeferredMergeReview(String mergeReviewId) {
 		final DeferredResult<MergeReview> result = new DeferredResult<>();
@@ -191,25 +185,6 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 		return result;
 	}	
 	
-	private Object getResult(
-			DeferredResult<?> deferred) throws Exception {
-		
-		int timePassed = 0;
-		while (!deferred.hasResult()) {
-			Thread.sleep(50);
-			timePassed++;
-			if (timePassed > 500) {
-				throw new TimeoutException("Failed to recover response in reasonable time");
-			}
-		}
-		
-		//We need to pass that information back down the BrowserService as it can't be called directly.
-		Object deferredResult = deferred.getResult();
-		if (deferredResult instanceof Exception) {
-			throw ((Exception)deferredResult);
-		}
-		return deferredResult;
-	}
 
 	private URI getLocationHeader(ControllerLinkBuilder linkBuilder, final MergeReviewReply reply) {
 		return linkBuilder.slash(reply.getMergeReview().id()).toUri();

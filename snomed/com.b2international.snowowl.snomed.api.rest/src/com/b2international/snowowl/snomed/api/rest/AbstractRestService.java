@@ -15,8 +15,11 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import java.util.concurrent.TimeoutException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.context.request.async.DeferredResult;
 
 /**
  * @since 1.0
@@ -31,4 +34,26 @@ public abstract class AbstractRestService {
 	@Autowired
 	@Value("${repositoryId}")
 	protected String repositoryId;
+	
+	/**
+	 * Waits for a deferred result when it is needed for further processing.
+	 */
+	protected Object getResult(
+			DeferredResult<?> deferred) throws Exception {
+		
+		int timePassed = 0;
+		while (!deferred.hasResult()) {
+			Thread.sleep(50);
+			timePassed++;
+			if (timePassed > 500) {
+				throw new TimeoutException("Failed to recover response in reasonable time");
+			}
+		}
+		
+		Object deferredResult = deferred.getResult();
+		if (deferredResult instanceof Exception) {
+			throw ((Exception)deferredResult);
+		}
+		return deferredResult;
+	}
 }
