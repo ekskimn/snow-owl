@@ -1,4 +1,4 @@
-package com.b2international.snowowl.snomed.api.impl.validation;
+package com.b2international.snowowl.snomed.api.impl.validation.domain;
 
 import java.util.HashMap;
 import java.util.Map;

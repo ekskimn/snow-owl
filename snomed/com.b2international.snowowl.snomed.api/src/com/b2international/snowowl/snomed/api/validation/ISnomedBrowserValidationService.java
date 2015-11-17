@@ -10,4 +10,6 @@ public interface ISnomedBrowserValidationService {
 
 	List<ISnomedInvalidContent> validateConcept(String branchPath, ISnomedBrowserConcept browserConcept, ArrayList<Locale> locales);
 
+	int reloadRules();
+
 }

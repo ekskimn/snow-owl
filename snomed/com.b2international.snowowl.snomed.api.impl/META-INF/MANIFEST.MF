@@ -29,5 +29,4 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-Vendor: B2i Healthcare
 Bundle-ActivationPolicy: lazy
 Import-Package: org.ihtsdo.drools,
- org.ihtsdo.drools.domain,
  org.slf4j;version="1.7.2"

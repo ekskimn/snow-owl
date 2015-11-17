@@ -14,7 +14,7 @@ public class SnomedInvalidContent implements ISnomedInvalidContent {
 	
 	@Override
 	public String getConceptId() {
-		return invalidContent.getComponentId();
+		return invalidContent.getConceptId();
 	}
 
 	@Override

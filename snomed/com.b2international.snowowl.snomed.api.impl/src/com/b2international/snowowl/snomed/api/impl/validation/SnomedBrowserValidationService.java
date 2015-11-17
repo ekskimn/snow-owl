@@ -6,11 +6,17 @@ import java.util.Locale;
 
 import org.ihtsdo.drools.RuleExecutor;
 import org.ihtsdo.drools.response.InvalidContent;
-import org.ihtsdo.drools.service.DescriptionService;
 
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationConcept;
+import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationConceptService;
+import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationRelationshipService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
@@ -19,18 +25,17 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private RuleExecutor ruleExecutor;
 
 	public SnomedBrowserValidationService() {
-		ruleExecutor = new RuleExecutor("/opt/termserver/snomed-drools-rules", new DescriptionService() {
-			
-			@Override
-			public boolean isUniqueActiveTerm(String term) {
-				return false;// TODO: implement when we have a rule which needs it. (Waiting business)
-			}
-		});
+		ruleExecutor = newRuleExecutor();
 	}
 
 	@Override
 	public List<ISnomedInvalidContent> validateConcept(String branchPath, ISnomedBrowserConcept browserConcept, ArrayList<Locale> locales) {
-		List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept));
+		IBranchPath path = BranchPathUtils.createPath(branchPath);
+		SnomedTerminologyBrowser terminologyBrowser = ApplicationContext.getServiceForClass(SnomedTerminologyBrowser.class);
+		
+		ValidationConceptService validationConceptService = new ValidationConceptService(path, terminologyBrowser);
+		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(path);
+		List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), true, validationConceptService, validationRelationshipService);
 		List<ISnomedInvalidContent> invalidContent = Lists.transform(list, new Function<InvalidContent, ISnomedInvalidContent>() {
 			@Override
 			public ISnomedInvalidContent apply(InvalidContent input) {
@@ -38,6 +43,17 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 			}
 		});
 		return invalidContent;
+	}
+
+	@Override
+	public int reloadRules() {
+		ruleExecutor = newRuleExecutor();
+		return ruleExecutor.getRulesLoaded();
+	}
+
+	private RuleExecutor newRuleExecutor() {
+		// TODO: Move path to configuration
+		return new RuleExecutor("/opt/termserver/snomed-drools-rules");
 	}
 
 }
