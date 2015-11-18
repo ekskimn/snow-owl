@@ -49,4 +49,9 @@ public class ValidationRelationship implements Relationship {
 		return browserRelationship.getType().getConceptId();
 	}
 
+	@Override
+	public String getCharacteristicTypeId() {
+		return browserRelationship.getCharacteristicType().getConceptId();
+	}
+
 }

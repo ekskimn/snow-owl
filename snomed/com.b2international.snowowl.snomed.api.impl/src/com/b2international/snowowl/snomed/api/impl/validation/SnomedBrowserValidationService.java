@@ -35,7 +35,8 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		
 		ValidationConceptService validationConceptService = new ValidationConceptService(path, terminologyBrowser);
 		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(path);
-		List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), true, validationConceptService, validationRelationshipService);
+		List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), validationConceptService, validationRelationshipService,
+				false, false);
 		List<ISnomedInvalidContent> invalidContent = Lists.transform(list, new Function<InvalidContent, ISnomedInvalidContent>() {
 			@Override
 			public ISnomedInvalidContent apply(InvalidContent input) {
