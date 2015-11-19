@@ -4,15 +4,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import javax.annotation.Resource;
+
 import org.ihtsdo.drools.RuleExecutor;
+import org.ihtsdo.drools.exception.BadRequestRuleExecutorException;
 import org.ihtsdo.drools.response.InvalidContent;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.SnomedDescriptionServiceImpl;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationConcept;
 import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationConceptService;
+import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationDescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationRelationshipService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
@@ -21,6 +27,9 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 public class SnomedBrowserValidationService implements ISnomedBrowserValidationService {
+
+	@Resource
+	private SnomedDescriptionServiceImpl descriptionService;
 
 	private RuleExecutor ruleExecutor;
 
@@ -34,16 +43,21 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		SnomedTerminologyBrowser terminologyBrowser = ApplicationContext.getServiceForClass(SnomedTerminologyBrowser.class);
 		
 		ValidationConceptService validationConceptService = new ValidationConceptService(path, terminologyBrowser);
+		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(path, descriptionService);
 		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(path);
-		List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), validationConceptService, validationRelationshipService,
-				false, false);
-		List<ISnomedInvalidContent> invalidContent = Lists.transform(list, new Function<InvalidContent, ISnomedInvalidContent>() {
-			@Override
-			public ISnomedInvalidContent apply(InvalidContent input) {
-				return new SnomedInvalidContent(input);
-			}
-		});
-		return invalidContent;
+		try {
+			List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), validationConceptService, validationDescriptionService, validationRelationshipService,
+					false, false);
+			List<ISnomedInvalidContent> invalidContent = Lists.transform(list, new Function<InvalidContent, ISnomedInvalidContent>() {
+				@Override
+				public ISnomedInvalidContent apply(InvalidContent input) {
+					return new SnomedInvalidContent(input);
+				}
+			});
+			return invalidContent;
+		} catch (BadRequestRuleExecutorException e) {
+			throw new BadRequestException(e.getMessage());
+		}
 	}
 
 	@Override
