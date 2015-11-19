@@ -19,13 +19,14 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 
 	public ValidationConcept(ISnomedBrowserConcept browserConcept) {
 		this.browserConcept = browserConcept;
+		String conceptId = browserConcept.getConceptId();
 		descriptions = new ArrayList<>();
 		for (ISnomedBrowserDescription browserDescription : browserConcept.getDescriptions()) {
-			descriptions.add(new ValidationDescription(browserDescription));
+			descriptions.add(new ValidationDescription(browserDescription, conceptId));
 		}
 		relationships = new ArrayList<>();
 		for (ISnomedBrowserRelationship browserRelationship : browserConcept.getRelationships()) {
-			relationships.add(new ValidationRelationship(browserRelationship, browserConcept.getId()));
+			relationships.add(new ValidationRelationship(browserRelationship, conceptId));
 		}
 	}
 	

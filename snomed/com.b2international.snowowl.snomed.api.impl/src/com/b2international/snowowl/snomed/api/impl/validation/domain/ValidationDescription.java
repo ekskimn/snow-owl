@@ -10,9 +10,11 @@ import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescri
 public class ValidationDescription implements org.ihtsdo.drools.domain.Description {
 
 	private ISnomedBrowserDescription browserDesciption;
+	private String conceptId;
 
-	public ValidationDescription(ISnomedBrowserDescription browserDesciption) {
+	public ValidationDescription(ISnomedBrowserDescription browserDesciption, String conceptId) {
 		this.browserDesciption = browserDesciption;
+		this.conceptId = conceptId;
 	}
 
 	@Override
@@ -32,7 +34,7 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 
 	@Override
 	public String getConceptId() {
-		return browserDesciption.getConceptId();
+		return conceptId;
 	}
 
 	@Override
