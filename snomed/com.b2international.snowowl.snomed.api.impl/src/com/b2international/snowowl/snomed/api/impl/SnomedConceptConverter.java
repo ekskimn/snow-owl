@@ -45,8 +45,10 @@ public class SnomedConceptConverter extends AbstractSnomedComponentConverter<Sno
 		result.setModuleId(input.getModuleId());
 		result.setReleased(input.isReleased());
 		result.setSubclassDefinitionStatus(toSubclassDefinitionStatus(input.isExhaustive()));
-		result.setInactivationIndicator(toInactivationIndicator(input.getId()));
-		result.setAssociationTargets(toAssociationTargets(SnomedTerminologyComponentConstants.CONCEPT, input.getId()));
+		if (!input.isActive()) {
+			result.setInactivationIndicator(toInactivationIndicator(input.getId()));
+			result.setAssociationTargets(toAssociationTargets(SnomedTerminologyComponentConstants.CONCEPT, input.getId()));
+		}
 		return result;
 	}
 
