@@ -47,12 +47,7 @@ public class MergeRequest {
 	@JsonProperty
 	private String reviewId;
 	
-	@ApiModelProperty(required = false)
-	@JsonProperty
-	private String mergeReviewId;
-	
-	public MergeEvent toEvent(final String repositoryId) {
-		return new MergeEvent(repositoryId, source, target, commitComment, reviewId, mergeReviewId);
+	public Event toEvent(final String repositoryId) {
+		return new MergeEvent(repositoryId, source, target, commitComment, reviewId);
 	}
-
 }

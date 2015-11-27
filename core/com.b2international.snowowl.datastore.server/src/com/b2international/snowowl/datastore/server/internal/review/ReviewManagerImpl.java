@@ -19,10 +19,7 @@ import static com.b2international.snowowl.core.ApplicationContext.getServiceForC
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.text.MessageFormat;
-import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -50,8 +47,6 @@ import com.b2international.snowowl.datastore.index.diff.VersionCompareConfigurat
 import com.b2international.snowowl.datastore.server.events.BranchChangedEvent;
 import com.b2international.snowowl.datastore.server.internal.IRepository;
 import com.b2international.snowowl.datastore.server.review.ConceptChanges;
-import com.b2international.snowowl.datastore.server.review.MergeReview;
-import com.b2international.snowowl.datastore.server.review.MergeReviewIntersection;
 import com.b2international.snowowl.datastore.server.review.Review;
 import com.b2international.snowowl.datastore.server.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.review.ReviewStatus;
@@ -166,7 +161,6 @@ public class ReviewManagerImpl implements ReviewManager {
 
 	private final String repositoryId;
 	private final Store<ReviewImpl> reviewStore;
-	private final Store<MergeReviewImpl> mergeReviewStore;
 	private final Store<ConceptChangesImpl> conceptChangesStore;
 	private final IJobChangeListener jobChangeListener = new ReviewJobChangeListener();
 	private final StaleHandler staleHandler = new StaleHandler();
@@ -181,12 +175,12 @@ public class ReviewManagerImpl implements ReviewManager {
 		private static final Timer CLEANUP_TIMER = new Timer("Review cleanup", true);
 	}
 
-	public ReviewManagerImpl(final IRepository repository, final Store<ReviewImpl> reviewStore, final Store<MergeReviewImpl> mergeReviewStore, final Store<ConceptChangesImpl> conceptChangesStore) {
-		this(repository, reviewStore, mergeReviewStore, conceptChangesStore, 15, 5);
+	public ReviewManagerImpl(final IRepository repository, final Store<ReviewImpl> reviewStore, final Store<ConceptChangesImpl> conceptChangesStore) {
+		this(repository, reviewStore, conceptChangesStore, 15, 5);
 	}
 
 	public ReviewManagerImpl(final IRepository repository, 
-			final Store<ReviewImpl> reviewStore, Store<MergeReviewImpl> mergeReviewStore, final Store<ConceptChangesImpl> conceptChangesStore, 
+			final Store<ReviewImpl> reviewStore, final Store<ConceptChangesImpl> conceptChangesStore, 
 			final long keepCurrentMins, final int keepOtherMins) {
 
 		this.repositoryId = repository.getCdoRepositoryId();
@@ -199,7 +193,6 @@ public class ReviewManagerImpl implements ReviewManager {
 		reviewStore.configureSearchable("targetPath");
 		reviewStore.configureSearchable("lastUpdated");
 
-		this.mergeReviewStore = mergeReviewStore;
 		this.conceptChangesStore = conceptChangesStore;
 
 		// Check every minute if there's something to remove
@@ -357,69 +350,4 @@ public class ReviewManagerImpl implements ReviewManager {
 
 		return review;
 	}
-
-	@Override
-	public MergeReview createMergeReview(Branch source, Branch target) {
-		MergeReviewImpl mergeReview = new MergeReviewImpl(UUID.randomUUID().toString());
-		
-		Review sourceToTarget = createReview(source, target);
-		mergeReview.setSourceToTargetReviewId(sourceToTarget.id());
-		mergeReview.setSourcePath(source.path());
-		
-		Review targetToSource = createReview(target, source);
-		mergeReview.setTargetToSourceReviewId(targetToSource.id());
-		mergeReview.setTargetPath(target.path());
-		
-		mergeReview.setReviewManager(this);
-		synchronized (mergeReviewStore) {
-			mergeReviewStore.put(mergeReview.id(), mergeReview);
-		}
-		
-		return mergeReview;
-	}
-
-	@Override
-	public MergeReview getMergeReview(String id) {
-		final MergeReviewImpl mergeReview;
-		synchronized (mergeReviewStore) {
-			mergeReview = mergeReviewStore.get(id);
-		}
-
-		if (mergeReview == null) {
-			throw new NotFoundException(MergeReview.class.getSimpleName(), id);
-		} 
-
-		mergeReview.setReviewManager(this);
-		return mergeReview;
-	}
-
-	@Override
-	public MergeReviewIntersection getMergeReviewIntersection(String id) {
-		//Get the concept changes for both source to target 
-		//and target to source reviews and return a browser-like reply
-		//of the intersection
-		MergeReviewIntersectionImpl results = new MergeReviewIntersectionImpl();
-		MergeReviewImpl mergeReview = (MergeReviewImpl)getMergeReview(id);
-		Review sourceReview = getReview(mergeReview.getSourceToTargetReviewId());
-		
-		//Are we all complete and still relevant?
-		if (!mergeReview.getStatus().equals(ReviewStatus.CURRENT)){
-			throw new IllegalStateException ("Merge Review in invalid state - " + mergeReview.getStatus());
-		}
-		
-		ConceptChanges sourceChanges = getConceptChanges(mergeReview.getSourceToTargetReviewId());
-		ConceptChanges targetChanges = getConceptChanges(mergeReview.getTargetToSourceReviewId());
-		Set<String>commonChanges = new HashSet<String>(sourceChanges.changedConcepts());
-		//If concepts are new then they won't intersect.  Also if they're deleted, they won't
-		//conflict, so we're only interested in the change set.
-		commonChanges.retainAll(targetChanges.changedConcepts());
-		
-		results.setId(id);
-		results.setIntersectingConcepts(commonChanges);
-		results.setSourceBranch(sourceReview.source().path());
-		results.setTargetBranch(sourceReview.target().path());
-		
-		return results;
-	}
-	
 }

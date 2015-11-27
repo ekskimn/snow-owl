@@ -18,11 +18,8 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -42,13 +39,11 @@ import com.b2international.snowowl.api.impl.domain.ComponentRef;
 import com.b2international.snowowl.api.impl.domain.InternalComponentRef;
 import com.b2international.snowowl.api.impl.domain.InternalStorageRef;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
-import com.b2international.snowowl.core.exceptions.InvalidStateException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.AbstractIndexQueryAdapter;
 import com.b2international.snowowl.snomed.SnomedConstants;
@@ -70,27 +65,21 @@ import com.b2international.snowowl.snomed.api.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdateResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserMergeReviewDetails;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.domain.browser.TaxonomyNode;
 import com.b2international.snowowl.snomed.api.impl.domain.InputFactory;
-import com.b2international.snowowl.snomed.api.impl.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedDescriptionInput;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdateResult;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescriptionResultDetails;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserMergeReviewDetails;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
@@ -108,9 +97,6 @@ import com.b2international.snowowl.snomed.datastore.index.SnomedDescriptionReduc
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
 import com.b2international.snowowl.snomed.datastore.index.SnomedRelationshipIndexQueryAdapter;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
@@ -180,8 +166,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);
 
-	private static String MERGE_REVIEW_STORE = "mergeReviewStore";
-	
 	private final InputFactory inputFactory;
 
 	@Resource
@@ -271,7 +255,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return getConceptDetails(componentRef, locales);
 	}
 
-	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, List<Locale> locales) {
+	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, ArrayList<Locale> locales) {
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
 		
 		assertHasAnIsARelationship(newVersionConcept);
@@ -400,28 +384,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			convertedDescription.setModuleId(description.getModuleId());
 			convertedDescription.setTerm(description.getTerm());
 			convertedDescription.setType(descriptionType);
-			convertedDescription.setAcceptabilityMap(description.getAcceptabilityMap());
-			convertedDescriptionBuilder.add(convertedDescription);
-		}
-
-		return convertedDescriptionBuilder.build();
-	}
-	
-	private List<ISnomedDescription> convertDescriptionsBack(final List<ISnomedBrowserDescription> descriptions) {
-		final ImmutableList.Builder<ISnomedDescription> convertedDescriptionBuilder = ImmutableList.builder();
-
-		for (final ISnomedBrowserDescription description : descriptions) {
-			final SnomedDescription convertedDescription = new SnomedDescription();
-
-			convertedDescription.setActive(description.isActive());
-			convertedDescription.setCaseSignificance(description.getCaseSignificance());
-			convertedDescription.setConceptId(description.getConceptId());
-			convertedDescription.setId(description.getId());
-			convertedDescription.setEffectiveTime(description.getEffectiveTime());
-			convertedDescription.setLanguageCode(description.getLang());
-			convertedDescription.setModuleId(description.getModuleId());
-			convertedDescription.setTerm(description.getTerm());
-			convertedDescription.setTypeId(description.getType().getConceptId());
 			convertedDescription.setAcceptabilityMap(description.getAcceptabilityMap());
 			convertedDescriptionBuilder.add(convertedDescription);
 		}
@@ -740,140 +702,5 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 	private static SnomedIndexService getIndexService() {
 		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
-	}
-
-
-	@Override
-	public ISnomedBrowserMergeReviewDetails getConceptDetails( String id,
-			Set<String> concepts, String sourcePath, String targetPath,
-			String codeSystem,
-			ArrayList<Locale> locales) {
-		SnomedBrowserMergeReviewDetails details = new SnomedBrowserMergeReviewDetails();
-		details.setId(id);
-		for (String thisConcept : concepts) {
-			IComponentRef conceptRef = new ComponentRef(codeSystem, sourcePath, thisConcept);
-			ISnomedBrowserConcept sourceConcept = getConceptDetails(conceptRef,locales);
-
-			conceptRef = new ComponentRef(codeSystem, targetPath, thisConcept);
-			ISnomedBrowserConcept targetConcept = getConceptDetails(conceptRef,locales);
-
-			details.getSourceChanges().add(sourceConcept);
-			details.getTargetChanges().add(targetConcept);
-			SnomedBrowserConcept mergedConcept = mergeConcepts(sourceConcept, targetConcept, locales, conceptRef);
-			details.getMergedChanges().add(mergedConcept);
-		}
-	
-		return details;
-	}
-
-	private SnomedBrowserConcept mergeConcepts(
-			ISnomedBrowserConcept sourceConcept,
-			ISnomedBrowserConcept targetConcept, 
-			List<Locale> locales, 
-			IComponentRef conceptRef) {
-		SnomedBrowserConcept mergedConcept = new SnomedBrowserConcept();
-		//If one of the concepts is unpublished, then it's values are newer.  If both are unpublished, source would win
-		ISnomedBrowserConcept winner = sourceConcept;
-		if (targetConcept.getEffectiveTime()==null && sourceConcept.getEffectiveTime() != null) {
-			winner = targetConcept;
-		}
-		//Set directly owned values
-		mergedConcept.setConceptId(winner.getConceptId());
-		mergedConcept.setActive(winner.isActive());
-		mergedConcept.setDefinitionStatus(winner.getDefinitionStatus());
-		mergedConcept.setEffectiveTime(winner.getEffectiveTime());
-		mergedConcept.setModuleId(winner.getModuleId());
-		mergedConcept.setIsLeafInferred(winner.getIsLeafInferred());
-		mergedConcept.setIsLeafStated(winner.getIsLeafStated());
-		
-		//Merge Descriptions - take all the descriptions from source, and add in from target
-		//if they're unpublished, which will cause an overwrite in the Set if the Description Id matches
-		//TODO UNLESS the source description is also unpublished (Change to use map?)
-		Set<ISnomedBrowserDescription> mergedDescriptions = new HashSet<ISnomedBrowserDescription>(sourceConcept.getDescriptions());
-		for (ISnomedBrowserDescription thisDescription : targetConcept.getDescriptions()) {
-			if (thisDescription.getEffectiveTime() == null) {
-				mergedDescriptions.add(thisDescription);
-			}
-		}
-		mergedConcept.setDescriptions(new ArrayList<ISnomedBrowserDescription>(mergedDescriptions));
-		//The concept reference is just used to find the appropriate language reference set
-		List<ISnomedDescription> descriptions = convertDescriptionsBack(mergedConcept.getDescriptions());
-		ISnomedDescription fsn = descriptionService.getFullySpecifiedName(descriptions, conceptRef, locales);
-		ISnomedDescription pt = descriptionService.getPreferredTerm(descriptions, conceptRef, locales);
-		
-		mergedConcept.setFsn(fsn.getTerm());
-		mergedConcept.setPreferredSynonym(pt.getTerm());
-		
-		//Merge Relationships  - same process using Set to remove duplicated
-		Set<ISnomedBrowserRelationship> mergedRelationships = new HashSet<ISnomedBrowserRelationship>(sourceConcept.getRelationships());
-		for (ISnomedBrowserRelationship thisRelationship : targetConcept.getRelationships()) {
-			if (thisRelationship.getEffectiveTime() == null) {
-				mergedRelationships.add(thisRelationship);
-			}
-		}
-		mergedConcept.setRelationships(new ArrayList<ISnomedBrowserRelationship>(mergedRelationships));
-		
-		return mergedConcept;
-	}
-	
-	public void storeConceptChanges (String branchPath, String mergeReviewId, ISnomedBrowserConceptUpdate conceptUpdate) throws JsonGenerationException, JsonMappingException, IOException {
-		
-		//TODO Add code to Index Manager to clean these up once associated merge review is deleted
-		String storePath = getStorePath(branchPath, mergeReviewId);
-		File conceptFile = new File (storePath, conceptUpdate.getConceptId() + ".json");
-		conceptFile.getParentFile().mkdirs();
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.writeValue(conceptFile, conceptUpdate);
-	}
-	
-	private String getStorePath (String branchPath, String mergeReviewId) {
-		File storeRoot = SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory();
-		return storeRoot + "/" + MERGE_REVIEW_STORE + "/" + branchPath + "/" + mergeReviewId;
-	}
-
-	@Override
-	public List<ISnomedBrowserConceptUpdateResult> replayConceptUpdates(
-			String mergeReviewId, String branchPath, String userId, List<Locale> locales) {
-		//Does the store for these changes exist?
-		File store = new File(getStorePath(branchPath, mergeReviewId));
-		if (!store.exists()) {
-			throw new InvalidStateException("Could not file store holding concept changes", store.getPath());
-		}
-		List<ISnomedBrowserConceptUpdateResult> changeResults = new ArrayList<ISnomedBrowserConceptUpdateResult>();
-		File[] files = store.listFiles();
-		LOGGER.info("Replaying " + files.length + " concept changes held in " + store.getPath() + " for user " + userId + " against branch " + branchPath );
-		for (File thisFile : files) {
-			try {
-				changeResults.add(replayConceptUpdate(thisFile, branchPath, userId, locales));
-			} catch (Exception e) {
-				LOGGER.error("Unable to cope with " + thisFile.getPath(), e);
-			}
-		}
-		//And tidy up 
-		LOGGER.info("Cleaning up merge review store: " + store.getAbsolutePath());
-		store.delete();
-		return changeResults;
-	}
-
-	private ISnomedBrowserConceptUpdateResult replayConceptUpdate(
-			File conceptUpdateFile, String branchPath, String userId, List<Locale> locales) {
-		SnomedBrowserConceptUpdateResult result = new SnomedBrowserConceptUpdateResult();
-		ISnomedBrowserConceptUpdate conceptUpdate = null;
-		ObjectMapper mapper = new ObjectMapper();
-		String action = "parse";
-		try{
-			//The filename is expected to be the concept sctid, so we can use that to report back
-			result.setConceptId(conceptUpdateFile.getName());
-			conceptUpdate = mapper.readValue(conceptUpdateFile, SnomedBrowserConceptUpdate.class);
-			action = "update";
-			update(branchPath, conceptUpdate, userId, locales);
-			result.setSuccess(true);
-		} catch (Exception e) {
-			String errorMsg = "Failed to " + action + " concept from file " + conceptUpdateFile.getAbsolutePath() + " due to " + e.getMessage();
-			result.setErrorMsg(errorMsg);
-			result.setSuccess(false);
-			LOGGER.error(errorMsg, e);
-		}
-		return result;
 	}
 }
