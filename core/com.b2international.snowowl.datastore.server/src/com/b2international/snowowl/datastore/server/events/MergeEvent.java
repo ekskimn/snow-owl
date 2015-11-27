@@ -26,15 +26,13 @@ public class MergeEvent extends BaseBranchEvent {
 	private final String target;
 	private final String commitMessage;
 	private final String reviewId;
-	private final String mergeReviewId;
 
-	public MergeEvent(final String repositoryId, final String source, final String target, final String commitMessage, String reviewId, String mergeReviewId) {
+	public MergeEvent(final String repositoryId, final String source, final String target, final String commitMessage, String reviewId) {
 		super(repositoryId);
 		this.source = source;
 		this.target = target;
 		this.commitMessage = Strings.isNullOrEmpty(commitMessage) ? defaultMessage() : commitMessage;
 		this.reviewId = reviewId;
-		this.mergeReviewId = mergeReviewId;
 	}
 
 	private String defaultMessage() {
@@ -55,10 +53,6 @@ public class MergeEvent extends BaseBranchEvent {
 	
 	public String getReviewId() {
 		return reviewId;
-	}
-	
-	public String getMergeReviewId() {
-		return mergeReviewId;
 	}
 	
 	@Override

@@ -51,10 +51,5 @@ public abstract class DateFormats {
 	 * The most detailed time format which includes time up to millisecond resolution. Value: {@value}
 	 */
 	public static final String FULL = "yyyyMMddHHmmssSSS";
-	
-	/**
-	 * ISO 8601 format -  eg '2015-11-09T14:22:14Z' Value: {@value}
-	 */
-	public static final String ISO_8601 = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
 }

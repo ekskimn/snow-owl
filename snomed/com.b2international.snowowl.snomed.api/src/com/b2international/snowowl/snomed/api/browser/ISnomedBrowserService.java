@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemNotFoundException;
 import com.b2international.snowowl.api.codesystem.exception.CodeSystemVersionNotFoundException;
@@ -99,18 +98,5 @@ public interface ISnomedBrowserService {
 
 	ISnomedBrowserConcept create(String branchPath, ISnomedBrowserConcept concept, String userId, List<Locale> locales);
 
-	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, List<Locale> locales);
-
-	ISnomedBrowserMergeReviewDetails getConceptDetails(
-			String id, 
-			Set<String> concepts,
-			String sourcePath,
-			String targetPath,
-			String codeSystem,
-			ArrayList<Locale> locals);
-	
-	void storeConceptChanges (String path, String mergeReviewId, ISnomedBrowserConceptUpdate conceptUpdate) throws Exception;
-
-	List<ISnomedBrowserConceptUpdateResult> replayConceptUpdates(String id, String targetPath, String userId, List<Locale> locales);
-
+	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, ArrayList<Locale> locales);
 }
