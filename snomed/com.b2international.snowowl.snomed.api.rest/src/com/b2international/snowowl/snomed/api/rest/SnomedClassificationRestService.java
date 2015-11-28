@@ -19,11 +19,9 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
 import java.net.URI;
 import java.security.Principal;
-import java.util.Collections;
 import java.util.List;
 
-import com.b2international.snowowl.api.domain.IComponentRef;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -39,8 +37,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import com.b2international.snowowl.core.domain.CollectionResource;
+import com.b2international.snowowl.core.domain.IComponentRef;
+import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
@@ -48,8 +50,6 @@ import com.b2international.snowowl.snomed.api.domain.classification.IRelationshi
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRestInput;
 import com.b2international.snowowl.snomed.api.rest.domain.ClassificationRestRun;
-import com.b2international.snowowl.snomed.api.rest.domain.CollectionResource;
-import com.b2international.snowowl.snomed.api.rest.domain.PageableCollectionResource;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.wordnik.swagger.annotations.Api;
@@ -57,8 +57,6 @@ import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * @since 1.0
@@ -195,15 +193,16 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
 
-			final Principal principal,
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage,
 			
-			final HttpServletRequest request) {
+			final Principal principal) {
 
 		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, principal.getName(), offset, limit);
 		List<IRelationshipChange> changes = relationshipChangeList.getChanges();
 		if (!changes.isEmpty()) {
-			IComponentRef componentRef = createComponentRef(branchPath, changes.get(0).getSourceId());
-			changes = resourceExpander.expandRelationshipChanges(componentRef, changes, Collections.list(request.getLocales()), expand);
+			changes = resourceExpander.expandRelationshipChanges(branchPath, changes, getExtendedLocales(acceptLanguage), expand);
 		}
 		return PageableCollectionResource.of(changes, offset, limit, relationshipChangeList.getTotal());
 	}
@@ -232,13 +231,44 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String languageSetting,
+			final String acceptLanguage,
 
 			final Principal principal,
 
 			final HttpServletRequest request) {
 
-		return delegate.getConceptPreview(branchPath, classificationId, conceptId, Collections.list(request.getLocales()), principal.getName());
+		return delegate.getConceptPreview(branchPath, classificationId, conceptId, getExtendedLocales(acceptLanguage), principal.getName());
+	}
+
+	@ApiOperation(
+			value="Retrieve a preview of a concept with classification changes applied",
+			notes="Retrieves a preview of single concept and related information on a branch with classification changes applied.")
+	@ApiResponses({
+			@ApiResponse(code = 200, message = "OK", response = Void.class),
+			@ApiResponse(code = 404, message = "Code system version or concept not found")
+	})
+	@RequestMapping(value="/{path:**}/classifications/{classificationId}/concept-preview/{conceptId}", method=RequestMethod.GET)
+	public @ResponseBody
+	ISnomedBrowserConcept getConceptDetails(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="The classification identifier")
+			@PathVariable(value="classificationId")
+			final String classificationId,
+
+			@ApiParam(value="The concept identifier")
+			@PathVariable(value="conceptId")
+			final String conceptId,
+
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
+			final String acceptLanguage,
+
+			final Principal principal) {
+
+		return delegate.getConceptPreview(branchPath, classificationId, conceptId, getExtendedLocales(acceptLanguage), principal.getName());
 	}
 
 	@ApiOperation(

@@ -15,14 +15,14 @@
  */
 package com.b2international.snowowl.snomed.api.impl.domain.browser;
 
-import com.b2international.snowowl.snomed.api.domain.DefinitionStatus;
+import java.util.List;
+
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableList;
-
-import java.util.List;
 
 public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISnomedBrowserConcept {
 
@@ -118,28 +118,6 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		this.relationships = relationships;
 	}
 
-//	@Override
-//	public SnomedConceptInput toComponentInput(final String branchPath) {
-//		final SnomedConceptInput result = super.toComponentInput(branchPath);
-//
-//		result.setIsAIdGenerationStrategy(createIdGenerationStrategy(getIsAId()));
-//
-//		final List<SnomedDescriptionInput> descriptionInputs = newArrayList();
-//		for (SnomedDescriptionRestInput restDescription : getDescriptions()) {
-//			// Propagate namespace from concept if present, and the description does not already have one
-//			if (null == restDescription.getNamespaceId()) {
-//				restDescription.setNamespaceId(getNamespaceId());
-//			}
-//			
-//			descriptionInputs.add(restDescription.toComponentInput(branchPath));
-//		}
-//
-//		result.setDescriptions(descriptionInputs);
-//		result.setParentId(getParentId());
-//
-//		return result;
-//	}
-	
 	@Override
 	public String toString() {
 		final StringBuilder builder = new StringBuilder();
