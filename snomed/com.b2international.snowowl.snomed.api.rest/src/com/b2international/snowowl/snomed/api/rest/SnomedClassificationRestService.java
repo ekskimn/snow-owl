@@ -241,37 +241,6 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 	}
 
 	@ApiOperation(
-			value="Retrieve a preview of a concept with classification changes applied",
-			notes="Retrieves a preview of single concept and related information on a branch with classification changes applied.")
-	@ApiResponses({
-			@ApiResponse(code = 200, message = "OK", response = Void.class),
-			@ApiResponse(code = 404, message = "Code system version or concept not found")
-	})
-	@RequestMapping(value="/{path:**}/classifications/{classificationId}/concept-preview/{conceptId}", method=RequestMethod.GET)
-	public @ResponseBody
-	ISnomedBrowserConcept getConceptDetails(
-			@ApiParam(value="The branch path")
-			@PathVariable(value="path")
-			final String branchPath,
-
-			@ApiParam(value="The classification identifier")
-			@PathVariable(value="classificationId")
-			final String classificationId,
-
-			@ApiParam(value="The concept identifier")
-			@PathVariable(value="conceptId")
-			final String conceptId,
-
-			@ApiParam(value="Language codes and reference sets, in order of preference")
-			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String acceptLanguage,
-
-			final Principal principal) {
-
-		return delegate.getConceptPreview(branchPath, classificationId, conceptId, getExtendedLocales(acceptLanguage), principal.getName());
-	}
-
-	@ApiOperation(
 			value="Update a classification run on a branch",
 			notes="Update the specified classification run by changing its state property. Saving the results is an async operation "
 					+ "due to the possible high number of changes. It is advised to fetch the state of the classification run until "
