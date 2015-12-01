@@ -149,6 +149,7 @@
 	</appender>
 	
 	<appender name="ERROR_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<param name="Threshold" value="ERROR"/>
 		<file>serviceability/logs/errors.log</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
 			<FileNamePattern>serviceability/logs/errors_%i.log</FileNamePattern>
@@ -201,13 +202,10 @@
 		<!-- appender-ref ref="SIFTED_LOG_FILE" /-->
 		<appender-ref ref="LOG_FILE" />
 	</logger>
-	
-	<root level="ERROR">
-		<appender-ref ref="ERROR_LOG_FILE" />
-	</root>
 
 	<root level="INFO">
 		<!-- appender-ref ref="SIFTED_LOG_FILE" / -->
+		<appender-ref ref="ERROR_LOG_FILE" />
 		<appender-ref ref="LOG_FILE" />
 		<appender-ref ref="SNOWOWL_LOG_FILE" />
 		<appender-ref ref="SNOWOWL_ACCESS_LOG_FILE" />
