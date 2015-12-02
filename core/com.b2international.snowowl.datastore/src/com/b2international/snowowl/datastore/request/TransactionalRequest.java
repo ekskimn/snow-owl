@@ -58,6 +58,8 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 			return new CommitInfo(commitTimestamp, body);
 		} catch (ApiException e) {
 			throw e;
+		} catch (IllegalArgumentException e) {
+			throw e;
 		} catch (Exception e) {
 			throw new SnowowlRuntimeException(e);
 		}
