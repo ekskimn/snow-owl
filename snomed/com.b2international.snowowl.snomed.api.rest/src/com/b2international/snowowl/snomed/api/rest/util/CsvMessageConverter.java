@@ -38,13 +38,11 @@ public class CsvMessageConverter extends AbstractHttpMessageConverter<Collection
 				final CsvMapper mapper = new CsvMapper();
 				CsvSchema schema = mapper.schemaFor(items.iterator().next().getClass()).withHeader();
 				ObjectWriter writer = mapper.writer(schema);
-				for (Object item : items) {
-					writer.writeValue(out,  item);
-				}
+				writer.writeValue(out, items);
 			}
 		}
 	}
-	
+
 	@Override
 	protected CollectionResource readInternal(
 			Class<? extends CollectionResource> arg0, HttpInputMessage arg1)
