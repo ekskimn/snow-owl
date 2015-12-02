@@ -49,7 +49,6 @@ import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedConceptCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -67,11 +66,16 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 
 	@ApiOperation(
 			value="Retrieve Concepts from a branch", 
-			notes="Returns a list with all/filtered Concepts from a branch.")
+			notes="Returns a list with all/filtered Concepts from a branch."
+					+ "<p>The following properties can be expanded:"
+					+ "<p>"
+					+ "&bull; pt() &ndash; the description representing the concept's preferred term in the given locale<br>"
+					+ "&bull; fsn() &ndash; the description representing the concept's fully specified name in the given locale<br>"
+					+ "&bull; descriptions() &ndash; the list of descriptions for the concept<br>")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = PageableCollectionResource.class),
 		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
-		@ApiResponse(code = 404, message = "Branch not found")
+		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/concepts", method=RequestMethod.GET)
 	public @ResponseBody DeferredResult<SnomedConcepts> search(
@@ -105,7 +109,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Expansion parameters")
 			@RequestParam(value="expand", required=false)
-			final List<String> expand,
+			final String expand,
 
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
@@ -123,7 +127,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		
 		return DeferredResults.wrap(
 				SnomedRequests
-					.prepareConceptSearch()
+					.prepareSearchConcept()
 					.setLimit(limit)
 					.setOffset(offset)
 					.filterByTerm(termFilter)
@@ -138,10 +142,17 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 
 	@ApiOperation(
 			value="Retrieve Concept properties",
-			notes="Returns all properties of the specified Concept, including a summary of inactivation indicator and association members.")
+			notes="Returns all properties of the specified Concept, including a summary of inactivation indicator and association members."
+					+ "<p>The following properties can be expanded:"
+					+ "<p>"
+					+ "&bull; pt() &ndash; the description representing the concept's preferred term in the given locale<br>"
+					+ "&bull; fsn() &ndash; the description representing the concept's fully specified name in the given locale<br>"
+					+ "&bull; descriptions() &ndash; the list of descriptions for the concept<br>"
+					+ "&bull; ancestors(offset:0,limit:50,direct:true,expand(pt(),...)) &ndash; the list of concept ancestors (parameter 'direct' is required)<br>"
+					+ "&bull; descendants(offset:0,limit:50,direct:true,expand(pt(),...)) &ndash; the list of concept descendants (parameter 'direct' is required)<br>")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = Void.class),
-		@ApiResponse(code = 404, message = "Branch or Concept not found")
+		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/concepts/{conceptId}", method=RequestMethod.GET)
 	public @ResponseBody DeferredResult<ISnomedConcept> read(
@@ -155,13 +166,28 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Expansion parameters")
 			@RequestParam(value="expand", required=false)
-			final List<String> expand) {
+			final String expand,
+			
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage) {
+
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
 
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareGetConcept()
 					.setComponentId(conceptId)
 					.setExpand(expand)
+					.setLocales(extendedLocales)
 					.build(branchPath)
 					.execute(bus));
 	}
@@ -171,7 +197,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			notes="Creates a new Concept directly on a branch.")
 	@ApiResponses({
 		@ApiResponse(code = 201, message = "Concept created on task"),
-		@ApiResponse(code = 404, message = "Branch not found")
+		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/{path:**}/concepts", 
@@ -194,15 +220,12 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		final SnomedConceptRestInput change = body.getChange();
 		final String commitComment = body.getCommitComment();
 		
-		final SnomedConceptCreateRequestBuilder input = change.toComponentInput();
-		
-		final String createdConceptId = SnomedRequests
-			.prepareCommit(userId, branchPath)
-			.setBody(input)
-			.setCommitComment(commitComment)
-			.build()
+		final String createdConceptId = change
+			.toRequestBuilder()
+			.build(userId, branchPath, commitComment)
 			.executeSync(bus, 120L * 1000L)
 			.getResultAs(String.class);
+		
 		
 		return Responses.created(getConceptLocationURI(branchPath, createdConceptId)).build();
 	}
@@ -223,7 +246,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					+ "&bull; inactivation indicator<br>")
 	@ApiResponses({
 		@ApiResponse(code = 204, message = "Update successful"),
-		@ApiResponse(code = 404, message = "Branch or Concept not found")
+		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/{path:**}/concepts/{conceptId}/updates", 
@@ -250,19 +273,14 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		final SnomedConceptRestUpdate update = body.getChange();
 
 		SnomedRequests
-			.prepareCommit(userId, branchPath)
-			.setBody(
-				SnomedRequests
-					.prepareConceptUpdate(conceptId)
-					.setActive(update.isActive())
-					.setModuleId(update.getModuleId())
-					.setAssociationTargets(update.getAssociationTargets())
-					.setDefinitionStatus(update.getDefinitionStatus())
-					.setInactivationIndicator(update.getInactivationIndicator())
-					.setSubclassDefinitionStatus(update.getSubclassDefinitionStatus())
-					.build())
-			.setCommitComment(commitComment)
-			.build()
+			.prepareUpdateConcept(conceptId)
+			.setActive(update.isActive())
+			.setModuleId(update.getModuleId())
+			.setAssociationTargets(update.getAssociationTargets())
+			.setDefinitionStatus(update.getDefinitionStatus())
+			.setInactivationIndicator(update.getInactivationIndicator())
+			.setSubclassDefinitionStatus(update.getSubclassDefinitionStatus())
+			.build(userId, branchPath, commitComment)
 			.executeSync(bus, 120L * 1000L);
 	}
 
@@ -273,8 +291,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					+ "status will be returned.")
 	@ApiResponses({
 		@ApiResponse(code = 204, message = "Deletion successful"),
-		@ApiResponse(code = 409, message = "Cannot be deleted if released", response = RestApiError.class),
-		@ApiResponse(code = 404, message = "Branch or Concept not found")
+		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class),
+		@ApiResponse(code = 409, message = "Cannot be deleted if released", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/concepts/{conceptId}", method=RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.NO_CONTENT)
@@ -289,10 +307,9 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 		SnomedRequests
-			.prepareCommit(principal.getName(), branchPath)
-			.setBody(SnomedRequests.prepareDeleteConcept(conceptId))
-			.setCommitComment(String.format("Deleted Concept '%s' from store.", conceptId))
-			.build()
+			.prepareDeleteConcept()
+			.setComponentId(conceptId)
+			.build(principal.getName(), branchPath, String.format("Deleted Concept '%s' from store.", conceptId))
 			.executeSync(bus, 120L * 1000L);
 	}
 

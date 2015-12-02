@@ -30,23 +30,21 @@ import org.apache.lucene.queries.function.valuesource.LongFieldSource;
 import org.apache.lucene.queries.function.valuesource.SimpleFloatFunction;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.ConstantScoreQuery;
-import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHitCountCollector;
 
 import com.b2international.commons.functions.StringToLongFunction;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
-import com.b2international.snowowl.datastore.index.IndexUtils;
+import com.b2international.snowowl.datastore.server.snomed.escg.EscgParseFailedException;
 import com.b2international.snowowl.datastore.server.snomed.escg.IndexQueryQueryEvaluator;
 import com.b2international.snowowl.dsl.escg.EscgUtils;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.UnsupportedEscgQueryParameterException;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedQueryBuilder;
@@ -92,11 +90,10 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 	@Override
 	protected SnomedConcepts doExecute(BranchContext context) throws IOException {
 		final IndexSearcher searcher = context.service(IndexSearcher.class);
+
 		final SnomedQueryBuilder queryBuilder = SnomedMappings.newQuery().concept();
-		
-		if (containsKey(SnomedSearchRequest.OptionKey.ACTIVE)) {
-			queryBuilder.active(getBoolean(SnomedSearchRequest.OptionKey.ACTIVE));
-		}
+		addActiveClause(queryBuilder);
+		addModuleClause(queryBuilder);
 		
 		if (containsKey(OptionKey.PARENT)) {
 			queryBuilder.parent(getString(OptionKey.PARENT));
@@ -115,31 +112,33 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			 * XXX: Not using IEscgQueryEvaluatorService, as it would add the equivalent of 
 			 * active() and concept() to escgQuery, which is not needed.
 			 */
-			final IndexQueryQueryEvaluator queryEvaluator = new IndexQueryQueryEvaluator();
+			final String escg = getString(OptionKey.ESCG);
 			try {
-				final BooleanQuery escgQuery = queryEvaluator.evaluate(EscgUtils.INSTANCE.parseRewrite(getString(OptionKey.ESCG)));
+				final IndexQueryQueryEvaluator queryEvaluator = new IndexQueryQueryEvaluator();
+				final BooleanQuery escgQuery = queryEvaluator.evaluate(EscgUtils.INSTANCE.parseRewrite(escg));
 				queryBuilder.and(escgQuery);
 			} catch (final SyntaxErrorException e) {
 				throw new IllegalQueryParameterException(e.getMessage());
+			} catch (EscgParseFailedException e) {
+				throw new UnsupportedEscgQueryParameterException(escg);
 			}
 		}
 		
-		if (containsKey(SnomedSearchRequest.OptionKey.MODULE)) {
-			queryBuilder.module(getString(SnomedSearchRequest.OptionKey.MODULE));
-		}
-		
-		final Query conceptQuery = queryBuilder.matchAll();
+		final BooleanFilter filter = new BooleanFilter();
 		final Query query;
 		final Sort sort;
-		final BooleanFilter filter = new BooleanFilter();
 		
 		if (!componentIds().isEmpty()) {
-			filter.add(createComponentIdFilter(), Occur.MUST);
+			addFilterClause(filter, createComponentIdFilter(), Occur.MUST);
 		}
 		
 		if (containsKey(OptionKey.TERM)) {
 			final Map<String, Integer> conceptScoreMap = executeDescriptionSearch(context, getString(OptionKey.TERM));
-			filter.add(SnomedMappings.id().createTermsFilter(StringToLongFunction.copyOf(conceptScoreMap.keySet())), Occur.MUST); 
+			if (conceptScoreMap.isEmpty()) {
+				return new SnomedConcepts(offset(), limit(), 0);
+			}
+			
+			addFilterClause(filter, SnomedMappings.id().createTermsFilter(StringToLongFunction.copyOf(conceptScoreMap.keySet())), Occur.MUST); 
 			final FunctionQuery functionQuery = new FunctionQuery(new SimpleFloatFunction(new LongFieldSource(SnomedMappings.id().fieldName())) {
 				
 				@Override
@@ -158,47 +157,39 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 				}
 			});
 			
-			query = new CustomScoreQuery(createQuery(conceptQuery, filter), functionQuery);
+			query = new CustomScoreQuery(createFilteredQuery(queryBuilder.matchAll(), filter), functionQuery);
 			sort = Sort.RELEVANCE;
 		} else {
-			query = new ConstantScoreQuery(createQuery(conceptQuery, filter));
+			query = createConstantScoreQuery(createFilteredQuery(queryBuilder.matchAll(), filter));
 			sort = Sort.INDEXORDER;
 		}
 		
-		if (limit() == 0) {
-			final TotalHitCountCollector totalCollector = new TotalHitCountCollector();
-			searcher.search(new ConstantScoreQuery(query), totalCollector); 
-			return new SnomedConcepts(offset(), limit(), totalCollector.getTotalHits());
+		final int totalHits = getTotalHits(searcher, query);
+		if (limit() < 1 || totalHits < 1) {
+			return new SnomedConcepts(offset(), limit(), totalHits);
 		}
 		
-		// TODO: track score only if it should be expanded
-		final TopDocs topDocs = searcher.search(query, null, offset() + limit(), sort, true, false);
-		if (IndexUtils.isEmpty(topDocs)) {
+		// TODO: control score tracking
+		final TopDocs topDocs = searcher.search(query, null, numDocsToRetrieve(searcher, totalHits), sort, true, false);
+		if (topDocs.scoreDocs.length < 1) {
 			return new SnomedConcepts(offset(), limit(), topDocs.totalHits);
 		}
 		
 		final ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 		final ImmutableList.Builder<SnomedConceptIndexEntry> conceptsBuilder = ImmutableList.builder();
 		
-		for (int i = offset(); i < scoreDocs.length && i < offset() + limit(); i++) {
+		for (int i = offset(); i < scoreDocs.length; i++) {
 			Document doc = searcher.doc(scoreDocs[i].doc); // TODO: should expand & filter drive fieldsToLoad? Pass custom fieldValueLoader?
-			SnomedConceptIndexEntry indexEntry = SnomedConceptIndexEntry.builder(doc).score(scoreDocs[i].score).build();
+			SnomedConceptIndexEntry indexEntry = SnomedConceptIndexEntry.builder(doc).build();
 			conceptsBuilder.add(indexEntry);
 		}
 
 		return SnomedConverters.newConceptConverter(context, expand(), locales()).convert(conceptsBuilder.build(), offset(), limit(), topDocs.totalHits);
 	}
 
-	private Query createQuery(final Query query, final BooleanFilter filter) {
-		if (filter.clauses().size() > 0) {
-			return new FilteredQuery(query, filter);
-		}
-		return query;
-	}
-
 	private Map<String, Integer> executeDescriptionSearch(BranchContext context, String term) {
 		
-		final Collection<ISnomedDescription> items = SnomedRequests.prepareDescriptionSearch()
+		final Collection<ISnomedDescription> items = SnomedRequests.prepareSearchDescription()
 			.all()
 			.filterByActive(true)
 			.filterByTerm(term)

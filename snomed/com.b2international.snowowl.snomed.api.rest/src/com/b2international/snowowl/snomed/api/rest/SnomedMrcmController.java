@@ -73,9 +73,9 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestParam(required = true)
 			List<String> parentIds,
 			
-			@ApiParam(value="The parts of the response information to expand.", allowableValues="fsn", allowMultiple=true)
+			@ApiParam(value="The parts of the response information to expand.")
 			@RequestParam(value="expand", defaultValue="", required=false)
-			final List<String> expand,
+			final String expand,
 			
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 
@@ -106,9 +106,9 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestParam(value="termPrefix", defaultValue="", required=false)
 			String termPrefix,
 			
-			@ApiParam(value="The parts of the response information to expand.", allowableValues="fsn", allowMultiple=true)
+			@ApiParam(value="The parts of the response information to expand.")
 			@RequestParam(value="expand", defaultValue="", required=false)
-			final List<String> expand,
+			final String expand,
 			
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 

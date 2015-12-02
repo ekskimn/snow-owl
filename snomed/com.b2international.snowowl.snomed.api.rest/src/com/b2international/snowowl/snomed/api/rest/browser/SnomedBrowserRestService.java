@@ -43,6 +43,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParen
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
+import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.wordnik.swagger.annotations.Api;
@@ -65,19 +66,19 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	 * The currently supported versioned media type of the IHTSDO SNOMED CT Browser RESTful API.
 	 */
 	public static final String IHTSDO_V1_MEDIA_TYPE = "application/vnd.org.ihtsdo.browser+json";
-	
+
 	@Autowired
 	protected ISnomedBrowserService browserService;
 	
 	@Autowired
 	private ISnomedBrowserValidationService validationService;
-	
+
 	@ApiOperation(
 			value="Retrieve single concept properties",
 			notes="Retrieves a single concept and related information on a branch.")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = Void.class),
-		@ApiResponse(code = 404, message = "Code system version or concept not found")
+		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/concepts/{conceptId}", method=RequestMethod.GET)
 	public @ResponseBody ISnomedBrowserConcept getConceptDetails(
@@ -104,9 +105,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			notes="Creates a new Concept on a branch.")
 	@ApiResponses({
 			@ApiResponse(code = 200, message = "OK", response = Void.class),
-			@ApiResponse(code = 404, message = "Code system version or concept not found")
+			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/concepts", method=RequestMethod.POST)
+	@RequestMapping(value="/concepts", 
+			method=RequestMethod.POST, 
+			consumes={ IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	public @ResponseBody ISnomedBrowserConcept createConcept(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -167,9 +170,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			notes="Updates a new Concept on a branch.")
 	@ApiResponses({
 			@ApiResponse(code = 200, message = "OK", response = Void.class),
-			@ApiResponse(code = 404, message = "Code system version or concept not found")
+			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/concepts/{conceptId}", method=RequestMethod.PUT)
+	@RequestMapping(value="/concepts/{conceptId}", 
+			method=RequestMethod.PUT,
+			consumes={ IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	public @ResponseBody ISnomedBrowserConcept updateConcept(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -212,7 +217,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			response=Void.class)
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK"),
-		@ApiResponse(code = 404, message = "Code system version or concept not found")
+		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/concepts/{conceptId}/parents",
@@ -250,7 +255,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			response=Void.class)
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK"),
-		@ApiResponse(code = 404, message = "Code system version or concept not found")
+		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/concepts/{conceptId}/children",
@@ -291,12 +296,12 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	}
 
 	@ApiOperation(
-			value = "Retrieve descriptions matching a query (hits DB to fetch FSN in concept section)",
+			value = "Retrieve descriptions matching a query (sets FSN to property 'fsn' in concept section)",
 			notes = "Returns a list of descriptions which have a term matching the specified query string on a version.",
 			response=Void.class)
 	@ApiResponses({
 			@ApiResponse(code = 200, message = "OK"),
-			@ApiResponse(code = 404, message = "Code system version or concept not found")
+			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/descriptions",

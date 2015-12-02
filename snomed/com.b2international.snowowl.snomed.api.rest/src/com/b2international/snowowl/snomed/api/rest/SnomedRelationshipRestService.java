@@ -19,7 +19,6 @@ import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
 import java.net.URI;
 import java.security.Principal;
-import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -28,7 +27,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -40,7 +38,6 @@ import com.b2international.snowowl.snomed.api.rest.domain.SnomedRelationshipRest
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRelationshipCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -62,7 +59,7 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			notes="Creates a new Relationship directly on a version branch.")
 	@ApiResponses({
 		@ApiResponse(code = 201, message = "Created"),
-		@ApiResponse(code = 404, message = "Branch not found")
+		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/{path:**}/relationships", 
@@ -81,13 +78,10 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			final Principal principal) {
 
 		final String commitComment = body.getCommitComment();
-		final SnomedRelationshipCreateRequestBuilder req = body.getChange().toComponentInput();
-		
-		final String createdRelationshipId = SnomedRequests
-				.prepareCommit(principal.getName(), branchPath)
-				.setBody(req)
-				.setCommitComment(commitComment)
-				.build()
+		final String createdRelationshipId = body
+				.getChange()
+				.toRequestBuilder()
+				.build(principal.getName(), branchPath, commitComment)
 				.executeSync(bus, 120L * 1000L)
 				.getResultAs(String.class);
 				
@@ -100,7 +94,7 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			response=Void.class)
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK"),
-		@ApiResponse(code = 404, message = "Branch or Relationship not found")
+		@ApiResponse(code = 404, message = "Branch or Relationship not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/relationships/{relationshipId}", method=RequestMethod.GET)
 	public DeferredResult<ISnomedRelationship> read(
@@ -110,17 +104,12 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="The Relationship identifier")
 			@PathVariable("relationshipId") 
-			final String relationshipId,
-			
-			@ApiParam(value="Expansion parameters")
-			@RequestParam(value="expand", required=false)
-			final List<String> expand) {
+			final String relationshipId) {
 
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareGetRelationship()
 					.setComponentId(relationshipId)
-					.setExpand(expand)
 					.build(branchPath)
 					.execute(bus));
 	}
@@ -130,7 +119,7 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			notes="Updates properties of the specified Relationship.")
 	@ApiResponses({
 		@ApiResponse(code = 204, message = "Update successful"),
-		@ApiResponse(code = 404, message = "Branch or Relationship not found")
+		@ApiResponse(code = 404, message = "Branch or Relationship not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/{path:**}/relationships/{relationshipId}/updates", 
@@ -157,19 +146,14 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 		final SnomedRelationshipRestUpdate update = body.getChange();
 
 		SnomedRequests
-			.prepareCommit(userId, branchPath)
-			.setBody(
-				SnomedRequests
-					.prepareRelationshipUpdate(relationshipId)
-					.setActive(update.isActive())
-					.setModuleId(update.getModuleId())
-					.setCharacteristicType(update.getCharacteristicType())
-					.setGroup(update.getGroup())
-					.setUnionGroup(update.getUnionGroup())
-					.setModifier(update.getModifier())
-					.build())
-			.setCommitComment(commitComment)
-			.build()
+			.prepareUpdateRelationship(relationshipId)
+			.setActive(update.isActive())
+			.setModuleId(update.getModuleId())
+			.setCharacteristicType(update.getCharacteristicType())
+			.setGroup(update.getGroup())
+			.setUnionGroup(update.getUnionGroup())
+			.setModifier(update.getModifier())
+			.build(userId, branchPath, commitComment)
 			.executeSync(bus, 120L * 1000L);
 	}
 
@@ -180,7 +164,7 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 					+ "status will be returned.")
 	@ApiResponses({
 		@ApiResponse(code = 204, message = "Delete successful"),
-		@ApiResponse(code = 404, message = "Branch or Relationship not found"),
+		@ApiResponse(code = 404, message = "Branch or Relationship not found", response = RestApiError.class),
 		@ApiResponse(code = 409, message = "Relationship cannot be deleted", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/relationships/{relationshipId}", method=RequestMethod.DELETE)
@@ -197,10 +181,9 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			final Principal principal) {
 
 		SnomedRequests
-			.prepareCommit(principal.getName(), branchPath)
-			.setBody(SnomedRequests.prepareDeleteRelationship(relationshipId))
-			.setCommitComment(String.format("Deleted Relationship '%s' from store.", relationshipId))
-			.build()
+			.prepareDeleteRelationship()
+			.setComponentId(relationshipId)
+			.build(principal.getName(), branchPath, String.format("Deleted Relationship '%s' from store.", relationshipId))
 			.executeSync(bus, 120L * 1000L);
 	}
 

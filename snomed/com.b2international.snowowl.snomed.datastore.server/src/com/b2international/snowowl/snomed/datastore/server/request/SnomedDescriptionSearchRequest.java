@@ -24,17 +24,15 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.queries.BooleanFilter;
 import org.apache.lucene.queries.ChainedFilter;
 import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.Filter;
-import org.apache.lucene.search.FilteredQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.search.spans.SpanFirstQuery;
 import org.apache.lucene.search.spans.SpanMultiTermQueryWrapper;
 import org.apache.lucene.search.spans.SpanNearQuery;
@@ -45,6 +43,7 @@ import org.apache.lucene.util.QueryBuilder;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.datastore.index.IndexUtils;
 import com.b2international.snowowl.datastore.index.lucene.BookendTokenFilter;
 import com.b2international.snowowl.datastore.index.lucene.ComponentTermAnalyzer;
@@ -57,10 +56,10 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptio
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedQueryBuilder;
 import com.b2international.snowowl.snomed.datastore.server.converter.SnomedConverters;
+import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
-import com.google.common.primitives.Ints;
 
 import bak.pcj.LongCollection;
 import bak.pcj.adapter.LongCollectionToCollectionAdapter;
@@ -84,6 +83,9 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 	@Override
 	protected SnomedDescriptions doExecute(BranchContext context) throws IOException {
 		final IndexSearcher searcher = context.service(IndexSearcher.class);
+		if (containsKey(OptionKey.TERM) && getString(OptionKey.TERM).length() < 3) {
+			throw new BadRequestException("Description term must be at least 3 characters long.");
+		}
 		
 		if (containsKey(OptionKey.ACCEPTABILITY) || !languageRefSetIds().isEmpty()) {
 			
@@ -125,48 +127,34 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 	}
 
 	private SnomedDescriptions search(BranchContext context, final IndexSearcher searcher, Long languageRefSetId, int offset, int limit) throws IOException {
+		
 		final SnomedQueryBuilder queryBuilder = SnomedMappings.newQuery().description();
-		
-		if (containsKey(SnomedSearchRequest.OptionKey.ACTIVE)) {
-			queryBuilder.active(getBoolean(SnomedSearchRequest.OptionKey.ACTIVE));
-		}
-		
-		if (containsKey(SnomedSearchRequest.OptionKey.MODULE)) {
-			queryBuilder.module(getString(SnomedSearchRequest.OptionKey.MODULE));
-		}
+		addActiveClause(queryBuilder);
+		addModuleClause(queryBuilder);
 		
 		final Sort sort;
 		
 		if (containsKey(OptionKey.TERM)) {
-			sort = Sort.RELEVANCE;
 			final String searchTerm = getString(OptionKey.TERM);
-			final QueryBuilder termQueryBuilder = new QueryBuilder(new ComponentTermAnalyzer(true, true));
+			final ComponentTermAnalyzer bookendAnalyzer = new ComponentTermAnalyzer(true, true);
+			final QueryBuilder termQueryBuilder = new QueryBuilder(bookendAnalyzer);
 			final DisjunctionMaxQuery termDisjunctionQuery = new DisjunctionMaxQuery(0.0f);
 			
-			// "absolutely exact match"
-			termDisjunctionQuery.add(termQueryBuilder.createPhraseQuery(SnomedMappings.descriptionTerm().fieldName(), searchTerm));
+			termDisjunctionQuery.add(createExactMatchQuery(searchTerm, termQueryBuilder));
+			termDisjunctionQuery.add(createAllTermsPresentQuery(searchTerm, termQueryBuilder));
 			
-			// "matchAllTokenizedTerms"
-			termDisjunctionQuery.add(termQueryBuilder.createBooleanQuery(SnomedMappings.descriptionTerm().fieldName(), searchTerm, Occur.MUST));
-			
-			// "matchAllTokenizedTermPrefixSequences"
-			final List<SpanQuery> clauses = newArrayList();
-			clauses.add(new SpanTermQuery(SnomedMappings.descriptionTerm().toTerm(Character.toString(BookendTokenFilter.LEADING_MARKER))));
-			
-			final List<String> prefixes = IndexUtils.split(new ComponentTermAnalyzer(false, false), searchTerm);
-			for (String prefix : prefixes) {
-				clauses.add(new SpanMultiTermQueryWrapper<>(new PrefixQuery(SnomedMappings.descriptionTerm().toTerm(prefix))));
-			}
-			
-			final SpanFirstQuery matchAllTokenizedPrefixQuery = new SpanFirstQuery(new SpanNearQuery(Iterables.toArray(clauses, SpanQuery.class), 0, true), prefixes.size() + 1);
-			termDisjunctionQuery.add(matchAllTokenizedPrefixQuery);
+			final ComponentTermAnalyzer nonBookendAnalyzer = new ComponentTermAnalyzer(false, false);
+			final List<String> prefixes = IndexUtils.split(nonBookendAnalyzer, searchTerm);
+
+			termDisjunctionQuery.add(createAllTermPrefixesPresentFromBeginningQuery(prefixes));
+			termDisjunctionQuery.add(createAllTermPrefixesPresentQuery(prefixes));
 			
 			queryBuilder.and(termDisjunctionQuery);
+			sort = Sort.RELEVANCE;
 		} else {
 			sort = Sort.INDEXORDER;
 		}
 
-		final Query query;
 		final List<Filter> filters = newArrayList();
 		final List<Integer> ops = newArrayList();
 		
@@ -178,85 +166,111 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 		addEscgFilter(context, filters, ops, OptionKey.TYPE, SnomedMappings.descriptionType());
 		addLocaleFilter(context, filters, ops, languageRefSetId); 
 		
-		if (!filters.isEmpty()) {
-			final ChainedFilter filter = new ChainedFilter(Iterables.toArray(filters, Filter.class), Ints.toArray(ops));
-			query = new FilteredQuery(queryBuilder.matchAll(), filter);
-		} else {
-			query = queryBuilder.matchAll();
+		final Query query = createFilteredQuery(queryBuilder.matchAll(), filters, ops);
+		final int totalHits = getTotalHits(searcher, query);
+		
+		if (limit < 1 || totalHits < 1) {
+			return new SnomedDescriptions(offset, limit, totalHits);
 		}
 		
-		if (limit == 0) {
-			final TotalHitCountCollector totalCollector = new TotalHitCountCollector();
-			searcher.search(new ConstantScoreQuery(query), totalCollector); 
-			return new SnomedDescriptions(offset, limit, totalCollector.getTotalHits());
-		}
-		
-		// TODO: track score only if it should be expanded
-		final TopDocs topDocs = searcher.search(query, null, offset + limit, sort, true, false);
-		if (IndexUtils.isEmpty(topDocs)) {
+		// TODO: control score tracking
+		final TopDocs topDocs = searcher.search(query, null, numDocsToRetrieve(searcher, offset, limit, totalHits), sort, true, false);
+		if (topDocs.scoreDocs.length < 1) {
 			return new SnomedDescriptions(offset, limit, topDocs.totalHits);
 		}
 		
 		final ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 		final ImmutableList.Builder<SnomedDescriptionIndexEntry> descriptionBuilder = ImmutableList.builder();
 		
-		for (int i = offset; i < scoreDocs.length && i < offset + limit; i++) {
+		for (int i = offset; i < scoreDocs.length; i++) {
 			Document doc = searcher.doc(scoreDocs[i].doc); // TODO: should expand & filter drive fieldsToLoad? Pass custom fieldValueLoader?
-			SnomedDescriptionIndexEntry indexEntry = SnomedDescriptionIndexEntry.builder(doc).score(scoreDocs[i].score).build();
+			SnomedDescriptionIndexEntry indexEntry = SnomedDescriptionIndexEntry.builder(doc).build();
 			descriptionBuilder.add(indexEntry);
 		}
 
 		return SnomedConverters.newDescriptionConverter(context, expand(), locales()).convert(descriptionBuilder.build(), offset, limit, topDocs.totalHits);
 	}
 
+	private Query createExactMatchQuery(final String searchTerm, final QueryBuilder termQueryBuilder) {
+		return termQueryBuilder.createPhraseQuery(SnomedMappings.descriptionTerm().fieldName(), searchTerm);
+	}
+
+	private Query createAllTermsPresentQuery(final String searchTerm, final QueryBuilder termQueryBuilder) {
+		return termQueryBuilder.createBooleanQuery(SnomedMappings.descriptionTerm().fieldName(), searchTerm, Occur.MUST);
+	}
+
+	private Query createAllTermPrefixesPresentFromBeginningQuery(List<String> prefixes) {
+		final List<SpanQuery> clauses = newArrayList();
+		clauses.add(new SpanTermQuery(SnomedMappings.descriptionTerm().toTerm(Character.toString(BookendTokenFilter.LEADING_MARKER))));
+		
+		for (String prefix : prefixes) {
+			clauses.add(new SpanMultiTermQueryWrapper<>(new PrefixQuery(SnomedMappings.descriptionTerm().toTerm(prefix))));
+		}
+		
+		return new SpanFirstQuery(new SpanNearQuery(Iterables.toArray(clauses, SpanQuery.class), 0, true), prefixes.size() + 1);
+	}
+
+	private Query createAllTermPrefixesPresentQuery(List<String> prefixes) {
+		final BooleanQuery query = new BooleanQuery(true);
+
+		for (String prefix : prefixes) {
+			query.add(new PrefixQuery(SnomedMappings.descriptionTerm().toTerm(prefix)), Occur.MUST);
+		}
+
+		return query;
+	}
+
 	private void addComponentIdFilter(final List<Filter> filters, final List<Integer> ops) {
 		if (!componentIds().isEmpty()) {
-			filters.add(createComponentIdFilter());
+			addFilterClause(filters, createComponentIdFilter());
 			ops.add(ChainedFilter.AND);
 		}
 	}
 
 	private void addConceptIdsFilter(List<Filter> filters, List<Integer> ops) {
 		if (containsKey(OptionKey.CONCEPT_ID)) {
-			filters.add(SnomedMappings.descriptionConcept().createTermsFilter(getCollection(OptionKey.CONCEPT_ID, Long.class)));
+			addFilterClause(filters, SnomedMappings.descriptionConcept().createTermsFilter(getCollection(OptionKey.CONCEPT_ID, Long.class)));
 			ops.add(ChainedFilter.AND);
 		}
 	}
 
 	private void addEscgFilter(BranchContext context, final List<Filter> filters, final List<Integer> ops, OptionKey key, IndexField<Long> field) {
 		if (containsKey(key)) {
-			IBranchPath branchPath = context.branch().branchPath();
-			LongCollection conceptIds = context.service(IEscgQueryEvaluatorService.class).evaluateConceptIds(branchPath, getString(key));
-			Filter conceptFilter = field.createTermsFilter(new LongCollectionToCollectionAdapter(conceptIds));
-			filters.add(conceptFilter);
-			ops.add(ChainedFilter.AND);
+			try {
+				IBranchPath branchPath = context.branch().branchPath();
+				LongCollection conceptIds = context.service(IEscgQueryEvaluatorService.class).evaluateConceptIds(branchPath, getString(key));
+				Filter conceptFilter = field.createTermsFilter(new LongCollectionToCollectionAdapter(conceptIds));
+				addFilterClause(filters, conceptFilter);
+				ops.add(ChainedFilter.AND);
+			} catch (SyntaxErrorException e) {
+				throw new IllegalQueryParameterException(e.getMessage());
+			}
 		}
 	}
 	
 	private void addLanguageFilter(List<Filter> filters, List<Integer> ops) {
 		if (containsKey(OptionKey.LANGUAGE)) {
-			filters.add(SnomedMappings.descriptionLanguageCode().createTermsFilter(getCollection(OptionKey.LANGUAGE, String.class)));
+			addFilterClause(filters, SnomedMappings.descriptionLanguageCode().createTermsFilter(getCollection(OptionKey.LANGUAGE, String.class)));
 			ops.add(ChainedFilter.AND);
 		}
 	}
 
 	private void addLocaleFilter(BranchContext context, List<Filter> filters, List<Integer> ops, Long positiveRefSetId) {
 		for (Long languageRefSetId : languageRefSetIds()) {
-
 			if (containsKey(OptionKey.ACCEPTABILITY)) {
-				final Filter acceptabilityFilter = Acceptability.PREFERRED.equals(get(OptionKey.ACCEPTABILITY, Acceptability.class)) ?
+				final Filter filter = Acceptability.PREFERRED.equals(get(OptionKey.ACCEPTABILITY, Acceptability.class)) ?
 						SnomedMappings.descriptionPreferredReferenceSetId().toTermFilter(languageRefSetId) :
 						SnomedMappings.descriptionAcceptableReferenceSetId().toTermFilter(languageRefSetId);
-						
-				filters.add(acceptabilityFilter);
-			} else {
-				final BooleanFilter anyAcceptabilityFilter = new BooleanFilter();
 				
-				anyAcceptabilityFilter.add(SnomedMappings.descriptionPreferredReferenceSetId().toTermFilter(languageRefSetId), Occur.SHOULD);
-				anyAcceptabilityFilter.add(SnomedMappings.descriptionAcceptableReferenceSetId().toTermFilter(languageRefSetId), Occur.SHOULD);
-				filters.add(anyAcceptabilityFilter);
+				addFilterClause(filters, filter);
+			} else {
+				final BooleanFilter booleanFilter = new BooleanFilter();
+				addFilterClause(booleanFilter, SnomedMappings.descriptionPreferredReferenceSetId().toTermFilter(languageRefSetId), Occur.SHOULD);
+				addFilterClause(booleanFilter, SnomedMappings.descriptionAcceptableReferenceSetId().toTermFilter(languageRefSetId), Occur.SHOULD);					
+				
+				addFilterClause(filters, booleanFilter);
 			}
-			
+
 			if (languageRefSetId.equals(positiveRefSetId)) {
 				ops.add(ChainedFilter.AND);
 				break;

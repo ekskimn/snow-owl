@@ -33,7 +33,7 @@ import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 /**
  * @since 4.5
  */
-public class SnomedDescriptionCreateRequest extends BaseSnomedComponentCreateRequest {
+public final class SnomedDescriptionCreateRequest extends BaseSnomedComponentCreateRequest {
 
 	private String conceptId;
 
@@ -107,7 +107,7 @@ public class SnomedDescriptionCreateRequest extends BaseSnomedComponentCreateReq
 	public String execute(TransactionContext context) {
 		if (getIdGenerationStrategy() instanceof UserIdGenerationStrategy) {
 			try {
-				final String componentId = getIdGenerationStrategy().getId();
+				final String componentId = getIdGenerationStrategy().generate(context);
 				SnomedRequests.prepareGetDescription().setComponentId(componentId).build().execute(context);
 				throw new AlreadyExistsException("Description", componentId);
 			} catch (ComponentNotFoundException e) {
@@ -137,26 +137,4 @@ public class SnomedDescriptionCreateRequest extends BaseSnomedComponentCreateReq
 		}
 	}
 	
-	@Override
-	public String toString() {
-		final StringBuilder builder = new StringBuilder();
-		builder.append("SnomedDescriptionInput [getIdGenerationStrategy()=");
-		builder.append(getIdGenerationStrategy());
-		builder.append(", getModuleId()=");
-		builder.append(getModuleId());
-		builder.append(", getConceptId()=");
-		builder.append(getConceptId());
-		builder.append(", getTypeId()=");
-		builder.append(getTypeId());
-		builder.append(", getTerm()=");
-		builder.append(getTerm());
-		builder.append(", getLanguageCode()=");
-		builder.append(getLanguageCode());
-		builder.append(", getCaseSignificance()=");
-		builder.append(getCaseSignificance());
-		builder.append(", getAcceptability()=");
-		builder.append(getAcceptability());
-		builder.append("]");
-		return builder.toString();
-	}
 }

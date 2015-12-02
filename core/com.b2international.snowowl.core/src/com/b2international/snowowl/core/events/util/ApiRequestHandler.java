@@ -18,6 +18,7 @@ package com.b2international.snowowl.core.events.util;
 import com.b2international.snowowl.core.ClassLoaderProvider;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.events.Request;
+import com.b2international.snowowl.core.events.metrics.Metrics;
 
 /**
  * Generic Request handler class that handles all requests by executing them immediately.
@@ -32,10 +33,10 @@ public final class ApiRequestHandler extends ApiEventHandler {
 		super(classLoaderProvider);
 		this.context = context;
 	}
-
+	
 	@Handler
 	public Object handle(Request<ServiceProvider, Object> req) {
-		return req.execute(context);
+		return context.service(Metrics.class).measure(req).execute(context);
 	}
 	
 }

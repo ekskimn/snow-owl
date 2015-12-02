@@ -15,8 +15,12 @@
  */
 package com.b2international.snowowl.snomed.datastore.server.request;
 
+import java.util.Collection;
+
+import com.b2international.snowowl.datastore.request.SearchRequest;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
-import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.datastore.server.request.SnomedRefSetMemberSearchRequest.OptionKey;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * @since 4.5
@@ -33,7 +37,18 @@ public final class SnomedRefSetMemberSearchRequestBuilder extends SnomedSearchRe
 	}
 	
 	public SnomedRefSetMemberSearchRequestBuilder filterByRefSet(String referenceSetId) {
-		return addOption(SnomedMappings.memberRefSetId().fieldName(), referenceSetId);
+		return addOption(OptionKey.REFSET, referenceSetId);
 	}
-
+	
+	public SnomedRefSetMemberSearchRequestBuilder filterByRefSet(Collection<String> referenceSetIds) {
+		return addOption(OptionKey.REFSET, ImmutableSet.copyOf(referenceSetIds));
+	}
+	
+	public SnomedRefSetMemberSearchRequestBuilder filterByReferencedComponent(String referencedComponentId) {
+		return addOption(OptionKey.REFERENCED_COMPONENT, referencedComponentId);
+	}
+	
+	public SnomedRefSetMemberSearchRequestBuilder filterByReferencedComponent(Collection<String> referencedComponentIds) {
+		return addOption(OptionKey.REFERENCED_COMPONENT, ImmutableSet.copyOf(referencedComponentIds));
+	}
 }

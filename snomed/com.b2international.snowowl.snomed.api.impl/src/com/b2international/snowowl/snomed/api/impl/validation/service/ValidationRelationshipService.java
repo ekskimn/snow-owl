@@ -24,7 +24,7 @@ public class ValidationRelationshipService implements RelationshipService {
 	@Override
 	public boolean hasActiveInboundStatedRelationship(String conceptId, String relationshipTypeId) {
 		int totalInbound = SnomedRequests
-				.prepareRelationshipSearch()
+				.prepareSearchRelationship()
 				.filterByDestination(conceptId)
 				.filterByActive(true)
 				.filterByType(relationshipTypeId)
@@ -35,7 +35,7 @@ public class ValidationRelationshipService implements RelationshipService {
 				.getTotal();
 		
 		int totalInboundInferred = SnomedRequests
-				.prepareRelationshipSearch()
+				.prepareSearchRelationship()
 				.filterByDestination(conceptId)
 				.filterByActive(true)
 				.filterByType(relationshipTypeId)

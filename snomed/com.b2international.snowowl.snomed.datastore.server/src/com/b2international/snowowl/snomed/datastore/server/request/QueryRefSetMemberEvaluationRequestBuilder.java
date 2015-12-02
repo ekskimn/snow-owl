@@ -15,24 +15,20 @@
  */
 package com.b2international.snowowl.snomed.datastore.server.request;
 
-import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.events.Request;
-import com.b2international.snowowl.core.events.RequestBuilder;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
+import com.b2international.snowowl.datastore.request.BaseBranchRequestBuilder;
 import com.b2international.snowowl.snomed.core.domain.refset.QueryRefSetMemberEvaluation;
 
 /**
  * @since 4.5
  */
-public final class QueryRefSetMemberEvaluationRequestBuilder implements RequestBuilder<BranchContext, QueryRefSetMemberEvaluation> {
+public final class QueryRefSetMemberEvaluationRequestBuilder extends BaseBranchRequestBuilder<QueryRefSetMemberEvaluationRequestBuilder, QueryRefSetMemberEvaluation> {
 
-	private final String repositoryId;
-	
 	private String memberId;
 
 	QueryRefSetMemberEvaluationRequestBuilder(String repositoryId) {
-		this.repositoryId = repositoryId;
+		super(repositoryId);
 	}
 
 	public QueryRefSetMemberEvaluationRequestBuilder setMemberId(String memberId) {
@@ -40,12 +36,8 @@ public final class QueryRefSetMemberEvaluationRequestBuilder implements RequestB
 		return this;
 	}
 	
-	public Request<ServiceProvider, QueryRefSetMemberEvaluation> build(String branch) {
-		return RepositoryRequests.wrap(repositoryId, branch, build());
-	}
-	
 	@Override
-	public Request<BranchContext, QueryRefSetMemberEvaluation> build() {
+	public Request<BranchContext, QueryRefSetMemberEvaluation> doBuild() {
 		return new EvaluateQueryRefSetMemberRequest(memberId);
 	}
 

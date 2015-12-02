@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
-	<version>4.5.1-SNAPSHOT</version>
+	<version>4.5.0</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -30,6 +30,7 @@
 		<module>snomed</module>
 		<module>tests</module>
 		<module>releng</module>
+		<module>documentation</module>
 	</modules>
 
 	<build>
@@ -515,18 +516,6 @@
 					<layout>p2</layout>
 				</repository>
 				<repository>
-					<id>${maven.repository.id}</id>
-					<releases><enabled>true</enabled></releases>
-					<snapshots><enabled>false</enabled></snapshots>
-					<url>${nexus.releases.url}</url>
-				</repository>
-				<repository>
-					<id>${maven.repository.id}-snapshots</id>
-					<releases><enabled>false</enabled></releases>
-					<snapshots><enabled>true</enabled></snapshots>
-					<url>${nexus.snapshots.url}</url>
-				</repository>
-				<repository>
 					<id>3.8</id>
 					<url>http://download.eclipse.org/eclipse/updates/3.8</url>
 					<layout>p2</layout>
@@ -566,10 +555,26 @@
 					<url>https://b2ihealthcare.github.io/snow-owl/updates/groovy_2.8.0</url>
 					<layout>p2</layout>
 				</repository>
+				<repository>
+					<id>${maven.repository.id}</id>
+					<releases><enabled>true</enabled></releases>
+					<snapshots><enabled>false</enabled></snapshots>
+					<url>${nexus.releases.url}</url>
+				</repository>
+				<repository>
+					<id>${maven.repository.id}-snapshots</id>
+					<releases><enabled>false</enabled></releases>
+					<snapshots><enabled>true</enabled></snapshots>
+					<url>${nexus.snapshots.url}</url>
+				</repository>
 			</repositories>
 		</profile>
 		<profile>
 			<id>tp_dependencies</id>
+			<properties>
+				<target.platform.version>4.5.0</target.platform.version>
+				<target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
+			</properties>
 			<repositories>
 				<repository>
 					<id>tp</id>

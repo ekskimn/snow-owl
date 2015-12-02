@@ -15,15 +15,15 @@
  */
 package com.b2international.snowowl.snomed.datastore.server.request;
 
-import java.util.List;
-
 import org.eclipse.emf.cdo.CDOObject;
 import org.eclipse.emf.cdo.view.CDOView;
 
+import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.api.IComponent;
 import com.b2international.snowowl.core.api.ILookupService;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.request.GetRequest;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
@@ -44,7 +44,7 @@ final class SnomedDescriptionGetRequest extends GetRequest<ISnomedDescription> {
 	}
 	
 	@Override
-	protected ISnomedDescription process(BranchContext context, IComponent<String> component, List<String> expand) {
+	protected ISnomedDescription process(BranchContext context, IComponent<String> component, Options expand) {
 		return SnomedConverters.newDescriptionConverter(context, expand, locales()).convert((SnomedDescriptionIndexEntry) component);
 	}
 	

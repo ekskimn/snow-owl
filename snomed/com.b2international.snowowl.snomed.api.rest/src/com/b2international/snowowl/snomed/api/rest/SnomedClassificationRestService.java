@@ -37,8 +37,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.CollectionResource;
-import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
@@ -157,10 +157,15 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@ApiParam(value="The classification identifier")
 			@PathVariable(value="classificationId") 
 			final String classificationId,
-
+			
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage,
+			
 			final Principal principal) {
 
-		return CollectionResource.of(delegate.getEquivalentConceptSets(branchPath, classificationId, principal.getName()));
+		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
+		return CollectionResource.of(delegate.getEquivalentConceptSets(branchPath, classificationId, extendedLocales, principal.getName()));
 	}
 
 	@ApiOperation(
@@ -212,7 +217,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			notes="Retrieves a preview of single concept and related information on a branch with classification changes applied.")
 	@ApiResponses({
 			@ApiResponse(code = 200, message = "OK", response = Void.class),
-			@ApiResponse(code = 404, message = "Code system version or concept not found")
+			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/classifications/{classificationId}/concept-preview/{conceptId}", method=RequestMethod.GET)
 	public @ResponseBody

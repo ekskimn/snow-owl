@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.datastore.server.internal;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Maps.newHashMap;
 
 import java.io.File;
@@ -75,6 +76,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 
 	CDOBasedRepository(String repositoryId, int numberOfWorkers, Environment env) {
 		this.repositoryId = repositoryId;
+		checkArgument(numberOfWorkers > 0, "At least one worker thread must be specified");
 		this.numberOfWorkers = numberOfWorkers;
 		this.env = env;
 		this.handlers = EventBusUtil.getBus(repositoryId, numberOfWorkers);

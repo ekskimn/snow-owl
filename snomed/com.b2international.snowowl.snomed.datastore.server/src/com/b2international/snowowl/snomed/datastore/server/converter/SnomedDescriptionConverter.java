@@ -15,15 +15,13 @@
  */
 package com.b2international.snowowl.snomed.datastore.server.converter;
 
-import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
-import static com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator.getInactivationIndicatorByValueId;
-
 import java.util.List;
 
 import com.b2international.commons.http.ExtendedLocale;
-import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
@@ -31,14 +29,14 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.services.AbstractSnomedRefSetMembershipLookupService;
-import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentService;
+import com.google.common.collect.Multimap;
 
 /**
  * @since 4.0
  */
 final class SnomedDescriptionConverter extends BaseSnomedComponentConverter<SnomedDescriptionIndexEntry, ISnomedDescription, SnomedDescriptions> {
 
-	SnomedDescriptionConverter(BranchContext context, List<String> expand, List<ExtendedLocale> locales, final AbstractSnomedRefSetMembershipLookupService refSetMembershipLookupService) {
+	SnomedDescriptionConverter(BranchContext context, Options expand, List<ExtendedLocale> locales, final AbstractSnomedRefSetMembershipLookupService refSetMembershipLookupService) {
 		super(context, expand, locales, refSetMembershipLookupService);
 	}
 
@@ -56,8 +54,6 @@ final class SnomedDescriptionConverter extends BaseSnomedComponentConverter<Snom
 		result.setConceptId(input.getConceptId());
 		result.setEffectiveTime(toEffectiveTime(input.getEffectiveTimeAsLong()));
 		result.setId(input.getId());
-		result.setDescriptionInactivationIndicator(getDescriptionInactivationIndicator(input.getId()));
-		result.setAssociationTargets(toAssociationTargets(SnomedTerminologyComponentConstants.DESCRIPTION, input.getId()));
 		result.setLanguageCode(input.getLanguageCode());
 		result.setModuleId(input.getModuleId());
 		result.setReleased(input.isReleased());
@@ -66,13 +62,23 @@ final class SnomedDescriptionConverter extends BaseSnomedComponentConverter<Snom
 		return result;
 	}
 	
-	private DescriptionInactivationIndicator getDescriptionInactivationIndicator(final String descriptionId) {
-		final String inactivationId = getServiceForClass(ISnomedComponentService.class).getDescriptionInactivationId(getBranchPath(), descriptionId);
-		return getInactivationIndicatorByValueId(inactivationId);
+	@Override
+	protected void expand(List<ISnomedDescription> results) {
+		expandInactivationProperties(results);
 	}
 
-	private IBranchPath getBranchPath() {
-		return getRefSetMembershipLookupService().getBranchPath();
+	private void expandInactivationProperties(List<ISnomedDescription> results) {
+		new InactivationExpander<ISnomedDescription>(context(), Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR) {
+			@Override
+			protected void setAssociationTargets(ISnomedDescription result,Multimap<AssociationType, String> associationTargets) {
+				((SnomedDescription) result).setAssociationTargets(associationTargets);
+			}
+			
+			@Override
+			protected void setInactivationIndicator(ISnomedDescription result, String valueId) {
+				((SnomedDescription) result).setDescriptionInactivationIndicator(DescriptionInactivationIndicator.getInactivationIndicatorByValueId(valueId));				
+			}
+		}.expand(results);
 	}
 
 	private CaseSignificance toCaseSignificance(final String caseSignificanceId) {

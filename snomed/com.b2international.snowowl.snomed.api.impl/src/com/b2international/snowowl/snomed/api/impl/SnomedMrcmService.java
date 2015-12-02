@@ -53,7 +53,7 @@ public class SnomedMrcmService {
 	}
 
 	public SnomedConcepts getDomainAttributes(String branchPath, List<String> parentIds, 
-			int offset, int limit, final List<ExtendedLocale> locales, final List<String> expand) {
+			int offset, int limit, final List<ExtendedLocale> locales, final String expand) {
 		
 		StringBuilder builder = new StringBuilder();
 		if (!parentIds.isEmpty()) {
@@ -78,7 +78,7 @@ public class SnomedMrcmService {
 		}
 		
 		return SnomedRequests
-			.prepareConceptSearch()
+			.prepareSearchConcept()
 			.setLimit(limit)
 			.setOffset(offset)
 			.filterByEscg(builder.toString())
@@ -90,7 +90,7 @@ public class SnomedMrcmService {
 	}
 
 	public SnomedConcepts getAttributeValues(String branchPath, String attributeId, String termPrefix, 
-			int offset, int limit, List<ExtendedLocale> locales, List<String> expand) {
+			int offset, int limit, List<ExtendedLocale> locales, String expand) {
 		
 		IBranchPath branch = getBranch(branchPath);
 		final Collection<String> ancestorIds = getServiceForClass(SnomedTaxonomyService.class).getAllSupertypes(branch, attributeId);
@@ -122,7 +122,7 @@ public class SnomedMrcmService {
 		logger.info("Matched attribute predicate for attribute {}, type expression '{}', value expression '{}'", attributeId, relationshipTypeExpression, relationshipValueExpression);
 		
 		return SnomedRequests
-				.prepareConceptSearch()
+				.prepareSearchConcept()
 				.setLimit(limit)
 				.setOffset(offset)
 				.filterByEscg(relationshipValueExpression)

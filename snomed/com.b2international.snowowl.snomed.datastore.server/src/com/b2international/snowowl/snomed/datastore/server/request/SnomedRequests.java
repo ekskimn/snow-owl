@@ -15,21 +15,15 @@
  */
 package com.b2international.snowowl.snomed.datastore.server.request;
 
-import org.eclipse.emf.ecore.EObject;
-
-import com.b2international.snowowl.core.ServiceProvider;
-import com.b2international.snowowl.core.domain.TransactionContext;
-import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.datastore.request.Branching;
 import com.b2international.snowowl.datastore.request.MergeReviews;
-import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
+import com.b2international.snowowl.datastore.request.DeleteRequestBuilder;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.Reviews;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.core.domain.refset.MemberChange;
-import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSets;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 
@@ -43,19 +37,23 @@ public abstract class SnomedRequests {
 	private SnomedRequests() {
 	}
 	
-	public static RepositoryCommitRequestBuilder prepareCommit(String userId, String branch) {
-		return RepositoryRequests.prepareCommit(userId, REPOSITORY_ID, branch);
-	}
-	
-	public static SnomedConceptSearchRequestBuilder prepareConceptSearch() {
+	public static SnomedConceptSearchRequestBuilder prepareSearchConcept() {
 		return new SnomedConceptSearchRequestBuilder(REPOSITORY_ID);
 	}
 	
-	public static SnomedDescriptionSearchRequestBuilder prepareDescriptionSearch() {
+	public static SnomedDescriptionSearchRequestBuilder prepareSearchDescription() {
 		return new SnomedDescriptionSearchRequestBuilder(REPOSITORY_ID);
 	}
 	
-	public static SnomedRelationshipSearchRequestBuilder prepareRelationshipSearch() {
+	public static SnomedRefSetSearchRequestBuilder prepareSearchRefSet() {
+		return new SnomedRefSetSearchRequestBuilder(REPOSITORY_ID);
+	}
+
+	public static SnomedRefSetMemberSearchRequestBuilder prepareSearchMember() {
+		return new SnomedRefSetMemberSearchRequestBuilder(REPOSITORY_ID);
+	}
+
+	public static SnomedRelationshipSearchRequestBuilder prepareSearchRelationship() {
 		return new SnomedRelationshipSearchRequestBuilder(REPOSITORY_ID);
 	}
 	
@@ -70,58 +68,49 @@ public abstract class SnomedRequests {
 	public static SnomedRelationshipGetRequestBuilder prepareGetRelationship() {
 		return new SnomedRelationshipGetRequestBuilder(REPOSITORY_ID);
 	}
-	
-	public static Request<TransactionContext, Void> prepareDeleteComponent(String componentId, Class<? extends EObject> type) {
-		return new SnomedComponentDeleteRequest(componentId, type);
+
+	private static DeleteRequestBuilder prepareDelete() {
+		return RepositoryRequests.prepareDelete(REPOSITORY_ID);
 	}
 	
-	public static Request<TransactionContext, Void> prepareDeleteMember(String memberId) {
-		return prepareDeleteComponent(memberId, SnomedRefSetMember.class);
+	public static DeleteRequestBuilder prepareDeleteMember() {
+		return prepareDelete().setType(SnomedRefSetMember.class);
+	}
+
+	public static DeleteRequestBuilder prepareDeleteConcept() {
+		return prepareDelete().setType(Concept.class);
 	}
 	
-	public static Request<TransactionContext, Void> prepareDeleteConcept(String conceptId) {
-		return prepareDeleteComponent(conceptId, Concept.class);
+	public static DeleteRequestBuilder prepareDeleteDescription() {
+		return prepareDelete().setType(Description.class);
 	}
 	
-	public static Request<TransactionContext, Void> prepareDeleteDescription(String descriptionId) {
-		return prepareDeleteComponent(descriptionId, Description.class);
+	public static DeleteRequestBuilder prepareDeleteRelationship() {
+		return prepareDelete().setType(Relationship.class);
 	}
 	
-	public static Request<TransactionContext, Void> prepareDeleteRelationship(String relationshipId) {
-		return prepareDeleteComponent(relationshipId, Relationship.class);
-	}
-	
-	public static RefSetMemberCreateRequestBuilder prepareNewMember() {
-		return new RefSetMemberCreateRequestBuilder();
+	public static SnomedRefSetMemberCreateRequestBuilder prepareNewMember() {
+		return new SnomedRefSetMemberCreateRequestBuilder(REPOSITORY_ID);
 	}
 	
 	public static SnomedRefSetCreateRequestBuilder prepareNewRefSet() {
-		return new SnomedRefSetCreateRequestBuilder();
+		return new SnomedRefSetCreateRequestBuilder(REPOSITORY_ID);
 	}
 	
 	public static SnomedConceptCreateRequestBuilder prepareNewConcept() {
-		return new SnomedConceptCreateRequestBuilder();
+		return new SnomedConceptCreateRequestBuilder(REPOSITORY_ID);
 	}
 	
 	public static SnomedDescriptionCreateRequestBuilder prepareNewDescription() {
-		return new SnomedDescriptionCreateRequestBuilder();
+		return new SnomedDescriptionCreateRequestBuilder(REPOSITORY_ID);
 	}
 	
 	public static SnomedRelationshipCreateRequestBuilder prepareNewRelationship() {
-		return new SnomedRelationshipCreateRequestBuilder();
+		return new SnomedRelationshipCreateRequestBuilder(REPOSITORY_ID);
 	}
 	
 	public static SnomedRefSetGetRequestBuilder prepareGetReferenceSet() {
 		return new SnomedRefSetGetRequestBuilder(REPOSITORY_ID);
-	}
-	
-	// TODO migrate initial API to builders
-	public static Request<ServiceProvider, SnomedReferenceSets> prepareRefSetSearch(String branch) {
-		return RepositoryRequests.wrap(REPOSITORY_ID, branch, new SnomedRefSetSearchRequest());
-	}
-	
-	public static SnomedRefSetMemberSearchRequestBuilder prepareMemberSearch() {
-		return new SnomedRefSetMemberSearchRequestBuilder(REPOSITORY_ID);
 	}
 	
 	public static Branching branching() {
@@ -156,24 +145,28 @@ public abstract class SnomedRequests {
 		return new QueryRefSetUpdateRequestBuilder(REPOSITORY_ID);
 	}
 
-	public static SnomedRefSetMemberUpdateRequestBuilder prepareMemberUpdate() {
+	public static SnomedRefSetMemberUpdateRequestBuilder prepareUpdateMember() {
 		return new SnomedRefSetMemberUpdateRequestBuilder(REPOSITORY_ID);
 	}
 
-	public static SnomedConceptUpdateRequestBuilder prepareConceptUpdate(String componentId) {
+	public static SnomedConceptUpdateRequestBuilder prepareUpdateConcept(String componentId) {
 		return new SnomedConceptUpdateRequestBuilder(REPOSITORY_ID, componentId);
 	}
 
-	public static SnomedDescriptionUpdateRequestBuilder prepareDescriptionUpdate(String componentId) {
+	public static SnomedDescriptionUpdateRequestBuilder prepareUpdateDescription(String componentId) {
 		return new SnomedDescriptionUpdateRequestBuilder(REPOSITORY_ID, componentId);
 	}
 
-	public static SnomedRelationshipUpdateRequestBuilder prepareRelationshipUpdate(String componentId) {
+	public static SnomedRelationshipUpdateRequestBuilder prepareUpdateRelationship(String componentId) {
 		return new SnomedRelationshipUpdateRequestBuilder(REPOSITORY_ID, componentId);
 	}
 
 	public static SnomedRefSetMemberGetRequestBuilder prepareGetMember() {
 		return new SnomedRefSetMemberGetRequestBuilder(REPOSITORY_ID);
+	}
+
+	public static SnomedRepositoryCommitRequestBuilder prepareCommit() {
+		return new SnomedRepositoryCommitRequestBuilder(REPOSITORY_ID);
 	}
 
 }

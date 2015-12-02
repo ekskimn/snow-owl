@@ -44,19 +44,14 @@ import javax.annotation.Nullable;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.emf.cdo.CDOObject;
-import org.eclipse.emf.cdo.CDOState;
+import org.eclipse.emf.cdo.common.commit.CDOCommitInfo;
 import org.eclipse.emf.cdo.common.id.CDOID;
 import org.eclipse.emf.cdo.common.revision.CDOIDAndVersion;
-import org.eclipse.emf.cdo.view.CDOObjectHandler;
 import org.eclipse.emf.cdo.view.CDOView;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.util.EcoreUtil;
-import org.eclipse.net4j.util.lifecycle.ILifecycle;
-import org.eclipse.net4j.util.lifecycle.LifecycleEventAdapter;
-
-import bak.pcj.set.LongSet;
 
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.Pair;
@@ -65,6 +60,7 @@ import com.b2international.snowowl.core.ComponentIdentifierPair;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.ILookupService;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.api.browser.IClientTerminologyBrowser;
 import com.b2international.snowowl.core.api.index.IIndexEntry;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
@@ -72,6 +68,7 @@ import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CDOEditingContext;
 import com.b2international.snowowl.datastore.cdo.CDOUtils;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Concepts;
@@ -80,13 +77,12 @@ import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedFactory;
 import com.b2international.snowowl.snomed.SnomedPackage;
+import com.b2international.snowowl.snomed.core.events.SnomedIdentifierBulkReleaseRequestBuilder;
+import com.b2international.snowowl.snomed.core.events.SnomedIdentifierGenerateRequestBuilder;
 import com.b2international.snowowl.snomed.core.preference.ModulePreference;
 import com.b2international.snowowl.snomed.core.store.SnomedComponentBuilder;
 import com.b2international.snowowl.snomed.datastore.NormalFormWrapper.AttributeConceptGroupWrapper;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifier;
-import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentiferReservationService;
-import com.b2international.snowowl.snomed.datastore.id.reservations.Reservations;
 import com.b2international.snowowl.snomed.datastore.index.SnomedClientIndexService;
 import com.b2international.snowowl.snomed.datastore.index.SnomedDescriptionIndexQueryAdapter;
 import com.b2international.snowowl.snomed.datastore.index.SnomedDescriptionReducedQueryAdapter;
@@ -116,6 +112,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 
+import bak.pcj.set.LongSet;
+
 /**
  * SNOMED CT RF2 specific editing context subclass of {@link CDOEditingContext}
  * providing retrieval, builder and other utility methods.
@@ -123,31 +121,11 @@ import com.google.common.collect.Sets;
  */
 public class SnomedEditingContext extends BaseSnomedEditingContext {
 
-	private ISnomedIdentifierService identifiers = ApplicationContext.getInstance().getServiceChecked(ISnomedIdentifierService.class);
-	private ISnomedIdentiferReservationService reservations = ApplicationContext.getInstance().getServiceChecked(ISnomedIdentiferReservationService.class);
-	
 	private SnomedRefSetEditingContext refSetEditingContext;
 	private Concept moduleConcept;
 	private String nameSpace;
-	private String reservationName;
 	private boolean uniquenessCheckEnabled = true;
 	private Set<String> newComponentIds = Collections.synchronizedSet(Sets.<String>newHashSet());
-	private CDOObjectHandler objectHandler = new CDOObjectHandler() {
-		@Override
-		public void objectStateChanged(CDOView view, CDOObject object, CDOState oldState, CDOState newState) {
-			
-			// BUG (SO-1619): Getting a property value from an object which is about to become a PROXY will reload the revision.
-			if (object instanceof Component) {
-				if (newState == CDOState.NEW) {
-					newComponentIds.add(((Component) object).getId());
-				} else if (newState == CDOState.TRANSIENT) {
-					newComponentIds.remove(((Component) object).getId());
-				}
-			}
-		}
-	};
-	private LifecycleEventAdapter lifecycleListener;
-
 	
 	/**
 	 * returns with a set of allowed concepts' ID. concept is allowed as preferred description type concept if 
@@ -205,8 +183,8 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		return ApplicationContext.getInstance().getService(SnomedClientIndexService.class);
 	}
 	
-	public static Concept buildDraftConceptFromNormalForm(final SnomedEditingContext editingContext, final NormalFormWrapper normalForm) {
-		return buildDraftConceptFromNormalForm(editingContext, normalForm, null);
+	public Concept buildDraftConceptFromNormalForm(final NormalFormWrapper normalForm) {
+		return buildDraftConceptFromNormalForm(normalForm, null);
 	}
 	
 	/**
@@ -216,26 +194,24 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	 * @param conceptId the unique ID of the concept. Can be {@code null}. If {@code null}, then the ID will be generated via the specified editing context.
 	 * @return the new concept.
 	 */
-	public static Concept buildDraftConceptFromNormalForm(final SnomedEditingContext editingContext, final NormalFormWrapper normalForm, @Nullable final String conceptId) {
-		final Concept moduleConcept = editingContext.getDefaultModuleConcept();
-		final List<Concept> parentConcepts = getConcepts(editingContext.getTransaction(), normalForm.getParentConceptIds());
+	public Concept buildDraftConceptFromNormalForm(final NormalFormWrapper normalForm, @Nullable final String conceptId) {
+		final Concept moduleConcept = getDefaultModuleConcept();
+		final List<Concept> parentConcepts = getConcepts(getTransaction(), normalForm.getParentConceptIds());
 		final Concept[] additionalParentConcepts = CompareUtils.isEmpty(parentConcepts) ? new Concept[0] : Iterables.toArray(parentConcepts.subList(1, parentConcepts.size()), Concept.class);
-		final Concept newConcept = editingContext.buildDefaultConcept("", editingContext.getNamespace(), moduleConcept, parentConcepts.get(0), additionalParentConcepts);
+		final Concept newConcept = buildDefaultConcept("", getNamespace(), moduleConcept, parentConcepts.get(0), additionalParentConcepts);
 		if (null != conceptId) {
 			newConcept.setId(conceptId);
 		}
-		
-		final SnomedConceptLookupService lookupService = new SnomedConceptLookupService();
 		
 		for (final AttributeConceptGroupWrapper extractedGroup : normalForm.getAttributeConceptGroups()) {
 			final Map<String, String> attributeConceptIdMap = extractedGroup.getAttributeConceptIds();
 			final int groupId = extractedGroup.getGroup();
 			for (final Entry<String, String> entry : attributeConceptIdMap.entrySet()) {
-				final Concept type = lookupService.getComponent(entry.getKey(), editingContext.transaction);
-				final Concept destination = lookupService.getComponent(entry.getValue(), editingContext.transaction);
-				final Concept characteristicType = getQualifyingCharacteristicType(editingContext, destination.getId());
+				final Concept type = lookup(entry.getKey(), Concept.class);
+				final Concept destination = lookup(entry.getValue(), Concept.class);
+				final Concept characteristicType = getQualifyingCharacteristicType(destination.getId());
 				
-				editingContext.buildDefaultRelationship(newConcept, type, destination, characteristicType).setGroup(groupId);
+				buildDefaultRelationship(newConcept, type, destination, characteristicType).setGroup(groupId);
 			}
 		}
 		
@@ -256,23 +232,23 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	 * @param conceptId the unique ID of the concept. Can be {@code null}. If {@code null}, then the ID will be generated via the specified editing context.
 	 * @return the new concept.
 	 */
-	public static Concept buildDraftChildConcept(final SnomedEditingContext editingContext, final Concept parentConcept, @Nullable final String conceptId) {
-		checkNotNull(parentConcept, "Parent concept argument cannot be null.");
+	public Concept buildDraftChildConcept(final String parentConceptId, @Nullable final String conceptId) {
+		final Concept parentConcept = lookup(parentConceptId, Concept.class);
 		
 		Concept concept = SnomedFactory.eINSTANCE.createConcept();
 		
 		//set concept properties
 		if (null == conceptId) {
-			concept.setId(editingContext.generateComponentId(concept));
+			concept.setId(generateComponentId(concept));
 		} else {
 			concept.setId(conceptId);
 		}
 		concept.setActive(true);
-		concept.setDefinitionStatus(editingContext.findConceptById(PRIMITIVE));
-		concept.setModule(editingContext.getDefaultModuleConcept());
+		concept.setDefinitionStatus(findConceptById(PRIMITIVE));
+		concept.setModule(getDefaultModuleConcept());
 		
-		final SnomedStructuralRefSet languageRefSet = editingContext.getLanguageRefSet();
-		final Collection<String> preferredTermIds = editingContext.getPreferredTermFromStoreIds(parentConcept, languageRefSet.getIdentifierId());
+		final SnomedStructuralRefSet languageRefSet = getLanguageRefSet();
+		final Collection<String> preferredTermIds = getPreferredTermFromStoreIds(parentConcept, languageRefSet.getIdentifierId());
 	
 		for (final Description description : parentConcept.getDescriptions()) {
 			
@@ -280,7 +256,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				continue;
 			}
 			
-			final Description newDescription = editingContext.buildDefaultDescription(description.getTerm(), description.getType().getId());
+			final Description newDescription = buildDefaultDescription(description.getTerm(), description.getType().getId());
 			concept.getDescriptions().add(newDescription);
 			final ComponentIdentifierPair<String> acceptabilityPair;
 			
@@ -293,10 +269,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	
 			//create language reference set membership
 			final ComponentIdentifierPair<String> referencedComponentPair = SnomedRefSetEditingContext.createDescriptionTypePair(newDescription.getId());
-			final SnomedLanguageRefSetMember member = editingContext.getRefSetEditingContext().createLanguageRefSetMember(
+			final SnomedLanguageRefSetMember member = getRefSetEditingContext().createLanguageRefSetMember(
 					referencedComponentPair, 
 					acceptabilityPair, 
-					editingContext.getDefaultModuleConcept().getId(), 
+					getDefaultModuleConcept().getId(), 
 					languageRefSet);
 			
 			newDescription.getLanguageRefSetMembers().add(member);
@@ -305,10 +281,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		final Set<String> parentConceptIds = Sets.newHashSet();
 		
 		// add 'Is a' relationship to parent if specified
-		editingContext.buildDefaultIsARelationship(parentConcept, concept);
+		buildDefaultIsARelationship(parentConcept, concept);
 		parentConceptIds.add(parentConcept.getId());
 		
-		editingContext.add(concept);
+		add(concept);
 		concept.eAdapters().add(new ConceptParentAdapter(parentConceptIds));
 		return concept;
 	}
@@ -322,23 +298,23 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	 * @param conceptId the unique ID of the concept. Can be {@code null}. If {@code null}, then the ID will be generated via the specified editing context.
 	 * @return the new concept.
 	 */
-	public static Concept buildDraftSiblingConcept(final SnomedEditingContext editingContext, final Concept siblingConcept, @Nullable final String conceptId) {
-		checkNotNull(siblingConcept, "Sibling concept argument cannot be null.");
+	public Concept buildDraftSiblingConcept(final String siblingConceptId, @Nullable final String conceptId) {
+		final Concept siblingConcept = lookup(siblingConceptId, Concept.class);
 		
 		Concept concept = SnomedFactory.eINSTANCE.createConcept();
 		
 		//set concept properties
 		if (null == conceptId) {
-			concept.setId(editingContext.generateComponentId(concept));
+			concept.setId(generateComponentId(concept));
 		} else {
 			concept.setId(conceptId);
 		}
 		concept.setActive(true);
-		concept.setDefinitionStatus(editingContext.findConceptById(PRIMITIVE));
-		concept.setModule(editingContext.getDefaultModuleConcept());
+		concept.setDefinitionStatus(findConceptById(PRIMITIVE));
+		concept.setModule(getDefaultModuleConcept());
 		
-		final SnomedStructuralRefSet languageRefSet = editingContext.getLanguageRefSet();
-		final Collection<String> preferredTermIds = editingContext.getPreferredTermFromStoreIds(siblingConcept, languageRefSet.getIdentifierId());
+		final SnomedStructuralRefSet languageRefSet = getLanguageRefSet();
+		final Collection<String> preferredTermIds = getPreferredTermFromStoreIds(siblingConcept, languageRefSet.getIdentifierId());
 	
 		for (final Description description : siblingConcept.getDescriptions()) {
 			
@@ -346,7 +322,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				continue;
 			}
 			
-			final Description newDescription = editingContext.buildDefaultDescription(description.getTerm(), description.getType().getId());
+			final Description newDescription = buildDefaultDescription(description.getTerm(), description.getType().getId());
 			concept.getDescriptions().add(newDescription);
 			final ComponentIdentifierPair<String> acceptabilityPair;
 			
@@ -359,10 +335,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	
 			//create language reference set membership
 			final ComponentIdentifierPair<String> referencedComponentPair = SnomedRefSetEditingContext.createDescriptionTypePair(newDescription.getId());
-			final SnomedLanguageRefSetMember member = editingContext.getRefSetEditingContext().createLanguageRefSetMember(
+			final SnomedLanguageRefSetMember member = getRefSetEditingContext().createLanguageRefSetMember(
 					referencedComponentPair, 
 					acceptabilityPair, 
-					editingContext.getDefaultModuleConcept().getId(), 
+					getDefaultModuleConcept().getId(), 
 					languageRefSet);
 			
 			newDescription.getLanguageRefSetMembers().add(member);
@@ -379,7 +355,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			//Copy non-inferred IS-A relationships
 			if (IS_A.equals(sourceRelationship.getType().getId()) 
 					&& !(sourceRelationship.getCharacteristicType().getId().equals(SnomedConstants.Concepts.INFERRED_RELATIONSHIP))) {
-				final Relationship relationship = editingContext.buildDefaultRelationship(
+				final Relationship relationship = buildDefaultRelationship(
 						concept, 
 						sourceRelationship.getType(), 
 						sourceRelationship.getDestination(), 
@@ -390,7 +366,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			}
 		}
 		
-		editingContext.add(concept);
+		add(concept);
 		concept.eAdapters().add(new ConceptParentAdapter(parentConceptIds));
 		return concept;
 	}
@@ -488,12 +464,12 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	 * @param destinationConceptid the unique ID of the destination concept.
 	 * @return SnomedConstants.QUALIFYING_RELATIONSHIP if destination toplevel is 'Qualifying value', {@code null} otherwise.
 	 */
-	private static Concept getQualifyingCharacteristicType(final SnomedEditingContext editingContext, final String destinationConceptid) {
+	private Concept getQualifyingCharacteristicType(final String destinationConceptid) {
 		final IClientTerminologyBrowser<SnomedConceptIndexEntry, String> terminologyBrowser = ApplicationContext.getInstance().getService(SnomedClientTerminologyBrowser.class);
 		final SnomedConceptIndexEntry topLevelConcept = terminologyBrowser.getTopLevelConcept(
 				terminologyBrowser.getConcept(destinationConceptid));
 		if (topLevelConcept.getId().equals(QUALIFIER_VALUE_TOPLEVEL_CONCEPT)) {
-			return editingContext.findConceptById(QUALIFYING_RELATIONSHIP);
+			return findConceptById(QUALIFYING_RELATIONSHIP);
 		}
 		
 		return null;
@@ -548,26 +524,35 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	private void init(final String namespace) {
 		this.refSetEditingContext = new SnomedRefSetEditingContext(this);
 		setNamespace(namespace);
-		// register Unique In Transaction Restriction to identifier reservations
-		this.reservationName = String.format("reservations_%s", this);
-		this.reservations.create(this.reservationName, Reservations.uniqueInTransaction(this));
-		lifecycleListener = new LifecycleEventAdapter() {
-			@Override
-			protected void onDeactivated(ILifecycle lifecycle) {
-				getTransaction().removeListener(lifecycleListener);
-				getTransaction().removeObjectHandler(objectHandler);
-				reservations.delete(reservationName);
-				newComponentIds.clear();
-			}
-		};
-		getTransaction().addListener(lifecycleListener);
-		getTransaction().addObjectHandler(objectHandler);
 	}
 
 	private void setNamespace(String nameSpace) {
 		this.nameSpace = checkNotNull(nameSpace, "No namespace configured");
 	}
 	
+	@Override
+	public CDOCommitInfo commit(String commitMessage, IProgressMonitor monitor) throws SnowowlServiceException {
+		try {
+			return super.commit(commitMessage, monitor);
+		} catch (Exception e) {
+			releaseIds();
+			throw e;
+		}
+	}
+	
+	public void releaseIds() {
+		if (!newComponentIds.isEmpty()) {
+			final IEventBus bus = ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
+			final String branch = BranchPathUtils.createPath(transaction).getPath();
+			new SnomedIdentifierBulkReleaseRequestBuilder()
+				.setComponentIds(newComponentIds)
+				.build(branch)
+				.executeSync(bus);
+			
+			newComponentIds.clear();
+		}
+	}
+
 	/**
 	 * Unlike {@link CDOEditingContext#getContents()} this method returns with
 	 * the {@link Concepts#getConcepts() concepts container} of the default
@@ -684,7 +669,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		add(concept);
 		
 		// set concept properties
-		concept.setId(identifiers.generateId(ComponentCategory.CONCEPT, namespace));
+		concept.setId(generateComponentId(ComponentCategory.CONCEPT, namespace));
 		concept.setActive(true);
 		concept.setDefinitionStatus(findConceptById(PRIMITIVE));
 		concept.setModule(moduleConcept);
@@ -975,7 +960,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	 */
 	public Relationship buildEmptyRelationship(final String namespace) {
 		final Relationship relationship = SnomedFactory.eINSTANCE.createRelationship();
-		relationship.setId(identifiers.generateId(ComponentCategory.RELATIONSHIP, namespace));
+		relationship.setId(generateComponentId(ComponentCategory.RELATIONSHIP, namespace));
 		return relationship;
 	}
 	
@@ -997,14 +982,14 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	 * @return a valid description populated with default values, the specified term and description type
 	 * @deprecated - will be replaced and removed in 4.4
 	 */
-	public Description buildDefaultDescription(String term, final String nameSpace, final Concept type, final Concept moduleConcept) {
-		return buildDefaultDescription(term, nameSpace, type, moduleConcept, getDefaultLanguageCode());
+	public Description buildDefaultDescription(String term, final String namespace, final Concept type, final Concept moduleConcept) {
+		return buildDefaultDescription(term, namespace, type, moduleConcept, getDefaultLanguageCode());
 	}
 	
 	/*builds a description with the specified description type, module concept, language code and namespace.*/
-	private Description buildDefaultDescription(String term, final String nameSpace, final Concept type, final Concept moduleConcept, final String languageCode) {
+	private Description buildDefaultDescription(String term, final String namespace, final Concept type, final Concept moduleConcept, final String languageCode) {
 		Description description = SnomedFactory.eINSTANCE.createDescription();
-		description.setId(identifiers.generateId(ComponentCategory.DESCRIPTION, nameSpace));
+		description.setId(generateComponentId(ComponentCategory.DESCRIPTION, namespace));
 		description.setActive(true);
 		description.setCaseSignificance(findConceptById(ENTIRE_TERM_CASE_INSENSITIVE));
 		description.setType(type);
@@ -1721,15 +1706,19 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	}
 	
 	public String generateComponentId(final ComponentCategory componentNature) {
-		return identifiers.generateId(componentNature, getNamespace());
+		return generateComponentId(componentNature, getNamespace());
 	}
 	
 	public String generateComponentId(final ComponentCategory componentNature, final String namespace) {
-		return identifiers.generateId(componentNature, namespace);
+		final IEventBus bus = ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
+		final String branch = BranchPathUtils.createPath(transaction).getPath();
+		final String generatedId = new SnomedIdentifierGenerateRequestBuilder()
+				.setCategory(componentNature)
+				.setNamespace(namespace)
+				.build(branch)
+				.executeSync(bus);
+		newComponentIds.add(generatedId);
+		return generatedId;
 	}
 	
-	public boolean isUniqueInTransaction(SnomedIdentifier identifier) {
-		return !newComponentIds.contains(identifier.toString());
-	}
-
 }

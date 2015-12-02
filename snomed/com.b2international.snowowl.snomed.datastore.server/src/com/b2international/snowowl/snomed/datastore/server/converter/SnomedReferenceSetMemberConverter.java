@@ -19,10 +19,12 @@ import java.util.Collection;
 import java.util.List;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.request.SearchRequestBuilder;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
@@ -34,12 +36,11 @@ import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetM
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
-import com.b2international.snowowl.snomed.datastore.server.request.SearchRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.services.AbstractSnomedRefSetMembershipLookupService;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Multimap;
@@ -49,55 +50,90 @@ import com.google.common.collect.Multimap;
  */
 final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConverter<SnomedRefSetMemberIndexEntry, SnomedReferenceSetMember, SnomedReferenceSetMembers> {
 
-	SnomedReferenceSetMemberConverter(BranchContext context, List<String> expand, List<ExtendedLocale> locales, AbstractSnomedRefSetMembershipLookupService membershipLookupService) {
+	SnomedReferenceSetMemberConverter(BranchContext context, Options expand, List<ExtendedLocale> locales, AbstractSnomedRefSetMembershipLookupService membershipLookupService) {
 		super(context, expand, locales, membershipLookupService);
 	}
 
 	@Override
 	protected SnomedReferenceSetMembers createCollectionResource(List<SnomedReferenceSetMember> results, int offset, int limit, int total) {
-		return new SnomedReferenceSetMembers(results);
+		return new SnomedReferenceSetMembers(results, offset, limit, total);
 	}
 	
 	@Override
 	protected void expand(List<SnomedReferenceSetMember> results) {
-		if (expand().contains("referencedComponent")) {
-			final Multimap<String, SnomedReferenceSetMember> refCompToMembers = FluentIterable.from(results).index(new Function<SnomedReferenceSetMember, String>() {
-				@Override
-				public String apply(SnomedReferenceSetMember input) {
-					return input.getReferencedComponent().getId();
-				}
-			});
-			final Multimap<ComponentCategory, String> typeToIds = FluentIterable.from(refCompToMembers.keySet()).index(new Function<String, ComponentCategory>() {
-				@Override
-				public ComponentCategory apply(String input) {
-					return SnomedIdentifiers.getComponentCategory(input);
-				}
-			});
-			// query components
-			for (ComponentCategory category : typeToIds.keySet()) {
-				final Collection<String> componentIds = typeToIds.get(category);
-				final SearchRequestBuilder<?, ? extends CollectionResource<? extends SnomedCoreComponent>> search;
-				switch (category) {
-				case CONCEPT:
-					search = SnomedRequests.prepareConceptSearch();
-					break;
-				case DESCRIPTION:
-					search = SnomedRequests.prepareDescriptionSearch();
-					break;
-				case RELATIONSHIP:
-					search = SnomedRequests.prepareRelationshipSearch();
-					break;
-				default: throw new UnsupportedOperationException("Category is not supported in referenced component expansion");
-				}
-				// TODO paging in expansion
-				// TODO async execution with Promise.all()
-				for (SnomedCoreComponent component : search.setComponentIds(componentIds).setLimit(componentIds.size()).build().execute(context())) {
-					for (SnomedReferenceSetMember member : refCompToMembers.get(component.getId())) {
-						((SnomedReferenceSetMemberImpl) member).setReferencedComponent(component);
-					}
-				}
+		expandReferencedComponent(results);
+	}
+
+	private void expandReferencedComponent(List<SnomedReferenceSetMember> results) {
+		if (expand().containsKey("referencedComponent")) {
+			Options expandOptions = expand().get("referencedComponent", Options.class);
+			
+			final Multimap<String, SnomedReferenceSetMember> referencedComponentIdToMemberMap = collectReferencedComponentIds(results);
+			final Multimap<ComponentCategory, String> componentCategoryToIdMap = collectReferencedComponentCategories(referencedComponentIdToMemberMap);
+			
+			for (ComponentCategory category : componentCategoryToIdMap.keySet()) {
+				expandComponentCategory(expandOptions, referencedComponentIdToMemberMap, componentCategoryToIdMap, category);
 			}
 		}
+	}
+
+	private void expandComponentCategory(Options expandOptions,
+			Multimap<String, SnomedReferenceSetMember> referencedComponentIdToMemberMap,
+			Multimap<ComponentCategory, String> componentCategoryToIdMap, 
+			ComponentCategory category) {
+		
+		final Collection<String> componentIds = componentCategoryToIdMap.get(category);
+		final SearchRequestBuilder<?, ? extends CollectionResource<? extends SnomedCoreComponent>> search;
+		
+		switch (category) {
+			case CONCEPT:
+				search = SnomedRequests.prepareSearchConcept();
+				break;
+			case DESCRIPTION:
+				search = SnomedRequests.prepareSearchDescription();
+				break;
+			case RELATIONSHIP:
+				search = SnomedRequests.prepareSearchRelationship();
+				break;
+			default: 
+				throw new UnsupportedOperationException("Category is not supported in referenced component expansion");
+		}
+
+		search
+			.setComponentIds(componentIds)
+			.setLimit(componentIds.size())
+			.setLocales(locales())
+			.setExpand(expandOptions.get("expand", Options.class));
+		
+		CollectionResource<? extends SnomedCoreComponent> components = search.build().execute(context());
+		
+		for (SnomedCoreComponent component : components) {
+			for (SnomedReferenceSetMember member : referencedComponentIdToMemberMap.get(component.getId())) {
+				((SnomedReferenceSetMemberImpl) member).setReferencedComponent(component);
+			}
+		}
+	}
+
+	private ImmutableListMultimap<ComponentCategory, String> collectReferencedComponentCategories(
+			final Multimap<String, SnomedReferenceSetMember> refCompToMembers) {
+		
+		return FluentIterable.from(refCompToMembers.keySet()).index(new Function<String, ComponentCategory>() {
+			@Override
+			public ComponentCategory apply(String input) {
+				return SnomedIdentifiers.getComponentCategory(input);
+			}
+		});
+	}
+
+	private ImmutableListMultimap<String, SnomedReferenceSetMember> collectReferencedComponentIds(
+			List<SnomedReferenceSetMember> results) {
+		
+		return FluentIterable.from(results).index(new Function<SnomedReferenceSetMember, String>() {
+			@Override
+			public String apply(SnomedReferenceSetMember input) {
+				return input.getReferencedComponent().getId();
+			}
+		});
 	}
 
 	@Override
@@ -109,12 +145,24 @@ final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConvert
 		member.setActive(entry.isActive());
 		member.setModuleId(entry.getModuleId());
 		member.setReferenceSetId(entry.getRefSetIdentifierId());
-		if (SnomedRefSetType.QUERY == entry.getRefSetType()) {
-			// in case of query type refset the actual ESCG query is stored in the specialFieldId prop
-			final Builder<String, Object> props = ImmutableMap.builder();
-			props.put(SnomedRf2Headers.FIELD_QUERY, entry.getQuery());
-			member.setProperties(props.build());
+		member.setType(entry.getRefSetType());
+		
+		final Builder<String, Object> props = ImmutableMap.builder();
+		switch (entry.getRefSetType()) {
+			case QUERY:
+				props.put(SnomedRf2Headers.FIELD_QUERY, entry.getQuery());
+				break;
+			case ATTRIBUTE_VALUE:
+				props.put(SnomedRf2Headers.FIELD_VALUE_ID, entry.getValueId());
+				break;
+			case ASSOCIATION:
+				props.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID, entry.getTargetComponentId());
+				break;
+			default:
+				break;
 		}
+		member.setProperties(props.build());
+		
 		setReferencedComponent(member, entry.getReferencedComponentId(), entry.getReferencedComponentType());
 		return member;
 	}
@@ -140,5 +188,4 @@ final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConvert
 		}
 		member.setReferencedComponent(component);
 	}
-	
 }

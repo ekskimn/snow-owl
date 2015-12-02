@@ -50,7 +50,6 @@ import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -73,7 +72,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = PageableCollectionResource.class),
 		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
-		@ApiResponse(code = 404, message = "Branch not found")
+		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
 	// FIXME: Route clashes with path "/{path}/concepts/{id}/descriptions" -- Spring thinks "concepts/{id}" is part of "{path}"
 	// @RequestMapping(value="/{path:**}/descriptions", method=RequestMethod.GET)
@@ -116,7 +115,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Expansion parameters")
 			@RequestParam(value="expand", required=false)
-			final List<String> expand,
+			final String expand,
 
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
@@ -134,7 +133,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 		
 		return DeferredResults.wrap(
 				SnomedRequests
-					.prepareDescriptionSearch()
+					.prepareSearchDescription()
 					.filterByTerm(termFilter)
 					.filterByConceptEscg(conceptFilter)
 					.filterByType(typeFilter)
@@ -154,7 +153,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			notes="Creates a new Description directly on a version.")
 	@ApiResponses({
 		@ApiResponse(code = 201, message = "Created"),
-		@ApiResponse(code = 404, message = "Branch not found")
+		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/{path:**}/descriptions", 
@@ -173,16 +172,13 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			final Principal principal) {
 		
 		final String commitComment = body.getCommitComment();
-		final SnomedDescriptionCreateRequestBuilder req = body.getChange().toComponentInput();
 		
-		final String createdDescriptionId = 
-				SnomedRequests
-					.prepareCommit(principal.getName(), branchPath)
-					.setCommitComment(commitComment)
-					.setBody(req)
-					.build()
-					.executeSync(bus, 120L * 1000L)
-					.getResultAs(String.class);
+		final String createdDescriptionId = body
+			.getChange()
+			.toRequestBuilder()
+			.build(principal.getName(), branchPath, commitComment)
+			.executeSync(bus, 120L * 1000L)
+			.getResultAs(String.class);
 		
 		return Responses.created(getDescriptionLocation(branchPath, createdDescriptionId)).build();
 	}
@@ -192,7 +188,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			notes="Returns all properties of the specified Description, including acceptability values by language reference set.")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK"),
-		@ApiResponse(code = 404, message = "Branch or Description not found")
+		@ApiResponse(code = 404, message = "Branch or Description not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/descriptions/{descriptionId}", method=RequestMethod.GET)
 	public DeferredResult<ISnomedDescription> read(
@@ -202,16 +198,12 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="The Description identifier")
 			@PathVariable(value="descriptionId")
-			final String descriptionId,
-			
-			@ApiParam(value="Expansion parameters")
-			@RequestParam(value="expand", required=false)
-			final List<String> expand) {
+			final String descriptionId) {
+		
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareGetDescription()
 					.setComponentId(descriptionId)
-					.setExpand(expand)
 					.build(branchPath)
 					.execute(bus));
 	}
@@ -222,7 +214,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			notes="Updates properties of the specified Description, also managing language reference set membership.")
 	@ApiResponses({
 		@ApiResponse(code = 204, message = "Update successful"),
-		@ApiResponse(code = 404, message = "Branch or Description not found")
+		@ApiResponse(code = 404, message = "Branch or Description not found", response = RestApiError.class)
 	})
 	@RequestMapping(
 			value="/{path:**}/descriptions/{descriptionId}/updates", 
@@ -249,20 +241,16 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 		final SnomedDescriptionRestUpdate update = body.getChange();
 
 		SnomedRequests
-			.prepareCommit(userId, branchPath)
-			.setBody(
-				SnomedRequests
-					.prepareDescriptionUpdate(descriptionId)
-					.setActive(update.isActive())
-					.setModuleId(update.getModuleId())
-					.setAssociationTargets(update.getAssociationTargets())
-					.setInactivationIndicator(update.getInactivationIndicator())
-					.setCaseSignificance(update.getCaseSignificance())
-					.setAcceptability(update.getAcceptability())
-					.build())
-			.setCommitComment(commitComment)
-			.build()
+			.prepareUpdateDescription(descriptionId)
+			.setActive(update.isActive())
+			.setModuleId(update.getModuleId())
+			.setAssociationTargets(update.getAssociationTargets())
+			.setInactivationIndicator(update.getInactivationIndicator())
+			.setCaseSignificance(update.getCaseSignificance())
+			.setAcceptability(update.getAcceptability())
+			.build(userId, branchPath, commitComment)
 			.executeSync(bus, 120L * 1000L);
+		
 	}
 
 	@ApiOperation(
@@ -270,7 +258,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			notes="Permanently removes the specified unreleased Description and related components.")
 	@ApiResponses({
 		@ApiResponse(code = 204, message = "Delete successful"),
-		@ApiResponse(code = 404, message = "Branch or Description not found")
+		@ApiResponse(code = 404, message = "Branch or Description not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/descriptions/{descriptionId}", method=RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.NO_CONTENT)
@@ -286,10 +274,9 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			final Principal principal) {
 		
 		SnomedRequests
-			.prepareCommit(principal.getName(), branchPath)
-			.setBody(SnomedRequests.prepareDeleteDescription(descriptionId))
-			.setCommitComment(String.format("Deleted Description '%s' from store.", descriptionId))
-			.build()
+			.prepareDeleteDescription()
+			.setComponentId(descriptionId)
+			.build(principal.getName(), branchPath, String.format("Deleted Description '%s' from store.", descriptionId))
 			.executeSync(bus, 120L * 1000L);
 	}
 	
