@@ -50,6 +50,7 @@ import com.b2international.snowowl.datastore.server.internal.branch.BranchSerial
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewSerializer;
@@ -186,10 +187,11 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		
 		final IndexStore<InternalBranch> branchStore = createIndex("branches", branchSerializer, InternalBranch.class);
 		final IndexStore<ReviewImpl> reviewStore = createIndex("reviews", reviewSerializer, ReviewImpl.class);
+		final IndexStore<MergeReviewImpl> mergeReviewStore = createIndex("merge-reviews", reviewSerializer, MergeReviewImpl.class);
 		final IndexStore<ConceptChangesImpl> conceptChangesStore = createIndex("concept_changes", reviewSerializer, ConceptChangesImpl.class);
 		
 		registry.put(BranchManager.class, new CDOBranchManagerImpl(this, branchStore));
-		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(this, reviewStore, conceptChangesStore, reviewConfiguration);
+		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(this, reviewStore, mergeReviewStore, conceptChangesStore, reviewConfiguration);
 		registry.put(ReviewManager.class, reviewManager);
 
 		events().registerHandler(address("/branches/changes") , reviewManager.getStaleHandler());
@@ -198,6 +200,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		final SingleDirectoryIndexManager indexManager = env.service(SingleDirectoryIndexManager.class);
 		indexManager.registerIndex(branchStore);
 		indexManager.registerIndex(reviewStore);
+		indexManager.registerIndex(mergeReviewStore);
 		indexManager.registerIndex(conceptChangesStore);
 	}
 	

@@ -52,6 +52,10 @@ public class RepositoryRequests {
 		return new Reviews(repositoryId);
 	}
 
+	public static MergeReviews mergeReviews(String repositoryId) {
+		return new MergeReviews(repositoryId);
+	}
+
 	public static <B> Request<BranchContext, B> toIndexReadRequest(Request<BranchContext, B> next) {
 		return new IndexReadRequest<>(next);
 	}

@@ -31,6 +31,7 @@ public class ReviewSerializer extends ObjectMapper {
 
 	private void initMixinAnnotations() {
 		addMixInAnnotations(ReviewImpl.class, ReviewImplMixin.class);
+		addMixInAnnotations(MergeReviewImpl.class, MergeReviewImplMixin.class);
 		addMixInAnnotations(BranchStateImpl.class, BranchStateImplMixin.class);
 		addMixInAnnotations(ConceptChangesImpl.class, ConceptChangesMixin.class);
 	}

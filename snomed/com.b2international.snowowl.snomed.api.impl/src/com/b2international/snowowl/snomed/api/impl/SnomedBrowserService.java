@@ -267,6 +267,44 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	@Override
 	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, List<ExtendedLocale> locales) {
+		final BulkRequestBuilder<TransactionContext> commitReq = BulkRequest.create();
+		IComponentRef componentRef = update(branchPath, newVersionConcept, userId, locales, commitReq);
+		
+		// Commit
+		final String commitComment = getCommitComment(userId, newVersionConcept, "updating");
+		SnomedRequests
+			.prepareCommit(userId, branchPath)
+			.setCommitComment(commitComment)
+			.setBody(commitReq)
+			.build()
+			.executeSync(bus);
+		LOGGER.info("Committed changes for concept {}", newVersionConcept.getFsn());
+
+		return getConceptDetails(componentRef, locales);
+	}
+	
+	@Override
+	public void update(String branchPath, List<ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales) {
+		final BulkRequestBuilder<TransactionContext> commitReq = BulkRequest.create();
+		
+		for (ISnomedBrowserConceptUpdate newVersionConcept : newVersionConcepts) {
+			update(branchPath, newVersionConcept, userId, locales, commitReq);
+		}
+		
+		// Commit
+		final String commitComment = userId + " Bulk update.";
+		SnomedRequests
+			.prepareCommit(userId, branchPath)
+			.setCommitComment(commitComment)
+			.setBody(commitReq)
+			.build()
+			.executeSync(bus);
+		
+		LOGGER.info("Committed bulk concept changes on {}", branchPath);
+	}
+
+	private IComponentRef update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, List<ExtendedLocale> locales, final BulkRequestBuilder<TransactionContext> commitReq) {
+		
 		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
 
 		assertHasAnIsARelationship(newVersionConcept);
@@ -292,7 +330,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		List<SnomedRelationshipCreateRequest> relationshipInputs = inputFactory.createComponentInputs(branchPath, newVersionRelationships, SnomedRelationshipCreateRequest.class);
 		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
 
-		final BulkRequestBuilder<TransactionContext> commitReq = BulkRequest.create();
 		
 		// In the case of inactivation, other updates seem to go more smoothly if this is done later
 		boolean conceptInactivation = conceptUpdate != null && conceptUpdate.isActive() != null && Boolean.FALSE.equals(conceptUpdate.isActive());
@@ -327,18 +364,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}
 		
 		// TODO - Add MRCM checks here
-
-		// Commit
-		final String commitComment = getCommitComment(userId, newVersionConcept, "updating");
-		SnomedRequests
-			.prepareCommit(userId, branchPath)
-			.setCommitComment(commitComment)
-			.setBody(commitReq)
-			.build()
-			.executeSync(bus);
-		LOGGER.info("Committed changes for concept {}", newVersionConcept.getFsn());
-
-		return getConceptDetails(componentRef, locales);
+		
+		return componentRef;
 	}
 	
 	private void assertHasAnIsARelationship(ISnomedBrowserConceptUpdate concept) {

@@ -103,4 +103,7 @@ public interface ISnomedBrowserService {
 	ISnomedBrowserConcept create(String branchPath, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales);
 
 	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, List<ExtendedLocale> extendedLocales);
+
+	void update(String branchPath, List<ISnomedBrowserConceptUpdate> concept, String userId, List<ExtendedLocale> extendedLocales);
+
 }

@@ -21,6 +21,7 @@ import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.datastore.request.Branching;
+import com.b2international.snowowl.datastore.request.MergeReviews;
 import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.Reviews;
@@ -131,6 +132,10 @@ public abstract class SnomedRequests {
 		return RepositoryRequests.reviews(REPOSITORY_ID);
 	}
 
+	public static MergeReviews mergeReview() {
+		return RepositoryRequests.mergeReviews(REPOSITORY_ID);
+	}
+
 	public static QueryRefSetEvaluationRequestBuilder prepareQueryRefSetEvaluation(String referenceSetId) {
 		return new QueryRefSetEvaluationRequestBuilder(REPOSITORY_ID).setReferenceSetId(referenceSetId);
 	}
@@ -170,5 +175,5 @@ public abstract class SnomedRequests {
 	public static SnomedRefSetMemberGetRequestBuilder prepareGetMember() {
 		return new SnomedRefSetMemberGetRequestBuilder(REPOSITORY_ID);
 	}
-	
+
 }
