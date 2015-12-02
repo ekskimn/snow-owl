@@ -34,7 +34,6 @@ public abstract class SnomedConstants {
 	/**
 	 * Mapping between language codes (e.g. "en-gb") and preferred term reference set identifiers.
 	 * TODO: not a very elegant solution, should eventually be replaced.
-	 * 
 	 */
 	public static abstract class LanguageCodeReferenceSetIdentifierMapping {
 		
@@ -75,9 +74,7 @@ public abstract class SnomedConstants {
 		 * @return a collection of language type reference set identifier concept IDs.
 		 */
 		public static Collection<String> getSupportedLanguageIds() {
-			
 			return Collections.unmodifiableCollection(CODE_IDENTIFIER_BIMAP.values());
-			
 		}
 	}
 	

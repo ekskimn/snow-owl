@@ -40,14 +40,14 @@ import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.server.snomed.index.init.Rf2BasedSnomedTaxonomyBuilder;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.StatementCollectionMode;
-import com.b2international.snowowl.snomed.datastore.services.SnomedConceptNameProvider;
+import com.b2international.snowowl.snomed.datastore.services.ISnomedConceptNameProvider;
 import com.b2international.snowowl.snomed.datastore.taxonomy.AbstractSnomedTaxonomyBuilder;
 import com.b2international.snowowl.snomed.datastore.taxonomy.IncompleteTaxonomyException;
 import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilder;
+import com.b2international.snowowl.snomed.importer.net4j.DefectType;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedIncompleteTaxonomyValidationDefect;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedValidationDefect;
-import com.b2international.snowowl.snomed.importer.net4j.SnomedValidationDefect.DefectType;
 import com.b2international.snowowl.snomed.importer.rf2.util.Rf2FileModifier;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
@@ -89,12 +89,10 @@ public class SnomedTaxonomyValidator {
 	 * @return
 	 */
 	public Collection<SnomedValidationDefect> validate() {
-		final Collection<SnomedValidationDefect> defects = newHashSet();
 		if (canValidate()) {
-			defects.addAll(doValidate());
+			return doValidate();
 		}
-		return defects;
-		
+		return Collections.emptySet();
 	}
 
 	/*
@@ -175,8 +173,8 @@ public class SnomedTaxonomyValidator {
 					conceptIdsToInactivate.add(sourceId);
 				}
 				
-				String sourceLabel = SnomedConceptNameProvider.INSTANCE.getComponentLabel(branchPath, sourceId);
-				String destinationLabel = SnomedConceptNameProvider.INSTANCE.getComponentLabel(branchPath, destinationId);
+				String sourceLabel = getNameProvider().getComponentLabel(branchPath, sourceId);
+				String destinationLabel = getNameProvider().getComponentLabel(branchPath, destinationId);
 				
 				final StringBuilder sb = new StringBuilder();
 				sb.append("IS A relationship with source concept '");
@@ -203,6 +201,10 @@ public class SnomedTaxonomyValidator {
 		
 		LOGGER.info("SNOMED CT ontology validation successfully finished. No errors were found.");
 		return emptySet();
+	}
+
+	private ISnomedConceptNameProvider getNameProvider() {
+		return getServiceForClass(ISnomedConceptNameProvider.class);
 	}
 
 	private boolean canInactivate(final String sourceId) {

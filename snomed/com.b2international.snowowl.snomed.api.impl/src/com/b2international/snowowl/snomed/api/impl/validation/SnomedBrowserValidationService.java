@@ -1,8 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl.validation;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import javax.annotation.Resource;
 
@@ -10,12 +8,14 @@ import org.ihtsdo.drools.RuleExecutor;
 import org.ihtsdo.drools.exception.BadRequestRuleExecutorException;
 import org.ihtsdo.drools.response.InvalidContent;
 
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.impl.SnomedDescriptionServiceImpl;
+import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationConcept;
 import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationConceptService;
 import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationDescriptionService;
@@ -29,7 +29,7 @@ import com.google.common.collect.Lists;
 public class SnomedBrowserValidationService implements ISnomedBrowserValidationService {
 
 	@Resource
-	private SnomedDescriptionServiceImpl descriptionService;
+	private IEventBus bus;
 
 	private RuleExecutor ruleExecutor;
 
@@ -38,13 +38,14 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	}
 
 	@Override
-	public List<ISnomedInvalidContent> validateConcept(String branchPath, ISnomedBrowserConcept browserConcept, ArrayList<Locale> locales) {
+	public List<ISnomedInvalidContent> validateConcept(String branchPath, ISnomedBrowserConcept browserConcept, List<ExtendedLocale> locales) {
 		IBranchPath path = BranchPathUtils.createPath(branchPath);
 		SnomedTerminologyBrowser terminologyBrowser = ApplicationContext.getServiceForClass(SnomedTerminologyBrowser.class);
+		DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 		
 		ValidationConceptService validationConceptService = new ValidationConceptService(path, terminologyBrowser);
-		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(path, descriptionService);
-		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(path);
+		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService);
+		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(branchPath, bus);
 		try {
 			List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), validationConceptService, validationDescriptionService, validationRelationshipService,
 					false, false);

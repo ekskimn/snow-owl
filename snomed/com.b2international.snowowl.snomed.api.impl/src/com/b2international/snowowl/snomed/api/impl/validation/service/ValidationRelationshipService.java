@@ -2,23 +2,18 @@ package com.b2international.snowowl.snomed.api.impl.validation.service;
 
 import org.ihtsdo.drools.service.RelationshipService;
 
-import com.b2international.snowowl.api.domain.IComponentList;
-import com.b2international.snowowl.api.domain.IComponentRef;
-import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.snomed.api.ISnomedStatementBrowserService;
-import com.b2international.snowowl.snomed.api.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.api.domain.ISnomedRelationship;
-import com.b2international.snowowl.snomed.api.impl.SnomedServiceHelper;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 
 public class ValidationRelationshipService implements RelationshipService {
 
-	private IBranchPath path;
-	private ISnomedStatementBrowserService statementBrowserService;
+	private String branchPath;
+	private IEventBus bus;
 
-	public ValidationRelationshipService(IBranchPath path) {
-		this.path = path;
-		this.statementBrowserService = ApplicationContext.getServiceForClass(ISnomedStatementBrowserService.class);
+	public ValidationRelationshipService(String branchPath, IEventBus bus) {
+		this.branchPath = branchPath;
+		this.bus = bus;
 	}
 
 	@Override
@@ -28,15 +23,31 @@ public class ValidationRelationshipService implements RelationshipService {
 
 	@Override
 	public boolean hasActiveInboundStatedRelationship(String conceptId, String relationshipTypeId) {
-		IComponentRef conceptRef = SnomedServiceHelper.createComponentRef(path.getPath(), conceptId);
-		IComponentList<ISnomedRelationship> inboundEdges = statementBrowserService.getInboundEdges(conceptRef, 0, Integer.MAX_VALUE);
-		for (ISnomedRelationship relationship : inboundEdges.getMembers()) {
-			if (relationship.isActive() && relationship.getCharacteristicType() != CharacteristicType.INFERRED_RELATIONSHIP
-					&& (relationshipTypeId == null || relationshipTypeId.equals(relationship.getTypeId()))) {
-				return true;
-			}
-		}
-		return false;
+		int totalInbound = SnomedRequests
+				.prepareRelationshipSearch()
+				.filterByDestination(conceptId)
+				.filterByActive(true)
+				.filterByType(relationshipTypeId)
+				.setOffset(0)
+				.setLimit(0)
+				.build(branchPath)
+				.executeSync(bus)
+				.getTotal();
+		
+		int totalInboundInferred = SnomedRequests
+				.prepareRelationshipSearch()
+				.filterByDestination(conceptId)
+				.filterByActive(true)
+				.filterByType(relationshipTypeId)
+				.filterByCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP.getConceptId())
+				.setOffset(0)
+				.setLimit(0)
+				.build(branchPath)
+				.executeSync(bus)
+				.getTotal();
+		
+		// This covers all types of relationship other than inferred.
+		return totalInbound - totalInboundInferred > 0;
 	}
 
 }

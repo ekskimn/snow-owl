@@ -1,5 +1,6 @@
 package com.b2international.snowowl.snomed.api.rest.domain;
 
+
 public class SnomedConceptMini {
 
 	private String id;

@@ -15,11 +15,19 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
-import com.b2international.snowowl.api.domain.IComponentRef;
-import com.b2international.snowowl.api.impl.domain.ComponentRef;
+import com.b2international.commons.http.AcceptHeader;
+import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.domain.IComponentRef;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.datastore.server.domain.ComponentRef;
+import com.b2international.snowowl.eventbus.IEventBus;
 
 /**
  * Abstract SNOMED CT REST service base class.
@@ -31,10 +39,24 @@ public abstract class AbstractSnomedRestService extends AbstractRestService {
 	@Autowired
 	@Value("${codeSystemShortName}")
 	protected String codeSystemShortName;
+	
+	@Autowired
+	protected IEventBus bus;
 
 	protected IComponentRef createComponentRef(final String branchPath, final String componentId) {
 		final ComponentRef conceptRef = new ComponentRef(codeSystemShortName, branchPath, componentId);
 		conceptRef.checkStorageExists();
 		return conceptRef;
 	}
+	
+	protected List<ExtendedLocale> getExtendedLocales(final String acceptLanguage) {
+		try {
+			return AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+	}
+
 }

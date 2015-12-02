@@ -15,7 +15,7 @@
  */
 package com.b2international.snowowl.datastore.server.internal.review;
 
-import com.b2international.snowowl.datastore.server.review.ConceptChangesMixin;
+import com.b2international.snowowl.datastore.review.ConceptChangesMixin;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -31,6 +31,7 @@ public class ReviewSerializer extends ObjectMapper {
 
 	private void initMixinAnnotations() {
 		addMixInAnnotations(ReviewImpl.class, ReviewImplMixin.class);
+		addMixInAnnotations(MergeReviewImpl.class, MergeReviewImplMixin.class);
 		addMixInAnnotations(BranchStateImpl.class, BranchStateImplMixin.class);
 		addMixInAnnotations(ConceptChangesImpl.class, ConceptChangesMixin.class);
 	}
