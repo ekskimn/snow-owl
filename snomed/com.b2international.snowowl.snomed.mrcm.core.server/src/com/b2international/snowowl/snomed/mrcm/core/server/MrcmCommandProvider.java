@@ -80,13 +80,6 @@ public class MrcmCommandProvider implements CommandProvider {
 			return;
 		}
 		
-		final IAuthorizationService authorizationService = ApplicationContext.getInstance().getService(IAuthorizationService.class);
-		final boolean isAuthorized = authorizationService.isAuthorized(authenticator.getUsername(), new Permission(PermissionIdConstant.MRCM_IMPORT));
-		if (!isAuthorized) {
-			interpreter.print("User is unauthorized to import MRCM rules.");
-			return;
-		}
-
 		final Path file = Paths.get(filePath);
 		try (final InputStream content = Files.newInputStream(file, StandardOpenOption.READ)) {
 			new XMIMrcmImporter().doImport(authenticator.getUsername(), content);
