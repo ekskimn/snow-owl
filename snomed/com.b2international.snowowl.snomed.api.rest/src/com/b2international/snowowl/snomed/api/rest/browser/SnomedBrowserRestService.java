@@ -193,7 +193,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 
-		final String userId = principal.getName();
+		final String userId = "user";
 		final List<ExtendedLocale> extendedLocales;
 		
 		try {

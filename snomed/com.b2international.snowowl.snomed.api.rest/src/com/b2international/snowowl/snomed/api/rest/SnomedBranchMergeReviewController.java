@@ -17,11 +17,11 @@ package com.b2international.snowowl.snomed.api.rest;
 
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
+import java.io.IOException;
 import java.net.URI;
+import java.security.Principal;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-
-import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -147,8 +147,7 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 	@RequestMapping(value="/{id}/{conceptId}", method=RequestMethod.POST)
 	public void storeMergeReviewConcept(@PathVariable("id") final String mergeReviewId, 
 			@PathVariable("conceptId") final String conceptId,
-			@RequestBody final SnomedBrowserConceptUpdate concept,
-			final HttpServletRequest request) throws Exception {
+			@RequestBody final SnomedBrowserConceptUpdate concept) throws Exception {
 
 		if (!conceptId.equals(concept.getConceptId())) {
 			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
@@ -166,6 +165,28 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 		}
 		
 		mergeReviewService.persistManualConceptMerge(mergeReview, concept);
+	}
+	
+	@ApiOperation(
+			value = "Merge branches and apply stored changes", 
+			notes = "Merge source branch into a target branch in SNOMED-CT repository and then apply concept changes stored against the specified merge review.")
+	@ApiResponses({
+		@ApiResponse(code = 201, message = "No Content"),
+		@ApiResponse(code = 404, message = "Source or Target branch is not found", response=RestApiError.class),
+		@ApiResponse(code = 409, message = "Merge conflict", response=RestApiError.class)
+	})
+	@RequestMapping(value="/{id}/apply", method = RequestMethod.POST)
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void mergeAndApply(@PathVariable("id") final String mergeReviewId, 
+			
+			final Principal principal,
+
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String languageSetting) throws IOException {
+
+		final String userId = principal.getName();
+		mergeReviewService.mergeAndReplayConceptUpdates(mergeReviewId, userId, getExtendedLocales(languageSetting));
 	}
 	
 	private URI getLocationHeader(ControllerLinkBuilder linkBuilder, final MergeReview mergeReview) {

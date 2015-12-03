@@ -14,7 +14,7 @@ public interface ISnomedMergeReviewService {
 
 	Set<ISnomedBrowserMergeReviewDetail> getMergeReviewDetails(String mergeReviewId, List<ExtendedLocale> extendedLocales) throws InterruptedException, ExecutionException;
 
-	void replayConceptUpdates(String mergeReviewId, String userId, List<ExtendedLocale> extendedLocales) throws IOException;
+	void mergeAndReplayConceptUpdates(String mergeReviewId, String userId, List<ExtendedLocale> extendedLocales) throws IOException;
 
 	void persistManualConceptMerge(MergeReview mergeReview, ISnomedBrowserConceptUpdate concept);
 
