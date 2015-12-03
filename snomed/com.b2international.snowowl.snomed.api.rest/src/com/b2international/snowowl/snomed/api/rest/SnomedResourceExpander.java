@@ -150,7 +150,7 @@ public class SnomedResourceExpander {
 			List<ExtendedLocale> locales, List<String> expantions) {
 		
 		if (expantions.isEmpty() || concepts.getItems().isEmpty()) {
-			return null;
+			return concepts;
 		}
 
 		for (String expantion : expantions) {
