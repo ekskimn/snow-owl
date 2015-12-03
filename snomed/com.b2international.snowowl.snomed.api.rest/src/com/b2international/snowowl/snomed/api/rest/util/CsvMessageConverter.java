@@ -1,7 +1,7 @@
 package com.b2international.snowowl.snomed.api.rest.util;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Collection;
 
@@ -12,8 +12,8 @@ import org.springframework.http.converter.AbstractHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 
+import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
-import com.b2international.snowowl.snomed.api.rest.domain.CollectionResource;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
@@ -34,17 +34,15 @@ public class CsvMessageConverter extends AbstractHttpMessageConverter<Collection
 		if (!items.isEmpty()) {
 			output.getHeaders().setContentType(MEDIA_TYPE);
 			output.getHeaders().set("Content-Disposition", "attachment");
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			final CsvMapper mapper = new CsvMapper();
-			CsvSchema schema = mapper.schemaFor(items.iterator().next().getClass()).withHeader();
-			ObjectWriter writer = mapper.writer(schema);
-			for (Object item : items) {
-				writer.writeValue(out,  item);
+			try (OutputStream out = output.getBody()) {
+				final CsvMapper mapper = new CsvMapper();
+				CsvSchema schema = mapper.schemaFor(items.iterator().next().getClass()).withHeader();
+				ObjectWriter writer = mapper.writer(schema);
+				writer.writeValue(out, items);
 			}
-			output.getBody().write(out.toByteArray());
 		}
 	}
-	
+
 	@Override
 	protected CollectionResource readInternal(
 			Class<? extends CollectionResource> arg0, HttpInputMessage arg1)

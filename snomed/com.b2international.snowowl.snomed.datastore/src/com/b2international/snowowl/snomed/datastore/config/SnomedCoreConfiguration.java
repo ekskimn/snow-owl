@@ -15,12 +15,14 @@
  */
 package com.b2international.snowowl.snomed.datastore.config;
 
+import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -29,13 +31,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @since 3.4
  */
 public class SnomedCoreConfiguration {
-
+	
 	public static final String ELK_REASONER_ID = "org.semanticweb.elk.elk.reasoner.factory"; //$NON-NLS-1$
 	private static final String DEFAULT_REASONER = ELK_REASONER_ID;
 	public static final String DEFAULT_LANGUAGE = "en-gb"; //$NON-NLS-1$
 	public static final int DEFAULT_MAXIMUM_REASONER_COUNT = 2;
 	public static final int DEFAULT_MAXIMUM_REASONER_RESULTS = 10;
-	public static final String DEFAULT_NAMESPACE = "";
+	public static final String DEFAULT_NAMESPACE = ""; //$NON-NLS-1$
+	public static final String DEFAULT_MODULE = Concepts.MODULE_SCT_CORE;
 	
 	@Min(1)
 	@Max(3)
@@ -54,9 +57,15 @@ public class SnomedCoreConfiguration {
 	@NotNull
 	private String defaultNamespace = DEFAULT_NAMESPACE;
 	
+	@NotEmpty
+	private String defaultModule = DEFAULT_MODULE;
+	
+	@Valid
+	private SnomedIdentifierConfiguration ids = new SnomedIdentifierConfiguration();
+	
 	private boolean concreteDomainSupport;
 	private boolean showReasonerUsageWarning = true;
-	
+		
 	/**
 	 * @return the maxReasonerCount
 	 */
@@ -114,6 +123,22 @@ public class SnomedCoreConfiguration {
 	}
 	
 	/**
+	 * @return the default module user for SNOMED CT
+	 */
+	@JsonProperty
+	public String getDefaultModule() {
+		return defaultModule;
+	}
+	
+	/**
+	 * @param defaultModule the default module to set
+	 */
+	@JsonProperty
+	public void setDefaultModule(String defaultModule) {
+		this.defaultModule = defaultModule;
+	}
+	
+	/**
 	 * @param language the SNOMED CT language code to set
 	 */
 	@JsonProperty
@@ -155,6 +180,14 @@ public class SnomedCoreConfiguration {
 	@JsonProperty("showReasonerUsageWarning")
 	public void setShowReasonerUsageWarningEnabled(boolean showReasonerUsageWarning) {
 		this.showReasonerUsageWarning = showReasonerUsageWarning;
+	}
+	
+	public SnomedIdentifierConfiguration getIds() {
+		return ids;
+	}
+	
+	public void setIds(SnomedIdentifierConfiguration ids) {
+		this.ids = ids;
 	}
 	
 }

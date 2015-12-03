@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
-	<version>4.4.6</version>
+	<version>4.5.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -30,6 +30,8 @@
 		<module>snomed</module>
 		<module>tests</module>
 		<module>releng</module>
+		<!-- TODO: Documentation module causing build failure on IHTSDO Jenkins environment
+			 <module>documentation</module> -->
 	</modules>
 
 	<build>
@@ -388,9 +390,9 @@
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
-					<groupId>com.fasterxml.jackson.dataformat</groupId>
-					<artifactId>jackson-dataformat-csv</artifactId>
-					<version>${jackson.version}</version>
+    				<groupId>com.fasterxml.jackson.dataformat</groupId>
+    				<artifactId>jackson-dataformat-csv</artifactId>
+    				<version>${jackson.version}</version>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
@@ -570,6 +572,10 @@
 		</profile>
 		<profile>
 			<id>tp_dependencies</id>
+			<properties>
+				<target.platform.version>4.5.0</target.platform.version>
+				<target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
+			</properties>
 			<repositories>
 				<repository>
 					<id>tp</id>

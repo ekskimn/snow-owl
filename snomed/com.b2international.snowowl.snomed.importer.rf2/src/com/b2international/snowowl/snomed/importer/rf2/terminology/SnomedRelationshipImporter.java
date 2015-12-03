@@ -36,7 +36,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 public class SnomedRelationshipImporter extends AbstractSnomedTerminologyImporter<RelationshipRow, Relationship> {
-
+	
 	private static final Map<String, CellProcessor> CELLPROCESSOR_MAPPING = ImmutableMap.<String, CellProcessor>builder()
 				.put(RelationshipRow.PROP_ID, NullObjectPattern.INSTANCE)
 				.put(RelationshipRow.PROP_EFFECTIVE_TIME, createEffectiveTimeCellProcessor())
@@ -74,7 +74,7 @@ public class SnomedRelationshipImporter extends AbstractSnomedTerminologyImporte
 	@Override
 	protected void importRow(final RelationshipRow currentRow) {
 
-		final Relationship editedRelationship = getOrCreateRelationship(currentRow.getSourceId(), currentRow.getId());
+		final Relationship editedRelationship = getOrCreateComponent(currentRow.getSourceId(), currentRow.getId());
 		
 		if (skipCurrentRow(currentRow, editedRelationship)) {
 			return;
@@ -85,7 +85,6 @@ public class SnomedRelationshipImporter extends AbstractSnomedTerminologyImporte
 			editedRelationship.setReleased(true);
 		} else {
 			editedRelationship.unsetEffectiveTime();
-			editedRelationship.setReleased(false);
 		}
 
 		editedRelationship.setActive(currentRow.isActive());
@@ -98,19 +97,19 @@ public class SnomedRelationshipImporter extends AbstractSnomedTerminologyImporte
 		
 		getImportContext().conceptVisited(currentRow.getSourceId());
 	}
-
-	private Relationship getOrCreateRelationship(final String conceptSctId, final String relationshipSctId) {
-
-		Relationship result = getRelationship(relationshipSctId);
+	
+	@Override
+	protected Relationship createComponent(final String containerId, final String componentId) {
+		final Relationship relationship = SnomedFactory.eINSTANCE.createRelationship();
+		relationship.setId(componentId);
+		relationship.setSource(getConceptSafe(containerId, SnomedRf2Headers.FIELD_SOURCE_ID, componentId));
 		
-		if (null == result) {
-			result = SnomedFactory.eINSTANCE.createRelationship();
-			result.setId(relationshipSctId);
-			result.setSource(getConceptSafe(conceptSctId, SnomedRf2Headers.FIELD_SOURCE_ID, relationshipSctId));
-			getComponentLookup().addNewComponent(result, relationshipSctId);
-		}
-
-		return result;
+		return relationship;
 	}
-
+	
+	@Override
+	protected Relationship getComponent(final String componentId) {
+		return getRelationship(componentId);
+	}
+	
 }

@@ -17,12 +17,10 @@ package com.b2international.snowowl.core.exceptions;
 
 /**
  * Thrown when a request contains incorrect parameters or is otherwise malformed.
- * 
- * @since 4.0
  */
 public class InvalidStateException extends ApiException {
 
-	private static final long serialVersionUID = 7972450893448621710L;
+	private static final long serialVersionUID = 4669660873915863426L;
 
 	public InvalidStateException(final String message, final Object...args) {
 		super(message, args);

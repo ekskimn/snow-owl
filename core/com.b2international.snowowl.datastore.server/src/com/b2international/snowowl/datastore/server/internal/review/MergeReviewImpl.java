@@ -16,32 +16,30 @@
 package com.b2international.snowowl.datastore.server.internal.review;
 
 import java.util.Date;
+import java.util.Set;
 
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
-import com.b2international.snowowl.datastore.server.review.MergeReview;
-import com.b2international.snowowl.datastore.server.review.Review;
-import com.b2international.snowowl.datastore.server.review.ReviewStatus;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.datastore.review.MergeReview;
+import com.b2international.snowowl.datastore.review.Review;
+import com.b2international.snowowl.datastore.review.ReviewStatus;
 
-/**
- * @since 4.2
- */
 public class MergeReviewImpl implements MergeReview {
 
 	private final String id;
-	private String sourcePath;
-	private String sourceToTargetReviewId;
-	private String targetPath;
-	private String targetToSourceReviewId;
+	private final String sourcePath;
+	private final String targetPath;
+	private final String sourceToTargetReviewId;
+	private final String targetToSourceReviewId;
 	
 	private ReviewManagerImpl reviewManager;
 	
-	public MergeReviewImpl(String id) {
+	public MergeReviewImpl(final String id, final String sourcePath, final String targetPath, 
+			final String sourceToTargetReviewId, final String targetToSourceReviewId) {
 		this.id = id;
-	}
-	
-	public MergeReviewImpl(final String id, final String sourceToTargetReviewId, final String targetToSourceReviewId, final String lastUpdated, final String status) {
-		this.id = id;
+		this.sourcePath = sourcePath;
+		this.targetPath = targetPath;
 		this.sourceToTargetReviewId = sourceToTargetReviewId;
 		this.targetToSourceReviewId = targetToSourceReviewId;
 	}
@@ -50,28 +48,16 @@ public class MergeReviewImpl implements MergeReview {
 		return this.id;
 	}
 
-	public String getSourceToTargetReviewId() {
+	public String sourceToTargetReviewId() {
 		return sourceToTargetReviewId;
 	}
 
-	public void setSourceToTargetReviewId(String sourceToTargetReviewId) {
-		this.sourceToTargetReviewId = sourceToTargetReviewId;
-	}
-
-	public String getTargetToSourceReviewId() {
+	public String targetToSourceReviewId() {
 		return targetToSourceReviewId;
 	}
 
-	public void setTargetToSourceReviewId(String targetToSourceReviewId) {
-		this.targetToSourceReviewId = targetToSourceReviewId;
-	}
-
-	public void setReviewManager(ReviewManagerImpl reviewManager) {
-		this.reviewManager = reviewManager;
-	}
-	
-	public String getLastUpdated() {
-		//return the later of the two reviews last updated
+	public String lastUpdated() {
+		// return the later of the two reviews last updated
 		Review sourceToTargetReview = reviewManager.getReview(sourceToTargetReviewId);
 		Review targetToSourceReview = reviewManager.getReview(targetToSourceReviewId);
 		Date left = Dates.parse(sourceToTargetReview.lastUpdated(), DateFormats.ISO_8601);
@@ -79,44 +65,47 @@ public class MergeReviewImpl implements MergeReview {
 		return left.after(right) ? Dates.formatByGmt(left, DateFormats.ISO_8601) : Dates.formatByGmt(right, DateFormats.ISO_8601);
 	}
 	
-	public void setLastUpdated(String lastUpdated) {
-		//throw this away, we'll aways return a more up to date response
-	}
-	
-	public ReviewStatus getStatus() {
-		//return the more relevant of the states of the two reviews
-		Review left = reviewManager.getReview(sourceToTargetReviewId);
-		Review right = reviewManager.getReview(targetToSourceReviewId);
-		if (left.status() == ReviewStatus.FAILED || right.status() == ReviewStatus.FAILED) {
-			return ReviewStatus.FAILED;
-		} else if (left.status() == ReviewStatus.PENDING || right.status() == ReviewStatus.PENDING) {
-			return ReviewStatus.PENDING;
-		} else if (left.status() == ReviewStatus.STALE || right.status() == ReviewStatus.STALE) {
+	public ReviewStatus status() {
+		// return the more relevant of the states of the two reviews
+		try {
+			Review left = reviewManager.getReview(sourceToTargetReviewId);
+			Review right = reviewManager.getReview(targetToSourceReviewId);
+			if (left.status() == ReviewStatus.FAILED || right.status() == ReviewStatus.FAILED) {
+				return ReviewStatus.FAILED;
+			} else if (left.status() == ReviewStatus.PENDING || right.status() == ReviewStatus.PENDING) {
+				return ReviewStatus.PENDING;
+			} else if (left.status() == ReviewStatus.STALE || right.status() == ReviewStatus.STALE) {
+				return ReviewStatus.STALE;
+			} else  if (left.status() == ReviewStatus.CURRENT && right.status() == ReviewStatus.CURRENT) {
+				return ReviewStatus.CURRENT;
+			} else {
+				throw new IllegalStateException("Unexpected state combination: " + left.status() + " / " + right.status());
+			}
+		} catch (NotFoundException e) {
 			return ReviewStatus.STALE;
-		} else  if (left.status() == ReviewStatus.CURRENT && right.status() == ReviewStatus.CURRENT) {
-			return ReviewStatus.CURRENT;
-		} else {
-			throw new IllegalStateException ("Unexpected state combination: " + left.status() + " / " + right.status());
 		}
 	}
 	
-	public void setStatus(ReviewStatus status) {
-		//throw this away, we'll aways return a more up to date response
-	}
-
-	public String getTargetPath() {
+	public String targetPath() {
 		return targetPath;
 	}
 
-	public void setTargetPath(String targetPath) {
-		this.targetPath = targetPath;
-	}
-
-	public String getSourcePath() {
+	public String sourcePath() {
 		return sourcePath;
 	}
-
-	public void setSourcePath(String sourcePath) {
-		this.sourcePath = sourcePath;
+	
+	public void setReviewManager(ReviewManagerImpl reviewManager) {
+		this.reviewManager = reviewManager;
 	}
+
+	@Override
+	public MergeReview delete() {
+		return reviewManager.deleteMergeReview(this);
+	}
+
+	@Override
+	public Set<String> mergeReviewIntersection() {
+		return reviewManager.getMergeReviewIntersection(this);
+	}
+	
 }

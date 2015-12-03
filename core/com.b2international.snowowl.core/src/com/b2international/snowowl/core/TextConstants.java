@@ -15,26 +15,12 @@
  */
 package com.b2international.snowowl.core;
 
-import java.util.Set;
-
 import com.google.common.base.CharMatcher;
-import com.google.common.collect.ImmutableSet;
 
+/**
+ * Holds constants related to text manipulation in terminology indexes.
+ */
 public abstract class TextConstants {
-
-	/**
-	 * Defines a set of words that are not added to the index during the analyzing process; they must also be removed
-	 * from query strings as well when matching for exact terms.
-	 * <p>
-	 * The original set of stop words are defined in <i>zres_ExcludedWords_en-US_INT_20070731.txt</i> in the International
-	 * RF1 SNOMED CT distribution.
-	 */
-	public static final Set<String> STOPWORDS = ImmutableSet.of("about", "alongside", "an", "and", "anything",
-			"around", "as", "at", "because", "before", "being", "both", "by", "cannot", "chronically", "consists",
-			"covered", "does", "during", "every", "finds", "for", "from", "in", "instead", "into", "more", "must",
-			"no", "not", "of", "on", "only", "or", "properly", "side", "sided", "some", "something", "specific",
-			"than", "that", "the", "things", "this", "throughout", "to", "up", "using", "usually", "when", "while",
-			"without");
 	
 	/**
 	 * Holds a set of characters that should be considered as a token separator (non-token character) when splitting
@@ -46,17 +32,19 @@ public abstract class TextConstants {
 	 */
 	public static final String DELIMITERS = "()[]/,.:;%#&+-*~'^><=\"`";
 
+	private static final CharMatcher INTERNAL_DELIMITER_MATCHER = CharMatcher.anyOf(DELIMITERS);
+
 	/**
 	 * A {@link CharMatcher} that matches all characters in {@link #DELIMITERS}.
 	 */
-	public static final CharMatcher DELIMITER_MATCHER = CharMatcher.anyOf(DELIMITERS);
+	public static final CharMatcher DELIMITER_MATCHER = INTERNAL_DELIMITER_MATCHER.precomputed();
 
 	/**
 	 * A {@link CharMatcher} that matches all characters in {@link #DELIMITERS} as well as all whitespace characters.
 	 */
-	public static final CharMatcher WHITESPACE_OR_DELIMITER_MATCHER = CharMatcher.WHITESPACE.or(DELIMITER_MATCHER);
+	public static final CharMatcher WHITESPACE_OR_DELIMITER_MATCHER = INTERNAL_DELIMITER_MATCHER.or(CharMatcher.WHITESPACE).precomputed();
 
 	private TextConstants() {
-		// Prevent instantiation
+		throw new UnsupportedOperationException("This class is not supposed to be instantiated.");
 	}
 }

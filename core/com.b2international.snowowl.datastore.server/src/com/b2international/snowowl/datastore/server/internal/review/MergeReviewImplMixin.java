@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *	  http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,18 +18,30 @@ package com.b2international.snowowl.datastore.server.internal.review;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/**
- * @since 4.2
- */
 public abstract class MergeReviewImplMixin {
 
-	@JsonCreator
-	private MergeReviewImplMixin(@JsonProperty("id") final String id){
-		// Empty constructor body for mixin
-	}
+    @JsonCreator
+    private MergeReviewImplMixin(
+    		@JsonProperty("id") final String id, 
+    		@JsonProperty("sourcePath") final String sourcePath,
+    		@JsonProperty("targetPath") final String targetPath, 
+    		@JsonProperty("sourceToTargetReviewId") final String sourceToTargetReviewId, 
+    		@JsonProperty("targetToSourceReviewId") final String targetToSourceReviewId) {
+        // Empty constructor body for mixin
+    }
 
-	@JsonProperty
-	public abstract String id();
+    @JsonProperty
+    public abstract String id();
 
+    @JsonProperty
+    public abstract String sourcePath();
 
+    @JsonProperty
+    public abstract String targetPath();
+
+    @JsonProperty
+    public abstract String sourceToTargetReviewId();
+
+    @JsonProperty
+    public abstract String targetToSourceReviewId();
 }

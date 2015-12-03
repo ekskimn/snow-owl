@@ -20,8 +20,8 @@ import java.util.Collection;
 import com.b2international.commons.pcj.LongSets;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.datastore.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.google.inject.Provider;
 
 /**
@@ -37,7 +37,7 @@ public class SnomedMetadataImpl implements SnomedMetadata {
 	
 	@Override
 	public Collection<String> getCharacteristicTypeIds(IBranchPath branchPath) {
-		return LongSets.toStringSet(getTerminologyBrowser().getAllSuperTypeIds(branchPath, Long.valueOf(Concepts.CHARACTERISTIC_TYPE)));
+		return LongSets.toStringSet(getTerminologyBrowser().getAllSubTypeIds(branchPath, Long.valueOf(Concepts.CHARACTERISTIC_TYPE)));
 	}
 
 	@Override

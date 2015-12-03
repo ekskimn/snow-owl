@@ -17,10 +17,11 @@ package com.b2international.snowowl.snomed.api.rest;
 
 import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
 
+import java.io.IOException;
 import java.net.URI;
-import java.util.Collections;
-
-import javax.servlet.http.HttpServletRequest;
+import java.security.Principal;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -40,34 +42,27 @@ import com.b2international.commons.collections.Procedure;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
-import com.b2international.snowowl.datastore.server.events.MergeReviewDetailsReply;
-import com.b2international.snowowl.datastore.server.events.MergeReviewReply;
-import com.b2international.snowowl.datastore.server.events.ReadMergeReviewDetailsEvent;
-import com.b2international.snowowl.datastore.server.events.ReadMergeReviewEvent;
-import com.b2international.snowowl.datastore.server.review.MergeReview;
-import com.b2international.snowowl.datastore.server.review.MergeReviewIntersection;
-import com.b2international.snowowl.datastore.server.review.ReviewStatus;
+import com.b2international.snowowl.datastore.review.MergeReview;
+import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserMergeReviewDetails;
+import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
+import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
-import com.b2international.snowowl.snomed.api.rest.domain.CreateMergeReviewRequest;
+import com.b2international.snowowl.snomed.api.rest.domain.CreateReviewRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
+import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
+import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
+import com.wordnik.swagger.annotations.ApiParam;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
 
-/**
- * Provides REST endpoints for computing Reviewerences between branches.
- * 
- * @since 4.2
- */
-@Api("Branches")
+@Api("Merge Reviews")
 @RestController
 @RequestMapping(value="/merge-reviews", produces={AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE})
-public class SnomedBranchMergeReviewController extends AbstractRestService {
+public class SnomedBranchMergeReviewController extends AbstractSnomedRestService {
 
 	@Autowired
 	private IEventBus bus;
@@ -77,7 +72,7 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 	protected String codeSystemShortName;
 	
 	@Autowired
-	protected ISnomedBrowserService browserService;
+	protected ISnomedMergeReviewService mergeReviewService;
 
 	@ApiOperation(
 			value = "Create new merge review", 
@@ -88,14 +83,19 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 	})
 	@RequestMapping(method=RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
-	public DeferredResult<ResponseEntity<Void>> createMergeReview(@RequestBody final CreateMergeReviewRequest request) {
+	public DeferredResult<ResponseEntity<Void>> createMergeReview(@RequestBody final CreateReviewRequest request) {
 		ApiValidation.checkInput(request);
 		final DeferredResult<ResponseEntity<Void>> result = new DeferredResult<>();
-		final ControllerLinkBuilder linkTo = linkTo(SnomedBranchMergeReviewController.class);
-		request.toEvent(repositoryId)
-			.send(bus, MergeReviewReply.class)
-			.then(new Procedure<MergeReviewReply>() { @Override protected void doApply(final MergeReviewReply reply) {
-				result.setResult(Responses.created(getLocationHeader(linkTo, reply)).build());
+		final ControllerLinkBuilder linkTo = linkTo(getClass());
+		SnomedRequests
+			.mergeReview()
+			.prepareCreate()
+			.setSource(request.getSource())
+			.setTarget(request.getTarget())
+			.build()
+			.execute(bus)
+			.then(new Procedure<MergeReview>() { @Override protected void doApply(final MergeReview mergeReview) {
+				result.setResult(Responses.created(getLocationHeader(linkTo, mergeReview)).build());
 			}})
 			.fail(new Procedure<Throwable>() { @Override protected void doApply(final Throwable t) {
 				result.setErrorResult(t);
@@ -112,10 +112,12 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 	})
 	@RequestMapping(value="/{id}", method=RequestMethod.GET)
 	public DeferredResult<MergeReview> getMergeReview(@PathVariable("id") final String mergeReviewId) {
-		return getDeferredMergeReview(mergeReviewId);
+		return DeferredResults.wrap(SnomedRequests
+				.mergeReview()
+				.prepareGet(mergeReviewId)
+				.execute(bus));
 	}
 
-	
 	@ApiOperation(
 			value = "Retrieve the details of a merge review", 
 			notes = "Retrieves the set of modified concepts for a merge review with the specified identifier, if it exists.")
@@ -124,25 +126,15 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 		@ApiResponse(code = 404, message = "Merge Review not found or changes are not yet available", response=RestApiError.class),
 	})
 	@RequestMapping(value="/{id}/details", method=RequestMethod.GET)
-	public ISnomedBrowserMergeReviewDetails getMergeReviewDetails(@PathVariable("id") final String mergeReviewId, final HttpServletRequest request) throws Exception {
-		final DeferredResult<MergeReviewIntersection> deferredIntersection = new DeferredResult<>();
-		new ReadMergeReviewDetailsEvent(repositoryId, mergeReviewId)
-			.send(bus, MergeReviewDetailsReply.class)
-			.then(new Procedure<MergeReviewDetailsReply>() { @Override protected void doApply(final MergeReviewDetailsReply reply) {
-				deferredIntersection.setResult(reply.getMergeReviewDetails());
-			}})
-			.fail(new Procedure<Throwable>() { @Override protected void doApply(final Throwable t) {
-				deferredIntersection.setErrorResult(t);
-			}});
-
-		MergeReviewIntersection intersection = (MergeReviewIntersection) getResult(deferredIntersection);
-		ISnomedBrowserMergeReviewDetails details = browserService.getConceptDetails(intersection.id(),
-																					intersection.getIntersectingConcepts(), 
-																					intersection.getSourceBranch(), 
-																					intersection.getTargetBranch(),
-																					codeSystemShortName,
-																					Collections.list(request.getLocales()));
-		return details;
+	public Set<ISnomedBrowserMergeReviewDetail> getMergeReviewDetails(
+			
+			@PathVariable("id") final String mergeReviewId,
+			
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String languageSetting) throws InterruptedException, ExecutionException {
+		
+		return mergeReviewService.getMergeReviewDetails(mergeReviewId, getExtendedLocales(languageSetting));
 	}
 	
 	@ApiOperation(
@@ -155,38 +147,49 @@ public class SnomedBranchMergeReviewController extends AbstractRestService {
 	@RequestMapping(value="/{id}/{conceptId}", method=RequestMethod.POST)
 	public void storeMergeReviewConcept(@PathVariable("id") final String mergeReviewId, 
 			@PathVariable("conceptId") final String conceptId,
-			@RequestBody final SnomedBrowserConceptUpdate concept,
-			final HttpServletRequest request) throws Exception {
-		DeferredResult<MergeReview> deferredMergeReview = getDeferredMergeReview (mergeReviewId);
-		
-		//We need to pass that information back down the BrowserService as it can't be called directly.
-		MergeReview mergeReview = (MergeReview)getResult(deferredMergeReview);
-		if (!mergeReview.getStatus().equals(ReviewStatus.CURRENT)) {
-			throw new ConflictException ("Unable to save concept against merge review at status " + mergeReview.getStatus());
-		}
-		
+			@RequestBody final SnomedBrowserConceptUpdate concept) throws Exception {
+
 		if (!conceptId.equals(concept.getConceptId())) {
 			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
 		}
 		
-		browserService.storeConceptChanges(mergeReview.getTargetPath(), mergeReviewId, concept);
+		MergeReview mergeReview = SnomedRequests
+				.mergeReview()
+				.prepareGet(mergeReviewId)
+				.executeSync(bus);
+		
+		//We need to pass that information back down the BrowserService as it can't be called directly.
+		final ReviewStatus status = mergeReview.status();
+		if (!status.equals(ReviewStatus.CURRENT)) {
+			throw new ConflictException ("Unable to save concept against merge review at status " + status);
+		}
+		
+		mergeReviewService.persistManualConceptMerge(mergeReview, concept);
 	}
 	
-	private DeferredResult<MergeReview> getDeferredMergeReview(String mergeReviewId) {
-		final DeferredResult<MergeReview> result = new DeferredResult<>();
-		new ReadMergeReviewEvent(repositoryId, mergeReviewId)
-			.send(bus, MergeReviewReply.class)
-			.then(new Procedure<MergeReviewReply>() { @Override protected void doApply(final MergeReviewReply reply) {
-				result.setResult(reply.getMergeReview());
-			}})
-			.fail(new Procedure<Throwable>() { @Override protected void doApply(final Throwable t) {
-				result.setErrorResult(t);
-			}});
-		return result;
-	}	
-	
+	@ApiOperation(
+			value = "Merge branches and apply stored changes", 
+			notes = "Merge source branch into a target branch in SNOMED-CT repository and then apply concept changes stored against the specified merge review.")
+	@ApiResponses({
+		@ApiResponse(code = 201, message = "No Content"),
+		@ApiResponse(code = 404, message = "Source or Target branch is not found", response=RestApiError.class),
+		@ApiResponse(code = 409, message = "Merge conflict", response=RestApiError.class)
+	})
+	@RequestMapping(value="/{id}/apply", method = RequestMethod.POST)
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void mergeAndApply(@PathVariable("id") final String mergeReviewId, 
+			
+			final Principal principal,
 
-	private URI getLocationHeader(ControllerLinkBuilder linkBuilder, final MergeReviewReply reply) {
-		return linkBuilder.slash(reply.getMergeReview().id()).toUri();
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String languageSetting) throws IOException {
+
+		final String userId = principal.getName();
+		mergeReviewService.mergeAndReplayConceptUpdates(mergeReviewId, userId, getExtendedLocales(languageSetting));
+	}
+	
+	private URI getLocationHeader(ControllerLinkBuilder linkBuilder, final MergeReview mergeReview) {
+		return linkBuilder.slash(mergeReview.id()).toUri();
 	}
 }

@@ -19,10 +19,8 @@ import static com.b2international.snowowl.core.ApplicationContext.getServiceForC
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.text.MessageFormat;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -39,22 +37,22 @@ import org.eclipse.core.runtime.jobs.JobChangeAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.branch.Branch.BranchState;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.branch.Branch;
-import com.b2international.snowowl.datastore.branch.Branch.BranchState;
+import com.b2international.snowowl.datastore.events.BranchChangedEvent;
 import com.b2international.snowowl.datastore.index.diff.CompareResult;
 import com.b2international.snowowl.datastore.index.diff.NodeDiff;
 import com.b2international.snowowl.datastore.index.diff.VersionCompareConfiguration;
-import com.b2international.snowowl.datastore.server.events.BranchChangedEvent;
-import com.b2international.snowowl.datastore.server.internal.IRepository;
-import com.b2international.snowowl.datastore.server.review.ConceptChanges;
-import com.b2international.snowowl.datastore.server.review.MergeReview;
-import com.b2international.snowowl.datastore.server.review.MergeReviewIntersection;
-import com.b2international.snowowl.datastore.server.review.Review;
-import com.b2international.snowowl.datastore.server.review.ReviewManager;
-import com.b2international.snowowl.datastore.server.review.ReviewStatus;
+import com.b2international.snowowl.datastore.review.ConceptChanges;
+import com.b2international.snowowl.datastore.review.MergeReview;
+import com.b2international.snowowl.datastore.review.Review;
+import com.b2international.snowowl.datastore.review.ReviewManager;
+import com.b2international.snowowl.datastore.review.ReviewStatus;
+import com.b2international.snowowl.datastore.server.ReviewConfiguration;
+import com.b2international.snowowl.datastore.server.internal.InternalRepository;
 import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.datastore.store.query.Query;
 import com.b2international.snowowl.datastore.store.query.QueryBuilder;
@@ -181,25 +179,27 @@ public class ReviewManagerImpl implements ReviewManager {
 		private static final Timer CLEANUP_TIMER = new Timer("Review cleanup", true);
 	}
 
-	public ReviewManagerImpl(final IRepository repository, final Store<ReviewImpl> reviewStore, final Store<MergeReviewImpl> mergeReviewStore, final Store<ConceptChangesImpl> conceptChangesStore) {
-		this(repository, reviewStore, mergeReviewStore, conceptChangesStore, 15, 5);
+	public ReviewManagerImpl(final InternalRepository repository, 
+			final Store<ReviewImpl> reviewStore, final Store<MergeReviewImpl> mergeReviewStore, final Store<ConceptChangesImpl> conceptChangesStore) {
+		this(repository, reviewStore, mergeReviewStore, conceptChangesStore, new ReviewConfiguration());
 	}
 
-	public ReviewManagerImpl(final IRepository repository, 
-			final Store<ReviewImpl> reviewStore, Store<MergeReviewImpl> mergeReviewStore, final Store<ConceptChangesImpl> conceptChangesStore, 
-			final long keepCurrentMins, final int keepOtherMins) {
+	public ReviewManagerImpl(final InternalRepository repository, 
+			final Store<ReviewImpl> reviewStore, final Store<MergeReviewImpl> mergeReviewStore,
+			final Store<ConceptChangesImpl> conceptChangesStore, 
+			final ReviewConfiguration config) {
 
-		this.repositoryId = repository.getCdoRepositoryId();
-		this.keepCurrentMillis = TimeUnit.MINUTES.toMillis(keepCurrentMins);
-		this.keepOtherMillis = TimeUnit.MINUTES.toMillis(keepOtherMins);
+		this.repositoryId = repository.id();
+		this.keepCurrentMillis = TimeUnit.MINUTES.toMillis(config.getKeepCurrentMins());
+		this.keepOtherMillis = TimeUnit.MINUTES.toMillis(config.getKeepOtherMins());
 
 		this.reviewStore = reviewStore;
+		this.mergeReviewStore = mergeReviewStore;
 		reviewStore.configureSearchable("status");
 		reviewStore.configureSearchable("sourcePath");
 		reviewStore.configureSearchable("targetPath");
 		reviewStore.configureSearchable("lastUpdated");
 
-		this.mergeReviewStore = mergeReviewStore;
 		this.conceptChangesStore = conceptChangesStore;
 
 		// Check every minute if there's something to remove
@@ -346,31 +346,15 @@ public class ReviewManagerImpl implements ReviewManager {
 			return conceptChanges;
 		}
 	}
-
-	Review deleteReview(final Review review) {
-		synchronized (reviewStore) {
-			synchronized (conceptChangesStore) {
-				reviewStore.remove(review.id());
-				conceptChangesStore.remove(review.id());
-			}
-		}
-
-		return review;
-	}
-
+	
 	@Override
-	public MergeReview createMergeReview(Branch source, Branch target) {
-		MergeReviewImpl mergeReview = new MergeReviewImpl(UUID.randomUUID().toString());
-		
+	public MergeReview createMergeReview(Branch source, Branch target) {	
 		Review sourceToTarget = createReview(source, target);
-		mergeReview.setSourceToTargetReviewId(sourceToTarget.id());
-		mergeReview.setSourcePath(source.path());
-		
 		Review targetToSource = createReview(target, source);
-		mergeReview.setTargetToSourceReviewId(targetToSource.id());
-		mergeReview.setTargetPath(target.path());
-		
+
+		MergeReviewImpl mergeReview = new MergeReviewImpl(UUID.randomUUID().toString(), source.path(), target.path(), sourceToTarget.id(), targetToSource.id());
 		mergeReview.setReviewManager(this);
+
 		synchronized (mergeReviewStore) {
 			mergeReviewStore.put(mergeReview.id(), mergeReview);
 		}
@@ -392,34 +376,49 @@ public class ReviewManagerImpl implements ReviewManager {
 		mergeReview.setReviewManager(this);
 		return mergeReview;
 	}
-
+	
 	@Override
-	public MergeReviewIntersection getMergeReviewIntersection(String id) {
-		//Get the concept changes for both source to target 
-		//and target to source reviews and return a browser-like reply
-		//of the intersection
-		MergeReviewIntersectionImpl results = new MergeReviewIntersectionImpl();
-		MergeReviewImpl mergeReview = (MergeReviewImpl)getMergeReview(id);
-		Review sourceReview = getReview(mergeReview.getSourceToTargetReviewId());
+	public Set<String> getMergeReviewIntersection(MergeReview mergeReview) {
+		// Get the concept changes for both source to target 
+		// and target to source reviews
 		
-		//Are we all complete and still relevant?
-		if (!mergeReview.getStatus().equals(ReviewStatus.CURRENT)){
-			throw new IllegalStateException ("Merge Review in invalid state - " + mergeReview.getStatus());
+		// Are we all complete and still relevant?
+		if (!mergeReview.status().equals(ReviewStatus.CURRENT)){
+			throw new IllegalStateException ("Merge Review in invalid state - " + mergeReview.status());
 		}
 		
-		ConceptChanges sourceChanges = getConceptChanges(mergeReview.getSourceToTargetReviewId());
-		ConceptChanges targetChanges = getConceptChanges(mergeReview.getTargetToSourceReviewId());
+		ConceptChanges sourceChanges = getConceptChanges(mergeReview.sourceToTargetReviewId());
+		ConceptChanges targetChanges = getConceptChanges(mergeReview.targetToSourceReviewId());
 		Set<String>commonChanges = new HashSet<String>(sourceChanges.changedConcepts());
-		//If concepts are new then they won't intersect.  Also if they're deleted, they won't
-		//conflict, so we're only interested in the change set.
+		// If concepts are new then they won't intersect.  Also if they're deleted, they won't
+		// conflict, so we're only interested in the change set.
 		commonChanges.retainAll(targetChanges.changedConcepts());
 		
-		results.setId(id);
-		results.setIntersectingConcepts(commonChanges);
-		results.setSourceBranch(sourceReview.source().path());
-		results.setTargetBranch(sourceReview.target().path());
-		
-		return results;
+		return commonChanges;
 	}
+
 	
+	Review deleteReview(final Review review) {
+		synchronized (reviewStore) {
+			synchronized (conceptChangesStore) {
+				reviewStore.remove(review.id());
+				conceptChangesStore.remove(review.id());
+			}
+		}
+
+		return review;
+	}
+
+	public MergeReview deleteMergeReview(MergeReviewImpl mergeReview) {
+		Review sourceToTargetReview = getReview(mergeReview.sourceToTargetReviewId());
+		Review targetToSourceReview = getReview(mergeReview.targetToSourceReviewId());
+		deleteReview(sourceToTargetReview);
+		deleteReview(targetToSourceReview);
+		
+		synchronized (mergeReviewStore) {
+			mergeReviewStore.remove(mergeReview.id());
+		}
+		
+		return mergeReview;
+	}
 }

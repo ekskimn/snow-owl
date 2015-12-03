@@ -15,13 +15,16 @@
  */
 package com.b2international.snowowl.snomed.api.impl;
 
+import static com.google.common.collect.Sets.newHashSet;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,8 +36,8 @@ import javax.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.status.SerializableStatus;
-import com.b2international.snowowl.api.impl.domain.StorageRef;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
@@ -49,16 +52,17 @@ import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventSwitch;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobRemovedEvent;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobState;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobUtils;
+import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
 import com.b2international.snowowl.eventbus.IMessage;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
-import com.b2international.snowowl.snomed.api.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
+import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConcept;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
@@ -67,8 +71,11 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserR
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.ClassificationRun;
-import com.b2international.snowowl.snomed.datastore.SnomedConceptIndexEntry;
+import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConcept;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationRequest;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
@@ -213,6 +220,9 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Resource
 	private SnomedBrowserService browserService;
+	
+	@Resource
+	private IEventBus bus;
 
 	@PostConstruct
 	protected void init() {
@@ -311,14 +321,35 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final String userId) {
+	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales, final String userId) {
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
-
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			return indexService.getEquivalentConceptSets(storageRef, classificationId, userId);
+			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(storageRef, classificationId, userId);
+			final Set<String> conceptIds = newHashSet();
+			
+			for (final IEquivalentConceptSet conceptSet : conceptSets) {
+				for (final IEquivalentConcept equivalentConcept : conceptSet.getEquivalentConcepts()) {
+					conceptIds.add(equivalentConcept.getId());
+				}
+			}
+
+			final Map<String, ISnomedDescription> fsnMap = new DescriptionService(bus, branchPath).getFullySpecifiedNames(conceptIds, locales);
+			for (final IEquivalentConceptSet conceptSet : conceptSets) {
+				for (final IEquivalentConcept equivalentConcept : conceptSet.getEquivalentConcepts()) {
+					final String equivalentConceptId = equivalentConcept.getId();
+					final ISnomedDescription fsn = fsnMap.get(equivalentConceptId);
+					if (fsn != null) {
+						((EquivalentConcept) equivalentConcept).setLabel(fsn.getTerm());
+					} else {
+						((EquivalentConcept) equivalentConcept).setLabel(equivalentConceptId);
+					}
+				}
+			}
+			
+			return conceptSets;
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -343,7 +374,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<Locale> locales, String userId) {
+	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales, String userId) {
 		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), locales);
 
 		// Replace ImmutableCollection of relationships
