@@ -8,6 +8,7 @@ import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.domain.exception.SnomedPersistanceException;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class SnomedManualConceptMergeServiceImpl {
@@ -43,7 +44,7 @@ public class SnomedManualConceptMergeServiceImpl {
 		if (!conceptFile.isFile()) {
 			throw new NotFoundException("manual concept merge", conceptId);
 		}
-		return objectMapper.readValue(conceptFile, ISnomedBrowserConceptUpdate.class);
+		return objectMapper.readValue(conceptFile, SnomedBrowserConceptUpdate.class);
 	}
 	
 	private File getConceptStorePath(String branchPath, String mergeReviewId, String conceptId) {
