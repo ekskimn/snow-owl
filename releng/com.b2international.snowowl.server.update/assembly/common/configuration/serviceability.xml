@@ -167,6 +167,21 @@
 			<Pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}] %-5level %-28.28thread %-64.64logger{64} %X{medic.eventCode} %msg %ex%n</Pattern>
 		</encoder>
 	</appender>
+	
+	<appender name="EVENT_BUS_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>serviceability/logs/eventbus-trace.log</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+			<FileNamePattern>serviceability/logs/eventbus-trace_%i.log</FileNamePattern>
+			<MinIndex>1</MinIndex>
+			<MaxIndex>4</MaxIndex>
+		</rollingPolicy>
+		<triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			<MaxFileSize>100MB</MaxFileSize>
+		</triggeringPolicy>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<Pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}] %-5level %-28.28thread %-64.64logger{64} %X{medic.eventCode} %msg %ex%n</Pattern>
+		</encoder>
+	</appender>
 
 	<appender name="EVENT_LOG_STDOUT" class="org.eclipse.virgo.medic.log.logback.ReroutingAwareConsoleAppender">
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -205,6 +220,10 @@
 	<logger level="INFO" additivity="false" name="org.eclipse.virgo.medic.eventlog.default">
 		<!-- appender-ref ref="SIFTED_LOG_FILE" /-->
 		<appender-ref ref="LOG_FILE" />
+	</logger>
+	
+	<logger level="TRACE" additivity="false" name="com.b2international.snowowl.internal.eventbus.EventBus">
+		<appender-ref ref="EVENT_BUS_LOG_FILE" />
 	</logger>
 
 	<root level="INFO">
