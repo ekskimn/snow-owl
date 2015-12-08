@@ -226,7 +226,7 @@
 		<appender-ref ref="EVENT_BUS_LOG_FILE" />
 	</logger>
 	
-	<logger level="TRACE" additivity="false" name="com.b2international.snowowl.core.events.metrics.StopwatchResponseTimeMeter">
+	<logger level="TRACE" additivity="false" name="request">
 		<appender-ref ref="EVENT_BUS_LOG_FILE" />
 	</logger>
 
