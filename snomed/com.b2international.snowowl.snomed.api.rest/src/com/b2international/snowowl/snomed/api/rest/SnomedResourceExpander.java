@@ -14,11 +14,9 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.rest.domain.ExpandableRelationshipChange;
-import com.b2international.snowowl.snomed.api.rest.domain.ExpandableSnomedRelationship;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptMini;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.google.common.base.Function;
@@ -34,59 +32,6 @@ public class SnomedResourceExpander {
 	private static final String DESTINATION_FSN = "destination.fsn";
 
 	public static final String FSN = "fsn";
-
-	public List<ISnomedRelationship> expandRelationships(String branchPath, List<ISnomedRelationship> members, 
-			final List<ExtendedLocale> extendedLocales, List<String> expantions) {
-		
-		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
-		
-		if (expantions.isEmpty()) {
-			return members;			
-		}
-		
-		final List<ExpandableSnomedRelationship> expandedMembers = new ArrayList<>();
-		for (ISnomedRelationship relationship : members) {
-			expandedMembers.add(new ExpandableSnomedRelationship(relationship));
-		}
-		
-		for (String expand : expantions) {
-			if (expand.equals(SOURCE_FSN)) {
-				
-				Set<String> conceptIds = FluentIterable.from(expandedMembers)
-						.transform(new Function<ExpandableSnomedRelationship, String>() {
-							@Override public String apply(ExpandableSnomedRelationship input) {
-								return input.getSourceId();
-							}})
-						.toSet();
-				
-				Map<String, ISnomedDescription> fsnMap = descriptionService.getFullySpecifiedNames(conceptIds, extendedLocales);
-				for (ExpandableSnomedRelationship relationship : expandedMembers) {
-					String sourceId = relationship.getSourceId();
-					relationship.setSource(new SnomedConceptMini(sourceId, getFsn(fsnMap, sourceId)));
-				}
-				
-			} else if (expand.equals(TYPE_FSN)) {
-				
-				Set<String> conceptIds = FluentIterable.from(expandedMembers)
-						.transform(new Function<ExpandableSnomedRelationship, String>() {
-							@Override public String apply(ExpandableSnomedRelationship input) {
-								return input.getTypeId();
-							}})
-						.toSet();
-				
-				Map<String, ISnomedDescription> fsnMap = descriptionService.getFullySpecifiedNames(conceptIds, extendedLocales);
-				for (ExpandableSnomedRelationship relationship : expandedMembers) {
-					String typeId = relationship.getTypeId();
-					relationship.setType(new SnomedConceptMini(typeId, getFsn(fsnMap, typeId)));
-				}
-				
-			} else {
-				throw new BadRequestException("Unrecognised expand parameter '%s'.", expand);
-			}
-		}
-		
-		return new ArrayList<ISnomedRelationship>(expandedMembers);
-	}
 
 	public List<IRelationshipChange> expandRelationshipChanges(String branchPath, List<IRelationshipChange> changes, 
 			List<ExtendedLocale> locales, List<String> expantions) {
