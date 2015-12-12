@@ -190,7 +190,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final List<ISnomedDescription> descriptions = ImmutableList.copyOf(SnomedRequests.prepareSearchDescription()
 				.all()
 				.filterByConceptId(conceptId)
-				.filterByExtendedLocales(locales)
 				.build(conceptRef.getBranchPath())
 				.executeSync(bus)
 				.getItems());
