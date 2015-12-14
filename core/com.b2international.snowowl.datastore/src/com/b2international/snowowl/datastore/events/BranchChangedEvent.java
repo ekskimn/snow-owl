@@ -40,7 +40,7 @@ public final class BranchChangedEvent extends BaseRepositoryEvent {
 	protected String getPath() {
 		return "/branches/changes";
 	}
-	
+
 	@Override
 	public String toString() {
 		return "BranchChangedEvent " + branch.path(); 

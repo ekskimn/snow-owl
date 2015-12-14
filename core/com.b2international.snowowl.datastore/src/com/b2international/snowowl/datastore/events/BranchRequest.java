@@ -34,9 +34,4 @@ public abstract class BranchRequest<B> extends BaseRequest<RepositoryContext, B>
 	public final String getBranchPath() {
 		return branchPath;
 	}
-	
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + " " + branchPath;
-	}
 }

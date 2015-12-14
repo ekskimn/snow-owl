@@ -16,8 +16,6 @@
 package com.b2international.snowowl.datastore.server.domain;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.branch.Branch;
@@ -38,8 +36,7 @@ import com.b2international.snowowl.eventbus.IEventBus;
 public class StorageRef implements InternalStorageRef {
 
 	private static final IBranchPathMap MAIN_BRANCH_PATH_MAP = new UserBranchPathMap();
-	private static final long DEFAULT_ASYNC_TIMEOUT_DELAY = 20000; // TODO: Put back to 5000 after debugging
-	private static final Logger LOGGER = LoggerFactory.getLogger(StorageRef.class);
+	private static final long DEFAULT_ASYNC_TIMEOUT_DELAY = 5000;
 
 	private static ICDOConnectionManager getConnectionManager() {
 		return ApplicationContext.getServiceForClass(ICDOConnectionManager.class);
@@ -95,7 +92,6 @@ public class StorageRef implements InternalStorageRef {
 	@Override
 	public Branch getBranch() {
 		if (branch == null) {
-			LOGGER.info("Requesting branch {}", branchPath);
 			branch = RepositoryRequests
 						.branching(getRepositoryUuid())
 						.prepareGet(branchPath)
