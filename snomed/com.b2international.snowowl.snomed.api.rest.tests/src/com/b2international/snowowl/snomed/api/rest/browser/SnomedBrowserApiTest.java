@@ -152,9 +152,8 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final Map<String, Object> concept = response.and().extract().as(Map.class);
 		concept.remove("relationships");
 
-		// XXX when deleting all relationships of a concept, the concept will be deleted too as a side effect,
-		// therefore we get 404 when trying to get the updated concept
-		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 404);
+		// We get a 400, bad request, because at least one is-a relationship is required
+		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 400);
 	}
 
 }
