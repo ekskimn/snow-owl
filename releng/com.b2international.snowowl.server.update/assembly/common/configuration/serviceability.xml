@@ -183,6 +183,16 @@
 		</encoder>
 	</appender>
 
+	<appender name="TRACEABILITY_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>serviceability/logs/snomed-traceability.log</file>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<FileNamePattern>serviceability/logs/snomed-traceability_%d.gz</FileNamePattern>
+		</rollingPolicy>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<Pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}] %-5level %msg %ex%n</Pattern>
+		</encoder>
+	</appender>
+
 	<appender name="EVENT_LOG_STDOUT" class="org.eclipse.virgo.medic.log.logback.ReroutingAwareConsoleAppender">
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
 			<Pattern>[%d{yyyy-MM-dd HH:mm:ss.SSS}] %-28.28thread &lt;%X{medic.eventCode}&gt; %msg %ex%n</Pattern>
@@ -228,6 +238,10 @@
 	
 	<logger level="TRACE" additivity="false" name="request">
 		<appender-ref ref="EVENT_BUS_LOG_FILE" />
+	</logger>
+
+	<logger level="INFO" additivity="false" name="traceability">
+		<appender-ref ref="TRACEABILITY_LOG_FILE" />
 	</logger>
 
 	<root level="INFO">
