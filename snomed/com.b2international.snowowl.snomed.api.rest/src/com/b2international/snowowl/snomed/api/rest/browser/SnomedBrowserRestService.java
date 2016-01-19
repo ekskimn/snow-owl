@@ -15,6 +15,8 @@ package com.b2international.snowowl.snomed.api.rest.browser;
 import java.io.IOException;
 import java.io.StringReader;
 import java.security.Principal;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -90,14 +92,26 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@PathVariable(value="conceptId")
 			final String conceptId,
 
+			@ApiParam(value="Representational form to include. Currently the only acceptable value is 'short-normal'.")
+			@RequestParam(value="representationalForm", required=false)
+			final List<String> representationalForms,
+			
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
+		if (representationalForms != null) {
+			for (String form : representationalForms) {
+				if (!"short-normal".equals(form)) {
+					throw new BadRequestException("Unsupported representationalForm '%s'", form);
+				}
+			}
+		}
+
 		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
-		
+
 		final IComponentRef conceptRef = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptDetails(conceptRef, extendedLocales);
+		return browserService.getConceptDetails(conceptRef, extendedLocales, representationalForms);
 	}
 
 	@ApiOperation(
