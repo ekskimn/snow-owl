@@ -240,7 +240,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	@RequestMapping(
 			value="/{path:**}/concepts/{conceptId}/descendants",
 			method = RequestMethod.GET)
-	public SnomedConcepts getDescendants(
+	public DeferredResult<ISnomedConcept> getDescendants(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -268,14 +268,13 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
-			
-		final ISnomedConcept concept = SnomedRequests.prepareGetConcept()
-						.setComponentId(conceptId)
-						.setExpand(String.format("descendants(direct:%s,offset:%d,limit:%d)", direct, offset, limit))
-						.build(branchPath)
-						.executeSync(bus);
-
-		return resourceExpander.expandConcepts(branchPath, concept.getDescendants(), getExtendedLocales(acceptLanguage), expand);
+		
+		return DeferredResults.wrap(SnomedRequests.prepareGetConcept()
+				.setComponentId(conceptId)
+				.setExpand(String.format("descendants(direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", direct, offset, limit))
+				.setLocales(getExtendedLocales(acceptLanguage))
+				.build(branchPath)
+				.execute(bus));
 	}
 
 	@ApiOperation(
