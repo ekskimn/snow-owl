@@ -47,6 +47,8 @@ public interface ISnomedBrowserService {
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
 	ISnomedBrowserConcept getConceptDetails(IComponentRef conceptRef, List<ExtendedLocale> extendedLocales);
+	
+	ISnomedBrowserConcept getConceptDetails(IComponentRef conceptRef, List<ExtendedLocale> extendedLocales, List<String> representationalForms);
 
 
 	/**

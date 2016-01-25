@@ -15,6 +15,7 @@ package com.b2international.snowowl.snomed.api.impl.domain.browser;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipType;
+import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserFormRepresentation;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -40,6 +41,7 @@ public class SnomedBrowserRelationship extends SnomedBrowserComponent implements
 	private int groupId;
 	private CharacteristicType characteristicType;
 	private RelationshipModifier modifier;
+	private SnomedBrowserFormRepresentation formRepresentation;
 
 	@Override
 	public String getId() {
@@ -81,6 +83,11 @@ public class SnomedBrowserRelationship extends SnomedBrowserComponent implements
 		return modifier;
 	}
 
+	@Override
+	public SnomedBrowserFormRepresentation getFormRepresentation() {
+		return formRepresentation;
+	}
+
 	public void setRelationshipId(String relationshipId) {
 		this.relationshipId = relationshipId;
 	}
@@ -109,6 +116,10 @@ public class SnomedBrowserRelationship extends SnomedBrowserComponent implements
 		this.modifier = modifier;
 	}
 
+	public void setFormRepresentation(SnomedBrowserFormRepresentation formRepresentation) {
+		this.formRepresentation = formRepresentation;
+	}
+	
 	@Override
 	public String toString() {
 		final StringBuilder builder = new StringBuilder();
@@ -128,6 +139,8 @@ public class SnomedBrowserRelationship extends SnomedBrowserComponent implements
 		builder.append(characteristicType);
 		builder.append(", modifier=");
 		builder.append(modifier);
+		builder.append(", formRepresentation=");
+		builder.append(formRepresentation);
 		builder.append(", getEffectiveTime()=");
 		builder.append(getEffectiveTime());
 		builder.append(", getModuleId()=");
