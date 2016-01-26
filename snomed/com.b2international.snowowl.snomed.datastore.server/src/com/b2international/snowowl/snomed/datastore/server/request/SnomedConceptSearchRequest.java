@@ -37,20 +37,24 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 
 import com.b2international.commons.functions.StringToLongFunction;
+import com.b2international.commons.options.Options;
+import com.b2international.commons.pcj.LongSets;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
-import com.b2international.snowowl.datastore.server.snomed.escg.EscgParseFailedException;
-import com.b2international.snowowl.datastore.server.snomed.escg.IndexQueryQueryEvaluator;
-import com.b2international.snowowl.dsl.escg.EscgUtils;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.b2international.snowowl.snomed.core.domain.UnsupportedEscgQueryParameterException;
+import com.b2international.snowowl.snomed.datastore.escg.EscgParseFailedException;
+import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
+import com.b2international.snowowl.snomed.datastore.escg.IEscgQueryEvaluatorService;
+import com.b2international.snowowl.snomed.datastore.escg.IndexQueryQueryEvaluator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedQueryBuilder;
 import com.b2international.snowowl.snomed.datastore.server.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
 import com.google.common.collect.ImmutableList;
+
+import bak.pcj.LongCollection;
 
 /**
  * @since 4.5
@@ -107,6 +111,10 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 					.matchAny());
 		}
 		
+		final BooleanFilter filter = new BooleanFilter();
+		Sort sort;
+		Query query;
+		
 		if (containsKey(OptionKey.ESCG)) {
 			/* 
 			 * XXX: Not using IEscgQueryEvaluatorService, as it would add the equivalent of 
@@ -115,18 +123,16 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			final String escg = getString(OptionKey.ESCG);
 			try {
 				final IndexQueryQueryEvaluator queryEvaluator = new IndexQueryQueryEvaluator();
-				final BooleanQuery escgQuery = queryEvaluator.evaluate(EscgUtils.INSTANCE.parseRewrite(escg));
+				final BooleanQuery escgQuery = queryEvaluator.evaluate(context.service(EscgRewriter.class).parseRewrite(escg));
 				queryBuilder.and(escgQuery);
 			} catch (final SyntaxErrorException e) {
 				throw new IllegalQueryParameterException(e.getMessage());
 			} catch (EscgParseFailedException e) {
-				throw new UnsupportedEscgQueryParameterException(escg);
+				final LongCollection matchingConceptIds = context.service(IEscgQueryEvaluatorService.class).evaluateConceptIds(context.branch().branchPath(), escg);
+				addFilterClause(filter, SnomedMappings.id().createTermsFilter(LongSets.toSet(matchingConceptIds)), Occur.MUST);
 			}
 		}
 		
-		final BooleanFilter filter = new BooleanFilter();
-		final Query query;
-		final Sort sort;
 		
 		if (!componentIds().isEmpty()) {
 			addFilterClause(filter, createComponentIdFilter(), Occur.MUST);
@@ -178,22 +184,22 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 		final ScoreDoc[] scoreDocs = topDocs.scoreDocs;
 		final ImmutableList.Builder<SnomedConceptIndexEntry> conceptsBuilder = ImmutableList.builder();
 		
+		final Options expand = expand();
 		for (int i = offset(); i < scoreDocs.length; i++) {
 			Document doc = searcher.doc(scoreDocs[i].doc); // TODO: should expand & filter drive fieldsToLoad? Pass custom fieldValueLoader?
 			SnomedConceptIndexEntry indexEntry = SnomedConceptIndexEntry.builder(doc).build();
 			conceptsBuilder.add(indexEntry);
 		}
-
-		return SnomedConverters.newConceptConverter(context, expand(), locales()).convert(conceptsBuilder.build(), offset(), limit(), topDocs.totalHits);
+		return SnomedConverters.newConceptConverter(context, expand, locales()).convert(conceptsBuilder.build(), offset(), limit(), topDocs.totalHits);
 	}
 
 	private Map<String, Integer> executeDescriptionSearch(BranchContext context, String term) {
-		
 		final Collection<ISnomedDescription> items = SnomedRequests.prepareSearchDescription()
 			.all()
 			.filterByActive(true)
 			.filterByTerm(term)
 			.filterByLanguageRefSetIds(languageRefSetIds())
+			.filterByConceptId(StringToLongFunction.copyOf(componentIds()))
 			.build()
 			.execute(context)
 			.getItems();
