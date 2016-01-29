@@ -169,4 +169,7 @@ public abstract class SnomedRequests {
 		return new SnomedRepositoryCommitRequestBuilder(REPOSITORY_ID);
 	}
 
+	public static SnomedRepositoryBulkReadRequestBuilder prepareBulkRead() {
+		return new SnomedRepositoryBulkReadRequestBuilder(REPOSITORY_ID);
+	}
 }
