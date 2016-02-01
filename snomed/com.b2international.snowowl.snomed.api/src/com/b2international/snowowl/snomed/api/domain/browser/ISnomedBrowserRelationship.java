@@ -43,8 +43,4 @@ public interface ISnomedBrowserRelationship extends ISnomedBrowserComponentWithI
 	
 	/** @return the relationship modifier ({@link RelationshipModifier#EXISTENTIAL EXISTENTIAL} or {@link RelationshipModifier#UNIVERSAL UNIVERSAL}) */
 	RelationshipModifier getModifier();
-	
-	/** @return the form representation, e.g. {@link SnomedBrowserFormRepresentation#SHORT_NORMAL SHORT_NORMAL}. 
-	 * Relationships will either have a characteristic type or form representation, not both. */
-	SnomedBrowserFormRepresentation getFormRepresentation();
 }
