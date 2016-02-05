@@ -12,6 +12,7 @@ Export-Package: com.b2international.snowowl.snomed.api,
  com.b2international.snowowl.snomed.api.domain.browser,
  com.b2international.snowowl.snomed.api.domain.classification,
  com.b2international.snowowl.snomed.api.domain.exception,
+ com.b2international.snowowl.snomed.api.domain.expression,
  com.b2international.snowowl.snomed.api.domain.mergereview,
  com.b2international.snowowl.snomed.api.exception,
  com.b2international.snowowl.snomed.api.validation

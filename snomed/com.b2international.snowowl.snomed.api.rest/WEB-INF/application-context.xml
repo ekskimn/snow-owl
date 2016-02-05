@@ -26,6 +26,7 @@
 	<bean class="com.b2international.snowowl.snomed.api.impl.SnomedBrowserService" />
 	<bean class="com.b2international.snowowl.snomed.api.impl.SnomedMergeReviewServiceImpl" />
 	<bean class="com.b2international.snowowl.snomed.api.impl.SnomedManualConceptMergeServiceImpl" />
+	<bean class="com.b2international.snowowl.snomed.api.impl.SnomedExpressionService" />
 	<bean class="com.b2international.snowowl.snomed.api.rest.SnomedResourceExpander" />
 	
 	<mvc:default-servlet-handler />

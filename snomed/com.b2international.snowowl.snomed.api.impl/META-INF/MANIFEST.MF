@@ -24,7 +24,9 @@ Require-Bundle: org.eclipse.core.runtime,
  com.b2international.snowowl.snomed.dsl,
  com.b2international.snowowl.snomed.importer,
  com.b2international.snowowl.snomed.importer.rf2,
- org.ihtsdo.drools.snomed-drools
+ org.ihtsdo.drools.snomed-drools,
+ com.b2international.snowowl.snomed.semanticengine,
+ com.b2international.snowowl.snomed.scg
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-Vendor: B2i Healthcare
 Bundle-ActivationPolicy: lazy

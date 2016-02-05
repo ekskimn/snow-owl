@@ -23,6 +23,7 @@ import java.net.URI;
 import java.security.Principal;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +42,8 @@ import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpression;
+import com.b2international.snowowl.snomed.api.impl.SnomedExpressionService;
 import com.b2international.snowowl.snomed.api.rest.domain.ChangeRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestInput;
@@ -63,6 +66,9 @@ import com.wordnik.swagger.annotations.ApiResponses;
 @Controller
 @RequestMapping(produces={ AbstractRestService.SO_MEDIA_TYPE })
 public class SnomedConceptRestService extends AbstractSnomedRestService {
+
+	@Autowired
+	private SnomedExpressionService expressionService;
 
 	@ApiOperation(
 			value="Retrieve Concepts from a branch", 
@@ -190,6 +196,40 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.setLocales(extendedLocales)
 					.build(branchPath)
 					.execute(bus));
+	}
+
+	@ApiOperation(
+			value="Retrieve short normal form of a concept",
+			notes="Retrieve short normal form of a concept")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK", response = Void.class),
+		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class)
+	})
+	@RequestMapping(value="/{path:**}/concepts/{conceptId}/short-normal-form", method=RequestMethod.GET)
+	public @ResponseBody ISnomedExpression readShortNormalForm(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="The Concept identifier")
+			@PathVariable(value="conceptId")
+			final String conceptId,
+			
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage) {
+
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(acceptLanguage));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+
+		return expressionService.getConceptShortNormalForm(conceptId, branchPath, extendedLocales);
 	}
 
 	@ApiOperation(
