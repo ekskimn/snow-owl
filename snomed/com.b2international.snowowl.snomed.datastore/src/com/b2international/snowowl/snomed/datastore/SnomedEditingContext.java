@@ -1450,16 +1450,16 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		// organize elements regarding their index
 		ArrayListMultimap<Integer, EObject> itemMap = ArrayListMultimap.create();
 		
-		for (EObject item : deletionPlan.getDeletedItems()) {
+		for (CDOObject item : deletionPlan.getDeletedItems()) {
 			
 			// Set bogus value here instead of letting it pass when trying to use it (it would silently remove the first member of a list)
 			int index = -1;
 			
 			if (item instanceof Concept) {
-				index = getIndexFromDatabase(item, "SNOMED_CONCEPTS_CONCEPTS_LIST");
+				index = getIndexFromDatabase(item, (Concepts) item.eContainer(), "SNOMED_CONCEPTS_CONCEPTS_LIST");
 			} else if (item instanceof SnomedRefSet) {
 				// from cdoRootResource
-				index = getIndexFromDatabase(item, "ERESOURCE_CDORESOURCE_CONTENTS_LIST");
+				index = getIndexFromDatabase(item, item.cdoResource(), "ERESOURCE_CDORESOURCE_CONTENTS_LIST");
 			} else if (item instanceof SnomedRefSetMember) {
 				// from the refset list
 				final SnomedRefSetMember member = (SnomedRefSetMember) item;
@@ -1473,9 +1473,9 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				if (!(refSet instanceof SnomedStructuralRefSet)) { // XXX: also includes the previous null check for refSet
 					
 					if (refSet instanceof SnomedMappingRefSet) {
-						index = getIndexFromDatabase(item, "SNOMEDREFSET_SNOMEDMAPPINGREFSET_MEMBERS_LIST");
+						index = getIndexFromDatabase(item, ((SnomedRefSetMember) item).getRefSet(), "SNOMEDREFSET_SNOMEDMAPPINGREFSET_MEMBERS_LIST");
 					} else if (refSet instanceof SnomedRegularRefSet) {
-						index = getIndexFromDatabase(item, "SNOMEDREFSET_SNOMEDREGULARREFSET_MEMBERS_LIST");
+						index = getIndexFromDatabase(item, ((SnomedRefSetMember) item).getRefSet(), "SNOMEDREFSET_SNOMEDREGULARREFSET_MEMBERS_LIST");
 					} else {
 						throw new RuntimeException("Unknown reference set type");
 					}
