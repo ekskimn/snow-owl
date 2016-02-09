@@ -6,6 +6,6 @@ public interface ISnomedExpressionConcept extends ISnomedExpressionAttributeValu
 
 	String getTerm();
 
-	boolean isPrimative();
+	boolean isPrimitive();
 
 }

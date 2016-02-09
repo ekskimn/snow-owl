@@ -6,15 +6,18 @@ import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpressio
 public class SnomedExpressionConcept implements ISnomedExpressionConcept, ISnomedExpressionAttributeValue {
 
 	private final String id;
-	private final String term;
-	private boolean primative;
+	private final boolean primitive;
+	private String term;
 
-	public SnomedExpressionConcept(String id, String term, boolean primative) {
+	public SnomedExpressionConcept(String id, boolean primitive) {
 		this.id = id;
-		this.term = term;
-		this.primative = primative;
+		this.primitive = primitive;
 	}
 
+	public void setTerm(String term) {
+		this.term = term;
+	}
+	
 	@Override
 	public String getId() {
 		return id;
@@ -26,8 +29,8 @@ public class SnomedExpressionConcept implements ISnomedExpressionConcept, ISnome
 	}
 	
 	@Override
-	public boolean isPrimative() {
-		return primative;
+	public boolean isPrimitive() {
+		return primitive;
 	}
 
 }

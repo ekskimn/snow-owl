@@ -1,6 +1,10 @@
 package com.b2international.snowowl.snomed.api.impl;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.emf.common.util.EList;
 
@@ -25,12 +29,14 @@ public class SnomedExpresssionConverter {
 	private BranchSpecificClientTerminologyBrowser<SnomedConceptIndexEntry, String> browser;
 	private List<ExtendedLocale> extendedLocales;
 	private DescriptionService descriptionService;
+	private final List<SnomedExpressionConcept> allConcepts;
 
 	public SnomedExpresssionConverter(BranchSpecificClientTerminologyBrowser<SnomedConceptIndexEntry, String> browser, 
 			List<ExtendedLocale> extendedLocales, DescriptionService descriptionService) {
 		this.browser = browser;
 		this.extendedLocales = extendedLocales;
 		this.descriptionService = descriptionService;
+		allConcepts = new ArrayList<>();
 	}
 
 	public ISnomedExpression convert(Expression expression) {
@@ -51,6 +57,8 @@ public class SnomedExpresssionConverter {
 			}
 			conceptExpression.addGroup(expressionGroup);
 		}
+		
+		populateConceptTerms();
 		
 		return conceptExpression;
 	}
@@ -73,8 +81,25 @@ public class SnomedExpresssionConverter {
 
 	private SnomedExpressionConcept convert(Concept concept) {
 		final String id = concept.getId();
-		final ISnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(id, extendedLocales);
-		return new SnomedExpressionConcept(id, fullySpecifiedName.getTerm(), browser.getConcept(id).isPrimitive());
+		final SnomedExpressionConcept expressionConcept = new SnomedExpressionConcept(id, browser.getConcept(id).isPrimitive());
+		allConcepts.add(expressionConcept);
+		return expressionConcept;
+	}
+	
+	private void populateConceptTerms() {
+		Set<String> allConceptIds = new HashSet<>();
+		for (SnomedExpressionConcept snomedExpressionConcept : allConcepts) {
+			allConceptIds.add(snomedExpressionConcept.getId());			
+		}
+		final Map<String, ISnomedDescription> fsns = descriptionService.getFullySpecifiedNames(allConceptIds, extendedLocales);
+		for (SnomedExpressionConcept snomedExpressionConcept : allConcepts) {
+			final ISnomedDescription iSnomedDescription = fsns.get(snomedExpressionConcept.getId());
+			if (iSnomedDescription != null && iSnomedDescription.getTerm() != null) {
+				snomedExpressionConcept.setTerm(iSnomedDescription.getTerm());
+			} else {
+				snomedExpressionConcept.setTerm(snomedExpressionConcept.getId());
+			}
+		}
 	}
 
 }
