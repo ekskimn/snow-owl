@@ -21,7 +21,23 @@ import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
 import static com.b2international.snowowl.datastore.cdo.CDOIDUtils.STORAGE_KEY_TO_CDO_ID_FUNCTION;
 import static com.b2international.snowowl.datastore.cdo.CDOUtils.getAttribute;
 import static com.b2international.snowowl.datastore.cdo.CDOUtils.getObjectIfExists;
-import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.*;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.B2I_NAMESPACE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ENTIRE_TERM_CASE_INSENSITIVE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ENTIRE_TERM_CASE_SENSITIVE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.EXISTENTIAL_RESTRICTION_MODIFIER;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.FULLY_SPECIFIED_NAME;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.INFERRED_RELATIONSHIP;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.IS_A;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE_B2I_EXTENSION;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.PRIMITIVE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.QUALIFIER_VALUE_TOPLEVEL_CONCEPT;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.QUALIFYING_RELATIONSHIP;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_COMPLEX_MAP_TYPE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_SIMPLE_TYPE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.STATED_RELATIONSHIP;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.SYNONYM;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.CONCEPT;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.toArray;
@@ -87,9 +103,12 @@ import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.SnomedClientIndexService;
 import com.b2international.snowowl.snomed.datastore.index.SnomedDescriptionIndexQueryAdapter;
 import com.b2international.snowowl.snomed.datastore.index.SnomedDescriptionReducedQueryAdapter;
+import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
+import com.b2international.snowowl.snomed.datastore.index.SnomedRelationshipIndexQueryAdapter;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.services.IClientSnomedComponentService;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentService;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedConceptNameProvider;
@@ -108,6 +127,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
@@ -1091,8 +1111,12 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				return SnomedInactivationPlan.NULL_IMPL;
 			}
 			
-			//destination relationships
-			plan.markForInactivation(Iterables.toArray(concept.getInboundRelationships(), Relationship.class));
+			plan.markForInactivation(FluentIterable.from(getInboundRelationshipsFromIndex(concept.getId())).transform(new Function<SnomedRelationshipIndexEntry, Long>() {
+				@Override
+				public Long apply(SnomedRelationshipIndexEntry input) {
+					return input.getStorageKey();
+				}
+			}).toSet());
 			
 			if (monitor.isCanceled()) {
 				return SnomedInactivationPlan.NULL_IMPL;
@@ -1167,7 +1191,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	}
 	
 	private Iterable<Concept> getStatedChildren(Concept conceptToInactivate) {
-		Iterable<Relationship> statedActiveInboundIsaRelationships = filterActiveStatedIsaRelationships(conceptToInactivate.getInboundRelationships());
+		Iterable<Relationship> statedActiveInboundIsaRelationships = filterActiveStatedIsaRelationships(getInboundRelationships(conceptToInactivate.getId()));
 		Iterable<Concept> children = Iterables.transform(statedActiveInboundIsaRelationships, new Function<Relationship, Concept>() {
 			@Override public Concept apply(Relationship input) {
 				return input.getSource();
@@ -1224,13 +1248,14 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			return deletionPlan;
 		}
 		
-		// check sub-concepts
-		for(Relationship relationship: concept.getInboundRelationships()) {
-			if(IS_A.equals(relationship.getType().getId())) {
-				deletionPlan = canDelete(relationship, deletionPlan);
-				if(deletionPlan.isRejected()) {
-					deletionPlan.addRejectionReason("Cannot delete concept: '" + toString(concept) + "'.");
-					return deletionPlan;
+		for (Relationship relationship : getInboundRelationships(concept.getId())) {
+			if (IS_A.equals(relationship.getType().getId())) {
+				if (relationship != null) {
+					deletionPlan = canDelete(relationship, deletionPlan);
+					if(deletionPlan.isRejected()) {
+						deletionPlan.addRejectionReason(String.format(UNABLE_TO_DELETE_CONCEPT_MESSAGE, toString(concept)));
+						return deletionPlan;
+					}
 				}
 			}
 		}
@@ -1271,10 +1296,23 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		deletionPlan.markForDeletion(descriptionTypeRefSetMembers);
 		
 		deletionPlan.markForDeletion(concept);
-		deletionPlan.markForDeletion(concept.getInboundRelationships());
 		deletionPlan.markForDeletion(concept.getOutboundRelationships());
 		
 		return deletionPlan;
+	}
+
+	public final List<Relationship> getInboundRelationships(String conceptId) {
+		return FluentIterable.from(getInboundRelationshipsFromIndex(conceptId)).transform(new Function<SnomedRelationshipIndexEntry, Relationship>() {
+			@Override
+			public Relationship apply(SnomedRelationshipIndexEntry input) {
+				return (Relationship) lookup(input.getStorageKey());
+			}
+		}).toList();
+	}
+
+	private List<SnomedRelationshipIndexEntry> getInboundRelationshipsFromIndex(String conceptId) {
+		final SnomedIndexService index = ApplicationContext.getInstance().getService(SnomedIndexService.class);
+		return index.search(BranchPathUtils.createPath(getTransaction()), SnomedRelationshipIndexQueryAdapter.findByDestinationId(conceptId));
 	}
 
 	private Collection<SnomedDescriptionIndexEntry> getRelatedDescriptions(String conceptId) {
@@ -1449,7 +1487,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 						throw new RuntimeException("Unknown reference set type");
 					}
 				}
-			} 
+			}
 			
 			itemMap.put(index, item);
 		}
@@ -1493,7 +1531,6 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				Relationship relationship = (Relationship) eObject;
 				relationship.setSource(null);
 				relationship.setDestination(null);
-			
 			} else if (eObject instanceof Description) {
 				Description description = (Description) eObject;
 				// maybe description was already removed before save, so the delete is reflected on the ui
