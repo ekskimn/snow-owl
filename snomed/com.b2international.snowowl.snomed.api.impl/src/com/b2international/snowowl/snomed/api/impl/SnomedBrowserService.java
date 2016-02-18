@@ -229,6 +229,11 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	@Override
 	public ISnomedBrowserConcept create(String branchPath, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> locales) {
+		//If calling from an Autowired context, bus might not have been set
+		if (bus == null) {
+			bus = com.b2international.snowowl.core.ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
+		}
+		
 		final SnomedConceptCreateRequest req = inputFactory.createComponentInput(branchPath, concept, SnomedConceptCreateRequest.class);
 		String commitComment = getCommitComment(userId, concept, "creating");
 		final String createdConceptId = SnomedRequests
