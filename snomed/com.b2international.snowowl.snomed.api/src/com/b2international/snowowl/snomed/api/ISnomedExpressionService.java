@@ -7,6 +7,6 @@ import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpressio
 
 public interface ISnomedExpressionService {
 
-	ISnomedExpression getConceptShortNormalForm(String conceptId, String branchPath, List<ExtendedLocale> extendedLocales);
+	ISnomedExpression getConceptShortNormalForm(String conceptId, String branchPath, List<ExtendedLocale> extendedLocales, boolean normaliseAttributeValues);
 
 }

@@ -77,10 +77,14 @@ public class FocusConceptNormalizer {
 	 * @return the normalized focus concepts
 	 */
 	public FocusConceptNormalizationResult normalizeFocusConcepts(Collection<Concept> focusConcepts) {
+		return normalizeFocusConcepts(focusConcepts, true);
+	}
+
+	public FocusConceptNormalizationResult normalizeFocusConcepts(Collection<Concept> focusConcepts, boolean normaliseAttributeValues) {
 		Collection<SnomedConceptIndexEntry> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(focusConcepts);
 		Collection<SnomedConceptIndexEntry> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes);
 		ConceptDefinitionNormalizer conceptDefinitionNormalizer = new ConceptDefinitionNormalizer(terminologyBrowser, statementBrowser);
-		Map<Concept, ConceptDefinition> conceptDefinitions = conceptDefinitionNormalizer.getNormalizedConceptDefinitions(focusConcepts);
+		Map<Concept, ConceptDefinition> conceptDefinitions = conceptDefinitionNormalizer.getNormalizedConceptDefinitions(focusConcepts, normaliseAttributeValues);
 		ConceptDefinitionMerger conceptDefinitionMerger = new ConceptDefinitionMerger(subsumptionTester);
 		ConceptDefinition mergedFocusConceptDefinitions = conceptDefinitionMerger.mergeDefinitions(conceptDefinitions);
 		return new FocusConceptNormalizationResult(filteredPrimitiveSuperTypes, mergedFocusConceptDefinitions);

@@ -68,6 +68,10 @@ public class ConceptDefinitionNormalizer {
 	 * @return the normalized concept definition of each focus concept
 	 */
 	public Map<Concept, ConceptDefinition> getNormalizedConceptDefinitions(Collection<Concept> focusConcepts) {
+		return getNormalizedConceptDefinitions(focusConcepts, true);
+	}
+
+	public Map<Concept, ConceptDefinition> getNormalizedConceptDefinitions(Collection<Concept> focusConcepts, boolean normaliseAttributeValues) {
 		Map<Concept, Map<Integer, List<Attribute>>> conceptDefinitionMap = new HashMap<Concept, Map<Integer,List<Attribute>>>();
 		for (Concept focusConcept : focusConcepts) {
 			Map<Integer, List<Attribute>> GroupMap = new HashMap<Integer, List<Attribute>>();
@@ -92,10 +96,14 @@ public class ConceptDefinitionNormalizer {
 					Concept valueConcept = ScgFactory.eINSTANCE.createConcept();
 					valueConcept.setId(relationship.getValueId());
 					valueExpression.getConcepts().add(valueConcept);
-					Expression valueNormalFormExpression = normalFormGenerator.getLongNormalForm(valueExpression);
-					// only build subexpression, if necessary
-					AttributeValue value = SemanticUtils.buildRValue(valueNormalFormExpression);
-					attribute.setValue(value);
+					if (normaliseAttributeValues) {
+						Expression valueNormalFormExpression = normalFormGenerator.getLongNormalForm(valueExpression);
+						// only build subexpression, if necessary
+						AttributeValue value = SemanticUtils.buildRValue(valueNormalFormExpression);
+						attribute.setValue(value);
+					} else {
+						attribute.setValue(valueConcept);
+					}
 					putAttributeInGroupMap(attribute, relationshipGroup, GroupMap);
 				}
 			}

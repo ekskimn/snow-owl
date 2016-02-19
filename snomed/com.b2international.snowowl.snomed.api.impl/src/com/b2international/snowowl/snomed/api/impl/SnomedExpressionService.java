@@ -27,7 +27,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 	private IEventBus bus;
 
 	@Override
-	public ISnomedExpression getConceptShortNormalForm(String conceptId, String branchPath, List<ExtendedLocale> extendedLocales) {
+	public ISnomedExpression getConceptShortNormalForm(String conceptId, String branchPath, List<ExtendedLocale> extendedLocales, boolean normaliseAttributeValues) {
 		
 		IBranchPath iBranchPath = BranchPathUtils.createPath(branchPath);
 		
@@ -37,7 +37,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 		final ScgExpressionNormalFormGenerator scgExpressionNormalFormGenerator = 
 				new ScgExpressionNormalFormGenerator(recursiveTerminologyBrowser, new SnomedClientStatementBrowser(getStatementBrowser()));
 		Expression expression = (Expression) SCGStandaloneSetup.parse(conceptId.toString());
-		final Expression shortNormalForm = scgExpressionNormalFormGenerator.getShortNormalForm(expression);
+		final Expression shortNormalForm = scgExpressionNormalFormGenerator.getShortNormalForm(expression, normaliseAttributeValues);
 		
 		return new SnomedExpresssionConverter(browser, extendedLocales, new DescriptionService(bus, branchPath)).convert(shortNormalForm);
 	}

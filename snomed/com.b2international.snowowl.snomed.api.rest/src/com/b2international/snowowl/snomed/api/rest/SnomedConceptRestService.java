@@ -215,6 +215,10 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@PathVariable(value="conceptId")
 			final String conceptId,
 			
+			@ApiParam(value="Normalise attribute values")
+			@RequestParam(value="normaliseAttributeValues", defaultValue="true")
+			final boolean normaliseAttributeValues,
+			
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
@@ -229,7 +233,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 
-		return expressionService.getConceptShortNormalForm(conceptId, branchPath, extendedLocales);
+		return expressionService.getConceptShortNormalForm(conceptId, branchPath, extendedLocales, normaliseAttributeValues);
 	}
 
 	@ApiOperation(

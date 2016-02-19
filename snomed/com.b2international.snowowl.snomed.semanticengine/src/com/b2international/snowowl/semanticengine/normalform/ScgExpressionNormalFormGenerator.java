@@ -56,17 +56,27 @@ public class ScgExpressionNormalFormGenerator implements ExpressionNormalFormGen
 	 * @return the original expression in long normal form
 	 */
 	public Expression getLongNormalForm(Expression originalExpression) {
+		return getLongNormalForm(originalExpression, true);
+	}
+	
+	private Expression getLongNormalForm(Expression originalExpression, boolean normaliseAttributeValues) {
 		// expression focus concepts	
 		Collection<Concept> focusConcepts = originalExpression.getConcepts();
 		FocusConceptNormalizer focusConceptNormalizer = new FocusConceptNormalizer(terminologyBrowser, statementBrowser);
-		FocusConceptNormalizationResult normalizedFocusConcepts = focusConceptNormalizer.normalizeFocusConcepts(focusConcepts);
+		FocusConceptNormalizationResult normalizedFocusConcepts = focusConceptNormalizer.normalizeFocusConcepts(focusConcepts, normaliseAttributeValues);
 		
 		// expression refinements
 		List<Group> expressionAttributeGroups = originalExpression.getGroups();
 		List<Attribute> expressionUngroupedAttributes = originalExpression.getAttributes();
 		AttributeNormalizer attributeNormalizer = new AttributeNormalizer(terminologyBrowser, statementBrowser);
-		ConceptDefinition normalizedExpressionRefinements = attributeNormalizer.normalizeAttributes(expressionAttributeGroups, 
-				expressionUngroupedAttributes);
+		ConceptDefinition normalizedExpressionRefinements;
+		if (normaliseAttributeValues) {
+			normalizedExpressionRefinements = attributeNormalizer.normalizeAttributes(expressionAttributeGroups, expressionUngroupedAttributes);
+		} else {
+			normalizedExpressionRefinements = new ConceptDefinition();
+			normalizedExpressionRefinements.getGroups().addAll(expressionAttributeGroups);
+			normalizedExpressionRefinements.getUngroupedAttributes().addAll(expressionUngroupedAttributes);
+		}
 		
 		// merge refinements
 		RefinementsMerger refinementsMerger = new RefinementsMerger(terminologyBrowser);
@@ -153,7 +163,11 @@ public class ScgExpressionNormalFormGenerator implements ExpressionNormalFormGen
 	 * @return the original expression in short normal form
 	 */
 	public Expression getShortNormalForm(Expression originalExpression) {
-		Expression longNormalFormExpression = getLongNormalForm(originalExpression);
+		return getShortNormalForm(originalExpression, true);
+	}
+
+	public Expression getShortNormalForm(Expression originalExpression, boolean normaliseAttributeValues) {
+		Expression longNormalFormExpression = getLongNormalForm(originalExpression, normaliseAttributeValues);
 		deriveShortNormalForm(longNormalFormExpression);
 		return longNormalFormExpression;
 	}
