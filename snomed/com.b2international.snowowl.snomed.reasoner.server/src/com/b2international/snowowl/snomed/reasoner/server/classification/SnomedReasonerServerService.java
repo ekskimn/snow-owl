@@ -65,6 +65,7 @@ import com.b2international.snowowl.rpc.RpcThreadLocal;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.datastore.ConcreteDomainFragment;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
@@ -262,7 +263,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 		final UUID classificationId = classificationRequest.getClassificationId();
 		
 		final ReasonerRemoteJob remoteJob = new ReasonerRemoteJob(this, classificationRequest);
-		remoteJob.setRule(new ReasonerRemoteJobKey(SnomedPackage.eNS_URI, snomedBranchPath));
+		remoteJob.setRule(new ReasonerRemoteJobKey(SnomedDatastoreActivator.REPOSITORY_UUID, snomedBranchPath));
 		RemoteJobUtils.configureProperties(remoteJob, userId, SnomedReasonerService.USER_COMMAND_ID, classificationId);
 		remoteJob.schedule();
 	}
@@ -501,7 +502,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 		sb.append(branchPath.getPath());
 		
 		final Job remoteJob = new PersistChangesRemoteJob(sb.toString(), taxonomy, branchPath, userId);
-		remoteJob.setRule(new ReasonerRemoteJobKey(SnomedPackage.eNS_URI, branchPath));
+		remoteJob.setRule(new ReasonerRemoteJobKey(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath));
 		RemoteJobUtils.configureProperties(remoteJob, userId, null, persistenceId);
 		
 		remoteJob.addJobChangeListener(new JobChangeAdapter() {
