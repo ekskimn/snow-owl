@@ -132,6 +132,13 @@ public abstract class AbstractCDOBranchAction {
 		}
 	}
 
+	protected void releaseLock(IOperationLockTarget lockTarget) {
+		if (lockTargets.contains(lockTarget)) {
+			getDatastoreOperationLockManager().unlock(createLockContext(), lockTarget);
+			lockTargets.remove(lockTarget);
+		}
+	}
+	
 	private void releaseLocks() {
 		getDatastoreOperationLockManager().unlock(createLockContext(), lockTargets);
 	}
