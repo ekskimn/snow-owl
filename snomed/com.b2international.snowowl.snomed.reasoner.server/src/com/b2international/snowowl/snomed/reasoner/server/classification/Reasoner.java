@@ -116,10 +116,10 @@ public class Reasoner extends AbstractDisposableService {
 		
 		try {
 			
-			if (CONSTRAINED_HEAP) {
-				getApplicationContext().getService(ICDORepositoryManager.class).clearRevisionCache();
-				System.gc();
-			}
+//			if (CONSTRAINED_HEAP) {
+//				getApplicationContext().getService(ICDORepositoryManager.class).clearRevisionCache();
+//				System.gc();
+//			}
 
 			final Stopwatch stopwatch = Stopwatch.createStarted();
 			

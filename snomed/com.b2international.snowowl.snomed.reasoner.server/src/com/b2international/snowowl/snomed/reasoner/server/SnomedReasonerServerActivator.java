@@ -29,7 +29,10 @@ public class SnomedReasonerServerActivator extends Plugin {
 
 	/**
 	 * Set to {@code true} on configurations where incremental reasoning can not be performed (maximum memory reported by the runtime is less than
-	 * 3GB), {@code false} on all other systems
+	 * 3GB), {@code false} on all other systems.
+	 * 
+	 * FIXME: Currently always set to true to disable incremental processing that results in exceptions at runtime when some of the OWL axioms can not
+	 * be retracted cleanly.
 	 */
 	public static final boolean CONSTRAINED_HEAP = true;
 
