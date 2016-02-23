@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>snowowl-parent</artifactId>
-		<version>4.5.11</version>
+		<version>4.5.12-SNAPSHOT</version>
 	</parent>
 	
 	<modules>
