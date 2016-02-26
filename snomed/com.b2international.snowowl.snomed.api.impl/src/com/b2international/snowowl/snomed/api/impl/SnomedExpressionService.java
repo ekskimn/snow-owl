@@ -3,8 +3,10 @@ package com.b2international.snowowl.snomed.api.impl;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Resource;
 
@@ -52,28 +54,33 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 		final Map<Byte, SnomedExpressionGroup> groups = new HashMap<>();
 		final Map<String, SnomedExpressionConcept> concepts = new HashMap<>();
 		final Collection<SnomedRelationshipIndexEntry> relationships = getStatementBrowser().getActiveOutboundStatementsById(iBranchPath, conceptId);
+		final Set<String> parents = new HashSet<>();
 		for (SnomedRelationshipIndexEntry relationship : relationships) {
 			final String attributeId = relationship.getAttributeId();
-			if (Concepts.INFERRED_RELATIONSHIP.equals(relationship.getCharacteristicTypeId()) && !Concepts.IS_A.equals(attributeId)) {
-				final byte groupNum = relationship.getGroup();
-				List<ISnomedExpressionAttribute> attributes;
-				if (groupNum == 0) {
-					attributes = expression.getAttributes();
+			if (Concepts.INFERRED_RELATIONSHIP.equals(relationship.getCharacteristicTypeId())) {
+				if (Concepts.IS_A.equals(attributeId)) {
+					parents.add(relationship.getValueId());
 				} else {
-					if (!groups.containsKey(groupNum)) {
-						final SnomedExpressionGroup group = new SnomedExpressionGroup();
-						groups.put(groupNum, group);
-						expression.addGroup(group);
+					final byte groupNum = relationship.getGroup();
+					List<ISnomedExpressionAttribute> attributes;
+					if (groupNum == 0) {
+						attributes = expression.getAttributes();
+					} else {
+						if (!groups.containsKey(groupNum)) {
+							final SnomedExpressionGroup group = new SnomedExpressionGroup();
+							groups.put(groupNum, group);
+							expression.addGroup(group);
+						}
+						attributes = groups.get(groupNum).getAttributes();
 					}
-					attributes = groups.get(groupNum).getAttributes();
+					attributes.add(new SnomedExpressionAttribute(
+							getCreateConcept(relationship.getAttributeId(), concepts, browser), 
+							getCreateConcept(relationship.getValueId(), concepts, browser)));
 				}
-				attributes.add(new SnomedExpressionAttribute(
-						getCreateConcept(relationship.getAttributeId(), concepts, browser), 
-						getCreateConcept(relationship.getValueId(), concepts, browser)));
 			}
 		}
 		
-		final Collection<SnomedConceptIndexEntry> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(Collections.singleton(conceptId));
+		final Collection<SnomedConceptIndexEntry> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
 		for (SnomedConceptIndexEntry superType : superTypes) {
 			expression.addConcept(getCreateConcept(superType.getId(), concepts, browser));
 		}
