@@ -199,13 +199,14 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 	}
 
 	@ApiOperation(
-			value="Retrieve short normal form of a concept",
-			notes="Retrieve short normal form of a concept")
+			value="Retrieve authoring form of a concept",
+			notes="Retrieve authoring form of a concept which includes proximal primitive super-types and all inferred relationships "
+					+ "which are not of type 'Is a'.")
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = Void.class),
 		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/{path:**}/concepts/{conceptId}/short-normal-form", method=RequestMethod.GET)
+	@RequestMapping(value="/{path:**}/concepts/{conceptId}/authoring-form", method=RequestMethod.GET)
 	public @ResponseBody ISnomedExpression readShortNormalForm(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -233,7 +234,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 
-		return expressionService.getConceptShortNormalForm(conceptId, branchPath, extendedLocales, normaliseAttributeValues);
+		return expressionService.getConceptAuthoringForm(conceptId, branchPath, extendedLocales);
 	}
 
 	@ApiOperation(

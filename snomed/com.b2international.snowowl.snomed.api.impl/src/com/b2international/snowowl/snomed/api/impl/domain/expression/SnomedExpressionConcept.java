@@ -2,8 +2,9 @@ package com.b2international.snowowl.snomed.api.impl.domain.expression;
 
 import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpressionAttributeValue;
 import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpressionConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.ISnomedConceptMin;
 
-public class SnomedExpressionConcept implements ISnomedExpressionConcept, ISnomedExpressionAttributeValue {
+public class SnomedExpressionConcept implements ISnomedExpressionConcept, ISnomedExpressionAttributeValue, ISnomedConceptMin {
 
 	private final String id;
 	private final boolean primitive;

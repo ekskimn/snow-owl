@@ -31,6 +31,8 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.datastore.SnomedClientStatementBrowser;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 
 /**
  * <b>5.3.3 Normalize focus concepts</b><br/>
@@ -81,7 +83,7 @@ public class FocusConceptNormalizer {
 	}
 
 	public FocusConceptNormalizationResult normalizeFocusConcepts(Collection<Concept> focusConcepts, boolean normaliseAttributeValues) {
-		Collection<SnomedConceptIndexEntry> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(focusConcepts);
+		Collection<SnomedConceptIndexEntry> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(toIdSet(focusConcepts));
 		Collection<SnomedConceptIndexEntry> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes);
 		ConceptDefinitionNormalizer conceptDefinitionNormalizer = new ConceptDefinitionNormalizer(terminologyBrowser, statementBrowser);
 		Map<Concept, ConceptDefinition> conceptDefinitions = conceptDefinitionNormalizer.getNormalizedConceptDefinitions(focusConcepts, normaliseAttributeValues);
@@ -89,12 +91,17 @@ public class FocusConceptNormalizer {
 		ConceptDefinition mergedFocusConceptDefinitions = conceptDefinitionMerger.mergeDefinitions(conceptDefinitions);
 		return new FocusConceptNormalizationResult(filteredPrimitiveSuperTypes, mergedFocusConceptDefinitions);
 	}
+	
+	public Collection<SnomedConceptIndexEntry> collectNonRedundantProximalPrimitiveSuperTypes(Collection<String> focusConceptIds) {
+		final Collection<SnomedConceptIndexEntry> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
+		return filterRedundantSuperTypes(proximalPrimitiveSupertypes);
+	}
 
-	private Collection<SnomedConceptIndexEntry> collectProximalPrimitiveSupertypes(Collection<Concept> focusConcepts) {
+	private Collection<SnomedConceptIndexEntry> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
 		Set<SnomedConceptIndexEntry> proximatePrimitiveSuperTypes = new HashSet<SnomedConceptIndexEntry>();
 		
-		for (Concept concept : focusConcepts) {
-			SnomedConceptIndexEntry focusConceptMini = SemanticUtils.getAndCheckConceptById(terminologyBrowser, concept.getId());
+		for (String conceptId : focusConceptIds) {
+			SnomedConceptIndexEntry focusConceptMini = SemanticUtils.getAndCheckConceptById(terminologyBrowser, conceptId);
 			proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(focusConceptMini));
 		}
 		
@@ -147,7 +154,8 @@ public class FocusConceptNormalizer {
 		SnomedClientStatementBrowser statementBrowser = ApplicationContext.getInstance().getService(SnomedClientStatementBrowser.class);
 		Collection<SnomedRelationshipIndexEntry> outboundRelationships = statementBrowser.getActiveOutboundStatementsById(concept.getId());
 		for (SnomedRelationshipIndexEntry relationship : outboundRelationships) {
-			if (relationship.getAttributeId().equals(Concepts.IS_A)) {
+			if (relationship.getAttributeId().equals(Concepts.IS_A)
+					&& Concepts.INFERRED_RELATIONSHIP.equals(relationship.getCharacteristicTypeId())) {
 				if (terminologyBrowser.getConcept(relationship.getValueId()).isPrimitive()) {
 					proximatePrimitiveSuperTypes.add(terminologyBrowser.getConcept(relationship.getValueId()));
 				} else {
@@ -203,5 +211,14 @@ public class FocusConceptNormalizer {
 	private boolean isSuperTypeOf(SnomedConceptIndexEntry superType, SnomedConceptIndexEntry subType) {
 		return terminologyBrowser.isSuperTypeOf(superType, subType);
 		
+	}
+	
+	private Collection<String> toIdSet(Collection<Concept> focusConcepts) {
+		return Collections2.transform(focusConcepts, new Function<Concept, String>() {
+			@Override
+			public String apply(Concept input) {
+				return input.getId();
+			}
+		});
 	}
 }
