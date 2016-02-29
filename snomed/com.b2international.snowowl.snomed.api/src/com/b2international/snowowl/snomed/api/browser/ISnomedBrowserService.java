@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.api.browser;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.IComponentRef;
@@ -48,6 +49,15 @@ public interface ISnomedBrowserService {
 	 */
 	ISnomedBrowserConcept getConceptDetails(IComponentRef conceptRef, List<ExtendedLocale> extendedLocales);
 
+	/**
+	 * Performs bulk retrieval of concept details for the specified identifiers.
+	 * 
+	 * @param branch
+	 * @param conceptIds
+	 * @param extendedLocales
+	 * @return
+	 */
+	Map<String, ISnomedBrowserConcept> getConceptDetails(String branch, Set<String> conceptIds, List<ExtendedLocale> extendedLocales);
 
 	/**
 	 * Retrieves a list of parent concepts for a single identifier.
@@ -105,5 +115,4 @@ public interface ISnomedBrowserService {
 	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, List<ExtendedLocale> extendedLocales);
 
 	void update(String branchPath, List<ISnomedBrowserConceptUpdate> concept, String userId, List<ExtendedLocale> extendedLocales);
-
 }
