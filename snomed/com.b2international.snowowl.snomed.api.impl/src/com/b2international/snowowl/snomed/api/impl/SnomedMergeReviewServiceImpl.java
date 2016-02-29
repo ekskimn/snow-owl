@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -28,12 +27,8 @@ import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserM
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 
 public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
-
-	private static final int REVIEW_INTERSECTION_BATCH_SIZE = 500;
 
 	@Resource
 	private IEventBus bus;
@@ -65,31 +60,22 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final String targetPath = mergeReview.targetPath();
 
 		List<Future<SnomedBrowserMergeReviewDetail>> futures = new ArrayList<Future<SnomedBrowserMergeReviewDetail>>();
-		Iterable<List<String>> mergeReviewPartitions = Iterables.partition(mergeReviewIntersection, REVIEW_INTERSECTION_BATCH_SIZE);
-
-		for (List<String> mergeReviewPartitionIds : mergeReviewPartitions) {
-			final Set<String> uniqueIds = ImmutableSet.copyOf(mergeReviewPartitionIds);
-			final Map<String, ISnomedBrowserConcept> sourceConcepts = browserService.getConceptDetails(sourcePath, uniqueIds, extendedLocales);
-			final Map<String, ISnomedBrowserConcept> targetConcepts = browserService.getConceptDetails(targetPath, uniqueIds, extendedLocales);
+		
+		for (final String conceptId : mergeReviewIntersection) {
 			
-			for (final String conceptId : uniqueIds) {
-				
-				futures.add(executors.submit(new Callable<SnomedBrowserMergeReviewDetail>() {
-	
-					@Override
-					public SnomedBrowserMergeReviewDetail call() throws Exception {
-						ISnomedBrowserConcept sourceConcept = sourceConcepts.remove(conceptId);
-						ISnomedBrowserConcept targetConcept = targetConcepts.remove(conceptId);
-						ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, extendedLocales);
-						
-						final ISnomedBrowserConceptUpdate manuallyMergedConcept = manualConceptMergeService.exists(targetPath, mergeReview.id(), sourceConcept.getConceptId()) 
-								? manualConceptMergeService.retrieve(targetPath, mergeReview.id(), sourceConcept.getConceptId()) 
-								: null;
-								
-						return new SnomedBrowserMergeReviewDetail(sourceConcept, targetConcept, autoMergedConcept, manuallyMergedConcept);
-					}
-				}));
-			}
+			futures.add(executors.submit(new Callable<SnomedBrowserMergeReviewDetail>() {
+
+				@Override
+				public SnomedBrowserMergeReviewDetail call() throws Exception {
+					ISnomedBrowserConcept sourceConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(sourcePath, conceptId), extendedLocales);
+					ISnomedBrowserConcept targetConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(targetPath, conceptId), extendedLocales);
+					ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, extendedLocales);
+					final ISnomedBrowserConceptUpdate manuallyMergedConcept = manualConceptMergeService.exists(targetPath, mergeReview.id(), sourceConcept.getConceptId()) ?
+							manualConceptMergeService.retrieve(targetPath, mergeReview.id(), sourceConcept.getConceptId()) : null;
+					return new SnomedBrowserMergeReviewDetail(sourceConcept, targetConcept, autoMergedConcept, manuallyMergedConcept);
+				}
+			}));
+			
 		}
 
 		Set<ISnomedBrowserMergeReviewDetail> details = new HashSet<ISnomedBrowserMergeReviewDetail>();
