@@ -241,6 +241,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.all()
 				.setComponentIds(conceptIds)
 				.setExpand("pt(),fsn(),descriptions(),relationships(expand(type(expand(fsn())),destination(expand(fsn()))))")
+				.setLocales(locales)
 				.build(branch)
 				.executeSync(bus);
 		
