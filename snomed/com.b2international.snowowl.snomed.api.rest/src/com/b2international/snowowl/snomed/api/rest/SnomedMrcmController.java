@@ -100,7 +100,7 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 
 			@ApiParam(value="The attribute concept identifier")
 			@PathVariable
-			String attributeId,
+			Long attributeId,
 			
 			@ApiParam(value="The first few characters of the concept term to match.")
 			@RequestParam(value="termPrefix", defaultValue="", required=false)
@@ -122,7 +122,7 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 		
-		return mrcmService.getAttributeValues(branchPath, attributeId, termPrefix, 
+		return mrcmService.getAttributeValues(branchPath, attributeId.toString(), termPrefix, 
 				offset, limit, getExtendedLocales(acceptLanguage), expand);
 	}
 
