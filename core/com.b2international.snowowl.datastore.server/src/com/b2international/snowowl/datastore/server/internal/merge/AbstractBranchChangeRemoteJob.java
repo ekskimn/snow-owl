@@ -34,14 +34,14 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
  */
 public abstract class AbstractBranchChangeRemoteJob extends Job {
 
-	public static AbstractBranchChangeRemoteJob create(Repository repository, String source, String target, String commitMessage, String reviewId) {
+	public static AbstractBranchChangeRemoteJob create(Repository repository, String source, String target, String commitMessage, String reviewId, Runnable postCommitRunnable) {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
 		
 		if (sourcePath.getParent().equals(targetPath)) {
-			return new BranchMergeJob(repository, source, target, commitMessage, reviewId);
+			return new BranchMergeJob(repository, source, target, commitMessage, reviewId, postCommitRunnable);
 		} else if (targetPath.getParent().equals(sourcePath)) {
-			return new BranchRebaseJob(repository, source, target, commitMessage, reviewId);
+			return new BranchRebaseJob(repository, source, target, commitMessage, reviewId, postCommitRunnable);
 		} else {
 			throw new BadRequestException("Branches '%s' and '%s' can only be merged or rebased if one branch is the direct parent of the other.", source, target);
 		}
@@ -52,14 +52,20 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 	protected Repository repository;
 	protected String commitComment;
 	protected String reviewId;
+	protected Runnable postCommitRunnable;
 
-	protected AbstractBranchChangeRemoteJob(final Repository repository, final String sourcePath, final String targetPath, final String commitComment, final String reviewId) {
+	protected AbstractBranchChangeRemoteJob(final Repository repository, final String sourcePath, final String targetPath, 
+			final String commitComment, 
+			final String reviewId,
+			final Runnable postCommitRunnable) {
+		
 		super(commitComment);
 		
 		this.repository = repository;
 		this.merge = new MergeImpl(sourcePath, targetPath);
 		this.commitComment = commitComment;
 		this.reviewId = reviewId;
+		this.postCommitRunnable = postCommitRunnable;
 		
 		setSystem(true);
 		

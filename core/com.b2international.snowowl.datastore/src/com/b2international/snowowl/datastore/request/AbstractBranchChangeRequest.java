@@ -36,14 +36,16 @@ public abstract class AbstractBranchChangeRequest<R> extends BaseRequest<Reposit
 	protected final String targetPath;
 	protected final String commitMessage;
 	protected final String reviewId;
+	protected final Runnable postCommitRunnable;
 
-	protected AbstractBranchChangeRequest(Class<R> responseClass, String sourcePath, String targetPath, String commitMessage, String reviewId) {
+	protected AbstractBranchChangeRequest(Class<R> responseClass, String sourcePath, String targetPath, String commitMessage, String reviewId, Runnable postCommitRunnable) {
 		this.responseClass = responseClass;
 		
 		this.sourcePath = sourcePath;
 		this.targetPath = targetPath;
 		this.commitMessage = commitMessage;
 		this.reviewId = reviewId;
+		this.postCommitRunnable = postCommitRunnable;
 	}
 
 	@Override
@@ -78,6 +80,12 @@ public abstract class AbstractBranchChangeRequest<R> extends BaseRequest<Reposit
 
 	protected abstract R execute(RepositoryContext context, Branch source, Branch target);
 
+	protected final void executePostCommit() {
+		if (postCommitRunnable != null) {
+			postCommitRunnable.run();
+		}
+	}
+	
 	@Override
 	protected Class<R> getReturnType() {
 		return responseClass;

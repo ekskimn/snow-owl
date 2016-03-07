@@ -15,6 +15,9 @@
  */
 package com.b2international.snowowl.datastore.server.internal.merge;
 
+import org.eclipse.core.runtime.IStatus;
+
+import com.b2international.commons.status.Statuses;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchMergeException;
@@ -32,21 +35,21 @@ import com.b2international.snowowl.datastore.request.RepositoryRequests;
  */
 public class BranchMergeJob extends AbstractBranchChangeRemoteJob {
 
-	private static class SyncMergeRequest extends AbstractBranchChangeRequest<Branch> {
+	private static class SyncMergeRequest extends AbstractBranchChangeRequest<IStatus> {
 
-		SyncMergeRequest(final Merge merge, final String commitMessage, String reviewId) {
-			super(Branch.class, merge.getSource(), merge.getTarget(), commitMessage, reviewId);
+		SyncMergeRequest(final Merge merge, final String commitMessage, String reviewId, Runnable postCommitRunnable) {
+			super(IStatus.class, merge.getSource(), merge.getTarget(), commitMessage, reviewId, postCommitRunnable);
 		}
 
 		@Override
-		protected Branch execute(RepositoryContext context, Branch source, Branch target) {
+		protected IStatus execute(RepositoryContext context, Branch source, Branch target) {
 
 			if (!source.parent().equals(target)) {
 				throw new BadRequestException("Cannot merge source '%s' into target '%s'; target is not the direct parent of source.", source.path(), target.path());
 			}
 
 			try (Locks locks = new Locks(context, source, target)) {
-				return target.merge(source, commitMessage);
+				target.merge(source, commitMessage);
 			} catch (BranchMergeException e) {
 				throw new ConflictException("Cannot merge source '%s' into target '%s'.", source.path(), target.path(), e);
 			} catch (DatastoreOperationLockException e) {
@@ -54,17 +57,21 @@ public class BranchMergeJob extends AbstractBranchChangeRemoteJob {
 			} catch (InterruptedException e) {
 				throw new ConflictException("Lock obtaining process was interrupted while merging source '%s' into target '%s'.", source.path(), target.path());
 			}
+
+			// FIXME: Should be done while the target branch is locked 
+			executePostCommit();
+			return Statuses.serializableOk();
 		}
 	}
 	
-	public BranchMergeJob(Repository repository, String source, String target, String commitMessage, String reviewId) {
-		super(repository, source, target, commitMessage, reviewId);
+	public BranchMergeJob(Repository repository, String source, String target, String commitMessage, String reviewId, Runnable postCommitRunnable) {
+		super(repository, source, target, commitMessage, reviewId, postCommitRunnable);
 	}
 
 	@Override
 	protected void applyChanges() {
 		RepositoryRequests
-			.wrap(repository.id(), new SyncMergeRequest(merge, commitComment, reviewId))
+			.wrap(repository.id(), new SyncMergeRequest(merge, commitComment, reviewId, postCommitRunnable))
 			.executeSync(repository.events());
 	}
 }
