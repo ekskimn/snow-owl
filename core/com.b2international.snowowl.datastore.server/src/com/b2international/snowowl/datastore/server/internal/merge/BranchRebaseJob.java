@@ -15,9 +15,11 @@
  */
 package com.b2international.snowowl.datastore.server.internal.merge;
 
+import org.eclipse.core.runtime.IStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.commons.status.Statuses;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchMergeException;
@@ -35,23 +37,23 @@ import com.b2international.snowowl.datastore.request.RepositoryRequests;
  */
 public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 
-	private static class SyncRebaseRequest extends AbstractBranchChangeRequest<Branch> {
+	private static class SyncRebaseRequest extends AbstractBranchChangeRequest<IStatus> {
 
 		private static final Logger LOG = LoggerFactory.getLogger(SyncRebaseRequest.class);
 		
-		SyncRebaseRequest(final Merge merge, final String commitMessage, String reviewId) {
-			super(Branch.class, merge.getSource(), merge.getTarget(), commitMessage, reviewId);
+		SyncRebaseRequest(final Merge merge, final String commitMessage, String reviewId, Runnable postCommitRunnable) {
+			super(IStatus.class, merge.getSource(), merge.getTarget(), commitMessage, reviewId, postCommitRunnable);
 		}
 
 		@Override
-		protected Branch execute(final RepositoryContext context, final Branch source, final Branch target) {
+		protected IStatus execute(final RepositoryContext context, final Branch source, final Branch target) {
 
 			if (!target.parent().equals(source)) {
 				throw new BadRequestException("Cannot rebase target '%s' on source '%s'; source is not the direct parent of target.", target.path(), source.path());
 			}
 
 			try (Locks locks = new Locks(context, source, target)) {
-				return target.rebase(source, commitMessage, new Runnable() {
+				target.rebase(source, commitMessage, new Runnable() {
 					@Override
 					public void run() {
 						try {
@@ -68,17 +70,21 @@ public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 			} catch (InterruptedException e) {
 				throw new ConflictException("Lock obtaining process was interrupted while rebasing target '%s' on source '%s'.", target.path(), source.path());
 			}
+
+			// FIXME: Should be done while the target branch is locked
+			executePostCommit();
+			return Statuses.serializableOk();
 		}
 	}
 	
-	public BranchRebaseJob(Repository repository, String source, String target, String commitMessage, String reviewId) {
-		super(repository, source, target, commitMessage, reviewId);
+	public BranchRebaseJob(Repository repository, String source, String target, String commitMessage, String reviewId, Runnable postCommitRunnable) {
+		super(repository, source, target, commitMessage, reviewId, postCommitRunnable);
 	}
 
 	@Override
 	protected void applyChanges() {
 		RepositoryRequests
-			.wrap(repository.id(), new SyncRebaseRequest(merge, commitComment, reviewId))
+			.wrap(repository.id(), new SyncRebaseRequest(merge, commitComment, reviewId, postCommitRunnable))
 			.executeSync(repository.events());
 	}
 }

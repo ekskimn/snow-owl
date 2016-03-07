@@ -35,6 +35,7 @@ public final class CreateMergeRequestBuilder {
 	private String reviewId;
 	
 	private String repositoryId;
+	private Runnable postCommitRunnable;
 	
 	CreateMergeRequestBuilder(String repositoryId) {
 		this.repositoryId = repositoryId;
@@ -60,15 +61,20 @@ public final class CreateMergeRequestBuilder {
 		return this;
 	}
 	
+	public CreateMergeRequestBuilder setPostCommitRunnable(Runnable postCommitRunnable) {
+		this.postCommitRunnable = postCommitRunnable;
+		return this;
+	}
+	
 	public Request<ServiceProvider, Merge> build() {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
 		final BaseRequest<RepositoryContext, Merge> next;
 		
 		if (sourcePath.getParent().equals(targetPath)) {
-			next = new BranchMergeRequest(source, target, commitComment, reviewId);
+			next = new BranchMergeRequest(source, target, commitComment, reviewId, postCommitRunnable);
 		} else if (targetPath.getParent().equals(sourcePath)) {
-			next = new BranchRebaseRequest(source, target, commitComment, reviewId);
+			next = new BranchRebaseRequest(source, target, commitComment, reviewId, postCommitRunnable);
 		} else {
 			throw new BadRequestException("Branches '%s' and '%s' can only be merged or rebased if one branch is the direct parent of the other.", source, target);
 		}
