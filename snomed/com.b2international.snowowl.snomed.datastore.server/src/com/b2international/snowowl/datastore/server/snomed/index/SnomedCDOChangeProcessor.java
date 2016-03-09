@@ -79,7 +79,6 @@ import com.b2international.snowowl.datastore.index.DocIdCollector.DocIdsIterator
 import com.b2international.snowowl.datastore.index.DocumentCompositeUpdater;
 import com.b2international.snowowl.datastore.index.DocumentUpdater;
 import com.b2international.snowowl.datastore.index.IndexRead;
-import com.b2international.snowowl.datastore.index.IndexUtils;
 import com.b2international.snowowl.datastore.index.mapping.LongIndexField;
 import com.b2international.snowowl.datastore.index.mapping.Mappings;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
@@ -580,27 +579,28 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 	private Collection<String> getReleasableComponentIds(final ChangeSetProcessor<SnomedDocumentBuilder> processor, final Long storageKey) {
 		final Collection<String> releasableComponentIds = newHashSet();
 
-		if (releaseSupported(processor) && releasable(storageKey)) {
-			final String id = getComponentId(storageKey);
-			releasableComponentIds.add(id);
+		if (releaseSupported(processor)) {
+			final String componentId = getComponentId(storageKey);
+			if (releasable(componentId)) {
+				releasableComponentIds.add(componentId);
+			}
 		}
 
 		return releasableComponentIds;
 	}
 
 	private boolean releaseSupported(final ChangeSetProcessor<SnomedDocumentBuilder> processor) {
-		return processor instanceof ConceptChangeProcessor || processor instanceof DescriptionChangeProcessor
-				|| processor instanceof RelationshipChangeProcessor;
+		return processor instanceof ConceptChangeProcessor || processor instanceof DescriptionChangeProcessor || processor instanceof RelationshipChangeProcessor;
 	}
 
-	private boolean releasable(final Long storageKey) {
+	private boolean releasable(final String id) {
 		IBranchPath currentBranchPath = getBranchPath();
 
 		while (!StringUtils.isEmpty(currentBranchPath.getParentPath())) {
 			currentBranchPath = currentBranchPath.getParent();
 
-			final TopDocs topDocs = index.search(currentBranchPath, Mappings.newQuery().storageKey(storageKey).matchAll(), 1);
-			if (!IndexUtils.isEmpty(topDocs)) {
+			final int hitCount = index.getTotalHitCount(currentBranchPath, SnomedMappings.newQuery().id(id).matchAll());
+			if (hitCount > 0) {
 				return false;
 			}
 		}
@@ -612,7 +612,7 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 		return index.executeReadTransaction(branchPath, new IndexRead<String>() {
 			@Override
 			public String execute(IndexSearcher index) throws IOException {
-				TopDocs topDocs = index.search(Mappings.newQuery().storageKey(storageKey).matchAll(), 1);
+				TopDocs topDocs = index.search(SnomedMappings.newQuery().storageKey(storageKey).matchAll(), 1);
 				Document doc = index.doc(topDocs.scoreDocs[0].doc, SnomedMappings.fieldsToLoad().id().build());
 				return SnomedMappings.id().getValueAsString(doc);
 			}
