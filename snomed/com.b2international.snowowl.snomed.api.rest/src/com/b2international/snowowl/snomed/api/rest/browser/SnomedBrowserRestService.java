@@ -333,7 +333,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		final StorageRef ref = new StorageRef(codeSystemShortName, branchPath);
+		final StorageRef ref = new StorageRef(repositoryId, branchPath);
 		return browserService.getDescriptions(ref, query, extendedLocales, offset, limit);
 	}
 
