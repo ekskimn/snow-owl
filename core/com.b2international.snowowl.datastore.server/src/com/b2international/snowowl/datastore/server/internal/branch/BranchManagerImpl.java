@@ -98,16 +98,18 @@ public abstract class BranchManagerImpl implements BranchManager {
 		}
 		
 		final IDatastoreOperationLockManager lockManager = ApplicationContext.getInstance().getService(IDatastoreOperationLockManager.class);
-		final List<OperationLockInfo<DatastoreLockContext>> locks = ((DatastoreOperationLockManager) lockManager).getLocks();
-		for (OperationLockInfo<DatastoreLockContext> operationLockInfo : locks) {
-			final IOperationLockTarget target = operationLockInfo.getTarget();
-			if (target instanceof SingleRepositoryAndBranchLockTarget) {
-				SingleRepositoryAndBranchLockTarget lockTarget = (SingleRepositoryAndBranchLockTarget) target;
-				if (lockTarget.getBranchPath().equals(branch.branchPath())) {
-					Map<String, Object> lockInfo = new HashMap<>();
-					lockInfo.put("creationDate", operationLockInfo.getCreationDate());
-					lockInfo.put("context", operationLockInfo.getContext());
-					branch.metadata().put("lock", lockInfo);
+		if (lockManager != null) {
+			final List<OperationLockInfo<DatastoreLockContext>> locks = ((DatastoreOperationLockManager) lockManager).getLocks();
+			for (OperationLockInfo<DatastoreLockContext> operationLockInfo : locks) {
+				final IOperationLockTarget target = operationLockInfo.getTarget();
+				if (target instanceof SingleRepositoryAndBranchLockTarget) {
+					SingleRepositoryAndBranchLockTarget lockTarget = (SingleRepositoryAndBranchLockTarget) target;
+					if (lockTarget.getBranchPath().equals(branch.branchPath())) {
+						Map<String, Object> lockInfo = new HashMap<>();
+						lockInfo.put("creationDate", operationLockInfo.getCreationDate());
+						lockInfo.put("context", operationLockInfo.getContext());
+						branch.metadata().put("lock", lockInfo);
+					}
 				}
 			}
 		}

@@ -79,12 +79,10 @@ public final class BranchRebaseRequest extends AbstractBranchChangeRequest {
 				}
 				
 				// Copy changes on old target to reopened target
-				final Branch rebasedTarget = reopenedTarget.applyChangeSet(target, false, commitMessage); 
-				
-				if (rebasedTarget.headTimestamp() > rebasedTarget.baseTimestamp()) {
-					return rebasedTarget; // Implicit notification already sent (because of a non-empty commit)
+				if (target.headTimestamp() > target.baseTimestamp()) {
+					return reopenedTarget.applyChangeSet(target, false, commitMessage); // Implicit notification because of non-empty commit
 				} else {
-					return rebasedTarget.notifyChanged(); // Send explicit notification (reopen but no commit)
+					return reopenedTarget.notifyChanged(); // Send explicit notification (reopen but no commit)
 				}
 				
 			} else {
