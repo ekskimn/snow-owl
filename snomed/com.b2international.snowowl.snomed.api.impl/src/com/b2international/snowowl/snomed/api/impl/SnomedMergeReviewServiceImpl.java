@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -12,6 +14,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import javax.annotation.Resource;
+
+import org.apache.commons.beanutils.BeanMap;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
@@ -26,7 +30,13 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelat
 import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 
@@ -69,34 +79,168 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				public SnomedBrowserMergeReviewDetail call() throws Exception {
 					ISnomedBrowserConcept sourceConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(sourcePath, conceptId), extendedLocales);
 					ISnomedBrowserConcept targetConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(targetPath, conceptId), extendedLocales);
-					ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, extendedLocales);
-					final ISnomedBrowserConceptUpdate manuallyMergedConcept = manualConceptMergeService.exists(targetPath, mergeReview.id(), sourceConcept.getConceptId()) ?
-							manualConceptMergeService.retrieve(targetPath, mergeReview.id(), sourceConcept.getConceptId()) : null;
-					return new SnomedBrowserMergeReviewDetail(sourceConcept, targetConcept, autoMergedConcept, manuallyMergedConcept);
+
+					if (hasRelevantChanges(sourceConcept, targetConcept)) {
+						ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, extendedLocales);
+						ISnomedBrowserConceptUpdate manuallyMergedConcept = manualConceptMergeService.exists(targetPath, mergeReview.id(), conceptId) 
+								? manualConceptMergeService.retrieve(targetPath, mergeReview.id(), conceptId) 
+								: null;
+
+						return new SnomedBrowserMergeReviewDetail(sourceConcept, targetConcept, autoMergedConcept, manuallyMergedConcept);
+					} else {
+						return null;
+					}
 				}
 			}));
-			
 		}
 
 		Set<ISnomedBrowserMergeReviewDetail> details = new HashSet<ISnomedBrowserMergeReviewDetail>();
 		for (Future<SnomedBrowserMergeReviewDetail> future : futures) {
-				details.add(future.get());
+			SnomedBrowserMergeReviewDetail detail = future.get();
+			if (detail != null) {
+				details.add(detail);
+			}
 		}
 	
 		return details;
+	}
+
+	private boolean hasRelevantChanges(ISnomedBrowserConcept sourceConcept, ISnomedBrowserConcept targetConcept) {
+
+		if (hasPropertyChanges(sourceConcept, targetConcept)) {
+			return true;
+		}
+		
+		if (hasDescriptionChanges(sourceConcept.getDescriptions(), targetConcept.getDescriptions())) {
+			return true;
+		}
+		
+		if (hasNonInferredChanges(sourceConcept.getRelationships(), targetConcept.getRelationships())) {
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean hasPropertyChanges(Object sourceBean, Object targetBean) {
+		BeanMap sourceMap = new BeanMap(sourceBean);
+		BeanMap targetMap = new BeanMap(targetBean);
+		
+	    for (Object key : sourceMap.keySet()) {
+	        
+	    	Object sourceValue = sourceMap.get(key);
+	    	Object targetValue = targetMap.get(key);
+	        
+	    	// Ignore multi-valued properties
+	    	if (sourceValue instanceof Iterable) {
+	    		continue;
+	    	}
+	    	
+		    if (!Objects.equals(sourceValue, targetValue)) {
+		    	return true;
+		    }
+	    }
+	    
+	    return false;
+	}
+
+	private boolean hasDescriptionChanges(List<ISnomedBrowserDescription> sourceDescriptions, List<ISnomedBrowserDescription> targetDescriptions) {
+
+		if (sourceDescriptions.size() != targetDescriptions.size()) {
+			return true;
+		}
+			
+		Map<String, ISnomedBrowserDescription> sourceMap = Maps.uniqueIndex(sourceDescriptions, new Function<ISnomedBrowserDescription, String>() {
+			@Override public String apply(ISnomedBrowserDescription input) { return input.getId(); }
+		});
+		
+		Map<String, ISnomedBrowserDescription> targetMap = Maps.uniqueIndex(targetDescriptions, new Function<ISnomedBrowserDescription, String>() {
+			@Override public String apply(ISnomedBrowserDescription input) { return input.getId(); }
+		});
+		
+		for (String descriptionId : sourceMap.keySet()) {
+			
+			if (!targetMap.containsKey(descriptionId)) {
+				return true;
+			}
+			
+			ISnomedBrowserDescription sourceDescription = sourceMap.get(descriptionId);
+			ISnomedBrowserDescription targetDescription = targetMap.get(descriptionId);
+			
+			if (hasPropertyChanges(sourceDescription, targetDescription)) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	private boolean hasNonInferredChanges(List<ISnomedBrowserRelationship> sourceRelationships, List<ISnomedBrowserRelationship> targetRelationships) {
+		
+		Map<String, ISnomedBrowserRelationship> sourceMap = FluentIterable.from(sourceRelationships)
+				.filter(new Predicate<ISnomedBrowserRelationship>() {
+					@Override public boolean apply(ISnomedBrowserRelationship input) { return !CharacteristicType.INFERRED_RELATIONSHIP.equals(input.getCharacteristicType()); }
+				})
+				.uniqueIndex(new Function<ISnomedBrowserRelationship, String>() {
+					@Override public String apply(ISnomedBrowserRelationship input) { return input.getId(); }
+				});
+		
+		Map<String, ISnomedBrowserRelationship> targetMap = FluentIterable.from(targetRelationships)
+				.filter(new Predicate<ISnomedBrowserRelationship>() {
+					@Override public boolean apply(ISnomedBrowserRelationship input) { return !CharacteristicType.INFERRED_RELATIONSHIP.equals(input.getCharacteristicType()); }
+				})
+				.uniqueIndex(new Function<ISnomedBrowserRelationship, String>() {
+					@Override public String apply(ISnomedBrowserRelationship input) { return input.getId(); }
+				});
+
+		// XXX: Need to process the relationships first so that filtered sizes can be compared
+		if (sourceMap.size() != targetMap.size()) {
+			return true;
+		}
+		
+		for (String relationshipId : sourceMap.keySet()) {
+			
+			if (!targetMap.containsKey(relationshipId)) {
+				return true;
+			}
+			
+			ISnomedBrowserRelationship sourceRelationship = sourceMap.get(relationshipId);
+			ISnomedBrowserRelationship targetRelationship = targetMap.get(relationshipId);
+			
+			if (hasPropertyChanges(sourceRelationship, targetRelationship)) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 	private SnomedBrowserConcept mergeConcepts(
 			ISnomedBrowserConcept sourceConcept,
 			ISnomedBrowserConcept targetConcept, 
 			List<ExtendedLocale> locales) {
+		
 		SnomedBrowserConcept mergedConcept = new SnomedBrowserConcept();
-		// If one of the concepts is unpublished, then it's values are newer.  If both are unpublished, source would win
-		ISnomedBrowserConcept winner = sourceConcept;
-		if (targetConcept.getEffectiveTime() == null && sourceConcept.getEffectiveTime() != null) {
+		
+		/* 
+		 * Selecting merge winners using non-null vs. null effective times:
+		 * 
+		 *                  (target)
+		 * (source) | non-null |   null   |
+		 * ---------+----------+----------+
+		 * non-null | (source) |  target  |
+		 *   null   |  source  | (source) |
+		 *   
+		 * Values in the main diagonal are "don't care" items, they are set to use the source concept for getting the most
+		 * concise expression for testing.
+		 */
+		final ISnomedBrowserConcept winner;
+		if (sourceConcept.getEffectiveTime() != null && targetConcept.getEffectiveTime() == null) {
 			winner = targetConcept;
+		} else {
+			winner = sourceConcept;
 		}
-		// Set directly owned values
+		
 		mergedConcept.setConceptId(winner.getConceptId());
 		mergedConcept.setActive(winner.isActive());
 		mergedConcept.setDefinitionStatus(winner.getDefinitionStatus());
@@ -105,26 +249,31 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		mergedConcept.setIsLeafInferred(winner.getIsLeafInferred());
 		mergedConcept.setIsLeafStated(winner.getIsLeafStated());
 		
-		// Merge Descriptions - take all the descriptions from source, and add in from target
-		// if they're unpublished, which will cause an overwrite in the Set if the Description Id matches
-		// TODO UNLESS the source description is also unpublished (Change to use map?)
-		Set<ISnomedBrowserDescription> mergedDescriptions = new HashSet<ISnomedBrowserDescription>(sourceConcept.getDescriptions());
-		for (ISnomedBrowserDescription thisDescription : targetConcept.getDescriptions()) {
-			if (thisDescription.getEffectiveTime() == null) {
-				mergedDescriptions.add(thisDescription);
+		// Merge descriptions - take all the descriptions from source, and add in from target if they're unpublished
+		Map<String, ISnomedBrowserDescription> mergedDescriptions = Maps.newHashMap(Maps.uniqueIndex(sourceConcept.getDescriptions(), new Function<ISnomedBrowserDescription, String>() {
+			@Override public String apply(ISnomedBrowserDescription input) { return input.getId(); }
+		}));
+		
+		for (ISnomedBrowserDescription targetDescription : targetConcept.getDescriptions()) {
+			if (targetDescription.getEffectiveTime() == null) {
+				mergedDescriptions.put(targetDescription.getId(), targetDescription);
 			}
 		}
-		mergedConcept.setDescriptions(new ArrayList<ISnomedBrowserDescription>(mergedDescriptions));
 		
-		// Merge Relationships  - same process using Set to remove duplicated
-		Set<ISnomedBrowserRelationship> mergedRelationships = new HashSet<ISnomedBrowserRelationship>(sourceConcept.getRelationships());
-		for (ISnomedBrowserRelationship thisRelationship : targetConcept.getRelationships()) {
-			if (thisRelationship.getEffectiveTime() == null) {
-				mergedRelationships.add(thisRelationship);
+		mergedConcept.setDescriptions(Lists.newArrayList(mergedDescriptions.values()));
+		
+		// Merge relationships as well
+		Map<String, ISnomedBrowserRelationship> mergedRelationships = Maps.newHashMap(Maps.uniqueIndex(sourceConcept.getRelationships(), new Function<ISnomedBrowserRelationship, String>() {
+			@Override public String apply(ISnomedBrowserRelationship input) { return input.getId(); }
+		}));
+		
+		for (ISnomedBrowserRelationship targetRelationship : targetConcept.getRelationships()) {
+			if (targetRelationship.getEffectiveTime() == null) {
+				mergedRelationships.put(targetRelationship.getId(), targetRelationship);
 			}
 		}
-		mergedConcept.setRelationships(new ArrayList<ISnomedBrowserRelationship>(mergedRelationships));
 		
+		mergedConcept.setRelationships(Lists.newArrayList(mergedRelationships.values()));
 		return mergedConcept;
 	}
 	
