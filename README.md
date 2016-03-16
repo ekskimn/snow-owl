@@ -67,6 +67,8 @@ To run the test cases, simply run:
 
 The distribution package can be found in the `releng/distribution/target` folder, when the build completes.
 
+Note that Maven 3.1.1 should be used.  Using later versions of Maven may result in errors like:  tycho-source-plugin:0.21.0:plugin-source failed: invalid version "4.5.13.2016-03-04T15:40:17Z": invalid qualifier "2016-03-04T15:40:17Z"
+
 ## Release
 
 It is not possible to use JGitFlow to perform a release from the develop to master branch because although it will try to update the pom files, it is not set up to set the same versions in the various MANIFEST.MF files, and so a manual merge and version update must be performed.
