@@ -172,7 +172,7 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 			value = "Merge branches and apply stored changes", 
 			notes = "Merge source branch into a target branch in SNOMED-CT repository and then apply concept changes stored against the specified merge review.")
 	@ApiResponses({
-		@ApiResponse(code = 201, message = "No Content"),
+		@ApiResponse(code = 202, message = "Accepted"),
 		@ApiResponse(code = 404, message = "Source or Target branch is not found", response=RestApiError.class),
 		@ApiResponse(code = 409, message = "Merge conflict", response=RestApiError.class)
 	})
