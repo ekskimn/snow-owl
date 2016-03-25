@@ -19,6 +19,7 @@ import org.apache.commons.beanutils.BeanMap;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
+import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
@@ -278,14 +279,14 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	}
 	
 	@Override
-	public void mergeAndReplayConceptUpdates(String mergeReviewId, String userId, List<ExtendedLocale> extendedLocales) throws IOException {
+	public Merge mergeAndReplayConceptUpdates(final String mergeReviewId, final String userId, final List<ExtendedLocale> extendedLocales) throws IOException {
 		final MergeReview mergeReview = getMergeReview(mergeReviewId);
 		final String sourcePath = mergeReview.sourcePath();
 		final String targetPath = mergeReview.targetPath();
 
 		// Check we have a full set of manually merged concepts 
 		final Set<String> mergeReviewIntersection = mergeReview.mergeReviewIntersection();
-		List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
+		final List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
 		for (String conceptId : mergeReviewIntersection) {
 			if (!manualConceptMergeService.exists(targetPath, mergeReviewId, conceptId)) {
 				throw new InvalidStateException("Manually merged concept " + conceptId + " does not exist for merge review " + mergeReviewId);
@@ -294,22 +295,23 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		}
 
 		// Auto merge branches
-		SnomedRequests
-			.branching()
-			.prepareMerge()
+		return SnomedRequests
+			.merging()
+			.prepareCreate()
 			.setSource(sourcePath)
 			.setTarget(targetPath)
 			.setReviewId(mergeReview.sourceToTargetReviewId())
 			.setCommitComment("Auto merging branches before applying manually merged concepts. " + sourcePath + " > " + targetPath)
+			.setPostCommitRunnable(new Runnable() { @Override public void run() {
+				// Apply manually merged concepts
+				browserService.update(targetPath, conceptUpdates, userId, extendedLocales);
+
+				// Clean up
+				mergeReview.delete();
+				manualConceptMergeService.deleteAll(targetPath, mergeReviewId);					
+			}})
 			.build()
 			.executeSync(bus);
-		
-		// Apply manually merged concepts
-		browserService.update(targetPath, conceptUpdates, userId, extendedLocales);
-
-		// Clean up
-		mergeReview.delete();
-		manualConceptMergeService.deleteAll(targetPath, mergeReviewId);
 	}
 
 	@Override

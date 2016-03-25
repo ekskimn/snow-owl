@@ -191,9 +191,6 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 		for (final Description description : concept.getDescriptions()) {
 			removeOrDeactivateInactivationIndicators(description);
 		}
-		
-		reactivateRelationships(concept.getOutboundRelationships());
-		reactivateRelationships(context.service(SnomedEditingContext.class).getInboundRelationships(concept.getId()));
 	}
 
 	private void reactivateRelationships(Iterable<Relationship> relationships) {

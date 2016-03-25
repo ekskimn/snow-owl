@@ -42,6 +42,7 @@ import com.b2international.commons.collections.Procedure;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
+import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -171,13 +172,12 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 			value = "Merge branches and apply stored changes", 
 			notes = "Merge source branch into a target branch in SNOMED-CT repository and then apply concept changes stored against the specified merge review.")
 	@ApiResponses({
-		@ApiResponse(code = 201, message = "No Content"),
+		@ApiResponse(code = 202, message = "Accepted"),
 		@ApiResponse(code = 404, message = "Source or Target branch is not found", response=RestApiError.class),
 		@ApiResponse(code = 409, message = "Merge conflict", response=RestApiError.class)
 	})
 	@RequestMapping(value="/{id}/apply", method = RequestMethod.POST)
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void mergeAndApply(@PathVariable("id") final String mergeReviewId, 
+	public ResponseEntity<Void> mergeAndApply(@PathVariable("id") final String mergeReviewId, 
 			
 			final Principal principal,
 
@@ -186,7 +186,9 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 			final String languageSetting) throws IOException {
 
 		final String userId = principal.getName();
-		mergeReviewService.mergeAndReplayConceptUpdates(mergeReviewId, userId, getExtendedLocales(languageSetting));
+		final Merge merge = mergeReviewService.mergeAndReplayConceptUpdates(mergeReviewId, userId, getExtendedLocales(languageSetting));
+		final URI linkUri = linkTo(SnomedBranchMergingController.class).slash(merge.getId()).toUri();
+		return Responses.accepted(linkUri).build();
 	}
 	
 	private URI getLocationHeader(ControllerLinkBuilder linkBuilder, final MergeReview mergeReview) {
