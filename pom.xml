@@ -275,6 +275,14 @@
 								<version>${jackson.version}</version>
 							</restrictTo>
 						</filter>
+						<!-- Restrict Apache Commons Collections to versions above and including 3.2.2 -->
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>org.apache.commons.collections</id>
+							<restrictTo>
+								<versionRange>[3.2.2,3.3.0)</versionRange>
+							</restrictTo>
+						</filter>
 					</filters>
 					<environments>
 						<environment>
