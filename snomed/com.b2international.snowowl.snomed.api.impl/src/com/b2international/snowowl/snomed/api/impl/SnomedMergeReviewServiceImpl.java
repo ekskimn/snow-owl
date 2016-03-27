@@ -15,7 +15,7 @@ import java.util.concurrent.Future;
 
 import javax.annotation.Resource;
 
-import org.apache.commons.beanutils.BeanMap;
+import org.apache.commons.collections.BeanMap;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
