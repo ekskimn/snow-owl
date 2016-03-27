@@ -18,7 +18,6 @@ import javax.annotation.Resource;
 import org.apache.commons.collections.BeanMap;
 
 import com.b2international.commons.http.ExtendedLocale;
-import com.b2international.snowowl.core.exceptions.InvalidStateException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -288,10 +287,10 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final Set<String> mergeReviewIntersection = mergeReview.mergeReviewIntersection();
 		final List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
 		for (String conceptId : mergeReviewIntersection) {
-			if (!manualConceptMergeService.exists(targetPath, mergeReviewId, conceptId)) {
-				throw new InvalidStateException("Manually merged concept " + conceptId + " does not exist for merge review " + mergeReviewId);
+			// XXX: Not all concepts in the intersection will have a manually approved version
+			if (manualConceptMergeService.exists(targetPath, mergeReviewId, conceptId)) {
+				conceptUpdates.add(manualConceptMergeService.retrieve(targetPath, mergeReviewId, conceptId));
 			}
-			conceptUpdates.add(manualConceptMergeService.retrieve(targetPath, mergeReviewId, conceptId));	
 		}
 
 		// Auto merge branches
