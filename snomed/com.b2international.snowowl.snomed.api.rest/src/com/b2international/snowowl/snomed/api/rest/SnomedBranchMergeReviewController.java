@@ -183,7 +183,7 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String languageSetting) throws IOException {
+			final String languageSetting) throws IOException, InterruptedException, ExecutionException {
 
 		final String userId = principal.getName();
 		final Merge merge = mergeReviewService.mergeAndReplayConceptUpdates(mergeReviewId, userId, getExtendedLocales(languageSetting));
