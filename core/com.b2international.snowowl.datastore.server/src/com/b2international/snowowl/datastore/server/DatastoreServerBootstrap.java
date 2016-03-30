@@ -144,7 +144,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 			repositories
 				.prepareCreate(repositoryId)
 				.setNumberOfWorkers(repositoryConfig.getNumberOfWorkers())
-				.setMergeMaxResults(repositoryConfig.getMergeMaxResults())
 				.build(env);
 		}
 		
