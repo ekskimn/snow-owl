@@ -13,15 +13,13 @@
  */
 package com.b2international.snowowl.logging.amq;
 
-import java.io.Serializable;
-
-import javax.jms.ObjectMessage;
 import javax.jms.Queue;
 import javax.jms.QueueConnection;
 import javax.jms.QueueConnectionFactory;
 import javax.jms.QueueSender;
 import javax.jms.QueueSession;
 import javax.jms.Session;
+import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -29,11 +27,10 @@ import ch.qos.logback.classic.net.JMSQueueAppender;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.net.JMSAppenderBase;
-import ch.qos.logback.core.spi.PreSerializationTransformer;
 
 /**
- * A tweaker version of Logback's JMS queue appender that publishes events to an ActiveMQ Queue. The events are
- * serialized and transmitted as JMS message type {@link javax.jms.ObjectMessage}.
+ * A tweaked version of Logback's JMS queue appender that publishes events to an ActiveMQ Queue. The events are
+ * serialized and transmitted as JMS message type {@link javax.jms.TextMessage}.
  * 
  * @see JMSQueueAppender
  */
@@ -48,8 +45,6 @@ public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 	QueueSender queueSender;
 
 	int successiveFailureCount = 0;
-
-	private PreSerializationTransformer<ILoggingEvent> pst = new MessagePreSerializationTransformer();
 
 	/**
 	 * Options are activated and become effective only after calling this method.
@@ -120,9 +115,7 @@ public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 		}
 
 		try {
-			ObjectMessage msg = queueSession.createObjectMessage();
-			Serializable so = pst.transform(event);
-			msg.setObject(so);
+			TextMessage msg = queueSession.createTextMessage(event.getMessage());
 			queueSender.send(msg);
 			successiveFailureCount = 0;
 		} catch (Exception e) {
