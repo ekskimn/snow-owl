@@ -48,7 +48,7 @@
 					</execution>
 				</executions>
 				<configuration>
-					<file>assembly/common/configuration/org.eclipse.equinox.simpleconfigurator/bundles.info</file>
+					<file>${basedir}/assembly/common/configuration/org.eclipse.equinox.simpleconfigurator/bundles.info</file>
 					<replacements>
 						<replacement>
 							<token>com.b2international.snowowl.logging.amq,0.0.0,plugins/com.b2international.snowowl.logging.amq_0.0.0.jar,4,false</token>
