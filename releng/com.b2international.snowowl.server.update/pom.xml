@@ -41,7 +41,7 @@
 				<version>1.5.3</version>
 				<executions>
 					<execution>
-						<phase>generate-resources</phase>
+						<phase>prepare-package</phase>
 						<goals>
 							<goal>replace</goal>
 						</goals>
