@@ -36,6 +36,29 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<groupId>com.google.code.maven-replacer-plugin</groupId>
+				<artifactId>replacer</artifactId>
+				<version>1.5.3</version>
+				<executions>
+					<execution>
+						<phase>generate-resources</phase>
+						<goals>
+							<goal>replace</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<file>target/virgo-tomcat-server-3.6.2.RELEASE/configuration/org.eclipse.equinox.simpleconfigurator/bundles.info</file>
+					<replacements>
+						<replacement>
+							<token>ch.qos.logback.slf4j,1.0.7.v20121108-1250,plugins/ch.qos.logback.slf4j_1.0.7.v20121108-1250.jar,4,false</token>
+							<value>ch.qos.logback.slf4j,1.0.7.v20121108-1250,plugins/ch.qos.logback.slf4j_1.0.7.v20121108-1250.jar,4,false
+com.b2international.snowowl.logging.amq,${maven.build.timestamp},plugins/com.b2international.snowowl.logging.amq_${maven.build.timestamp}.jar,4,false</value>
+						</replacement>
+					</replacements>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-p2-director-plugin</artifactId>
 				<executions>

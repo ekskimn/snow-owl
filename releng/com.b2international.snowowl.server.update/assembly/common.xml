@@ -76,7 +76,17 @@
 				<exclude>*logback*.jar</exclude>
 				<exclude>javax.el*.jar</exclude>
 				<exclude>org.apache.el*.jar</exclude>
+				<exclude>com.b2international.snowowl.logging.amq*.jar</exclude>
 			</excludes>
+		</fileSet>
+		<fileSet>
+			<directory>${project.basedir}/target/repository/plugins</directory>
+			<outputDirectory>plugins</outputDirectory>
+			<useDefaultExcludes>true</useDefaultExcludes>
+			<!-- Make sure we exclude already existing or unnecessary bundles -->
+			<includes>
+				<include>com.b2international.snowowl.logging.amq*.jar</include>
+			</includes>
 		</fileSet>
 	</fileSets>
 </component>
