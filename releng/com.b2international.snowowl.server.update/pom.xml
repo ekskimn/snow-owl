@@ -52,7 +52,7 @@
 					<replacements>
 						<replacement>
 							<token>com.b2international.snowowl.logging.amq,0.0.0,plugins/com.b2international.snowowl.logging.amq_0.0.0.jar,4,false</token>
-							<value>com.b2international.snowowl.logging.amq,${maven.build.timestamp},plugins/com.b2international.snowowl.logging.amq_${maven.build.timestamp}.jar,4,false</value>
+							<value>com.b2international.snowowl.logging.amq,${build.version},plugins/com.b2international.snowowl.logging.amq_${build.version}.jar,4,false</value>
 						</replacement>
 					</replacements>
 				</configuration>
