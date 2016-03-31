@@ -1,0 +1,19 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Snow Owl ActiveMQ logging support
+Bundle-SymbolicName: com.b2international.snowowl.logging.amq
+Bundle-Version: 4.5.17.qualifier
+Bundle-Vendor: B2i Healthcare Ltd.
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-ClassPath: .,
+ lib/geronimo-j2ee-management_1.1_spec-1.0.1.jar,
+ lib/geronimo-jms_1.1_spec-1.1.1.jar,
+ lib/hawtbuf-1.10.jar,
+ lib/activemq-client-5.10.0.jar,
+ lib/commons-net-3.3.jar,
+ lib/jmdns-3.4.1.jar
+Require-Bundle: org.slf4j.api;bundle-version="1.7.2",
+ org.slf4j.log4j;bundle-version="1.7.2",
+ ch.qos.logback.core;bundle-version="1.0.7",
+ ch.qos.logback.classic;bundle-version="1.0.7"
+Export-Package: com.b2international.snowowl.logging.amq
