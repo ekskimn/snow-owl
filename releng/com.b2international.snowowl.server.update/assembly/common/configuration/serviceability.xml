@@ -196,7 +196,7 @@
 <!-- 
 	<appender name="TRACEABILITY_JMS" class="com.b2international.snowowl.logging.amq.ActiveMQAppender">
 		<ProviderURL></ProviderURL>
-		<Username></Username>
+		<UserName></UserName>
 		<Password></Password>
 	</appender>
 -->
