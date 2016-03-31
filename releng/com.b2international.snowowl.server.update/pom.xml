@@ -48,12 +48,11 @@
 					</execution>
 				</executions>
 				<configuration>
-					<file>target/virgo-tomcat-server-3.6.2.RELEASE/configuration/org.eclipse.equinox.simpleconfigurator/bundles.info</file>
+					<file>assembly/common/configuration/org.eclipse.equinox.simpleconfigurator/bundles.info</file>
 					<replacements>
 						<replacement>
-							<token>ch.qos.logback.slf4j,1.0.7.v20121108-1250,plugins/ch.qos.logback.slf4j_1.0.7.v20121108-1250.jar,4,false</token>
-							<value>ch.qos.logback.slf4j,1.0.7.v20121108-1250,plugins/ch.qos.logback.slf4j_1.0.7.v20121108-1250.jar,4,false
-com.b2international.snowowl.logging.amq,${maven.build.timestamp},plugins/com.b2international.snowowl.logging.amq_${maven.build.timestamp}.jar,4,false</value>
+							<token>com.b2international.snowowl.logging.amq,0.0.0,plugins/com.b2international.snowowl.logging.amq_0.0.0.jar,4,false</token>
+							<value>com.b2international.snowowl.logging.amq,${maven.build.timestamp},plugins/com.b2international.snowowl.logging.amq_${maven.build.timestamp}.jar,4,false</value>
 						</replacement>
 					</replacements>
 				</configuration>
