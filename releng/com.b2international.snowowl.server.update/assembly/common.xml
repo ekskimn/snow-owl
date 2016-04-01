@@ -20,9 +20,9 @@
 				<exclude>**/serviceability.xml</exclude>
 				<exclude>**/org.eclipse.virgo.web.properties</exclude>
 				<exclude>**/tomcat-server.xml</exclude>
+				<exclude>**/bundles.info</exclude>
 				<!-- Remove splash app -->
-				<exclude>**/org.eclipse.virgo.apps.splash_3.6.2.RELEASE.jar
-				</exclude>
+				<exclude>**/org.eclipse.virgo.apps.splash_3.6.2.RELEASE.jar</exclude>
 				<exclude>repository/ext/osgi.console.properties</exclude>
 			</excludes>
 		</fileSet>
