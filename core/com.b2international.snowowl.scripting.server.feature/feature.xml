@@ -2,7 +2,7 @@
 <feature
       id="com.b2international.snowowl.scripting.server.feature"
       label="Snow Owl Scripting Server Feature"
-      version="4.5.17.qualifier"
+      version="4.5.17"
       provider-name="B2i Healthcare">
 
    <description url="http://b2i.sg">
@@ -23,7 +23,7 @@ Visit us at http://b2i.sg
          version="0.0.0"/>
 
    <requires>
-      <import feature="com.b2international.snowowl.snomed.core.feature" version="3.9.0.qualifier"/>
+      <import feature="com.b2international.snowowl.snomed.core.feature" version="4.5.17"/>
    </requires>
 
    <plugin
