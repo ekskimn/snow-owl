@@ -193,13 +193,14 @@
 		</encoder>
 	</appender>
 
-<!-- 
+	<!-- Use single_authoring.properties for retrieving JMS URL and credentials -->
+	<property file="configuration/single_authoring.properties" />
+ 
 	<appender name="TRACEABILITY_JMS" class="com.b2international.snowowl.logging.amq.ActiveMQAppender">
-		<ProviderURL></ProviderURL>
-		<UserName></UserName>
-		<Password></Password>
+		<ProviderURL>${orchestration.jms.url}</ProviderURL>
+		<UserName>${orchestration.jms.username}</UserName>
+		<Password>${orchestration.jms.password}</Password>
 	</appender>
--->
 
 	<appender name="EVENT_LOG_STDOUT" class="org.eclipse.virgo.medic.log.logback.ReroutingAwareConsoleAppender">
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -250,7 +251,7 @@
 
 	<logger level="INFO" additivity="false" name="traceability">
 		<appender-ref ref="TRACEABILITY_LOG_FILE" />
-		<!-- <appender-ref ref="TRACEABILITY_JMS" />  -->
+		<appender-ref ref="TRACEABILITY_JMS" />
 	</logger>
 
 	<root level="INFO">
