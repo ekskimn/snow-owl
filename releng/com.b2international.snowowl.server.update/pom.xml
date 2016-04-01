@@ -52,7 +52,7 @@
 					<replacements>
 						<replacement>
 							<token>@@BUILD_VERSION@@</token>
-							<value>${qualifiedVersion}</value>
+							<value>${build.version}</value>
 						</replacement>
 					</replacements>
 				</configuration>
