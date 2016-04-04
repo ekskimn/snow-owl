@@ -64,7 +64,9 @@ final class SnomedDescriptionConverter extends BaseSnomedComponentConverter<Snom
 	
 	@Override
 	protected void expand(List<ISnomedDescription> results) {
-		expandInactivationProperties(results);
+		if (expand().containsKey("inactivationProperties")) {
+			expandInactivationProperties(results);
+		}
 	}
 
 	private void expandInactivationProperties(List<ISnomedDescription> results) {
