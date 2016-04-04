@@ -36,6 +36,28 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<groupId>com.google.code.maven-replacer-plugin</groupId>
+				<artifactId>replacer</artifactId>
+				<version>1.5.3</version>
+				<executions>
+					<execution>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>replace</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<file>${basedir}/assembly/common/configuration/org.eclipse.equinox.simpleconfigurator/bundles.info</file>
+					<replacements>
+						<replacement>
+							<token>@@BUILD_VERSION@@</token>
+							<value>${qualifiedVersion}</value>
+						</replacement>
+					</replacements>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-p2-director-plugin</artifactId>
 				<executions>
