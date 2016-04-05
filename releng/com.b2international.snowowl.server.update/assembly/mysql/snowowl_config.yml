@@ -38,9 +38,3 @@ repository:
   # keepCurrentMins: 15
   # Minutes to keep reviews in others states persisted (default 5 minutes)
   # keepOtherMins: 5
-
-traceability:
-  jmsAppenderEnabled: false
-  providerUrl: ""
-  userName: ""
-  password: ""
