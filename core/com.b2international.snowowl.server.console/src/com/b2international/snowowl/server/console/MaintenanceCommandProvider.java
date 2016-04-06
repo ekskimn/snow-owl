@@ -85,7 +85,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				"\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI\n");
 		buffer.append("\tsnowowl listrepositories - prints all the repositories in the system \n");
 		buffer.append("\tsnowowl listbranches [repository] - prints all the branches in the system for a repository\n");
-		buffer.append("\tsnowowl checkdupids - checks the SNOMED CT repository for duplicate ids\n");
+		buffer.append("\tsnowowl checkdupids [fix] - checks the SNOMED CT repository for duplicate ids\n");
 		return buffer.toString();
 	}
 
@@ -187,15 +187,23 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	private void checkDuplicateIds(CommandInterpreter interpreter) throws InterruptedException, ExecutionException {
+		
+		String fix = interpreter.nextArgument();
+		boolean runFix = false;
+		if (fix != null && fix.equals("fix")) {
+			runFix = true;
+			
+		}
+		
 		IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
 		Branch mainBranch = RepositoryRequests.branching("snomedStore").prepareGet("MAIN").executeSync(eventBus);
 
 		Map<Long, Artefact> artefactMap = Maps.newHashMap();
-		chechBranch(mainBranch, artefactMap, interpreter);
+		chechBranch(mainBranch, artefactMap, interpreter, runFix);
 	}
 
 	// Depth-first traversal
-	private void chechBranch(Branch childBranch, Map<Long, Artefact> artefactMap, CommandInterpreter interpreter) {
+	private void chechBranch(Branch childBranch, Map<Long, Artefact> artefactMap, CommandInterpreter interpreter, boolean runFix) {
 
 		// These are already published versions with no dups
 		List<String> skipVersions = Lists.newArrayList("2002-01-31", "2002-07-31", "2003-01-31", "2003-07-31",
@@ -207,18 +215,18 @@ public class MaintenanceCommandProvider implements CommandProvider {
 
 		if (!skipVersions.contains(childBranch.name())) {
 			interpreter.println("Processing: " + childBranch.name());
-			processBranchContent(childBranch, artefactMap, interpreter);
+			processBranchContent(childBranch, artefactMap, interpreter, runFix);
 		}
 
 		Collection<? extends Branch> children = childBranch.children();
 		for (Branch branch : children) {
-			chechBranch(branch, artefactMap, interpreter);
+			chechBranch(branch, artefactMap, interpreter, runFix);
 		}
 	}
 
 	@SuppressWarnings("rawtypes")
 	private void processBranchContent(Branch childBranch, Map<Long, Artefact> artefactMap,
-			CommandInterpreter interpreter) {
+			CommandInterpreter interpreter, boolean runFix) {
 
 		final IndexServerService indexService = (IndexServerService) ApplicationContext.getInstance()
 				.getService(SnomedIndexService.class);
@@ -237,7 +245,9 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			if (artefactMap.containsKey(snomedId) && artefact.storageKey != storageKey) {
 				Artefact newArtefact = new Artefact(childBranch.path(), snomedId, storageKey);
 				interpreter.println("Found duplicate in: " + artefact + " and: " + newArtefact);
-				replaceDuplicateId(artefact, newArtefact, interpreter);
+				if (runFix) {
+					replaceDuplicateId(artefact, newArtefact, interpreter);
+				}
 			} else {
 				artefactMap.put(branchIds[i][0], new Artefact(childBranch.path(), branchIds[i][0], storageKey));
 			}
@@ -264,7 +274,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		}
 	}
 
-	private void replaceComponent(final Artefact artefact, CommandInterpreter interpreter) {
+	private void replaceComponent(final Artefact artefact, final CommandInterpreter interpreter) {
 
 		final IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
 
@@ -281,6 +291,12 @@ public class MaintenanceCommandProvider implements CommandProvider {
 						@Override
 						public Void apply(SnomedRelationships relationships) {
 							for (ISnomedRelationship relationship : relationships) {
+								
+								if (!relationship.isActive()) {
+									interpreter.println("**** Inactive relationship found, skipping!" + relationship);
+									System.err.println("**** Inactive relationship found, skipping!" + relationship);
+									continue;
+								}
 								SnomedRequests.prepareNewRelationship()
 										.setIdFromNamespace(snomedIdToReplace.getNamespace())
 										.setCharacteristicType(relationship.getCharacteristicType())
@@ -308,6 +324,13 @@ public class MaintenanceCommandProvider implements CommandProvider {
 						@Override
 						public Void apply(SnomedDescriptions descriptions) {
 							for (ISnomedDescription description : descriptions) {
+								
+								if (!description.isActive()) {
+									interpreter.println("**** Inactive description found, skipping" + description);
+									System.err.println("**** Inactive description found, skipping!" + description);
+									continue;
+								}
+								
 								SnomedRequests.prepareNewDescription()
 										.setIdFromNamespace(snomedIdToReplace.getNamespace())
 										.setAcceptability(description.getAcceptabilityMap())
