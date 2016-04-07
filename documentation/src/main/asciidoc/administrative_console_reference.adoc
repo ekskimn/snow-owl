@@ -553,12 +553,11 @@ Core services are registered properly and available for use.
 
 `snowowl listrepositories` enumerates all the repositories available in Snow Owl.
 
----------------------------
+-----------------------
 osgi> snowowl listrepositories
 Repositories:
   snomedStore
-----------------------------
-
+-----------------------
 `snowowl listbranches [repository]` enumerates the branches that belong to a particular repository.
 
 ---------------------------
@@ -578,8 +577,9 @@ MAIN
   FUNCTION-6
  DEVICES
   DEVICES-2
- ....
+  ...
 ----------------------------
+
 
 == Session management
 
