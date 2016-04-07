@@ -214,8 +214,10 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				"2011-10-01", "2012-01-31", "2012-07-31", "2013-01-31", "2015-07-31");
 
 		if (!skipVersions.contains(childBranch.name())) {
-			interpreter.println("Processing: " + childBranch.name());
-			processBranchContent(childBranch, artefactMap, interpreter, runFix);
+			//if (childBranch.name().equals("MAIN") || childBranch.name().equals("FUNCTION-6")) {
+				interpreter.println("Processing: " + childBranch.name());
+				processBranchContent(childBranch, artefactMap, interpreter, runFix);
+			//}
 		}
 
 		Collection<? extends Branch> children = childBranch.children();
@@ -310,6 +312,10 @@ public class MaintenanceCommandProvider implements CommandProvider {
 										.build("info@b2international.com",
 												artefact.branchPath, "Id replaced due to duplicate artefact present.")
 										.execute(eventBus);
+								
+								//delete the replaced component
+								SnomedRequests.prepareDeleteRelationship().setComponentId(relationship.getId()).build("info@b2international.com",
+										artefact.branchPath, "Deleted due to duplicate artefact id.").execute(eventBus);
 							}
 							return null;
 						}
@@ -343,6 +349,10 @@ public class MaintenanceCommandProvider implements CommandProvider {
 										.build("info@b2international.com",
 												artefact.branchPath, "Id replaced due to duplicate artefact present.")
 										.execute(eventBus);
+								
+								//delete the replaced component
+								SnomedRequests.prepareDeleteDescription().setComponentId(description.getId()).build("info@b2international.com",
+										artefact.branchPath, "Deleted due to duplicate artefact id.").execute(eventBus);
 							}
 							return null;
 						}
