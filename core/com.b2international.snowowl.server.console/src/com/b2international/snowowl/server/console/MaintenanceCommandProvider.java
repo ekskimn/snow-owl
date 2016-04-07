@@ -81,10 +81,10 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		// test\n");
 		buffer.append("\tsnowowl checkservices - Checks the core services presence\n");
 		buffer.append(
-				"\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI\n");
-		buffer.append("\tsnowowl listrepositories - prints all the repositories in the system \n");
-		buffer.append("\tsnowowl listbranches [repository] - prints all the branches in the system for a repository\n");
-		buffer.append("\tsnowowl checkdupids [fix] - checks the SNOMED CT repository for duplicate ids\n");
+				"\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI.\n");
+		buffer.append("\tsnowowl listrepositories - prints all the repositories in the system.\n");
+		buffer.append("\tsnowowl listbranches [repository] - prints all the branches in the system for a repository.\n");
+		buffer.append("\tsnowowl replacedupids [branchPath] - replaces components with duplicate ids in the SNOMED CT repository on a given branch (e.g. MAIN/PROJECT/TASK1). If no branch is given the replacement is executed for all the branches.\n");
 		return buffer.toString();
 	}
 
@@ -123,7 +123,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				return;
 			}
 
-			if ("checkdupids".equals(cmd)) {
+			if ("replacedupids".equals(cmd)) {
 				checkDuplicateIds(interpreter);
 				return;
 			}
@@ -187,23 +187,23 @@ public class MaintenanceCommandProvider implements CommandProvider {
 
 	private void checkDuplicateIds(CommandInterpreter interpreter) throws InterruptedException, ExecutionException {
 
-		String fix = interpreter.nextArgument();
-		boolean runFix = false;
-		if (fix != null && fix.equals("fix")) {
-			runFix = true;
-
-		}
+		String repositoryId = "snomedStore";
+		String branchName = interpreter.nextArgument();
 
 		IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
-		Branch mainBranch = RepositoryRequests.branching("snomedStore").prepareGet("MAIN").executeSync(eventBus);
+		Branch mainBranch = RepositoryRequests.branching(repositoryId).prepareGet("MAIN").executeSync(eventBus);
 
 		Map<Long, Artefact> artefactMap = Maps.newHashMap();
-		chechBranch(mainBranch, artefactMap, interpreter, runFix);
+		Branch selectedBranch = null;
+		if (branchName != null) {
+			selectedBranch = RepositoryRequests.branching(repositoryId).prepareGet(branchName).executeSync(eventBus, 1000);
+			chechBranch(mainBranch, artefactMap, interpreter, selectedBranch);
+		}
 	}
 
 	// Depth-first traversal
 	private void chechBranch(Branch childBranch, Map<Long, Artefact> artefactMap, CommandInterpreter interpreter,
-			boolean runFix) {
+			Branch selectedBranch) {
 
 		// These are already published versions with no dups
 		List<String> skipVersions = Lists.newArrayList("2002-01-31", "2002-07-31", "2003-01-31", "2003-07-31",
@@ -214,22 +214,28 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				"2011-10-01", "2012-01-31", "2012-07-31", "2013-01-31", "2015-07-31");
 
 		if (!skipVersions.contains(childBranch.name())) {
+			//run for all branches
+			if (selectedBranch == null) {
+				interpreter.println("Processing: " + childBranch.path());
+				processBranchContent(childBranch, artefactMap, interpreter);
+				Collection<? extends Branch> children = childBranch.children();
+				for (Branch branch : children) {
+					chechBranch(branch, artefactMap, interpreter, selectedBranch);
+				}
 			
-			//for testing only - if (childBranch.name().equals("MAIN") || childBranch.name().equals("FUNCTION-6")) {
-				interpreter.println("Processing: " + childBranch.name());
-				processBranchContent(childBranch, artefactMap, interpreter, runFix);
-			//}
-		}
-
-		Collection<? extends Branch> children = childBranch.children();
-		for (Branch branch : children) {
-			chechBranch(branch, artefactMap, interpreter, runFix);
+			//process the selected branch and its direct parent
+			} else {
+				interpreter.println("Processing: " + selectedBranch.parent().path());
+				processBranchContent(selectedBranch.parent(), artefactMap, interpreter);
+				interpreter.println("Processing: " + selectedBranch.path());
+				processBranchContent(selectedBranch, artefactMap, interpreter);
+			}
 		}
 	}
 
 	@SuppressWarnings("rawtypes")
 	private void processBranchContent(Branch childBranch, Map<Long, Artefact> artefactMap,
-			CommandInterpreter interpreter, boolean runFix) {
+			CommandInterpreter interpreter) {
 
 		final IndexServerService indexService = (IndexServerService) ApplicationContext.getInstance()
 				.getService(SnomedIndexService.class);
@@ -248,9 +254,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			if (artefactMap.containsKey(snomedId) && artefact.storageKey != storageKey) {
 				Artefact newArtefact = new Artefact(childBranch.path(), snomedId, storageKey);
 				interpreter.println("Found duplicate in: " + artefact + " and: " + newArtefact);
-				if (runFix) {
-					replaceDuplicateId(artefact, newArtefact, interpreter);
-				}
+				replaceDuplicateId(artefact, newArtefact, interpreter);
 			} else {
 				artefactMap.put(branchIds[i][0], new Artefact(childBranch.path(), branchIds[i][0], storageKey));
 			}
