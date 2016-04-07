@@ -558,28 +558,8 @@ osgi> snowowl listrepositories
 Repositories:
   snomedStore
 -----------------------
+
 `snowowl listbranches [repository]` enumerates the branches that belong to a particular repository.
-
----------------------------
-osgi> snowowl listbranches snomedStore
-Repository snomedStore branches:
-MAIN
- 2012-01-31
- 2012-07-31
- 2013-01-31
- 2015-07-31
- FUNCTION
-  FUNCTION-5
-  FUNCTION-2
-  FUNCTION-4
-  FUNCTION-3
-  FUNCTION-7
-  FUNCTION-6
- DEVICES
-  DEVICES-2
-  ...
-----------------------------
-
 
 == Session management
 
