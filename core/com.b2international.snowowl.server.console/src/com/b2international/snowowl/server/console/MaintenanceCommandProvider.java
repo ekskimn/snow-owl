@@ -46,7 +46,6 @@ import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
-import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -187,14 +186,14 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	private void checkDuplicateIds(CommandInterpreter interpreter) throws InterruptedException, ExecutionException {
-		
+
 		String fix = interpreter.nextArgument();
 		boolean runFix = false;
 		if (fix != null && fix.equals("fix")) {
 			runFix = true;
-			
+
 		}
-		
+
 		IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
 		Branch mainBranch = RepositoryRequests.branching("snomedStore").prepareGet("MAIN").executeSync(eventBus);
 
@@ -203,7 +202,8 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	// Depth-first traversal
-	private void chechBranch(Branch childBranch, Map<Long, Artefact> artefactMap, CommandInterpreter interpreter, boolean runFix) {
+	private void chechBranch(Branch childBranch, Map<Long, Artefact> artefactMap, CommandInterpreter interpreter,
+			boolean runFix) {
 
 		// These are already published versions with no dups
 		List<String> skipVersions = Lists.newArrayList("2002-01-31", "2002-07-31", "2003-01-31", "2003-07-31",
@@ -214,7 +214,8 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				"2011-10-01", "2012-01-31", "2012-07-31", "2013-01-31", "2015-07-31");
 
 		if (!skipVersions.contains(childBranch.name())) {
-			//if (childBranch.name().equals("MAIN") || childBranch.name().equals("FUNCTION-6")) {
+			
+			//for testing only - if (childBranch.name().equals("MAIN") || childBranch.name().equals("FUNCTION-6")) {
 				interpreter.println("Processing: " + childBranch.name());
 				processBranchContent(childBranch, artefactMap, interpreter, runFix);
 			//}
@@ -267,17 +268,20 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			interpreter.println("Event triggered to replace the id for the component on the child branch:" + artefact);
 			replaceComponent(artefact, interpreter);
 		} else if (otherArtefactPath.contains(artefactPath)) {
-			interpreter.println("Event triggered to replace the id for the component on the child branch:" + otherArtefactPath);
+			interpreter.println(
+					"Event triggered to replace the id for the component on the child branch:" + otherArtefactPath);
 			replaceComponent(otherArtefact, interpreter);
 		} else {
-			interpreter.println("No parent child relation between the artefacts, event trigggered to replace the id on the newer branch: "
-					+ otherArtefactPath);
+			interpreter.println(
+					"No parent child relation between the artefacts, event trigggered to replace the id on the newer branch: "
+							+ otherArtefactPath);
 			replaceComponent(otherArtefact, interpreter);
 		}
 	}
 
 	private void replaceComponent(final Artefact artefact, final CommandInterpreter interpreter) {
 
+		final long timeout = 600000;
 		final IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
 
 		final SnomedIdentifier snomedIdToReplace = SnomedIdentifiers.create(Long.toString(artefact.snomedId));
@@ -286,77 +290,59 @@ public class MaintenanceCommandProvider implements CommandProvider {
 
 		if (componentCategory == ComponentCategory.RELATIONSHIP) {
 
-			SnomedRequests.prepareSearchRelationship().one()
+			SnomedRelationships replationships = SnomedRequests.prepareSearchRelationship().one()
 					.setComponentIds(Collections.singleton(Long.toString(artefact.snomedId))).build(artefact.branchPath)
-					.execute(eventBus).then(new Function<SnomedRelationships, Void>() {
+					.executeSync(eventBus, timeout);
 
-						@Override
-						public Void apply(SnomedRelationships relationships) {
-							for (ISnomedRelationship relationship : relationships) {
-								
-								if (!relationship.isActive()) {
-									interpreter.println("**** Inactive relationship found, skipping!" + relationship);
-									System.err.println("**** Inactive relationship found, skipping!" + relationship);
-									continue;
-								}
-								SnomedRequests.prepareNewRelationship()
-										.setIdFromNamespace(snomedIdToReplace.getNamespace())
-										.setCharacteristicType(relationship.getCharacteristicType())
-										.setDestinationId(relationship.getDestinationId())
-										.setGroup(relationship.getGroup())
-										.setModifier(relationship.getModifier())
-										.setModuleId(relationship.getModuleId())
-										.setSourceId(relationship.getSourceId())
-										.setTypeId(relationship.getTypeId())
-										.setUnionGroup(relationship.getUnionGroup())
-										.build("info@b2international.com",
-												artefact.branchPath, "Id replaced due to duplicate artefact present.")
-										.execute(eventBus);
-								
-								//delete the replaced component
-								SnomedRequests.prepareDeleteRelationship().setComponentId(relationship.getId()).build("info@b2international.com",
-										artefact.branchPath, "Deleted due to duplicate artefact id.").execute(eventBus);
-							}
-							return null;
-						}
-					});
+			for (ISnomedRelationship relationship : replationships) {
+
+				if (!relationship.isActive()) {
+					interpreter.println("**** Inactive relationship found, skipping!" + relationship);
+					System.err.println("**** Inactive relationship found, skipping!" + relationship);
+					continue;
+				}
+				SnomedRequests.prepareNewRelationship().setIdFromNamespace(snomedIdToReplace.getNamespace())
+						.setCharacteristicType(relationship.getCharacteristicType())
+						.setDestinationId(relationship.getDestinationId()).setGroup(relationship.getGroup())
+						.setModifier(relationship.getModifier()).setModuleId(relationship.getModuleId())
+						.setSourceId(relationship.getSourceId()).setTypeId(relationship.getTypeId())
+						.setUnionGroup(relationship.getUnionGroup()).build("info@b2international.com",
+								artefact.branchPath, "Id replaced due to duplicate artefact present.")
+						.executeSync(eventBus, timeout);
+
+				// delete the replaced component
+				SnomedRequests.prepareDeleteRelationship().setComponentId(relationship.getId())
+						.build("info@b2international.com", artefact.branchPath, "Deleted due to duplicate artefact id.")
+						.executeSync(eventBus, timeout);
+			}
 
 		} else if (componentCategory == ComponentCategory.DESCRIPTION) {
 
-			SnomedRequests.prepareSearchDescription().one()
+			SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().one()
 					.setComponentIds(Collections.singleton(Long.toString(artefact.snomedId))).build(artefact.branchPath)
-					.execute(eventBus).then(new Function<SnomedDescriptions, Void>() {
+					.executeSync(eventBus, timeout);
+			for (ISnomedDescription description : descriptions) {
 
-						@Override
-						public Void apply(SnomedDescriptions descriptions) {
-							for (ISnomedDescription description : descriptions) {
-								
-								if (!description.isActive()) {
-									interpreter.println("**** Inactive description found, skipping" + description);
-									System.err.println("**** Inactive description found, skipping!" + description);
-									continue;
-								}
-								
-								SnomedRequests.prepareNewDescription()
-										.setIdFromNamespace(snomedIdToReplace.getNamespace())
-										.setAcceptability(description.getAcceptabilityMap())
-										.setCaseSignificance(description.getCaseSignificance())
-										.setConceptId(description.getConceptId())
-										.setLanguageCode(description.getLanguageCode())
-										.setModuleId(description.getModuleId())
-										.setTerm(description.getTerm())
-										.setTypeId(description.getTypeId())
-										.build("info@b2international.com",
-												artefact.branchPath, "Id replaced due to duplicate artefact present.")
-										.execute(eventBus);
-								
-								//delete the replaced component
-								SnomedRequests.prepareDeleteDescription().setComponentId(description.getId()).build("info@b2international.com",
-										artefact.branchPath, "Deleted due to duplicate artefact id.").execute(eventBus);
-							}
-							return null;
-						}
-					});
+				if (!description.isActive()) {
+					interpreter.println("**** Inactive description found, skipping" + description);
+					System.err.println("**** Inactive description found, skipping!" + description);
+					continue;
+				}
+
+				SnomedRequests.prepareNewDescription().setIdFromNamespace(snomedIdToReplace.getNamespace())
+						.setAcceptability(description.getAcceptabilityMap())
+						.setCaseSignificance(description.getCaseSignificance()).setConceptId(description.getConceptId())
+						.setLanguageCode(description.getLanguageCode()).setModuleId(description.getModuleId())
+						.setTerm(description.getTerm()).setTypeId(description.getTypeId())
+						.build("info@b2international.com", artefact.branchPath,
+								"Id replaced due to duplicate artefact present.")
+						.executeSync(eventBus, timeout);
+
+				// delete the replaced component
+				SnomedRequests.prepareDeleteDescription().setComponentId(description.getId())
+						.build("info@b2international.com", artefact.branchPath, "Deleted due to duplicate artefact id.")
+						.executeSync(eventBus, timeout);
+			}
 
 		} else {
 			interpreter.println("Not handled: " + componentCategory);
