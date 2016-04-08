@@ -49,6 +49,7 @@ import com.b2international.snowowl.datastore.remotejobs.RemoteJobChangedEvent;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventBusHandler;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventSwitch;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobRemovedEvent;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobState;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobUtils;
 import com.b2international.snowowl.datastore.server.domain.StorageRef;
@@ -156,6 +157,16 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					} catch (final IOException e) {
 						LOG.error("Caught IOException while updating classification status.", e);
 					}
+				}
+
+				@Override
+				protected void caseRemoved(final RemoteJobRemovedEvent event) {
+
+					try {
+						indexService.deleteClassificationData(event.getId());
+					} catch (final IOException e) {
+						LOG.error("Caught IOException while deleting classification data.", e);
+					}					
 				}
 
 			}.doSwitch(message.body(AbstractRemoteJobEvent.class));
@@ -469,12 +480,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
 		getRemoteJobManager().cancelRemoteJob(UUID.fromString(classificationId));
-		
-		try {
-			indexService.deleteClassificationData(classificationId);
-		} catch (final IOException e) {
-			LOG.error("Caught IOException while deleting classification data for ID {}.", classificationId, e);
-		}					
 	}
 
 	private StorageRef createStorageRef(final String branchPath) {
