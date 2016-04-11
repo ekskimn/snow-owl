@@ -551,6 +551,16 @@ osgi> snowowl checkservices
 Core services are registered properly and available for use.
 --------------------------
 
+`snowowl listrepositories` enumerates all the repositories available in Snow Owl.
+
+-----------------------
+osgi> snowowl listrepositories
+Repositories:
+  snomedStore
+-----------------------
+
+`snowowl listbranches [repository]` enumerates the branches that belong to a particular repository.
+
 == Session management
 
 === Display connected users and session identifiers
