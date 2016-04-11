@@ -107,9 +107,7 @@ public class ServerAuthenticator {
 			this.userName = userName;
 			this.password = password;
 			try {
-				LogUtils.logUserAccess(LOG, userName, "Authenticating: " + userName);
 				loginContext.login();
-				LogUtils.logUserAccess(LOG, userName, "Authentication succeeded");
 			} catch (LoginException loginException) {
 				
 				String reason = "";
