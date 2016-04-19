@@ -19,16 +19,20 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.annotation.OverridingMethodsMustInvokeSuper;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.Metadata;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.core.exceptions.RequestTimeoutException;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
@@ -38,6 +42,9 @@ import com.b2international.snowowl.datastore.server.oplock.impl.DatastoreOperati
 import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.datastore.store.query.Query;
 import com.b2international.snowowl.datastore.store.query.QueryBuilder;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Iterables;
 
 /**
@@ -48,6 +55,16 @@ public abstract class BranchManagerImpl implements BranchManager {
 	private static final String PATH_FIELD = "path";
 	
 	private final Store<InternalBranch> branchStore;
+	
+	private final LoadingCache<String, ReentrantLock> locks = CacheBuilder.newBuilder()
+			.expireAfterAccess(5L, TimeUnit.MINUTES)
+			.build(new CacheLoader<String, ReentrantLock>() {
+				@Override
+				public ReentrantLock load(String key) throws Exception {
+					return new ReentrantLock();
+				}
+				
+			});
 	
 	public BranchManagerImpl(final Store<InternalBranch> branchStore) {
 		this.branchStore = branchStore;
@@ -77,10 +94,31 @@ public abstract class BranchManagerImpl implements BranchManager {
 			throw new BadRequestException("Cannot create '%s' child branch under deleted '%s' parent.", name, parent.path());
 		}
 		final String path = parent.path().concat(Branch.SEPARATOR).concat(name);
-		if (getBranchFromStore(path) != null) {
-			throw new AlreadyExistsException(Branch.class.getSimpleName(), path);
-		}
-		return sendChangeEvent(reopen(parent, name, metadata)); // Explicit notification (creation)
+		Branch existingBranch = getBranchFromStore(path);
+		if (existingBranch != null) {
+			// throw AlreadyExistsException if exists before trying to enter the sync block
+	  			throw new AlreadyExistsException(Branch.class.getSimpleName(), path);
+		} else {
+			// prevents problematic branch creation from multiple threads, but allows them 
+			// to respond back successfully if branch did not exist before creation and it does now
+			final ReentrantLock lock = locks.getUnchecked(path);
+			try {
+				if (lock.tryLock(1L, TimeUnit.MINUTES)) {
+					existingBranch = getBranchFromStore(path);
+					if (existingBranch != null) {
+						return (InternalBranch) existingBranch;
+					} else {
+						return sendChangeEvent(reopen(parent, name, metadata)); // Explicit notification (creation)
+					}
+				} else {
+					throw new RequestTimeoutException();
+				}
+			} catch (InterruptedException e) {
+				throw new SnowowlRuntimeException(e); 
+			} finally {
+				lock.unlock();
+			}
+	  	}
 	}
 
 	abstract InternalBranch reopen(InternalBranch parent, String name, Metadata metadata);
