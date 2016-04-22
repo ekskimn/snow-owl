@@ -303,6 +303,20 @@ Location: http://localhost:8080/snowowl/snomed-ct/v2/reviews/b5e8cb6b-419e-4180-
 		<pre><code class="json">DELETE /reviews/:id</code></pre>
 		<p>Response</p>
 		<pre><code class="json">Status: 204 No content</code></pre>
+		
+	<h2>Default ID Namespace</h2>
+	<p>
+		The default ID Namespace for content created within a branch can be set during branch creation using metadata key <i>defaultNamespace</i>.
+		This default will be inherited by child branches.
+	</p>
+	<p>For example if maintaining the Danish extension on MAIN/DK the branch creation request configuration would be:</p> 
+	<pre><code class="json">{
+  "metadata": {
+    "defaultNamespace": "1000005"
+  },
+  "parent": "MAIN",
+  "name": "DK"
+}</code></pre>
 </div>
 
 <div>

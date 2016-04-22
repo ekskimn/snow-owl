@@ -40,6 +40,7 @@ public class SnomedCoreConfiguration {
 	public static final int DEFAULT_MAXIMUM_REASONER_RUNS = 1000;
 	public static final String DEFAULT_NAMESPACE = ""; //$NON-NLS-1$
 	public static final String DEFAULT_MODULE = Concepts.MODULE_SCT_CORE;
+	public static final String BRANCH_DEFAULT_NAMESPACE_KEY = "defaultNamespace";
 	
 	@Min(1)
 	@Max(3)
