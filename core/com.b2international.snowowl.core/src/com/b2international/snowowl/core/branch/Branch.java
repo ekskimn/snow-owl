@@ -33,6 +33,8 @@ import com.google.common.base.Strings;
  */
 public interface Branch extends Deletable, MetadataHolder {
 
+    public static final String BASE_SEGMENT = "baseSegment";
+
 	/**
 	 * Allowed set of characters for a branch name.
 	 */

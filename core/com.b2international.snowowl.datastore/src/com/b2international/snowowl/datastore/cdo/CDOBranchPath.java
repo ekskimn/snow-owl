@@ -73,6 +73,10 @@ public class CDOBranchPath implements BranchPath {
 	public String path() {
 		return Ints.join(Branch.SEPARATOR, branchIds);
 	}
+	
+	public int[] segments() {
+		return branchIds;
+	}
 
 	@Override
 	public String toString() {

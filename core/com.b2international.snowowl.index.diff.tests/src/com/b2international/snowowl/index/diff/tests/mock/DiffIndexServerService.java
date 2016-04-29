@@ -82,6 +82,11 @@ public class DiffIndexServerService extends IndexServerService<DiffConceptIndexE
 	protected IDirectoryManager getDirectoryManager() {
 		return directoryManager;
 	}
+	
+	@Override
+	public long getBaseGeneration(BranchPath physicalPath) {
+		throw new UnsupportedOperationException();
+	}
 
 	public void deleteDocs(final IBranchPath branchPath, final long... storageKeys) {
 		for (final long storageKey : storageKeys) {

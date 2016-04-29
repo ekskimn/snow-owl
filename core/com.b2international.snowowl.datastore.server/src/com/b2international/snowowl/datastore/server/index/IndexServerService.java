@@ -58,6 +58,7 @@ import com.b2international.snowowl.core.api.IBaseBranchPath;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.index.IIndexEntry;
 import com.b2international.snowowl.core.api.index.IndexException;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.CDOBranchPath;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
@@ -71,6 +72,8 @@ import com.b2international.snowowl.datastore.index.IndexRead;
 import com.b2international.snowowl.datastore.index.mapping.DocumentBuilderBase;
 import com.b2international.snowowl.datastore.index.mapping.DocumentBuilderFactory;
 import com.b2international.snowowl.datastore.index.mapping.Mappings;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
@@ -94,14 +97,19 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 	private final class StateCacheLoader extends CacheLoader<IBranchPath, IndexBranchService> {
 		@Override public IndexBranchService load(final IBranchPath key) throws Exception {
 			final BranchPath physicalPath;
+			final IndexBranchService branchService;
 
 			if (BranchPathUtils.isBasePath(key)) {
 				physicalPath = getMostRecentPhysicalPath(((IBaseBranchPath) key).getContextPath());
+				branchService = new IndexBranchService(key, physicalPath, getDirectoryManager());
 			} else {
 				physicalPath = getMostRecentPhysicalPath(key);
+				Branch mostRecentBranch = RepositoryRequests.branching(getRepositoryUuid())
+						.prepareGet(key.getPath())
+						.executeSync(ApplicationContext.getServiceForClass(IEventBus.class));
+				branchService = new IndexBranchService(mostRecentBranch, physicalPath, getDirectoryManager());
 			}
 			
-			final IndexBranchService branchService = new IndexBranchService(key, physicalPath, getDirectoryManager());
 			
 			if (branchService.isFirstStartupAtMain()) {
 				getDirectoryManager().firstStartup(branchService);
@@ -214,7 +222,7 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 	}
 
 	@Override
-	public void reopen(final IBranchPath logicalPath, final BranchPath physicalPath) {
+	public long reopen(final IBranchPath logicalPath, final BranchPath physicalPath) {
 		checkNotNull(logicalPath, "Logical path argument cannot be null.");
 		checkNotNull(physicalPath, "Physical path argument cannot be null.");
 		checkState(!physicalPath.isMain(), "Physical path cannot be MAIN.");
@@ -223,9 +231,9 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 			final IndexBranchService baseBranchService = getBranchService(logicalPath.getParent());
 			
 			synchronized (baseBranchService) {
-				baseBranchService.createIndexCommit(logicalPath, physicalPath);
+				long lastGeneration = baseBranchService.createIndexCommit(logicalPath, physicalPath);
 				inactiveClose(logicalPath, true);
-				getBranchService(logicalPath);
+				return lastGeneration;
 			}
 			
 		} catch (final IOException e) {

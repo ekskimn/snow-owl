@@ -23,9 +23,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.lucene.index.CustomIndexWriter;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
-import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.search.SearcherManager;
@@ -152,8 +152,8 @@ public class IndexDirectory implements AutoCloseable {
 		return DirectoryReader.indexExists(directory);
 	}
 
-	public IndexWriter createIndexWriter(final IndexWriterConfig config) throws IOException {
-		return new IndexWriter(directory, config);
+	public CustomIndexWriter createIndexWriter(final IndexWriterConfig config) throws IOException {
+		return new CustomIndexWriter(directory, config);
 	}
 
 	public SearcherManager createSearcherManager() throws IOException {

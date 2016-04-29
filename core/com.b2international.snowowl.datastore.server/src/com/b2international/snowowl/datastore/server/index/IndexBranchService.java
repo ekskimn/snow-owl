@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.CustomIndexWriter;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexDeletionPolicy;
 import org.apache.lucene.index.IndexWriter;
@@ -53,6 +54,7 @@ import com.b2international.commons.ReflectionUtils;
 import com.b2international.snowowl.core.api.BranchPath;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.index.IndexException;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.index.DocumentUpdater;
 import com.b2international.snowowl.datastore.index.IndexUtils;
 import com.b2international.snowowl.datastore.index.NullSearcherManager;
@@ -75,7 +77,7 @@ public class IndexBranchService implements Closeable {
 	private final AtomicBoolean dirty = new AtomicBoolean(); 
 
 	private IndexDirectory directory;
-	private IndexWriter indexWriter;
+	private CustomIndexWriter indexWriter;
 	private ReferenceManager<IndexSearcher> manager;
 	private boolean firstStartupAtMain;
 
@@ -132,6 +134,17 @@ public class IndexBranchService implements Closeable {
 				this.manager = new SearcherManager(new ReadOnlyDirectory(baseCommit), new SearchWarmerFactory());
 			}
 		}
+	}
+
+	public IndexBranchService(Branch branch, BranchPath physicalPath, IDirectoryManager directoryManager) throws IOException {
+		this.stopwatch = Stopwatch.createStarted();
+		this.directoryManager = checkNotNull(directoryManager, "directoryManager");
+		this.branchPath = physicalPath;
+		this.mergePolicy = new FilteringMergePolicy(new LogByteSizeMergePolicy());
+		this.directory = directoryManager.openDirectory(branch);
+		this.readOnly = false;
+		this.indexWriter = createIndexWriter(isMain(branch.path()));
+		this.manager = directory.createSearcherManager();
 	}
 
 	public ReferenceManager<IndexSearcher> getManager() {
@@ -353,7 +366,7 @@ public class IndexBranchService implements Closeable {
 		}
 	}
 
-	void createIndexCommit(final IBranchPath logicalBranchPath, final BranchPath physicalBranchPath) throws IOException {
+	long createIndexCommit(final IBranchPath logicalBranchPath, final BranchPath physicalBranchPath) throws IOException {
 		ensureOpen();
 		ensureWritable();
 		ensureNotDirty();
@@ -365,18 +378,20 @@ public class IndexBranchService implements Closeable {
 
 		indexWriter.setCommitData(userData);
 		indexWriter.commit(); //intentionally not via #commit (reader should not be reopen, commit data should be specified)
-		updateMergePolicy();
+		
+		updateMergePolicy(indexWriter.getSegmentCounter());
+		return indexWriter.getLastGeneration();
 	}
 
 	public List<String> listFiles() throws IOException {
 		return directoryManager.listFiles(branchPath);
 	}
 
-	private void updateMergePolicy() throws IOException {
-		mergePolicy.setMinSegmentCount(directory.getSegmentInfoCounter());
+	private void updateMergePolicy(int segmentCounter) throws IOException {
+		mergePolicy.setMinSegmentCount(segmentCounter);
 	}
 
-	private IndexWriter createIndexWriter(final boolean commitIfEmpty) throws IOException {
+	private CustomIndexWriter createIndexWriter(final boolean commitIfEmpty) throws IOException {
 		final Analyzer analyzer = new ComponentTermAnalyzer(true, true);
 		final IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_4_9, analyzer);
 		config.setOpenMode(OpenMode.CREATE_OR_APPEND);
@@ -396,7 +411,7 @@ public class IndexBranchService implements Closeable {
 			indexWriter.commit();
 		}
 
-		updateMergePolicy();
+		updateMergePolicy(indexWriter.getSegmentCounter());
 		return indexWriter;
 	}
 

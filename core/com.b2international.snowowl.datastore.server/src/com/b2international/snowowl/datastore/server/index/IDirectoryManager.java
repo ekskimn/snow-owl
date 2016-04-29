@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.List;
 
 import com.b2international.snowowl.core.api.BranchPath;
+import com.b2international.snowowl.core.branch.Branch;
 
 /**
  * Represents an {@link IndexDirectory} initializer.
@@ -41,6 +42,14 @@ public interface IDirectoryManager {
 	 * @return the Directory for the given CDO branch sequence
 	 */
 	IndexDirectory openDirectory(BranchPath cdoBranchPath, boolean readOnly) throws IOException;
+
+	/** 
+	 * Creates a new writable {@link IndexDirectory} instance for the specified branch.
+	 *  
+	 * @param the branch to create an index directory for (uses CDO and index-specific metadata on the branch)
+	 * @return the index directory for the given branch
+	 */
+	IndexDirectory openDirectory(Branch branch) throws IOException;
 
 	/**
 	 * Collects a list of absolute file paths that contain index data for the specified branch path. Note that the list

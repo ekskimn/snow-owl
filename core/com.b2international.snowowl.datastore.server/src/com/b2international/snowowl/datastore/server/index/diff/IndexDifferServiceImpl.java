@@ -23,9 +23,6 @@ import org.apache.lucene.index.IndexCommit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.snowowl.core.api.IBaseBranchPath;
-import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.index.diff.IndexDifferService;
 import com.b2international.snowowl.datastore.index.diff.VersionCompareConfiguration;
 import com.b2international.snowowl.datastore.server.index.IndexBranchService;
@@ -52,7 +49,7 @@ public class IndexDifferServiceImpl implements IndexDifferService {
 		checkNotNull(configuration, "configuration");
 		checkArgument(!isMain(configuration.getSourcePath()), "Source path argument cannot reference onto the MAIN branch.");
 		
-		final IndexBranchService sourceBranchService = indexService.getBranchService(getContextPath(configuration.getSourcePath()));
+		final IndexBranchService sourceBranchService = indexService.getBranchService(configuration.getSourcePath());
 		final IndexCommit sourceBase = sourceBranchService.getIndexCommit(configuration.getSourcePath());
 		
 		final IndexBranchService targetBranchService = indexService.getBranchService(configuration.getTargetPath());
@@ -75,10 +72,6 @@ public class IndexDifferServiceImpl implements IndexDifferService {
 		
 		log(getDiffStatisticMessage(diff));
 		return diff;
-	}
-
-	private IBranchPath getContextPath(final IBranchPath branchPath) {
-		return BranchPathUtils.isBasePath(branchPath) ? ((IBaseBranchPath) branchPath).getContextPath() : branchPath;
 	}
 
 	private String getDiffStatisticMessage(final IndexDiff diff) {

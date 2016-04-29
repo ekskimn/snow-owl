@@ -480,7 +480,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 			@Override
 			public void run() {
 				try {
-					Thread.sleep(100L);
+					Thread.sleep(30L);
 				} catch (InterruptedException e) {
 					fail("Interrupted while waiting in the asynchronous request thread.");
 				}
@@ -508,7 +508,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 			@Override
 			public void run() {
 				try {
-					Thread.sleep(100L);
+					Thread.sleep(30L);
 				} catch (InterruptedException e) {
 					fail("Interrupted while waiting in the asynchronous request thread.");
 				}

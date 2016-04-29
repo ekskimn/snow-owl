@@ -27,8 +27,11 @@ import org.eclipse.emf.cdo.common.commit.CDOCommitInfoHandler;
 import org.eclipse.emf.cdo.transaction.CDOMerger;
 import org.eclipse.emf.cdo.transaction.CDOTransaction;
 import org.eclipse.emf.cdo.util.CommitException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.Metadata;
+import com.b2international.snowowl.core.api.index.IIndexUpdater;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.branch.BranchMergeException;
@@ -52,7 +55,9 @@ import com.google.common.collect.ImmutableSortedSet;
  */
 public class CDOBranchManagerImpl extends BranchManagerImpl {
 
-    private static final String CDO_BRANCH_ID = "cdoBranchId";
+	private static final Logger LOGGER = LoggerFactory.getLogger(CDOBranchManagerImpl.class);
+	
+	private static final String CDO_BRANCH_ID = "cdoBranchId";
 
 	private final InternalRepository repository;
 	
@@ -71,6 +76,8 @@ public class CDOBranchManagerImpl extends BranchManagerImpl {
 	protected void doInitBranchStore(final InternalBranch main) {
 		super.doInitBranchStore(main);
 		
+		IIndexUpdater<?> indexUpdater = repository.getIndexUpdater();
+		
 		Deque<CDOBranch> workQueue = new ArrayDeque<CDOBranch>();
 		workQueue.add(repository.getCdoBranchManager().getMainBranch());
 		
@@ -78,13 +85,21 @@ public class CDOBranchManagerImpl extends BranchManagerImpl {
 			CDOBranch current = workQueue.pollFirst();
 			
 			if (!current.isMainBranch()) {
-				final Branch branch = getBranch(current.getID());
+				CDOBranchImpl branch = (CDOBranchImpl) getBranch(current.getID());
 
 				if (branch == null) {
 					long baseTimestamp = repository.getBaseTimestamp(current);
 					long headTimestamp = repository.getHeadTimestamp(current);
-					registerBranch(new CDOBranchImpl(current.getName(), current.getBase().getBranch().getPathName(), baseTimestamp, headTimestamp, current.getID()));
-				}
+					branch = new CDOBranchImpl(current.getName(), current.getBase().getBranch().getPathName(), baseTimestamp, headTimestamp, current.getID());
+					branch.metadata().put(Branch.BASE_SEGMENT, indexUpdater.getBaseGeneration(new CDOBranchPath(current)));
+					registerBranch(branch);
+				} else {
+					if (!branch.metadata().containsKey(Branch.BASE_SEGMENT)) {
+						LOGGER.info("Upgrading metadata on branch {} [{}]", branch.path(), branch.cdoBranchId());
+						branch.metadata().put(Branch.BASE_SEGMENT, indexUpdater.getBaseGeneration(new CDOBranchPath(current)));
+						registerBranch(branch);
+					}
+				}				
 			}
 			
 			workQueue.addAll(ImmutableSortedSet.copyOf(current.getBranches()));
@@ -153,12 +168,13 @@ public class CDOBranchManagerImpl extends BranchManagerImpl {
         final CDOBranchPath cdoBranchPath = new CDOBranchPath(childCDOBranch);
 
         final long timeStamp = basePath[basePath.length - 1].getTimeStamp();
-        repository.getIndexUpdater().reopen(BranchPathUtils.createPath(childCDOBranch), cdoBranchPath);
-		return reopen(parent, name, metadata, timeStamp, childCDOBranch.getID());
+        long baseGeneration = repository.getIndexUpdater().reopen(BranchPathUtils.createPath(childCDOBranch), cdoBranchPath);
+		return reopen(parent, name, metadata, timeStamp, childCDOBranch.getID(), baseGeneration);
     }
 
-    private InternalBranch reopen(InternalBranch parent, String name, Metadata metadata, long baseTimestamp, int id) {
+    private InternalBranch reopen(InternalBranch parent, String name, Metadata metadata, long baseTimestamp, int id, long baseGeneration) {
         final InternalBranch branch = new CDOBranchImpl(name, parent.path(), baseTimestamp, id);
+        metadata.put(Branch.BASE_SEGMENT, baseGeneration);
         branch.metadata(metadata);
         registerBranch(branch);
         return branch;

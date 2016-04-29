@@ -18,10 +18,13 @@ package com.b2international.snowowl.datastore.server.index;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 
 import com.b2international.snowowl.core.SnowOwlApplication;
+import com.b2international.snowowl.core.api.BranchPath;
 import com.b2international.snowowl.core.api.index.IIndexEntry;
+import com.b2international.snowowl.core.api.index.IndexException;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 
@@ -54,5 +57,14 @@ public abstract class FSIndexServerService<E extends IIndexEntry> extends IndexS
 	@Override
 	protected IDirectoryManager getDirectoryManager() {
 		return directorySupplier.get();
+	}
+	
+	@Override
+	public long getBaseGeneration(BranchPath physicalPath) {
+		try {
+			return getDirectoryManager().openDirectory(physicalPath.parent(), false).getLastBaseIndexCommit(physicalPath).getGeneration();
+		} catch (IOException e) {
+			throw new IndexException("Could not retrieve base generation for physical path " + physicalPath + ".", e);
+		}
 	}
 }

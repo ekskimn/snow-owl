@@ -84,8 +84,9 @@ public interface IIndexUpdater<E extends IIndexEntry> extends IIndexService<E> {
 	 * 
 	 * @param logicalPath the branch-specific index service key to re-register
 	 * @param physicalPath the branch path to open
+	 * @return the commit info counter, used for locating the IndexCommit in the parent Directory 
 	 */
-	void reopen(IBranchPath logicalPath, BranchPath physicalPath);
+	long reopen(IBranchPath logicalPath, BranchPath physicalPath);
 
 	/**
 	 * Returns with the UUID of the repository which is associated with the current index service. 
@@ -99,4 +100,10 @@ public interface IIndexUpdater<E extends IIndexEntry> extends IIndexService<E> {
 	 * @return the list of files which carry data for this update, or an empty list (never {@code null})
 	 */
 	List<String> listFiles(IBranchPath branchPath);
+	
+	/**
+	 * @param physicalPath
+	 * @return
+	 */
+	long getBaseGeneration(BranchPath physicalPath);
 }

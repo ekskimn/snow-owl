@@ -47,6 +47,12 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 		givenBranchWithPath(testBranchPath);
 		assertBranchExists(testBranchPath);
 	}
+	
+	@Test
+	public void createNestedBranch() {
+		IBranchPath nestedBranchPath = createNestedBranch("a", "b", "c");
+		assertBranchExists(nestedBranchPath);
+	}
 
 	@Test
 	public void createBranchWithMetadata() {
