@@ -33,7 +33,7 @@ Make sure you have the following preferences enabled/disabled.
 
 ### Target platform
 
-1. Create a prefetched target platform and copy the contents of the `target_platform_<version>` directory under `<eclipse_home>/target_platform`.
+1. Create a (prefetched target platform)[#prefetched-target-platform] and copy the contents of the `target_platform_<version>` directory under `<eclipse_home>/target_platform`.
 2. (Re)Open Eclipse and find the `com.b2international.snowowl.server.target.update` project
 3. Open the file: `com.b2international.snowowl.server.local.target`
 4. Click on `Set as Target platform`
