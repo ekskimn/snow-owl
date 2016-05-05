@@ -23,41 +23,48 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertMergeJobFailsWithConflict;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
-<<<<<<< HEAD
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertComponentCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptCanBeDeleted;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptCanBeUpdated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptNotExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionCanBeDeleted;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionCanBeUpdated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionNotExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipCanBeDeleted;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipCanBeUpdated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipNotExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.createAttributesMap;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.symbolicNameMap;
+import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentUpdatedWithStatus;
+import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.whenRetrievingConcept;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-import static com.google.common.collect.Maps.newHashMap;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
-
-import java.util.Date;
-=======
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.*;
-import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentUpdatedWithStatus;
-import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.whenRetrievingConcept;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.hasItem;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.util.Collections;
 import java.util.List;
->>>>>>> origin/ms-develop
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.api.IBranchPath;
-<<<<<<< HEAD
 import com.b2international.snowowl.core.branch.Branch;
-=======
 import com.b2international.snowowl.core.merge.ConflictingAttribute;
 import com.b2international.snowowl.core.merge.ConflictingAttributeImpl;
 import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
 import com.b2international.snowowl.core.merge.MergeConflictImpl;
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
@@ -663,8 +670,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 		assertComponentCreated(testBranchPath.getParent(), "R1", SnomedComponentType.RELATIONSHIP, changeOnParent);
 		
-<<<<<<< HEAD
-=======
 		Response mergeResponse = assertMergeJobFailsWithConflict(testBranchPath.getParent(), testBranchPath, "Rebase conflicting concept inactivation");
 		
 		List<Map<String, Object>> conflicts = mergeResponse.jsonPath().getList("conflicts");
@@ -690,7 +695,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		
 		assertThat(conflicts, hasItem(conflict));
 		
->>>>>>> origin/ms-develop
 		// If changes could not be taken over, C1 will be active on the test branch
 		SnomedComponentApiAssert.assertComponentActive(testBranchPath, SnomedComponentType.CONCEPT, symbolicNameMap.get("C1"), false);
 	}
@@ -776,7 +780,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		final String relationshipId = symbolicNameMap.get("R1");
 		
 		assertBranchCanBeRebased(testBranchPath, "Rebase after relationship creation");
-		assertComponentCanBeDeleted(testBranchPath.getParent(), "R1", SnomedComponentType.RELATIONSHIP);
+		assertRelationshipCanBeDeleted(testBranchPath.getParent(), "R1");
 		
 		final Map<?, ?> requestBody = ImmutableMap.builder()
 				.put("sourceId", Concepts.ROOT_CONCEPT)
@@ -828,5 +832,85 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertConceptCanBeDeleted(testBranchPath.getParent(), "C1");
 
 		assertBranchCanBeRebased(testBranchPath, "Rebase concept change over deletion");
+	}
+	
+	@Test
+	public void rebaseStaleBranchWithChangesOnDeletedContent() throws Exception {
+		// create changes on test branch
+		assertRelationshipCreated(testBranchPath, "R1");
+		assertDescriptionCreated(testBranchPath, "D1", SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP);
+		
+		// create child branch of test branch
+		final IBranchPath childBranch = BranchPathUtils.createPath(testBranchPath, UUID.randomUUID().toString());
+		givenBranchWithPath(childBranch);
+		
+		// delete change on test branch
+		assertRelationshipCanBeDeleted(testBranchPath, "R1");
+		assertDescriptionCanBeDeleted(testBranchPath, "D1");
+		
+		// modify content on task which is already deleted on parent
+		final Map<?, ?> changesOnTestDescription = ImmutableMap.builder()
+				.put("caseSignificance", CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE)
+				.put("commitComment", "Changed case significance on test")
+				.build();
+		assertDescriptionCanBeUpdated(childBranch, "D1", changesOnTestDescription);
+		
+		final Map<?, ?> changesOnTestRelationship = ImmutableMap.builder()
+				.put("group", 99)
+				.put("commitComment", "Changed group on test")
+				.build();
+		assertRelationshipCanBeUpdated(childBranch, "R1", changesOnTestRelationship);
+		
+		// make change on test's parent
+		assertRelationshipCreated(testBranchPath.getParent(), "R2");
+		
+		// rebase project
+		assertBranchCanBeRebased(testBranchPath, "Rebase test branch");
+
+		// child should be STALE at this point, try to rebase it, it should pass and R1 and D1 should be deleted
+		assertBranchCanBeRebased(childBranch, "Rebase child with modification on deleted components should be possible");
+		
+		// after the rebase verify that the two deleted components are really deleted
+		assertRelationshipNotExists(childBranch, "R1");
+		assertDescriptionNotExists(childBranch, "D1");
+	}
+	
+	@Test
+	public void rebaseStaleBranchWithChangesOnNewContent() throws Exception {
+		// create changes on test branch
+		assertRelationshipCreated(testBranchPath, "R1");
+		assertDescriptionCreated(testBranchPath, "D1", SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP);
+		
+		// create child branch of test branch
+		final IBranchPath childBranch = BranchPathUtils.createPath(testBranchPath, UUID.randomUUID().toString());
+		givenBranchWithPath(childBranch);
+		
+		// modify content on task which is already deleted on parent
+		final Map<?, ?> changesOnTestDescription = ImmutableMap.builder()
+				.put("caseSignificance", CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE)
+				.put("commitComment", "Changed case significance on test")
+				.build();
+		assertDescriptionCanBeUpdated(childBranch, "D1", changesOnTestDescription);
+		
+		final Map<?, ?> changesOnTestRelationship = ImmutableMap.builder()
+				.put("group", 99)
+				.put("commitComment", "Changed group on test")
+				.build();
+		assertRelationshipCanBeUpdated(childBranch, "R1", changesOnTestRelationship);
+		
+		// make change on test's parent
+		assertRelationshipCreated(testBranchPath.getParent(), "R2");
+		
+		// rebase project
+		assertBranchCanBeRebased(testBranchPath, "Rebase test branch");
+		assertRelationshipExists(testBranchPath, "R1");
+		assertDescriptionExists(testBranchPath, "D1");
+
+		// child should be STALE at this point, try to rebase it, it should pass and R1 and D1 should still exist with changed content
+		assertBranchCanBeRebased(childBranch, "Rebase child with modification on deleted components should be possible");
+		
+		// after the rebase verify that the two components have the modified values
+		assertComponentHasProperty(childBranch, SnomedComponentType.RELATIONSHIP, symbolicNameMap.get("R1"), "group", 99);
+		assertComponentHasProperty(childBranch, SnomedComponentType.DESCRIPTION, symbolicNameMap.get("D1"), "caseSignificance", CaseSignificance.ENTIRE_TERM_CASE_SENSITIVE.name());
 	}
 }
