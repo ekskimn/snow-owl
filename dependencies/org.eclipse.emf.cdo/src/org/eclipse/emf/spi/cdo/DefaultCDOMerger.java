@@ -164,9 +164,19 @@ public class DefaultCDOMerger implements CDOMerger
     else if (targetData instanceof CDORevisionDelta && sourceData instanceof CDOID)
     {
       data = changedInTargetAndDetachedInSource((CDORevisionDelta)targetData);
+    } 
+    else if (targetData instanceof CDORevision && sourceData instanceof CDORevisionDelta) 
+    {
+      data = changedInSourceAndAddedInTarget((CDORevision) targetData, (CDORevisionDelta) sourceData);
     }
 
     return take(data);
+  }
+
+  // select the feature delta if something is new on target and changed on source by default
+  protected Object changedInSourceAndAddedInTarget(CDORevision targetData, CDORevisionDelta sourceData) 
+  {
+	return sourceData;
   }
 
   protected Object addedInTarget(CDORevision revision)
