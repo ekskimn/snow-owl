@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import com.b2international.snowowl.core.exceptions.ApiError;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
+import com.b2international.snowowl.core.exceptions.MergeConflictException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.core.exceptions.RequestTimeoutException;
@@ -138,7 +139,11 @@ public class ControllerExceptionMapper {
 		if (ex.getCause() != null) {
 			LOG.info("Conflict with cause", ex);
 		}
+		
+		if (ex instanceof MergeConflictException) {
+			LOG.info("Conflict details: {}", ex.toApiError().getAdditionalInfo());
+		}
+		
 		return RestApiError.of(ex.toApiError()).build(HttpStatus.CONFLICT.value());
 	}
-	
 }
