@@ -91,21 +91,24 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 		acceptabilityUpdate.execute(context);
 
 		if (changed) {
-			description.unsetEffectiveTime();
-			if (description.isReleased()) {
-				long start = new Date().getTime();
-				final IBranchPath branchPath = getLatestReleaseBranch(context);
-				final IEventBus bus = context.service(IEventBus.class);
-				final ISnomedDescription releasedDescription = SnomedRequests
-					.prepareGetDescription()
-					.setComponentId(getComponentId())
-					.build(branchPath.getPath())
-					.executeSync(bus);
-
-				if (!isDifferentToPreviousRelease(description, releasedDescription)) {
-					description.setEffectiveTime(releasedDescription.getEffectiveTime());
+			if (description.isSetEffectiveTime()) {
+				description.unsetEffectiveTime();
+			} else {
+				if (description.isReleased()) {
+					long start = new Date().getTime();
+					final IBranchPath branchPath = getLatestReleaseBranch(context);
+					final IEventBus bus = context.service(IEventBus.class);
+					final ISnomedDescription releasedDescription = SnomedRequests
+						.prepareGetDescription()
+						.setComponentId(getComponentId())
+						.build(branchPath.getPath())
+						.executeSync(bus);
+	
+					if (!isDifferentToPreviousRelease(description, releasedDescription)) {
+						description.setEffectiveTime(releasedDescription.getEffectiveTime());
+					}
+					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
-				LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 			}
 		}
 		

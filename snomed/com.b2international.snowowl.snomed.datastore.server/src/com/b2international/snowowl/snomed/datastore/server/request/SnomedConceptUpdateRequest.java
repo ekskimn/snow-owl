@@ -93,16 +93,19 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 		updateAssociationTargets(context, concept, associationTargets);
 		
 		if (changed) {
-			concept.unsetEffectiveTime();
-			if (concept.isReleased()) {
-				long start = new Date().getTime();
-				final IBranchPath branchPath = getLatestReleaseBranch(context);
-				final SnomedTerminologyBrowser terminologyBrowser = context.service(SnomedTerminologyBrowser.class);
-				final SnomedConceptIndexEntry releasedConcept = terminologyBrowser.getConcept(branchPath, getComponentId());	
-				if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
-					concept.setEffectiveTime(EffectiveTimes.parse(releasedConcept.getEffectiveTime()));
+			if (concept.isSetEffectiveTime()) {
+				concept.unsetEffectiveTime();
+			} else {
+				if (concept.isReleased()) {
+					long start = new Date().getTime();
+					final IBranchPath branchPath = getLatestReleaseBranch(context);
+					final SnomedTerminologyBrowser terminologyBrowser = context.service(SnomedTerminologyBrowser.class);
+					final SnomedConceptIndexEntry releasedConcept = terminologyBrowser.getConcept(branchPath, getComponentId());	
+					if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
+						concept.setEffectiveTime(EffectiveTimes.parse(releasedConcept.getEffectiveTime()));
+					}
+					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
-				LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 			}
 		}
 		

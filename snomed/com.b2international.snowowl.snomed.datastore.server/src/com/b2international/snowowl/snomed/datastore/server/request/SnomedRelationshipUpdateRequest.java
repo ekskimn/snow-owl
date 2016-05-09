@@ -84,17 +84,20 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 		changed |= updateModifier(modifier, relationship, context);
 
 		if (changed) {
-			relationship.unsetEffectiveTime();
-			if (relationship.isReleased()) {
-				long start = new Date().getTime();
-				final IBranchPath branchPath = getLatestReleaseBranch(context);
-				final SnomedStatementBrowser statementBrowser = context.service(SnomedStatementBrowser.class);
-				final SnomedRelationshipIndexEntry releasedRelationship = statementBrowser.getStatement(branchPath, getComponentId());
-
-				if (!isDifferentToPreviousRelease(relationship, releasedRelationship)) {
-					relationship.setEffectiveTime(EffectiveTimes.parse(releasedRelationship.getEffectiveTime()));
+			if (relationship.isSetEffectiveTime()) {
+				relationship.unsetEffectiveTime();
+			} else {
+				if (relationship.isReleased()) {
+					long start = new Date().getTime();
+					final IBranchPath branchPath = getLatestReleaseBranch(context);
+					final SnomedStatementBrowser statementBrowser = context.service(SnomedStatementBrowser.class);
+					final SnomedRelationshipIndexEntry releasedRelationship = statementBrowser.getStatement(branchPath, getComponentId());
+	
+					if (!isDifferentToPreviousRelease(relationship, releasedRelationship)) {
+						relationship.setEffectiveTime(EffectiveTimes.parse(releasedRelationship.getEffectiveTime()));
+					}
+					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
-				LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 			}
 		}
 		
