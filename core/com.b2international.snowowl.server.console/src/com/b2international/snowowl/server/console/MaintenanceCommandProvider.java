@@ -162,7 +162,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		if (isValidRepositoryName(repositoryName, interpreter)) {
 			IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
 			interpreter.println("Repository " + repositoryName + " branches:");
-			Branch branch = RepositoryRequests.branching(repositoryName).prepareGet("MAIN").executeSync(eventBus, 1000);
+			Branch branch = RepositoryRequests.branching(repositoryName).prepareGet(IBranchPath.MAIN_BRANCH).executeSync(eventBus, 1000);
 			processBranch(branch, 0, interpreter);
 		}
 	}
