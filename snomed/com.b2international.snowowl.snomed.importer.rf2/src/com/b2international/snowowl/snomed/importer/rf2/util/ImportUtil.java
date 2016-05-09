@@ -121,6 +121,13 @@ public final class ImportUtil {
 		return doImport(branchPath, languageRefSetId, contentSubType, releaseArchive, shouldCreateVersions, SYSTEM_USER_NAME, new NullProgressMonitor());
 	}
 	
+	public SnomedImportResult doImport(String userId, String languageRefSetId, ContentSubType contentSubType,
+			String branchPathName, File releaseArchive, ConsoleProgressMonitor consoleProgressMonitor) {
+		
+		IBranchPath branchPath = BranchPathUtils.createPath(branchPathName);
+		return doImport(branchPath, languageRefSetId, contentSubType, releaseArchive, true, userId, new ConsoleProgressMonitor());
+	}
+	
 	public SnomedImportResult doImport(final String userId, final String languageRefSetId, final ContentSubType contentSubType, final File releaseArchive, final IProgressMonitor monitor) throws ImportException {
 		return doImport(createMainPath(), languageRefSetId, contentSubType, releaseArchive, true, userId, new ConsoleProgressMonitor());
 	}
@@ -133,6 +140,8 @@ public final class ImportUtil {
 		checkNotNull(contentSubType, "contentSubType");
 		checkNotNull(releaseArchive, "releaseArchive");
 		checkArgument(releaseArchive.canRead(), "Cannot read SNOMED CT RF2 release archive content.");
+		
+		checkArgument(BranchPathUtils.exists("snomedStore", branchPath.getPath()));
 		
 		final ImportConfiguration config = new ImportConfiguration();
 		config.setVersion(contentSubType);
@@ -470,4 +479,5 @@ public final class ImportUtil {
 
 		return ImmutableList.copyOf(listOfFiles);
 	}
+	
 }
