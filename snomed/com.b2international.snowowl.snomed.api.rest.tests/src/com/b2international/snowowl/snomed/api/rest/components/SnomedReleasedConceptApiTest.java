@@ -1,4 +1,4 @@
-package com.b2international.snowowl.snomed.api.rest.io;
+package com.b2international.snowowl.snomed.api.rest.components;
 
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
@@ -8,27 +8,15 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.google.common.collect.ImmutableMap;
 
-public class SnomedReleasedConceptApiTest extends AbstractSnomedImportApiTest {
-
-	@Override
-	protected IBranchPath createRandomBranchPath() {
-		return BranchPathUtils.createMainPath();
-	}
+public class SnomedReleasedConceptApiTest extends AbstractSnomedApiTest {
 
 	@Test
-	public void blank() {
-		
-	}
-	
-//	@Test TODO: fix this
 	public void automaticRestorationOfEffectiveTime() {
-		assertImportFileCanBeImported("SnomedCT_Release_INT_20150131_new_concept.zip");
 		final String conceptId = "63961392103";
 		assertConceptExists(testBranchPath, conceptId);
 		
