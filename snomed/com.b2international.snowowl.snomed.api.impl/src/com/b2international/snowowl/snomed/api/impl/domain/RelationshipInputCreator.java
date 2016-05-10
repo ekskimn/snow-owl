@@ -14,6 +14,7 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 	public SnomedRelationshipCreateRequest createInput(String branchPath, SnomedBrowserRelationship relationship, InputFactory inputFactory) {
 		return (SnomedRelationshipCreateRequest) SnomedRequests
 				.prepareNewRelationship()
+				.setActive(relationship.isActive())
 				.setModuleId(getModuleOrDefault(relationship))
 				.setTypeId(relationship.getType().getConceptId())
 				.setCharacteristicType(relationship.getCharacteristicType())
