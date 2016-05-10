@@ -18,9 +18,9 @@ package com.b2international.snowowl.snomed.importer.rf2.model;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.File;
-import java.sql.Connection;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranchPoint;
 import org.slf4j.Logger;
@@ -62,6 +62,8 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 
 	private ContentSubType contentSubType;
 	private boolean versionCreationEnabled;
+	private boolean releasePatch;
+	private Date patchReleaseVersion;
 
 	private String[] sortedIgnoredRefSetIds;
 	private File stagingDirectory;
@@ -276,6 +278,22 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	 */
 	public void setVersionCreationEnabled(final boolean versionCreationEnabled) {
 		this.versionCreationEnabled = versionCreationEnabled;
+	}
+
+	public boolean isReleasePatch() {
+		return releasePatch;
+	}
+
+	public void setReleasePatch(boolean releasePatch) {
+		this.releasePatch = releasePatch;
+	}
+
+	public Date getPatchReleaseVersion() {
+		return patchReleaseVersion;
+	}
+
+	public void setPatchReleaseVersion(Date patchReleaseVersion) {
+		this.patchReleaseVersion = patchReleaseVersion;
 	}
 
 	/**

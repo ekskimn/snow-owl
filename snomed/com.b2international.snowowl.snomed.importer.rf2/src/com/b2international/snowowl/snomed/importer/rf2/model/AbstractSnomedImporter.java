@@ -95,7 +95,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.io.Closeables;
 
-import bak.pcj.map.LongKeyLongMap;
 import bak.pcj.map.ObjectKeyLongMap;
 
 /**
@@ -282,15 +281,21 @@ public abstract class AbstractSnomedImporter<T extends AbstractComponentRow, C e
 	private boolean skipCurrentRow(final Date rf2RowDate, final Date existingComponentDate) {
 		
 		/*
-		 * The RF2 row has to be imported if either the current component is unpublished, or the incoming row has no effective
-		 * date set.
+		 * The RF2 row has to be imported if either the current component is unpublished, the incoming row has no effective
+		 * date set or if this is a release patch import. 
 		 */
 		if (existingComponentDate == null) {
 			return false;
 		} else if (rf2RowDate == null) {
 			return false;
 		} else {
-			return existingComponentDate.getTime() >= rf2RowDate.getTime();
+			if (existingComponentDate.getTime() >= rf2RowDate.getTime()) {
+				// Skip unless patching this release date
+				boolean patchingThisReleaseDate = importContext.isReleasePatch() && importContext.getPatchReleaseVersion().getTime() == existingComponentDate.getTime();
+				return !patchingThisReleaseDate;
+			} else {
+				return false;
+			}
 		}
 	}
 	

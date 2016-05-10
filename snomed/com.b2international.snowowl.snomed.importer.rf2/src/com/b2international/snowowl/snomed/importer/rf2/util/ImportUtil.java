@@ -37,6 +37,7 @@ import java.net.URL;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
@@ -117,22 +118,27 @@ public final class ImportUtil {
 	private static final String SNOMED_IMPORT_POST_PROCESSOR_EXTENSION = "com.b2international.snowowl.snomed.datastore.snomedImportPostProcessor";
 
 	public SnomedImportResult doImport(final IBranchPath branchPath, final String languageRefSetId, 
-			final ContentSubType contentSubType, final File releaseArchive, final boolean shouldCreateVersions) throws Exception {
-		return doImport(branchPath, languageRefSetId, contentSubType, releaseArchive, shouldCreateVersions, SYSTEM_USER_NAME, new NullProgressMonitor());
+			final ContentSubType contentSubType, final File releaseArchive, final boolean shouldCreateVersions, 
+			boolean releasePatch, Date patchReleaseVersion) throws Exception {
+		return doImport(branchPath, languageRefSetId, contentSubType, releaseArchive, shouldCreateVersions, releasePatch, patchReleaseVersion, SYSTEM_USER_NAME, new NullProgressMonitor());
 	}
 	
 	public SnomedImportResult doImport(final String userId, final String languageRefSetId, final ContentSubType contentSubType, final File releaseArchive, final IProgressMonitor monitor) throws ImportException {
-		return doImport(createMainPath(), languageRefSetId, contentSubType, releaseArchive, true, userId, new ConsoleProgressMonitor());
+		return doImport(createMainPath(), languageRefSetId, contentSubType, releaseArchive, true, false, null, userId, new ConsoleProgressMonitor());
 	}
 
 	private SnomedImportResult doImport(final IBranchPath branchPath, final String languageRefSetId, 
-			final ContentSubType contentSubType, final File releaseArchive, final boolean shouldCreateVersions, final String userId, final IProgressMonitor monitor) {
+			final ContentSubType contentSubType, final File releaseArchive, final boolean shouldCreateVersions, 
+			boolean releasePatch, Date patchReleaseVersion, final String userId, final IProgressMonitor monitor) {
 		
 		checkNotNull(branchPath, "branchPath");
 		checkNotNull(languageRefSetId, "languageRefSetId");
 		checkNotNull(contentSubType, "contentSubType");
 		checkNotNull(releaseArchive, "releaseArchive");
 		checkArgument(releaseArchive.canRead(), "Cannot read SNOMED CT RF2 release archive content.");
+		if (releasePatch) {
+			checkNotNull(patchReleaseVersion, "patchReleaseVersion");
+		}
 		
 		final ImportConfiguration config = new ImportConfiguration();
 		config.setVersion(contentSubType);
@@ -140,6 +146,8 @@ public final class ImportUtil {
 		config.setBranchPath(branchPath.getPath());
 		config.setCreateVersions(shouldCreateVersions);
 		config.setArchiveFile(releaseArchive);
+		config.setReleasePatch(releasePatch);
+		config.setPatchReleaseVersion(patchReleaseVersion);
 
 		final List<String> zipFiles = listZipFiles(releaseArchive);
 		final ReleaseFileSet archiveFileSet = ReleaseFileSetSelectors.SELECTORS.getFirstApplicable(zipFiles, contentSubType);
@@ -248,6 +256,8 @@ public final class ImportUtil {
 		context.setStagingDirectory(stagingDirectoryRoot);
 		context.setContentSubType(configuration.getVersion());
 		context.setIgnoredRefSetIds(patchedExcludedRefSetIDs);
+		context.setReleasePatch(configuration.isReleasePatch());
+		context.setPatchReleaseVersion(configuration.getPatchReleaseVersion());
 
 		try {
 

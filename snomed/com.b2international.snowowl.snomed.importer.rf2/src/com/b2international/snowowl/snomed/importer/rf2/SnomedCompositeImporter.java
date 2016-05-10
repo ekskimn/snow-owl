@@ -158,6 +158,7 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 			final SnomedCompositeImportUnit compositeUnit = (SnomedCompositeImportUnit) unit;
 			final UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit> castFunction = new UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit>(ComponentImportUnit.class);
 			final List<ComponentImportUnit> units = Lists.newArrayList(Iterables.transform(compositeUnit.getUnits(), castFunction));
+			Preconditions.checkArgument(!units.isEmpty(), "Archive contains no importable content.");
 			
 			subMonitor.setWorkRemaining(units.size() + 1);
 

@@ -159,7 +159,9 @@ public class SnomedRf2ImportService implements ISnomedRf2ImportService {
 				configuration.getLanguageRefSetId(), 
 				getByNameIgnoreCase(valueOf(configuration.getRf2ReleaseType())), 
 				archiveFile,
-				configuration.shouldCreateVersion());
+				configuration.shouldCreateVersion(),
+				configuration.isReleasePatch(),
+				configuration.getPatchReleaseVersion());
 	}
 
 	private boolean isImportAlreadyRunning() {
