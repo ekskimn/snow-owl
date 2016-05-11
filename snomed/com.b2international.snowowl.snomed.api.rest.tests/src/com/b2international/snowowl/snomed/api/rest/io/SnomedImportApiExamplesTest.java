@@ -21,6 +21,8 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionNotExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertPreferredTermEquals;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertConceptPropertyEquals;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionPropertyEquals;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertRelationshipExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertRelationshipNotExists;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
@@ -46,12 +48,43 @@ public class SnomedImportApiExamplesTest extends AbstractSnomedImportApiTest {
 	}
 	
 	@Test
-	public void import01NewConcept() {
+	public void import010NewConcept() {
 		assertConceptNotExists(testBranchPath, "63961392103");
 		assertImportFileCanBeImported("SnomedCT_Release_INT_20150131_new_concept.zip");
 		assertConceptExists(testBranchPath, "63961392103");
 		assertPreferredTermEquals(testBranchPath, "63961392103", "13809498114");
 		givenAuthenticatedRequest("/admin").when().get("/codesystems/{shortName}/versions/{version}", "SNOMEDCT", "2015-01-31").then().statusCode(200);
+	}
+	
+	@Test
+	public void import011PatchConcept() {
+		// Assert concept released and primitive
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "effectiveTime", "20150131");
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "released", true);
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "PRIMITIVE");
+
+		// Assert description released and case insensitive
+		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "effectiveTime", "20150131");
+		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "released", true);
+		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "caseSignificance", "CASE_INSENSITIVE");
+		
+		assertImportFileCanNotBeImported("SnomedCT_Release_INT_20150131_patch_release_concept.zip");
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "PRIMITIVE");
+		
+		assertPatchImportFileCanNotBeImported("SnomedCT_Release_INT_20150131_patch_release_concept.zip", "2014-07-31");
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "PRIMITIVE");
+		
+		assertPatchImportFileCanBeImported("SnomedCT_Release_INT_20150131_patch_release_concept.zip", "2015-01-31");
+
+		// Assert concept released and fully defined with unchanged effectiveTime
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "FULLY_DEFINED");
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "effectiveTime", "20150131");
+		assertConceptPropertyEquals(testBranchPath, "63961392103", "released", true);
+
+		// Assert description released and initial character case sensitive with unchanged effectiveTime
+		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "effectiveTime", "20150131");
+		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "released", true);
+		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "caseSignificance", "INITIAL_CHARACTER_CASE_INSENSITIVE");
 	}
 
 	@Test

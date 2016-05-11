@@ -63,6 +63,20 @@ public interface ISnomedImportConfiguration extends ISnomedRF2Configuration {
 	Date getCompletionDate();
 
 	/**
+	 * Determines whether the import should overwrite released component states, this is restricted by the date {@link #getPatchReleaseVersion()}.
+	 * 
+	 * @return {@code true} if the import should overwrite released component states.
+	 */
+	boolean isReleasePatch();
+
+	/**
+	 * Returns the date for which released component states may be overwritten if {@link #isReleasePatch()} returns <code>true</code>.  
+	 * 
+	 * @return
+	 */
+	Date getPatchReleaseVersion();
+
+	/**
 	 * Enumerates possible values for the state of an RF2 import process. 
 	 */
 	static enum ImportStatus {

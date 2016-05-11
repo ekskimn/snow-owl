@@ -23,6 +23,7 @@ import javax.validation.constraints.NotNull;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
+import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.snomed.core.domain.ISnomedImportConfiguration;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 
@@ -41,6 +42,11 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 	private final String languageRefSetId;
 	
 	private final boolean createVersion;
+	
+	private boolean releasePatch;
+	
+	private Date patchReleaseVersion;
+	
 	private ImportStatus importStatus = ImportStatus.WAITING_FOR_FILE;
 	private Date startDate;
 	private Date completionDate;
@@ -60,6 +66,14 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 		this.branchPath = checkNotNull(branchPath, "branchPath");
 		this.languageRefSetId = checkNotNull(languageRefSetId, "languageRefSetId");
 		this.createVersion = checkNotNull(createVersion, "createVersion");
+	}
+	
+	public static ISnomedImportConfiguration newReleasePatchConfiguration(final String branchPath, final String languageRefSetId, String patchReleaseVersion) {
+		final SnomedImportConfiguration configuration = new SnomedImportConfiguration(Rf2ReleaseType.DELTA, branchPath, languageRefSetId, false);
+		configuration.releasePatch = true;
+		checkNotNull(patchReleaseVersion, "patchReleaseVersion");
+		configuration.patchReleaseVersion = EffectiveTimes.parse(patchReleaseVersion);
+		return configuration;
 	}
 
 	@Override
@@ -95,6 +109,16 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 	@Override
 	public Date getCompletionDate() {
 		return completionDate;
+	}
+	
+	@Override
+	public boolean isReleasePatch() {
+		return releasePatch;
+	}
+	
+	@Override
+	public Date getPatchReleaseVersion() {
+		return patchReleaseVersion;
 	}
 	
 	/**

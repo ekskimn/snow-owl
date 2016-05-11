@@ -54,6 +54,14 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 	}
 
 	private void assertImportCompletes(final String importId) {
+		assertImportFinishState(importId, "COMPLETED");
+	}
+
+	private void assertImportFails(final String importId) {
+		assertImportFinishState(importId, "FAILED");
+	}
+
+	private void assertImportFinishState(final String importId, final String expectedStatus) {
 		final long endTime = System.currentTimeMillis() + POLL_TIMEOUT;
 
 		long currentTime;
@@ -76,28 +84,64 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 
 		} while (!FINISH_STATES.contains(currentStatus) && currentTime < endTime);
 
-		assertEquals("End state should be COMPLETED.", "COMPLETED", currentStatus);
+		assertEquals("End state should be " + expectedStatus + ".", expectedStatus, currentStatus);
 	}
 
 	protected void assertImportFileCanBeImported(final String importFile) {
+		final Map<?, ?> importConfiguration = newImportConfiguration();
+		final String importId = assertImportConfigurationCanBeCreated(importConfiguration);
+		assertImportFileCanBeUploaded(importId, importFile);
+		assertImportCompletes(importId);
+	}
 
+	protected void assertImportFileCanNotBeImported(final String importFile) {
+		final Map<?, ?> importConfiguration = newImportConfiguration();
+		final String importId = assertImportConfigurationCanBeCreated(importConfiguration);
+		assertImportFileCanBeUploaded(importId, importFile);
+		assertImportFails(importId);
+	}
+	
+	protected void assertPatchImportFileCanBeImported(final String importFile, final String patchReleaseVersion) {
+		final Map<?, ?> importConfiguration = newPatchImportConfiguration(patchReleaseVersion);
+		final String importId = assertImportConfigurationCanBeCreated(importConfiguration);
+		assertImportFileCanBeUploaded(importId, importFile);
+		assertImportCompletes(importId);
+	}
+
+	protected void assertPatchImportFileCanNotBeImported(final String importFile, final String patchReleaseVersion) {
+		final Map<?, ?> importConfiguration = newPatchImportConfiguration(patchReleaseVersion);
+		final String importId = assertImportConfigurationCanBeCreated(importConfiguration);
+		assertImportFileCanBeUploaded(importId, importFile);
+		assertImportFails(importId);
+	}
+
+	private Map<?, ?> newPatchImportConfiguration(
+			final String patchReleaseVersion) {
+		final Map<?, ?> importConfiguration = ImmutableMap.builder()
+				.put("type", Rf2ReleaseType.DELTA.name())
+				.put("branchPath", testBranchPath.getPath())
+				.put("languageRefSetId", Concepts.REFSET_LANGUAGE_TYPE_UK)
+				.put("patchReleaseVersion", patchReleaseVersion)
+				.build();
+		return importConfiguration;
+	}
+
+	private Map<?, ?> newImportConfiguration() {
 		final Map<?, ?> importConfiguration = ImmutableMap.builder()
 				.put("type", Rf2ReleaseType.DELTA.name())
 				.put("branchPath", testBranchPath.getPath())
 				.put("languageRefSetId", Concepts.REFSET_LANGUAGE_TYPE_UK)
 				.put("createVersions", true)
 				.build();
-
-		final String importId = assertImportConfigurationCanBeCreated(importConfiguration);
-		assertImportFileCanBeUploaded(importId, importFile);
-		assertImportCompletes(importId);
+		return importConfiguration;
 	}
 
 	protected Response whenCreatingImportConfiguration(final Map<?, ?> importConfiguration) {
+		final String endpoint = importConfiguration.containsKey("patchReleaseVersion") ? "/imports/release-patch" : "/imports"; 
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().contentType(ContentType.JSON)
 				.and().body(importConfiguration)
-				.when().post("/imports");
+				.when().post(endpoint);
 	}
 
 	protected String assertImportConfigurationCanBeCreated(final Map<?, ?> importConfiguration) {

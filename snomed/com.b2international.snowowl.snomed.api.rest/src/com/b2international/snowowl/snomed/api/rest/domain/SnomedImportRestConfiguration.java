@@ -22,33 +22,40 @@ import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 /**
  * @since 1.0
  */
-public class SnomedImportRestConfiguration {
+public class SnomedImportRestConfiguration implements SnomedStandardImportRestConfiguration, SnomedReleasePatchImportRestConfiguration {
 
 	private Rf2ReleaseType type;
 	private String branchPath;
 	private Boolean createVersions = Boolean.FALSE;
 	private String languageRefSetId;
+	private String patchReleaseVersion;
 
+	@Override
 	public String getBranchPath() {
 		return branchPath;
 	}
 	
+	@Override
 	public void setBranchPath(String branchPath) {
 		this.branchPath = branchPath;
 	}
 	
+	@Override
 	public Rf2ReleaseType getType() {
 		return type;
 	}
 
+	@Override
 	public Boolean getCreateVersions() {
 		return createVersions;
 	}
 
+	@Override
 	public void setType(final Rf2ReleaseType type) {
 		this.type = type;
 	}
 
+	@Override
 	public void setCreateVersions(final Boolean createVersions) {
 		this.createVersions = createVersions;
 	}
@@ -57,6 +64,7 @@ public class SnomedImportRestConfiguration {
 	 * Returns with the language reference set identifier concept ID for the import configuration.
 	 * @return the language reference set ID for the preferred language.
 	 */
+	@Override
 	public String getLanguageRefSetId() {
 		return languageRefSetId;
 	}
@@ -66,16 +74,32 @@ public class SnomedImportRestConfiguration {
 	 * the language reference set identifier concept ID argument.
 	 * @param languageRefSetId the language reference set ID for the preferred language. 
 	 */
+	@Override
 	public void setLanguageRefSetId(final String languageRefSetId) {
 		this.languageRefSetId = languageRefSetId;
 	}
 	
+	@Override
+	public String getPatchReleaseVersion() {
+		return patchReleaseVersion;
+	}
+
+	@Override
+	public void setPatchReleaseVersion(String patchReleaseVersion) {
+		this.patchReleaseVersion = patchReleaseVersion;
+	}
+
+	@Override
 	public ISnomedImportConfiguration toConfig() {
-		return new SnomedImportConfiguration(
-				getType(), 
-				getBranchPath(),
-				getLanguageRefSetId(), 
-				getCreateVersions());
+		if (getPatchReleaseVersion() == null) {
+			return new SnomedImportConfiguration(
+					getType(), 
+					getBranchPath(),
+					getLanguageRefSetId(), 
+					getCreateVersions());			
+		} else {
+			return SnomedImportConfiguration.newReleasePatchConfiguration(branchPath, languageRefSetId, patchReleaseVersion);
+		}
 	}
 
 	@Override
@@ -89,6 +113,8 @@ public class SnomedImportRestConfiguration {
 		builder.append(createVersions);
 		builder.append(", languageRefSetId=");
 		builder.append(languageRefSetId);
+		builder.append(", patchReleaseVersion=");
+		builder.append(patchReleaseVersion);
 		builder.append("]");
 		return builder.toString();
 	}
