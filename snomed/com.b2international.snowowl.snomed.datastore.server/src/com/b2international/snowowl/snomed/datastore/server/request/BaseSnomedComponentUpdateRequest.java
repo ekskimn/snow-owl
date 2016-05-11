@@ -82,7 +82,7 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 	protected IBranchPath getLatestReleaseBranch(TransactionContext context) {
 		final TerminologyRegistryService registryService = context.service(TerminologyRegistryService.class);
 		final List<ICodeSystemVersion> allVersions = registryService.getAllVersion(context.id());
-		final ICodeSystemVersion systemVersion = allVersions.get(1);
+		final ICodeSystemVersion systemVersion = allVersions.get(0);
 		final IBranchPath branchPath = ICodeSystemVersion.TO_BRANCH_PATH_FUNC.apply(systemVersion);
 		return branchPath;
 	}
