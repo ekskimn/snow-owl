@@ -30,6 +30,7 @@ import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystemVersion;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundException;
 import com.b2international.snowowl.core.domain.exceptions.CodeSystemVersionNotFoundException;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
@@ -123,10 +124,11 @@ public class CodeSystemVersionServiceImpl implements ICodeSystemVersionService {
 	
 	@Override
 	public ICodeSystemVersion createVersion(String shortName, ICodeSystemVersionProperties properties) {
-		com.b2international.snowowl.datastore.ICodeSystem codeSystem = getRegistryService().getCodeSystemByShortName(MAIN_BRANCH_PATH_MAP, shortName);
+		ICodeSystem codeSystem = getRegistryService().getCodeSystemByShortName(MAIN_BRANCH_PATH_MAP, shortName);
 		if (codeSystem == null) {
 			throw new CodeSystemNotFoundException(shortName);
 		}
+		
 		final VersioningService versioningService = new VersioningService("com.b2international.snowowl.terminology.snomed");
 		try {
 			versioningService.acquireLock();
@@ -158,12 +160,21 @@ public class CodeSystemVersionServiceImpl implements ICodeSystemVersionService {
 		if (!versionResult.isOK()) {
 			throw new AlreadyExistsException("Version", properties.getVersion());
 		}
-		final String versionBranch = "MAIN/"+properties.getVersion();
+		
+		// FIXME remove hard coded SNOMED CT store value, versioning should get the repositoryId from the API
+		final String repositoryId = "snomedStore";
+		
+		//throws runtime not found exception if parent branch not found
+		Branch parentBranch = RepositoryRequests
+		.branching(repositoryId)
+		.prepareGet(properties.getParentBranchPath())
+		.executeSync(ApplicationContext.getServiceForClass(IEventBus.class));
+		
+		final String versionBranch = parentBranch.path() + "/" + properties.getVersion();
 		
 		try {
 			RepositoryRequests
-				// FIXME remove hard coded SNOMED CT store value, versioning should get the repositoryId from the API
-				.branching("snomedStore")
+				.branching(repositoryId)
 				.prepareGet(versionBranch)
 				.executeSync(ApplicationContext.getServiceForClass(IEventBus.class));
 			throw new ConflictException("An existing branch with path '%s' conflicts with the specified version identifier.", versionBranch);

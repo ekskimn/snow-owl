@@ -88,6 +88,12 @@ public interface ICodeSystemVersion extends Serializable {
 	String getVersionId();
 	
 	/**
+	 * Returns the parent branch path where the version branch is forked off
+	 * @return parent branch path
+	 */
+	String getParentBranchPath();
+	
+	/**
 	 * Returns with {@code true} if any modifications have been made on 
 	 * the branch associated with the current code system version for
 	 * the terminology or content. Otherwise {@code false}. 
@@ -175,5 +181,6 @@ public interface ICodeSystemVersion extends Serializable {
 			return Longs.compare(time1, time2);
 		}
 	}
-	
+
+
 }

@@ -34,23 +34,25 @@ public class CodeSystemVersionEntry implements Serializable, ICodeSystemVersion 
 	private final String description;
 	private final String versionId;
 	private final long latestUpdateDate;
+	private final String parentBranchPath;
 	private boolean patched;
 	private final long storageKey;
 	private final String repositoryUuid;
 
 	public CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate, 
-			final String description, final String versionId, final long storageKey, final String repositoryUuid) {
-		this(importDate, effectiveDate, latestUpdateDate, nullToEmpty(description), checkNotNull(versionId, "versionId"), false, storageKey, checkNotNull(repositoryUuid, "repositoryUuid"));
+			final String description, final String versionId, final String parentBranchPath, final long storageKey, final String repositoryUuid) {
+		this(importDate, effectiveDate, latestUpdateDate, nullToEmpty(description), checkNotNull(versionId, "versionId"), checkNotNull(parentBranchPath), false, storageKey, checkNotNull(repositoryUuid, "repositoryUuid"));
 	}
 	
 	public CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate,
-			final String description, final String versionId, final boolean patched, final long storageKey, final String repositoryUuid) {
+			final String description, final String versionId, final String parentBranchPath, final boolean patched, final long storageKey, final String repositoryUuid) {
 		this.importDate = importDate;
 		this.effectiveDate = effectiveDate;
 		this.latestUpdateDate = latestUpdateDate;
 		this.repositoryUuid = checkNotNull(repositoryUuid, "repositoryUuid");
 		this.description = nullToEmpty(description);
 		this.versionId = checkNotNull(versionId, "versionId");
+		this.parentBranchPath = parentBranchPath;
 		this.patched = patched;
 		this.storageKey = storageKey;
 	}
@@ -73,6 +75,11 @@ public class CodeSystemVersionEntry implements Serializable, ICodeSystemVersion 
 	@Override
 	public String getVersionId() {
 		return versionId;
+	}
+	
+	@Override
+	public String getParentBranchPath() {
+		return parentBranchPath;
 	}
 
 	@Override

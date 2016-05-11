@@ -29,6 +29,7 @@ import org.apache.lucene.document.Document;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.ICodeSystemVersion;
 import com.b2international.snowowl.datastore.index.IndexUtils;
+import com.b2international.snowowl.datastore.index.ParentFolderAwareIndexEntry;
 import com.google.common.base.Preconditions;
 
 /**
@@ -43,7 +44,8 @@ public abstract class CodeSystemVersionFactory {
 			IndexUtils.getLongValue(doc.getField(VERSION_EFFECTIVE_DATE)),
 			IndexUtils.getLongValue(doc.getField(VERSION_LATEST_UPDATE_DATE)),
 			doc.get(VERSION_DESCRIPTION), 
-			doc.get(VERSION_VERSION_ID), 
+			doc.get(VERSION_VERSION_ID),
+			doc.get(TerminologyRegistryIndexConstants.VERSION_PARENT_BRANCH_PATH),
 			getLongValue(doc.getField(VERSION_STORAGE_KEY)),
 			doc.get(VERSION_REPOSITORY_UUID));
 	}
