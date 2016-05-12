@@ -1,5 +1,6 @@
 package com.b2international.snowowl.snomed.api.rest.components;
 
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertConceptExists;
@@ -17,10 +18,11 @@ public class SnomedReleasedConceptApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void automaticRestorationOfEffectiveTime() {
+		givenBranchWithPath(testBranchPath);
 		final String conceptId = "63961392103";
 		assertConceptExists(testBranchPath, conceptId);
 		
-		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, conceptId, "effectiveTime", "20150131");
+		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, conceptId, "effectiveTime", "20150204");
 		
 		updateDefinitionStatus(conceptId, DefinitionStatus.FULLY_DEFINED);
 
@@ -28,7 +30,7 @@ public class SnomedReleasedConceptApiTest extends AbstractSnomedApiTest {
 
 		updateDefinitionStatus(conceptId, DefinitionStatus.PRIMITIVE);
 
-		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, conceptId, "effectiveTime", "20150131");
+		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, conceptId, "effectiveTime", "20150204");
 	}
 
 	private void updateDefinitionStatus(final String conceptId,
