@@ -46,6 +46,7 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelat
 import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.core.domain.BaseSnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
@@ -280,12 +281,21 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			
 		    for (final Object key : sourceMap.keySet()) {
 		        
-		    	final Object sourceValue = sourceMap.get(key);
-		    	final Object targetValue = targetMap.get(key);
+		    	Object sourceValue = sourceMap.get(key);
+		    	Object targetValue = targetMap.get(key);
 		        
 		    	// Skip multi-valued properties (but arrays are not checked)
 		    	if (sourceValue instanceof Iterable) {
 		    		continue;
+		    	}
+		    	
+		    	// Compare core components by identifier
+		    	if (sourceValue instanceof BaseSnomedComponent) {
+		    		sourceValue = ((BaseSnomedComponent) sourceValue).getId();
+		    	}
+		    	
+		    	if (targetValue instanceof BaseSnomedComponent) {
+		    		targetValue = ((BaseSnomedComponent) targetValue).getId();
 		    	}
 		    	
 			    if (!Objects.equals(sourceValue, targetValue)) {
