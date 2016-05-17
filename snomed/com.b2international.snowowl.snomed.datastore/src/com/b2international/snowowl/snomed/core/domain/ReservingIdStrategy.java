@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.core.domain;
 
 import com.b2international.snowowl.core.SnowOwlApplication;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
@@ -43,15 +44,36 @@ public class ReservingIdStrategy implements IdGenerationStrategy {
 	public String generate(BranchContext context) {
 		// XXX: Does not add an IdAction to SnomedIdentifiers
 		final ISnomedIdentifierService identifierService = context.service(ISnomedIdentifierService.class);
-		final String componentId = identifierService.reserve(getNamespaceIdOrDefault(), category);
+		final String namespace = getNamespaceIdOrDefault(context.branch());
+		final String componentId = identifierService.reserve(namespace, category);
 		return componentId;
 	}
 
-	private String getNamespaceIdOrDefault() {
+	private String getNamespaceIdOrDefault(Branch branch) {
 		// XXX: an empty namespace string for INT component IDs must be supported here
-		return (null == namespaceId) 
-				? SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDefaultNamespace()
-				: namespaceId;
+		if (null != namespaceId) {
+			return namespaceId;
+		} else {
+			final String branchDefaultNamespace = getBranchDefaultNamespace(branch);
+			if (branchDefaultNamespace != null) {
+				return branchDefaultNamespace;
+			} else {
+				return SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDefaultNamespace();
+			}
+		}
+	}
+
+	private String getBranchDefaultNamespace(Branch branch) {
+		final String branchDefaultNamespace = branch.metadata().getString(SnomedCoreConfiguration.BRANCH_DEFAULT_NAMESPACE_KEY);
+		if (branchDefaultNamespace != null) {
+			return branchDefaultNamespace;
+		} else {
+			final Branch parent = branch.parent();
+			if (parent != null && branch != parent) {
+				return getBranchDefaultNamespace(parent);
+			}
+		}
+		return null;
 	}
 
 	@Override

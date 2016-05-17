@@ -2,6 +2,7 @@ package com.b2international.snowowl.snomed.api.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -16,7 +17,6 @@ import org.apache.commons.collections.BeanMap;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
-import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
@@ -268,28 +268,13 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			ISnomedBrowserConcept sourceConcept,
 			ISnomedBrowserConcept targetConcept, 
 			List<ExtendedLocale> locales) {
-		
 		SnomedBrowserConcept mergedConcept = new SnomedBrowserConcept();
-		
-		/* 
-		 * Selecting merge winners using non-null vs. null effective times:
-		 * 
-		 *                  (target)
-		 * (source) | non-null |   null   |
-		 * ---------+----------+----------+
-		 * non-null | (source) |  target  |
-		 *   null   |  source  | (source) |
-		 *   
-		 * Values in the main diagonal are "don't care" items, they are set to use the source concept for getting the most
-		 * concise expression for testing.
-		 */
-		final ISnomedBrowserConcept winner;
-		if (sourceConcept.getEffectiveTime() != null && targetConcept.getEffectiveTime() == null) {
+		// If one of the concepts is unpublished, then it's values are newer.  If both are unpublished, source would win
+		ISnomedBrowserConcept winner = sourceConcept;
+		if (targetConcept.getEffectiveTime() == null && sourceConcept.getEffectiveTime() != null) {
 			winner = targetConcept;
-		} else {
-			winner = sourceConcept;
 		}
-		
+		// Set directly owned values
 		mergedConcept.setConceptId(winner.getConceptId());
 		mergedConcept.setActive(winner.isActive());
 		mergedConcept.setDefinitionStatus(winner.getDefinitionStatus());
@@ -298,57 +283,39 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		mergedConcept.setIsLeafInferred(winner.getIsLeafInferred());
 		mergedConcept.setIsLeafStated(winner.getIsLeafStated());
 		
-		// Merge descriptions - take all the descriptions from source, and add in from target if they're unpublished
-		Map<String, ISnomedBrowserDescription> mergedDescriptions = Maps.newHashMap(Maps.uniqueIndex(sourceConcept.getDescriptions(), new Function<ISnomedBrowserDescription, String>() {
-			@Override public String apply(ISnomedBrowserDescription input) { return input.getId(); }
-		}));
-		
-		for (ISnomedBrowserDescription targetDescription : targetConcept.getDescriptions()) {
-			if (targetDescription.getEffectiveTime() == null) {
-				mergedDescriptions.put(targetDescription.getId(), targetDescription);
+		// Merge Descriptions - take all the descriptions from source, and add in from target
+		// if they're unpublished, which will cause an overwrite in the Set if the Description Id matches
+		// TODO UNLESS the source description is also unpublished (Change to use map?)
+		Set<ISnomedBrowserDescription> mergedDescriptions = new HashSet<ISnomedBrowserDescription>(sourceConcept.getDescriptions());
+		for (ISnomedBrowserDescription thisDescription : targetConcept.getDescriptions()) {
+			if (thisDescription.getEffectiveTime() == null) {
+				mergedDescriptions.add(thisDescription);
 			}
 		}
+		mergedConcept.setDescriptions(new ArrayList<ISnomedBrowserDescription>(mergedDescriptions));
 		
-		mergedConcept.setDescriptions(Lists.newArrayList(mergedDescriptions.values()));
-		
-		// Merge relationships as well
-		Map<String, ISnomedBrowserRelationship> mergedRelationships = Maps.newHashMap(Maps.uniqueIndex(sourceConcept.getRelationships(), new Function<ISnomedBrowserRelationship, String>() {
-			@Override public String apply(ISnomedBrowserRelationship input) { return input.getId(); }
-		}));
-		
-		for (ISnomedBrowserRelationship targetRelationship : targetConcept.getRelationships()) {
-			if (targetRelationship.getEffectiveTime() == null) {
-				mergedRelationships.put(targetRelationship.getId(), targetRelationship);
+		// Merge Relationships  - same process using Set to remove duplicated
+		Set<ISnomedBrowserRelationship> mergedRelationships = new HashSet<ISnomedBrowserRelationship>(sourceConcept.getRelationships());
+		for (ISnomedBrowserRelationship thisRelationship : targetConcept.getRelationships()) {
+			if (thisRelationship.getEffectiveTime() == null) {
+				mergedRelationships.add(thisRelationship);
 			}
 		}
+		mergedConcept.setRelationships(new ArrayList<ISnomedBrowserRelationship>(mergedRelationships));
 		
-		mergedConcept.setRelationships(Lists.newArrayList(mergedRelationships.values()));
 		return mergedConcept;
 	}
 	
 	@Override
-	public Merge mergeAndReplayConceptUpdates(final String mergeReviewId, final String userId, final List<ExtendedLocale> extendedLocales) throws IOException, InterruptedException, ExecutionException {
+	public void mergeAndReplayConceptUpdates(String mergeReviewId, String userId, List<ExtendedLocale> extendedLocales) throws IOException, InterruptedException, ExecutionException {
 		final MergeReview mergeReview = getMergeReview(mergeReviewId);
 		final String sourcePath = mergeReview.sourcePath();
 		final String targetPath = mergeReview.targetPath();
 
-		// Check that we have the full set of manually merged concepts 
-		final Set<String> manualMergeConceptIds = Sets.newConcurrentHashSet();
-		final List<ListenableFuture<?>> changeFutures = Lists.newArrayList();
-		
-		for (final String conceptId : mergeReview.mergeReviewIntersection()) {
-			changeFutures.add(executorService.submit(new ChangeRunnable(sourcePath, targetPath, conceptId) {
-				@Override
-				protected void register(final String conceptId) {
-					manualMergeConceptIds.add(conceptId);
-				}
-			}));
-		}
-		
-		Futures.allAsList(changeFutures).get();
-		
-		final List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
-		for (String conceptId : manualMergeConceptIds) {
+		// Check we have a full set of manually merged concepts 
+		final Set<String> mergeReviewIntersection = mergeReview.mergeReviewIntersection();
+		List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
+		for (String conceptId : mergeReviewIntersection) {
 			if (!manualConceptMergeService.exists(targetPath, mergeReviewId, conceptId)) {
 				throw new InvalidStateException("Manually merged concept " + conceptId + " does not exist for merge review " + mergeReviewId);
 			} else {
@@ -357,23 +324,22 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		}
 
 		// Auto merge branches
-		return SnomedRequests
-			.merging()
-			.prepareCreate()
+		SnomedRequests
+			.branching()
+			.prepareMerge()
 			.setSource(sourcePath)
 			.setTarget(targetPath)
 			.setReviewId(mergeReview.sourceToTargetReviewId())
 			.setCommitComment("Auto merging branches before applying manually merged concepts. " + sourcePath + " > " + targetPath)
-			.setPostCommitRunnable(new Runnable() { @Override public void run() {
-				// Apply manually merged concepts
-				browserService.update(targetPath, conceptUpdates, userId, extendedLocales);
-
-				// Clean up
-				mergeReview.delete();
-				manualConceptMergeService.deleteAll(targetPath, mergeReviewId);					
-			}})
 			.build()
 			.executeSync(bus);
+		
+		// Apply manually merged concepts
+		browserService.update(targetPath, conceptUpdates, userId, extendedLocales);
+
+		// Clean up
+		mergeReview.delete();
+		manualConceptMergeService.deleteAll(targetPath, mergeReviewId);
 	}
 
 	@Override
@@ -384,6 +350,4 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	private MergeReview getMergeReview(String mergeReviewId) {
 		return SnomedRequests.mergeReview().prepareGet(mergeReviewId).executeSync(bus);
 	}
-
-
 }

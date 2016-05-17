@@ -34,7 +34,6 @@ import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.events.util.ApiRequestHandler;
-import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
@@ -51,7 +50,6 @@ import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexMa
 import com.b2international.snowowl.datastore.server.internal.branch.BranchSerializer;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
-import com.b2international.snowowl.datastore.server.internal.merge.MergeServiceImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
@@ -75,15 +73,15 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	private final Map<Class<?>, Object> registry = newHashMap();
 
-	CDOBasedRepository(String repositoryId, int numberOfWorkers, int mergeMaxResults, Environment env) {
+	CDOBasedRepository(String repositoryId, int numberOfWorkers, Environment env) {
 		checkArgument(numberOfWorkers > 0, "At least one worker thread must be specified");
 		
 		this.repositoryId = repositoryId;
 		this.env = env;
 		this.handlers = EventBusUtil.getWorkerBus(repositoryId, numberOfWorkers);
 		
-		initializeBranchingSupport(mergeMaxResults);
 		initializeRequestSupport(numberOfWorkers);
+		initializeBranchingSupport();
 	}
 
 	@Override
@@ -186,7 +184,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		return new DefaultRepositoryContext(context, repositoryId);
 	}
 
-	private void initializeBranchingSupport(int mergeMaxResults) {
+	private void initializeBranchingSupport() {
 		final BranchSerializer branchSerializer = env.service(BranchSerializer.class);
 		final IndexStore<InternalBranch> branchStore = createIndex("branches", branchSerializer, InternalBranch.class);
 		registry.put(BranchManager.class, new CDOBranchManagerImpl(this, branchStore));
@@ -207,9 +205,6 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		indexManager.registerIndex(reviewStore);
 		indexManager.registerIndex(mergeReviewStore);
 		indexManager.registerIndex(conceptChangesStore);
-		
-		final MergeServiceImpl mergeService = new MergeServiceImpl(this, mergeMaxResults);
-		registry.put(MergeService.class, mergeService);
 	}
 	
 	private <T> IndexStore<T> createIndex(final String name, ObjectMapper mapper, Class<T> type) {

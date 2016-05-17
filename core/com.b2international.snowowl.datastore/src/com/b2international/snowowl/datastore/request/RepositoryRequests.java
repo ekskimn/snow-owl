@@ -35,10 +35,6 @@ public class RepositoryRequests {
 		return new Branching(repositoryId);
 	}
 	
-	public static Merging merging(String repositoryId) {
-		return new Merging(repositoryId);
-	}
-	
 	public static Reviews reviews(String repositoryId) {
 		return new Reviews(repositoryId);
 	}
@@ -49,4 +45,5 @@ public class RepositoryRequests {
 	public static DeleteRequestBuilder prepareDelete(String repositoryId) {
 		return new DeleteRequestBuilder(repositoryId);
 	}
+
 }

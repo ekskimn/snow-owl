@@ -2,7 +2,7 @@
 <feature
       id="com.b2international.snowowl.server.dependencies.feature"
       label="Snow Owl Server Dependencies"
-      version="4.5.17.qualifier"
+      version="4.5.46.qualifier"
       provider-name="B2i Healthcare">
 
    <description url="http://b2i.sg">
@@ -890,6 +890,13 @@ Visit us at http://b2i.sg
 
    <plugin
          id="org.apache.el"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="com.b2international.snowowl.logging.amq"
          download-size="0"
          install-size="0"
          version="0.0.0"

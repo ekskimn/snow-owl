@@ -40,7 +40,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.b2international.snowowl.snomed.api.ISnomedRf2ImportService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedImportDetails;
-import com.b2international.snowowl.snomed.api.rest.domain.SnomedImportRestConfiguration;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedReleasePatchImportRestConfiguration;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedStandardImportRestConfiguration;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.ISnomedImportConfiguration;
 import com.wordnik.swagger.annotations.Api;
@@ -78,7 +79,30 @@ public class SnomedImportRestService extends AbstractSnomedRestService {
 	public ResponseEntity<Void> create(
 			@ApiParam(value="Import parameters")
 			@RequestBody 
-			final SnomedImportRestConfiguration importConfiguration) {
+			final SnomedStandardImportRestConfiguration importConfiguration) {
+
+		final UUID importId = delegate.create(importConfiguration.toConfig());
+		return Responses.created(linkTo(methodOn(SnomedImportRestService.class).getImportDetails(importId)).toUri()).build();
+	}
+
+	@ApiOperation(
+			value="Patch a SNOMED CT Release", 
+			notes="Configures processes to import RF2 based archives in order to patch 'Released' SNOMED CT content. This is useful for making content changes during a beta feedback period. The configured process will wait until the archive actually uploaded via the <em>/archive</em> endpoint. "
+					+ "The actual import process will start after the file upload completed. Note: the patchReleaseVersion must match the effective-time of the release you are patching and takes the format 'yyyy-mm-dd'.")
+	@ApiResponses({
+		@ApiResponse(code = 201, message = "Created"),
+		@ApiResponse(code = 404, message = "Code system version not found"),
+		@ApiResponse(code = 404, message = "Task not found", response = RestApiError.class),
+	})
+	@RequestMapping(value="/release-patch", method=RequestMethod.POST,
+		consumes={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+	@ResponseStatus(HttpStatus.CREATED)
+	public ResponseEntity<Void> createReleaseHotfix(
+			@ApiParam(value="Import parameters")
+			@RequestBody 
+			final SnomedReleasePatchImportRestConfiguration importConfiguration) {
+
+		checkNotNull(importConfiguration.getPatchReleaseVersion(), "patchReleaseVersion must be specified.");
 
 		final UUID importId = delegate.create(importConfiguration.toConfig());
 		return Responses.created(linkTo(methodOn(SnomedImportRestService.class).getImportDetails(importId)).toUri()).build();

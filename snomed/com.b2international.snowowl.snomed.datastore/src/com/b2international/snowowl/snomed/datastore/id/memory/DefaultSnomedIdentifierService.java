@@ -270,7 +270,7 @@ public class DefaultSnomedIdentifierService extends AbstractSnomedIdentifierServ
 				sctId.setStatus(IdentifierStatus.PUBLISHED.getSerializedName());
 				publishedSctIds.put(componentId, sctId);
 			} else if (!sctId.isPublished()) {
-				throw new BadRequestException(String.format("Cannot publish ID in state %s.", sctId.getStatus()));
+				throw new BadRequestException(String.format("Cannot publish ID %s in state %s.", sctId.getSctid(), sctId.getStatus()));
 			}
 		}
 

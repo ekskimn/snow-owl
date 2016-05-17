@@ -159,7 +159,9 @@ public class SnomedRf2ImportService implements ISnomedRf2ImportService {
 				configuration.getLanguageRefSetId(), 
 				getByNameIgnoreCase(valueOf(configuration.getRf2ReleaseType())), 
 				archiveFile,
-				configuration.shouldCreateVersion());
+				configuration.shouldCreateVersion(),
+				configuration.isReleasePatch(),
+				configuration.getPatchReleaseVersion());
 	}
 
 	private boolean isImportAlreadyRunning() {
@@ -179,7 +181,7 @@ public class SnomedRf2ImportService implements ISnomedRf2ImportService {
 		checkNotNull(configuration, "SNOMED CT import configuration should be specified.");
 		ApiValidation.checkInput(configuration);
 		
-		final StorageRef importStorageRef = new StorageRef("SNOMEDCT", configuration.getBranchPath());
+		final StorageRef importStorageRef = new StorageRef(REPOSITORY_UUID, configuration.getBranchPath());
 		
 		// Check version and branch existence in case of DELTA RF2 import
 		// FULL AND SNAPSHOT can be import into empty databases

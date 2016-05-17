@@ -120,7 +120,6 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 	protected static final Logger LOGGER = LoggerFactory.getLogger(IndexServerService.class);
 	
 	private final LoadingCache<IBranchPath, IndexBranchService> branchServices;
-	private final Object branchServicesLock = new Object();
 	private final IndexAccessUpdater updater;
 	private final AtomicBoolean disposed = new AtomicBoolean();
 	
@@ -221,9 +220,9 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 		checkState(!physicalPath.isMain(), "Physical path cannot be MAIN.");
 		
 		try {
+			final IndexBranchService baseBranchService = getBranchService(logicalPath.getParent());
 			
-			synchronized (branchServicesLock) {
-				final IndexBranchService baseBranchService = getBranchService(logicalPath.getParent());
+			synchronized (baseBranchService) {
 				baseBranchService.createIndexCommit(logicalPath, physicalPath);
 				inactiveClose(logicalPath, true);
 				getBranchService(logicalPath);
@@ -256,11 +255,14 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 		
 		try {
 
-			synchronized (branchServicesLock) {
-				final IndexBranchService branchService = branchServices.getIfPresent(branchPath);
-				if (branchService != null && (!branchService.isDirty() || force)) {
-					branchServices.invalidate(branchPath);
-					return true;
+			final IndexBranchService branchService = branchServices.getIfPresent(branchPath);
+			
+			if (branchService != null && (!branchService.isDirty() || force)) {
+				synchronized (branchService) {
+					if ((!branchService.isDirty() || force)) {
+						branchServices.invalidate(branchPath);
+						return true;
+					}
 				}
 			}
 
@@ -273,11 +275,9 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 	
 	@Override
 	public void dispose() {
-		synchronized (branchServicesLock) {
-			if (disposed.compareAndSet(false, true)) {
-				updater.close();
-				branchServices.invalidateAll();
-			}
+		if (disposed.compareAndSet(false, true)) {
+			updater.close();
+			branchServices.invalidateAll();
 		}
 	}
 
@@ -825,11 +825,7 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 		}
 		
 		try {
-			
-			synchronized (branchServicesLock) {
-				return branchServices.get(branchPath);
-			}
-			
+			return branchServices.get(branchPath);
 		} catch (final ExecutionException e) {
 			throw IndexException.wrap(e.getCause());
 		} catch (final UncheckedExecutionException e) {

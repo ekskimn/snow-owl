@@ -55,10 +55,6 @@ public class RepositoryConfiguration {
 	@Max(100)
 	private int numberOfWorkers = 3 * Runtime.getRuntime().availableProcessors();
 	
-	@Min(10)
-	@Max(1000)
-	private int mergeMaxResults = 100;
-	
 	/**
 	 * Returns whether the communication used by the persistance layer is done
 	 * in a compressed way or not.
@@ -182,19 +178,6 @@ public class RepositoryConfiguration {
 	 */
 	public JdbcUrl getDatabaseUrl() {
 		return new JdbcUrl(getDatabaseConfiguration().getScheme(), getDatabaseConfiguration().getLocation(), getDatabaseConfiguration().getSettings());
-	}
-	
-	/**
-	 * @return the maximum number of completed merge job results to keep
-	 */
-	@JsonProperty
-	public int getMergeMaxResults() {
-		return mergeMaxResults;
-	}
-	
-	@JsonProperty
-	public void setMergeMaxResults(int mergeMaxResults) {
-		this.mergeMaxResults = mergeMaxResults;
 	}
 	
 	/**

@@ -16,9 +16,8 @@
 package com.b2international.snowowl.snomed.datastore.server.request;
 
 import com.b2international.snowowl.datastore.request.Branching;
-import com.b2international.snowowl.datastore.request.DeleteRequestBuilder;
 import com.b2international.snowowl.datastore.request.MergeReviews;
-import com.b2international.snowowl.datastore.request.Merging;
+import com.b2international.snowowl.datastore.request.DeleteRequestBuilder;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.Reviews;
 import com.b2international.snowowl.snomed.Concept;
@@ -116,10 +115,6 @@ public abstract class SnomedRequests {
 	
 	public static Branching branching() {
 		return RepositoryRequests.branching(REPOSITORY_ID);
-	}
-	
-	public static Merging merging() {
-		return RepositoryRequests.merging(REPOSITORY_ID);
 	}
 
 	public static Reviews review() {

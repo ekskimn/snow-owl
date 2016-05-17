@@ -18,6 +18,7 @@ package com.b2international.snowowl.snomed.importer.net4j;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
@@ -85,6 +86,8 @@ public final class ImportConfiguration {
 	private final Set<URL> additionalRefSetURLs = Sets.newHashSet(); 
 	private final Set<String> excludedRefSetIds = Sets.newHashSet();
 	private boolean createVersions;
+	private boolean releasePatch;
+	private Date patchReleaseVersion;
 	
 	//always the active branch path for the client/requester.
 	private String branchPath = BranchPathUtils.createActivePath(SnomedPackage.eINSTANCE).getPath();
@@ -282,5 +285,21 @@ public final class ImportConfiguration {
 	public void setBranchPath(String branchPath) {
 		this.branchPath = branchPath;
 	}
-	
+
+	public boolean isReleasePatch() {
+		return releasePatch;
+	}
+
+	public void setReleasePatch(boolean releasePatch) {
+		this.releasePatch = releasePatch;
+	}
+
+	public Date getPatchReleaseVersion() {
+		return patchReleaseVersion;
+	}
+
+	public void setPatchReleaseVersion(Date patchReleaseVersion) {
+		this.patchReleaseVersion = patchReleaseVersion;
+	}
+
 }

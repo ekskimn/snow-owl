@@ -49,7 +49,6 @@ import com.b2international.snowowl.datastore.remotejobs.RemoteJobChangedEvent;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventBusHandler;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventSwitch;
-import com.b2international.snowowl.datastore.remotejobs.RemoteJobRemovedEvent;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobState;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobUtils;
 import com.b2international.snowowl.datastore.server.domain.StorageRef;
@@ -74,6 +73,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Classif
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConcept;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
@@ -89,8 +89,6 @@ import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasoner
 public class SnomedClassificationServiceImpl implements ISnomedClassificationService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedClassificationServiceImpl.class);
-	
-	private static final int MAX_INDEXED_RESULTS = 1000;
 	
 	private final class PersistenceCompletionHandler implements IHandler<IMessage> {
 
@@ -159,16 +157,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					}
 				}
 
-				@Override
-				protected void caseRemoved(final RemoteJobRemovedEvent event) {
-
-					try {
-						indexService.deleteClassificationData(event.getId());
-					} catch (final IOException e) {
-						LOG.error("Caught IOException while deleting classification data.", e);
-					}					
-				}
-
 			}.doSwitch(message.body(AbstractRemoteJobEvent.class));
 		}
 	}
@@ -225,15 +213,20 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	
 	@Resource
 	private IEventBus bus;
+	
+	@Resource
+	private int maxReasonerRuns;
 
 	@PostConstruct
 	protected void init() {
+		LOG.info("Initializing classification service; keeping indexed data for {} recent run(s).", maxReasonerRuns); 
+		
 		final File dir = new File(new File(SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory(), "indexes"), "classification_runs");
 		indexService = new ClassificationRunIndex(dir);
 		ApplicationContext.getInstance().getServiceChecked(SingleDirectoryIndexManager.class).registerIndex(indexService);
 
 		try {
-			indexService.trimIndex(MAX_INDEXED_RESULTS);
+			indexService.trimIndex(maxReasonerRuns);
 			indexService.invalidateClassificationRuns();
 		} catch (final IOException e) {
 			LOG.error("Failed to run housekeeping tasks for the classification index.", e);
@@ -260,6 +253,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			indexService.dispose();
 			indexService = null;
 		}
+		
+		LOG.info("Classification service shut down.");
 	}
 
 	private static SnomedReasonerService getReasonerService() {
@@ -480,10 +475,16 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
 		getRemoteJobManager().cancelRemoteJob(UUID.fromString(classificationId));
+		
+		try {
+			indexService.deleteClassificationData(classificationId);
+		} catch (final IOException e) {
+			LOG.error("Caught IOException while deleting classification data for ID {}.", classificationId, e);
+		}					
 	}
 
 	private StorageRef createStorageRef(final String branchPath) {
-		final StorageRef storageRef = new StorageRef("SNOMEDCT", branchPath);
+		final StorageRef storageRef = new StorageRef(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath);
 		storageRef.checkStorageExists();
 		return storageRef;
 	}

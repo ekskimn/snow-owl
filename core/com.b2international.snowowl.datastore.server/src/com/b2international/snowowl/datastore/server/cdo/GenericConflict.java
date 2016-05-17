@@ -13,39 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.core.merge;
-
-import java.util.Date;
-import java.util.UUID;
-
-import com.b2international.snowowl.core.exceptions.ApiError;
+package com.b2international.snowowl.datastore.server.cdo;
 
 /**
- * @since 4.6
+ * @since 4.7
  */
-public interface Merge {
+public class GenericConflict {
 
-	public enum Status {
-		SCHEDULED,
-		IN_PROGRESS,
-		COMPLETED,
-		FAILED, 
-		CANCEL_REQUESTED;
+	private final String message;
+
+	public GenericConflict(String message, Object...args) {
+		this.message = String.format(message, args);
 	}
 	
-	UUID getId();
+	public String getMessage() {
+		return message;
+	}
 	
-	String getSource();
-
-	String getTarget();
-
-	Status getStatus();
-	
-	Date getScheduledDate();
-	
-	Date getStartDate();
-	
-	Date getEndDate();
-	
-	ApiError getApiError();
 }

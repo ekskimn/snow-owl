@@ -13,33 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.datastore.request;
+package com.b2international.snowowl.snomed.api.rest.domain;
 
-import java.util.UUID;
-
-import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.core.events.BaseRequest;
-import com.b2international.snowowl.core.merge.MergeService;
+import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 
 /**
- * @since 4.6
  */
-public class DeleteMergeRequest extends BaseRequest<RepositoryContext, Void> {
+public class ClassificationRunRestUpdate {
 
-	private UUID id;
+	private ClassificationStatus status;
 
-	public DeleteMergeRequest(UUID id) {
-		this.id = id;
+	public ClassificationStatus getStatus() {
+		return status;
+	}
+
+	public void setStatus(final ClassificationStatus status) {
+		this.status = status;
 	}
 
 	@Override
-	public Void execute(RepositoryContext context) {
-		context.service(MergeService.class).deleteMerge(id);
-		return null;
-	}
-
-	@Override
-	protected Class<Void> getReturnType() {
-		return Void.class;
+	public String toString() {
+		final StringBuilder builder = new StringBuilder();
+		builder.append("ClassificationRestRun [status=");
+		builder.append(status);
+		builder.append("]");
+		return builder.toString();
 	}
 }

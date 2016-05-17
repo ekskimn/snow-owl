@@ -84,7 +84,7 @@ public class SnomedMrcmService {
 			.filterByEscg(builder.toString())
 			.filterByActive(true)
 			.setExpand(expand)
-			.filterByExtendedLocales(locales)
+			.setLocales(locales)
 			.build(branchPath)
 			.executeSync(bus);
 	}
@@ -129,7 +129,7 @@ public class SnomedMrcmService {
 				.filterByTerm(termPrefix)
 				.filterByActive(true)
 				.setExpand(expand)
-				.filterByExtendedLocales(locales)
+				.setLocales(locales)
 				.build(branchPath)
 				.executeSync(bus);
 	}

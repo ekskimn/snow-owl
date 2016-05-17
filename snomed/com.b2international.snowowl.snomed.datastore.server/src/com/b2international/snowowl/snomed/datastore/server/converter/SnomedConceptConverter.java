@@ -144,10 +144,12 @@ final class SnomedConceptConverter extends BaseSnomedComponentConverter<SnomedCo
 
 	private void expandDescriptions(List<ISnomedConcept> results, final Set<String> conceptIds) {
 		if (expand().containsKey("descriptions")) {
+			final Options expandOptions = expand().getOptions("descriptions");
 			final SnomedDescriptions descriptions = SnomedRequests
 				.prepareSearchDescription()
 				.all()
 				.filterByConceptId(StringToLongFunction.copyOf(conceptIds))
+				.setExpand(expandOptions.getOptions("expand"))
 				.build()
 				.execute(context());
 			

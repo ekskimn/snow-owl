@@ -194,7 +194,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.build();
 
 		assertDescriptionCanBeUpdated(branch, descriptionId, updateRequestBody);
-		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId)
+		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()")
 			.and()
 			.body("active", equalTo(false))
 			.and()
@@ -213,7 +213,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.build();
 
 		assertDescriptionCanBeUpdated(branch, descriptionId, updateRequestBody);
-		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId)
+		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()")
 			.and()
 			.body("active", equalTo(false))
 			.and()
@@ -225,7 +225,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.put("commitComment", "Changed inactivation indicator to " + DescriptionInactivationIndicator.OUTDATED)
 				.build();
 		assertDescriptionCanBeUpdated(branch, descriptionId, updateRequestBody);
-		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId)
+		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()")
 			.and()
 			.body("active", equalTo(false))
 			.and()
@@ -251,7 +251,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.build();
 
 		assertDescriptionCanBeUpdated(branch, descriptionId, updateRequestBody);
-		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId)
+		assertComponentExists(branch, SnomedComponentType.DESCRIPTION, descriptionId, "inactivationProperties()")
 			.and()
 			.body("active", equalTo(false))
 			.and()

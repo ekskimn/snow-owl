@@ -83,13 +83,13 @@ public abstract class SnomedComponentApiAssert {
 		return conceptBuilder.build();
 	}
 	
-	private static Builder<Object, Object> createRelationshipRequestBuilder(final String sourceId, 
+	private static Builder<String, Object> createRelationshipRequestBuilder(final String sourceId, 
 			final String typeId, 
 			final String destinationId, 
 			final String moduleId, 
 			final String comment) {
 
-		return ImmutableMap.builder()
+		return ImmutableMap.<String, Object>builder()
 				.put("sourceId", sourceId)
 				.put("typeId", typeId)
 				.put("destinationId", destinationId)
@@ -97,7 +97,7 @@ public abstract class SnomedComponentApiAssert {
 				.put("commitComment", comment);
 	}
 
-	public static Map<?, ?> givenRelationshipRequestBody(final String sourceId, 
+	public static Map<String, Object> givenRelationshipRequestBody(final String sourceId, 
 			final String typeId, 
 			final String destinationId, 
 			final String moduleId, 
@@ -107,7 +107,7 @@ public abstract class SnomedComponentApiAssert {
 				.build();
 	}
 
-	public static Map<?, ?> givenRelationshipRequestBody(final String sourceId, 
+	public static Map<String, Object> givenRelationshipRequestBody(final String sourceId, 
 			final String typeId, 
 			final String destinationId, 
 			final String moduleId, 
@@ -122,9 +122,9 @@ public abstract class SnomedComponentApiAssert {
 	public static ValidatableResponse assertComponentReadWithStatus(final IBranchPath branchPath, 
 			final SnomedComponentType componentType, 
 			final String componentId, 
-			final int statusCode) {
+			final int statusCode, final String... expand) {
 
-		return getComponent(branchPath, componentType, componentId)
+		return getComponent(branchPath, componentType, componentId, expand)
 				.then().log().ifValidationFails().assertThat().statusCode(statusCode);
 	}
 
@@ -143,9 +143,10 @@ public abstract class SnomedComponentApiAssert {
 	 * @param branchPath the branch path to test
 	 * @param componentType the expected component type
 	 * @param componentId the expected component identifier
+	 * @param expand expansion parameters
 	 */
-	public static ValidatableResponse assertComponentExists(final IBranchPath branchPath, final SnomedComponentType componentType, final String componentId) {
-		return assertComponentReadWithStatus(branchPath, componentType, componentId, 200);
+	public static ValidatableResponse assertComponentExists(final IBranchPath branchPath, final SnomedComponentType componentType, final String componentId, final String...expand) {
+		return assertComponentReadWithStatus(branchPath, componentType, componentId, 200, expand);
 	}
 
 	/**
@@ -302,8 +303,8 @@ public abstract class SnomedComponentApiAssert {
 	 * @param branchPath the branch path to check
 	 * @param conceptId the concept identifier to check
 	 */
-	public static void assertConceptExists(final IBranchPath branchPath, final String conceptId) {
-		assertComponentExists(branchPath, SnomedComponentType.CONCEPT, conceptId);
+	public static ValidatableResponse assertConceptExists(final IBranchPath branchPath, final String conceptId) {
+		return assertComponentExists(branchPath, SnomedComponentType.CONCEPT, conceptId);
 	}
 
 	/**
@@ -369,6 +370,20 @@ public abstract class SnomedComponentApiAssert {
 		.when().get("/{path}/concepts/{conceptId}/pt", branchPath.getPath(), conceptId)
 		.then().assertThat().statusCode(200)
 		.and().body("id", equalTo(descriptionId));
+	}
+	
+	public static void assertConceptPropertyEquals(final IBranchPath branchPath, final String conceptId, final String propertyName, final Object propertyValue) {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+		.when().get("/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
+		.then().assertThat().statusCode(200)
+		.and().body(propertyName, equalTo(propertyValue));
+	}
+
+	public static void assertDescriptionPropertyEquals(final IBranchPath branchPath, final String descriptionId, final String propertyName, final Object propertyValue) {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+		.when().get("/{path}/descriptions/{descriptionId}", branchPath.getPath(), descriptionId)
+		.then().assertThat().statusCode(200)
+		.and().body(propertyName, equalTo(propertyValue));
 	}
 
 	private SnomedComponentApiAssert() {

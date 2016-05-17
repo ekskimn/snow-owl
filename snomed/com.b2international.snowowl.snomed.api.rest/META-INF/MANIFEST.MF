@@ -1,10 +1,11 @@
 Manifest-Version: 1.0
-Bundle-Version: 4.5.17.qualifier
+Bundle-Version: 4.5.46.qualifier
 Bundle-Name: Snow Owl SNOMED CT REST Service
 Bundle-ManifestVersion: 2
 Bundle-SymbolicName: com.b2international.snowowl.snomed.api.rest;singleton:=true
 Import-Package: com.b2international.commons,
  com.b2international.commons.collections,
+ com.b2international.commons.config,
  com.b2international.commons.exceptions,
  com.b2international.commons.functions,
  com.b2international.commons.http,
@@ -18,6 +19,7 @@ Import-Package: com.b2international.commons,
  com.b2international.snowowl.api.impl.codesystem.domain,
  com.b2international.snowowl.core,
  com.b2international.snowowl.core.branch,
+ com.b2international.snowowl.core.config,
  com.b2international.snowowl.core.domain,
  com.b2international.snowowl.core.events,
  com.b2international.snowowl.core.events.bulk,
@@ -25,7 +27,6 @@ Import-Package: com.b2international.commons,
  com.b2international.snowowl.core.exceptions,
  com.b2international.snowowl.core.history,
  com.b2international.snowowl.core.history.domain,
- com.b2international.snowowl.core.merge,
  com.b2international.snowowl.core.terminology,
  com.b2international.snowowl.datastore.events,
  com.b2international.snowowl.datastore.request,
@@ -52,6 +53,7 @@ Import-Package: com.b2international.commons,
  com.b2international.snowowl.snomed.core.domain.refset,
  com.b2international.snowowl.snomed.core.events,
  com.b2international.snowowl.snomed.datastore,
+ com.b2international.snowowl.snomed.datastore.config,
  com.b2international.snowowl.snomed.datastore.server.request,
  com.b2international.snowowl.snomed.snomedrefset,
  javax.servlet;version="2.6.0",
