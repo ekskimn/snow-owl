@@ -165,7 +165,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		assertComponentCreated(setupBranch, SnomedComponentType.RELATIONSHIP, relationshipRequestBody);
 		
-		// Another inferred relationship goes on the parent of the sibling branch
+		// Another inferred relationship goes on the parent branch
 		relationshipRequestBody = givenRelationshipRequestBody(FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, 
 				MODULE_SCT_CORE, 
 				CharacteristicType.INFERRED_RELATIONSHIP,
@@ -199,7 +199,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		assertComponentCreated(setupBranch, SnomedComponentType.RELATIONSHIP, relationshipRequestBody);
 		
-		// Another stated relationship goes on the parent of the sibling branch
+		// Another stated relationship goes on the parent branch
 		relationshipRequestBody = givenRelationshipRequestBody(FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, 
 				MODULE_SCT_CORE,
 				"New stated relationship on parent");
@@ -210,14 +210,15 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		final String reviewId = andCreatedMergeReview(setupBranch.getPath(), setupBranch.getParentPath());
 		assertReviewCurrent(reviewId);
 		
-		JsonNode body = whenRetrievingMergeReviewDetails(reviewId).then()
+		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
 			.statusCode(200)
 			.and()
 			.extract()
 			.body()
 			.as(JsonNode.class);
 		
-		assertEquals(1, body.size());
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());
 	}
 	
 	@Test
@@ -231,7 +232,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		assertComponentCreated(setupBranch, SnomedComponentType.RELATIONSHIP, relationshipRequestBody);
 		
-		// Another inferred relationship goes on the parent of the sibling branch
+		// Another inferred relationship goes on the parent branch
 		relationshipRequestBody = givenRelationshipRequestBody(FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, 
 				MODULE_SCT_CORE,
 				CharacteristicType.INFERRED_RELATIONSHIP,
@@ -243,7 +244,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		final String reviewId = andCreatedMergeReview(setupBranch.getPath(), setupBranch.getParentPath());
 		assertReviewCurrent(reviewId);
 		
-		JsonNode body = whenRetrievingMergeReviewDetails(reviewId).then()
+		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
 			.statusCode(200)
 			.and()
 			.extract()
@@ -251,16 +252,19 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 			.as(JsonNode.class);
 		
 		// Concept will still be returned as requiring manual merge.
-		assertEquals(1, body.size());
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());
 	}
 	
 	@Test
 	public void setReviewStale() {
 		givenBranchWithPath(testBranchPath);
 
+		// Set up a review...
 		final String reviewId = andCreatedMergeReview("MAIN", testBranchPath.getPath());
 		assertReviewCurrent(reviewId);
 		
+		// ...then commit to the branch.
 		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
 		assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, conceptRequestBody);
 		
