@@ -108,7 +108,7 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 		if (releasedRelationship.isActive() != relationship.isActive()) return true;
 		if (!releasedRelationship.getModuleId().equals(relationship.getModule().getId())) return true;
 		if (!releasedRelationship.getValueId().equals(relationship.getDestination().getId())) return true;
-		if (new Byte(releasedRelationship.getGroup()).intValue() != relationship.getGroup()) return true;
+		if (releasedRelationship.getGroup() != relationship.getGroup()) return true;
 		if (!releasedRelationship.getAttributeId().equals(relationship.getType().getId())) return true;
 		if (!releasedRelationship.getCharacteristicType().getConceptId().equals(relationship.getCharacteristicType().getId())) return true;
 		if (!releasedRelationship.getModifierId().equals(relationship.getModifier().getId())) return true;
