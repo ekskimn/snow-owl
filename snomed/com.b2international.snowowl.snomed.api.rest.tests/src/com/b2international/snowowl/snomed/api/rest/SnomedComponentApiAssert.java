@@ -378,6 +378,13 @@ public abstract class SnomedComponentApiAssert {
 		.then().assertThat().statusCode(200)
 		.and().body(propertyName, equalTo(propertyValue));
 	}
+	
+	public static void assertConceptIndexedBrowserPropertyEquals(final IBranchPath branchPath, final String conceptId, final String propertyName, final Object propertyValue) {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+		.when().get("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
+		.then().assertThat().statusCode(200)
+		.and().body(propertyName, equalTo(propertyValue));		
+	}
 
 	public static void assertDescriptionPropertyEquals(final IBranchPath branchPath, final String descriptionId, final String propertyName, final Object propertyValue) {
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)

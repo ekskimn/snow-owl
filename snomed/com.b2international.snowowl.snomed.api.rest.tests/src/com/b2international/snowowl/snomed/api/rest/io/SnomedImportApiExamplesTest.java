@@ -22,6 +22,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionNotExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertPreferredTermEquals;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertConceptPropertyEquals;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertConceptIndexedBrowserPropertyEquals;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionPropertyEquals;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertRelationshipExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertRelationshipNotExists;
@@ -62,6 +63,8 @@ public class SnomedImportApiExamplesTest extends AbstractSnomedImportApiTest {
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "effectiveTime", "20150131");
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "released", true);
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "PRIMITIVE");
+		assertConceptIndexedBrowserPropertyEquals(testBranchPath, "63961392103", "effectiveTime", "20150131");
+		assertConceptIndexedBrowserPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "PRIMITIVE");
 
 		// Assert description released and case insensitive
 		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "effectiveTime", "20150131");
@@ -80,6 +83,8 @@ public class SnomedImportApiExamplesTest extends AbstractSnomedImportApiTest {
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "FULLY_DEFINED");
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "effectiveTime", "20150131");
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "released", true);
+		assertConceptIndexedBrowserPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "FULLY_DEFINED");
+		assertConceptIndexedBrowserPropertyEquals(testBranchPath, "63961392103", "effectiveTime", "20150131");
 
 		// Assert description released and initial character case sensitive with unchanged effectiveTime
 		assertDescriptionPropertyEquals(testBranchPath, "13809498114", "effectiveTime", "20150131");
