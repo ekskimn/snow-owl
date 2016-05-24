@@ -308,7 +308,7 @@ public abstract class SnomedComponentApiAssert {
 			final String componentId,
 			final boolean force) {
 
-		assertComponentCanBeDeleted(branchPath, componentType, componentId, force, 400);
+		assertComponentCanBeDeleted(branchPath, componentType, componentId, force, 409);
 	}
 
 	private static void assertComponentCanBeDeleted(final IBranchPath branchPath, 
@@ -349,8 +349,8 @@ public abstract class SnomedComponentApiAssert {
 	 * @param branchPath the branch path to check
 	 * @param descriptionId the description identifier to check
 	 */
-	public static void assertDescriptionExists(final IBranchPath branchPath, final String descriptionId) {
-		assertComponentExists(branchPath, SnomedComponentType.DESCRIPTION, descriptionId);
+	public static ValidatableResponse assertDescriptionExists(final IBranchPath branchPath, final String descriptionId, final String... expand) {
+		return assertComponentExists(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, expand);
 	}
 
 	/**
@@ -391,11 +391,23 @@ public abstract class SnomedComponentApiAssert {
 	 * @param descriptionId the expected description identifier
 	 */
 	public static void assertPreferredTermEquals(final IBranchPath branchPath, final String conceptId, final String descriptionId) {
+		assertPreferredTermEquals(branchPath, conceptId, descriptionId, "en-GB");
+	}
+	
+	/**
+	 * Asserts that the concept's preferred term in the given language reference set matches the specified description identifier.
+	 * 
+	 * @param branchPath the branch path to test
+	 * @param conceptId the identifier of the concept where the preferred term should be compared
+	 * @param descriptionId the expected description identifier
+	 * @param language - the language reference set
+	 */
+	public static void assertPreferredTermEquals(final IBranchPath branchPath, final String conceptId, final String descriptionId, final String language) {
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-		.with().header("Accept-Language", "en-GB")
-		.when().get("/{path}/concepts/{conceptId}/pt", branchPath.getPath(), conceptId)
-		.then().assertThat().statusCode(200)
-		.and().body("id", equalTo(descriptionId));
+		.with().header("Accept-Language", language)
+		.when().get("/{path}/concepts/{conceptId}?expand=pt(),descriptions()", branchPath.getPath(), conceptId)
+		.then().log().ifValidationFails().assertThat().statusCode(200)
+		.and().body("pt.id", equalTo(descriptionId));
 	}
 	
 	public static void assertConceptPropertyEquals(final IBranchPath branchPath, final String conceptId, final String propertyName, final Object propertyValue) {

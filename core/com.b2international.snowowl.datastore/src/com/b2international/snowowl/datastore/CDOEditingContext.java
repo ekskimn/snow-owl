@@ -381,7 +381,7 @@ public abstract class CDOEditingContext implements AutoCloseable {
 	 * @param object
 	 * @throws ConflictException - if the component cannot be deleted
 	 */
-	public void delete(EObject object) {
+	public final void delete(EObject object) {
 		delete(object, false);
 	}
 	

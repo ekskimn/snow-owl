@@ -1219,20 +1219,25 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	}
 	
 	@Override
-	public void delete(EObject object) {
-		delete(object, false);
-	}
-	
-	@Override
-	public void delete(EObject object, boolean force) throws ConflictException {
+	public void delete(EObject object, boolean force) {
 		if (object instanceof Concept) {
 			delete((Concept) object, force);
 		} else if (object instanceof Description) {
 			delete((Description) object, force);
 		} else if (object instanceof Relationship) {
 			delete((Relationship) object, force);
+		} else if (object instanceof SnomedRefSetMember) {
+			delete((SnomedRefSetMember) object, force);
 		}
 		super.delete(object, force);
+	}
+	
+	private void delete(SnomedRefSetMember member, boolean force) {
+		SnomedDeletionPlan deletionPlan = canDelete(member, force);
+		if (deletionPlan.isRejected()) {
+			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
+		}
+		delete(deletionPlan);
 	}
 	
 	private void delete(Concept concept, boolean force) {
@@ -1243,6 +1248,16 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		}
 		
 		delete(deletionPlan);
+	}
+	
+	private SnomedDeletionPlan canDelete(SnomedRefSetMember member, boolean force) {
+		final SnomedDeletionPlan plan = new SnomedDeletionPlan();
+		if (member.isReleased() && !force) {
+			plan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "member", member.getUuid()));
+		} else {
+			plan.markForDeletion(member);
+		}
+		return plan;
 	}
 	
 	public SnomedDeletionPlan canDelete(Concept concept, SnomedDeletionPlan deletionPlan, boolean force) {
