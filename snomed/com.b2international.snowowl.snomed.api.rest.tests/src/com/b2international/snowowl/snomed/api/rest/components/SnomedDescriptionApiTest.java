@@ -18,7 +18,17 @@ package com.b2international.snowowl.snomed.api.rest.components;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createMainPath;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentActive;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreatedWithStatus;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionNotExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertPreferredTermEquals;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -44,11 +54,12 @@ import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
+import com.google.common.base.Function;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
-import com.jayway.restassured.response.ValidatableResponse;
 
 /**
  * @since 2.0
@@ -296,7 +307,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	public void updateAcceptability() {
 		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
 		final String descriptionId = assertComponentCreated(createMainPath(), SnomedComponentType.DESCRIPTION, createRequestBody);
-		final Collection<Map<String, Object>> members = assertDescriptionExists(createMainPath(), descriptionId, "members()").extract().body().path("members.items");
+		final Collection<Map<String, Object>> members = getDescriptionMembers(createMainPath(), descriptionId);
 		final Map<String, Object> member = Iterables.getOnlyElement(members);
 		
 		final Map<?, ?> updateRequestBody = ImmutableMap.builder()
@@ -305,7 +316,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.build();
 
 		assertDescriptionCanBeUpdated(createMainPath(), descriptionId, updateRequestBody);
-		final Collection<Map<String, Object>> updatedMembers = assertDescriptionExists(createMainPath(), descriptionId, "members()").extract().body().path("members.items");
+		final Collection<Map<String, Object>> updatedMembers = getDescriptionMembers(createMainPath(), descriptionId);
 		final Map<String, Object> updatedMember = Iterables.getOnlyElement(updatedMembers);
 		// changing acceptability should change the acceptabilityId of the same member and not create a new one
 		assertEquals(member.get("id"), updatedMember.get("id"));
@@ -371,9 +382,21 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 
 		assertDescriptionCanBeUpdated(createMainPath(), descriptionId, updateRequestBody);
 		
-		final Collection<String> memberIds = assertDescriptionExists(createMainPath(), descriptionId, "members()").and().extract().body().path("members.items.id");
+		final Collection<Map<String, Object>> members = getDescriptionMembers(createMainPath(), descriptionId);
+		final Collection<String> memberIds = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("id");
+			}
+		}).toSet();
 		assertEquals(2, memberIds.size());
-		final Collection<String> memberReferenceSetIds = assertDescriptionExists(createMainPath(), descriptionId, "members()").and().extract().body().path("members.items.referenceSetId");
+		
+		final Collection<String> memberReferenceSetIds = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("referenceSetId");
+			}
+		}).toSet();
 		assertThat(memberReferenceSetIds, CoreMatchers.hasItems(Concepts.REFSET_LANGUAGE_TYPE_UK, Concepts.REFSET_LANGUAGE_TYPE_US));
 		
 		assertPreferredTermEquals(createMainPath(), DISEASE, descriptionId, "en-US");
@@ -389,13 +412,30 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.build();
 		assertDescriptionCanBeUpdated(testBranchPath, INACTIVE_DISEASE_DESCRIPTION, updateRequestBody);
 		
-		final ValidatableResponse getDescriptionResponse = assertDescriptionExists(testBranchPath, INACTIVE_DISEASE_DESCRIPTION, "members()");
-		final Collection<String> memberIds = getDescriptionResponse.and().extract().body().path("members.items.id");
+		final Collection<Map<String, Object>> members = getDescriptionMembers(testBranchPath, INACTIVE_DISEASE_DESCRIPTION);
+		final Collection<String> memberIds = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("id");
+			}
+		}).toSet();
 		assertEquals(1, memberIds.size());
 		assertThat(memberIds, CoreMatchers.hasItem(INACTIVE_DISEASE_DESCRIPTION_MEMBER_ID));
-		final Collection<Boolean> statuses = getDescriptionResponse.and().extract().body().path("members.items.active");
+		
+		final Collection<Boolean> statuses = FluentIterable.from(members).transform(new Function<Map<String, Object>, Boolean>() {
+			@Override 
+			public Boolean apply(Map<String, Object> input) {
+				return (Boolean) input.get("active");
+			}
+		}).toList();
 		assertThat(statuses, CoreMatchers.hasItem(true));
-		final Collection<String> effectiveTimes = getDescriptionResponse.and().extract().body().path("members.items.effectiveTime");
+		
+		final Iterable<String> effectiveTimes = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("effectiveTime");
+			}
+		});
 		assertNull(Iterables.getOnlyElement(effectiveTimes));
 	}
 	
@@ -409,13 +449,30 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.build();
 		assertDescriptionCanBeUpdated(testBranchPath, INACTIVE_DISEASE_DESCRIPTION, updateRequestBody);
 		
-		final ValidatableResponse getDescriptionResponse = assertDescriptionExists(testBranchPath, INACTIVE_DISEASE_DESCRIPTION, "members()");
-		final Collection<String> memberIds = getDescriptionResponse.and().extract().body().path("members.items.id");
+		final Collection<Map<String, Object>> members = getDescriptionMembers(testBranchPath, INACTIVE_DISEASE_DESCRIPTION);
+		final Collection<String> memberIds = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("id");
+			}
+		}).toSet();
 		assertEquals(1, memberIds.size());
 		assertThat(memberIds, CoreMatchers.hasItem(INACTIVE_DISEASE_DESCRIPTION_MEMBER_ID));
-		final Collection<Boolean> statuses = getDescriptionResponse.and().extract().body().path("members.items.active");
+		
+		final Collection<Boolean> statuses = FluentIterable.from(members).transform(new Function<Map<String, Object>, Boolean>() {
+			@Override 
+			public Boolean apply(Map<String, Object> input) {
+				return (Boolean) input.get("active");
+			}
+		}).toList();
 		assertThat(statuses, CoreMatchers.hasItem(false));
-		final Collection<String> effectiveTimes = getDescriptionResponse.and().extract().body().path("members.items.effectiveTime");
+		
+		final Collection<String> effectiveTimes = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("effectiveTime");
+			}
+		}).toSet();
 		assertThat(effectiveTimes, CoreMatchers.hasItem(INACTIVE_DISEASE_DESCRIPTION_EFFECTIVE_TIME));
 	}
 	
@@ -434,12 +491,36 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		
 		assertDescriptionCanBeUpdated(createMainPath(), descriptionId, updateRequestBody);
 		
-		final Collection<String> memberIds = assertDescriptionExists(createMainPath(), descriptionId, "members()").and().extract().body().path("members.items.id");
+		final Collection<Map<String, Object>> members = getDescriptionMembers(createMainPath(), descriptionId);
+		final Collection<String> memberIds = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("id");
+			}
+		}).toSet();
 		assertEquals(1, memberIds.size());
-		final Collection<String> memberReferenceSetIds = assertDescriptionExists(createMainPath(), descriptionId, "members()").and().extract().body().path("members.items.referenceSetId");
+		
+		final Collection<String> memberReferenceSetIds = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("referenceSetId");
+			}
+		}).toSet();
 		assertThat(memberReferenceSetIds, CoreMatchers.hasItems(Concepts.REFSET_LANGUAGE_TYPE_UK));
-		final Collection<String> acceptabilityIds = assertDescriptionExists(createMainPath(), descriptionId, "members()").and().extract().body().path("members.items.acceptabilityId");
+		
+		final Collection<String> acceptabilityIds = FluentIterable.from(members).transform(new Function<Map<String, Object>, String>() {
+			@Override 
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("acceptabilityId");
+			}
+		}).toSet();
 		assertThat(acceptabilityIds, CoreMatchers.hasItems(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE));
+	}
+
+	private Collection<Map<String, Object>> getDescriptionMembers(IBranchPath branchPath, String descriptionId) {
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.when().get("/{path}/{componentType}?referencedComponentId={componentId}", branchPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), descriptionId)
+			.then().log().ifValidationFails().extract().body().path("items");
 	}
 	
 }
