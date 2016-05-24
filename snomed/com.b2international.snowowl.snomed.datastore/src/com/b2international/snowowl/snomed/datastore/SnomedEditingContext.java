@@ -1241,12 +1241,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	}
 	
 	private void delete(Concept concept, boolean force) {
-		
 		SnomedDeletionPlan deletionPlan = canDelete(concept, null, force);
 		if(deletionPlan.isRejected()) {
-			throw new IllegalArgumentException(deletionPlan.getRejectionReasons().toString());
+			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
 		}
-		
 		delete(deletionPlan);
 	}
 	
@@ -1348,7 +1346,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	private void delete(Relationship relationship, boolean force) {
 		SnomedDeletionPlan deletionPlan = canDelete(relationship, null, force);
 		if(deletionPlan.isRejected()) {
-			throw new IllegalArgumentException(deletionPlan.getRejectionReasons().toString());
+			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
 		}
 		delete(deletionPlan);
 	}
@@ -1392,7 +1390,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	private void delete(Description description, boolean force) {
 		SnomedDeletionPlan deletionPlan = canDelete(description, null, force);
 		if(deletionPlan.isRejected()) {
-			throw new IllegalArgumentException(deletionPlan.getRejectionReasons().toString());
+			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
 		}
 		delete(deletionPlan);
 	}
