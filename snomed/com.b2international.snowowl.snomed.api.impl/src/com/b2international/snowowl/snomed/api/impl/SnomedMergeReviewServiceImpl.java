@@ -109,6 +109,12 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			throw new UnsupportedOperationException("getAutoMergedConcept should not be called on empty merge review element.");
 		}
 	};
+
+	/**
+	 * Special value indicating that the concept ID should not be added to the intersection set, because it did not change (ignoring
+	 * any changes related to classification).
+	 */
+	private static final String SKIP_ID = "";
 	
 	private static class MergeReviewParameters {
 		private final String sourcePath;
@@ -140,40 +146,40 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		}
 	}
 	
-	private class ComputeMergeReviewCallable implements Callable<ISnomedBrowserMergeReviewDetail> {
-		private final String conceptId;
-		private final MergeReviewParameters parameters;
+	private abstract class MergeReviewCallable<T> implements Callable<T> {
+		protected final String conceptId;
+		protected final MergeReviewParameters parameters;
 
-		private ComputeMergeReviewCallable(final String conceptId, final MergeReviewParameters parameters) {
+		private MergeReviewCallable(final String conceptId, final MergeReviewParameters parameters) {
 			this.conceptId = conceptId;
 			this.parameters = parameters;
 		}
-
+		
 		@Override
-		public ISnomedBrowserMergeReviewDetail call() throws Exception {
+		public T call() throws Exception {
 
 			final ISnomedConcept sourceConcept = getConcept(parameters.getSourcePath(), conceptId);
 			final ISnomedConcept targetConcept = getConcept(parameters.getTargetPath(), conceptId);
 			
 			if (hasConceptChanges(sourceConcept, targetConcept)) {
-				return createMergeReviewDetail();
+				return onSuccess();
 			}
 			
 			final SnomedDescriptions sourceDescriptions = getDescriptions(parameters.getSourcePath(), conceptId);
 			final SnomedDescriptions targetDescriptions = getDescriptions(parameters.getTargetPath(), conceptId);
 			
 			if (hasDescriptionChanges(sourceDescriptions.getItems(), targetDescriptions.getItems())) {
-				return createMergeReviewDetail();
+				return onSuccess();
 			}
 			
 			final SnomedRelationships sourceRelationships = getRelationships(parameters.getSourcePath(), conceptId);
 			final SnomedRelationships targetRelationships = getRelationships(parameters.getTargetPath(), conceptId);
 			
 			if (hasNonInferredRelationshipChanges(sourceRelationships.getItems(), targetRelationships.getItems())) {
-				return createMergeReviewDetail();
+				return onSuccess();
 			}
 			
-			return SKIP_DETAIL;
+			return onSkip();
 		}
 
 		private ISnomedConcept getConcept(final String path, final String conceptId) {
@@ -305,8 +311,20 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		    
 		    return false;
 		}
+		
+		protected abstract T onSuccess() throws IOException;
+		
+		protected abstract T onSkip();
+	}
+	
+	private class ComputeMergeReviewCallable extends MergeReviewCallable<ISnomedBrowserMergeReviewDetail> {
 
-		private ISnomedBrowserMergeReviewDetail createMergeReviewDetail() throws IOException {
+		private ComputeMergeReviewCallable(final String conceptId, final MergeReviewParameters parameters) {
+			super(conceptId, parameters);
+		}
+
+		@Override
+		protected ISnomedBrowserMergeReviewDetail onSuccess() throws IOException {
 			final ISnomedBrowserConcept sourceConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(parameters.getSourcePath(), conceptId), parameters.getExtendedLocales());
 			final ISnomedBrowserConcept targetConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(parameters.getTargetPath(), conceptId), parameters.getExtendedLocales());
 
@@ -359,6 +377,28 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			mergedConcept.setRelationships(new ArrayList<ISnomedBrowserRelationship>(mergedRelationships));
 			
 			return mergedConcept;
+		}
+
+		@Override
+		protected ISnomedBrowserMergeReviewDetail onSkip() {
+			return SKIP_DETAIL;
+		}
+	}
+	
+	private class ComputeIntersectionIdsCallable extends MergeReviewCallable<String> {
+
+		private ComputeIntersectionIdsCallable(final String conceptId, final MergeReviewParameters parameters) {
+			super(conceptId, parameters);
+		}
+		
+		@Override
+		protected String onSuccess() throws IOException {
+			return conceptId;
+		}
+		
+		@Override
+		protected String onSkip() {
+			return SKIP_ID;
 		}
 	}
 
@@ -419,8 +459,20 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 
 		// Check we have a full set of manually merged concepts 
 		final Set<String> mergeReviewIntersection = mergeReview.mergeReviewIntersection();
-		final List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
+		final List<ListenableFuture<String>> changeFutures = Lists.newArrayList();
+		final MergeReviewParameters parameters = new MergeReviewParameters(sourcePath, targetPath, extendedLocales, mergeReview.id());
+
 		for (final String conceptId : mergeReviewIntersection) {
+			changeFutures.add(executorService.submit(new ComputeIntersectionIdsCallable(conceptId, parameters)));
+		}
+		
+		final List<String> changes = Futures.allAsList(changeFutures).get();
+		final Set<String> relevantIntersection = Sets.newHashSet(Collections2.filter(changes, new Predicate<String>() {
+			@Override public boolean apply(final String input) { return SKIP_ID != input; }
+		}));
+
+		final List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
+		for (final String conceptId : relevantIntersection) {
 			if (!manualConceptMergeService.exists(targetPath, mergeReviewId, conceptId)) {
 				throw new InvalidStateException("Manually merged concept " + conceptId + " does not exist for merge review " + mergeReviewId);
 			} else {
