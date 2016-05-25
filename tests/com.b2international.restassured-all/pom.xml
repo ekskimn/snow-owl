@@ -8,6 +8,6 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>tests-parent</artifactId>
-		<version>4.5.48-SNAPSHOT</version>
+		<version>4.5.48</version>
 	</parent>
 </project>
