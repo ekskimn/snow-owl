@@ -72,6 +72,9 @@ final class SnomedRefSetMemberUpdateRequest extends BaseRequest<TransactionConte
 		case QUERY:
 			changed |= updateQuery((SnomedQueryRefSetMember) member);
 			break;
+		case LANGUAGE:
+			// TODO: acceptability values can not be updated here, but language members should be supported otherwise
+			break;
 		default: throw new UnsupportedOperationException("Not implemented update of " + type + " member"); 
 		}
 		
