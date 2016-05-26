@@ -50,7 +50,7 @@ import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
-import com.jayway.restassured.response.ValidatableResponse;
+import com.jayway.restassured.response.ResponseBodyExtractionOptions;
 
 /**
  * @since 2.0
@@ -240,14 +240,15 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.build();
 		
 		assertComponentCanBeUpdated(testBranchPath, SnomedComponentType.CONCEPT, INACTIVE_CONCEPT_ID, inactivationBody);
+		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, INACTIVE_CONCEPT_ID);
 		
-		final ValidatableResponse conceptResponse = assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, INACTIVE_CONCEPT_ID, "members()");
-		final Collection<String> memberIds = conceptResponse.and().extract().body().path("members.items.id");
+		final ResponseBodyExtractionOptions componentMembers = getComponentMembers(testBranchPath, INACTIVE_CONCEPT_ID);
+		final Collection<String> memberIds = componentMembers.path("items.id");
 		assertEquals(4, memberIds.size());
 
-		final Collection<Boolean> statuses = conceptResponse.and().extract().body().path("members.items.active");
+		final Collection<Boolean> statuses = componentMembers.path("items.active");
 		assertThat(statuses, everyItem(is(true)));
-		final Collection<String> effectiveTimes = conceptResponse.and().extract().body().path("members.items.effectiveTime");
+		final Collection<String> effectiveTimes = componentMembers.path("items.effectiveTime");
 		assertThat(effectiveTimes, everyItem(either(is("20050131")).or(is("20050731"))));
 	}
 	
@@ -316,7 +317,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.toString()))
 				.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(componentId));
 		
-		final Collection<String> memberIds = getComponentMemberIds(testBranchPath, duplicateComponentId);
+		final Collection<String> memberIds = getComponentMembers(testBranchPath, duplicateComponentId).path("items.id");
 
 		// retrieve association member and store its UUID
 		assertEquals(2, memberIds.size());
@@ -340,7 +341,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(DISEASE))
 				.body("associationTargets." + AssociationType.REPLACED_BY.name(), hasItem(componentId));
 		
-		final Collection<String> updatedMemberIds = getComponentMemberIds(testBranchPath, duplicateComponentId);
+		final Collection<String> updatedMemberIds = getComponentMembers(testBranchPath, duplicateComponentId).path("items.id");
 		// check that the member UUIDs have not been cycled
 		assertEquals(4, updatedMemberIds.size());
 		assertTrue(updatedMemberIds.containsAll(memberIds));
@@ -357,9 +358,9 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		assertComponentCreatedWithStatus(createMainPath(), SnomedComponentType.CONCEPT, dupRequestBody, 409);
 	}
 
-	private Collection<String> getComponentMemberIds(IBranchPath branchPath, String componentId) {
+	private ResponseBodyExtractionOptions getComponentMembers(IBranchPath branchPath, String componentId) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 			.when().get("/{path}/{componentType}?referencedComponentId={componentId}", branchPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), componentId)
-			.then().log().ifValidationFails().extract().body().path("items.id");
+			.then().log().ifValidationFails().extract().body();
 	}
 }
