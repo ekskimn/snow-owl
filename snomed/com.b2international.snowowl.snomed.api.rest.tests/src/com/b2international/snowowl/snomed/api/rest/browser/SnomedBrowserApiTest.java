@@ -132,7 +132,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 				creationDate);
 		final ValidatableResponse response = assertComponentCreatedWithStatus(createMainPath(), createRequestBody, 200);
 
-		final Map<String, Object> concept = response.and().extract().as(Map.class);
+		final Map<String, Object> concept = response.and().extract().jsonPath().get();
 		concept.put("active", false);
 
 		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 200);
@@ -148,7 +148,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 				creationDate);
 		final ValidatableResponse response = assertComponentCreatedWithStatus(createMainPath(), createRequestBody, 200);
 
-		final Map<String, Object> concept = response.and().extract().as(Map.class);
+		final Map<String, Object> concept = response.and().extract().jsonPath().get();
 		concept.remove("relationships");
 
 		// We get a 400, bad request, because at least one is-a relationship is required

@@ -180,11 +180,9 @@ public class SnomedBrowserApiAssert {
 	}
 	
 	public static Map<String, Object> getConcept(final IBranchPath branchPath, final String conceptId) {
-		final Map<?, ?> concept = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().contentType(ContentType.JSON)
 				.when().get("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
-				.then().extract().as(Map.class);
-		
-		return (Map<String, Object>) concept;
+				.then().extract().jsonPath().get();
 	}
 }

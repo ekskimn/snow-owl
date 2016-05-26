@@ -47,22 +47,11 @@ import com.jayway.restassured.response.ValidatableResponse;
  */
 public abstract class SnomedComponentApiAssert {
 
-	public static Map<?, ?> givenConceptRequestBody(final String conceptId, final String parentId, final String moduleId, final Map<?, ?> fsnAcceptabilityMap, final boolean skipComment) {
+	public static Map<String, ?> givenConceptRequestBody(final String conceptId, final String parentId, final String moduleId, final Map<?, ?> fsnAcceptabilityMap, final boolean skipComment) {
 
 		final Date creationDate = new Date();
-		final Map<?, ?> fsnDescription = ImmutableMap.<String, Object>builder()
-				.put("typeId", FULLY_SPECIFIED_NAME)
-				.put("term", "New FSN at " + creationDate)
-				.put("languageCode", "en")
-				.put("acceptability", fsnAcceptabilityMap)
-				.build();
-
-		final Map<?, ?> ptDescription = ImmutableMap.<String, Object>builder()
-				.put("typeId", SYNONYM)
-				.put("term", "New PT at " + creationDate)
-				.put("languageCode", "en")
-				.put("acceptability", PREFERRED_ACCEPTABILITY_MAP)
-				.build();
+		final Map<String, ?> fsnDescription = givenDescriptionRequestBody(creationDate, "New FSN at ", fsnAcceptabilityMap, FULLY_SPECIFIED_NAME);
+		final Map<String, ?> ptDescription = givenDescriptionRequestBody(creationDate, "New PT at ", PREFERRED_ACCEPTABILITY_MAP, SYNONYM);
 
 		final ImmutableMap.Builder<String, Object> conceptBuilder = ImmutableMap.<String, Object>builder()
 				.put("moduleId", moduleId)
@@ -81,6 +70,19 @@ public abstract class SnomedComponentApiAssert {
 		}
 
 		return conceptBuilder.build();
+	}
+
+	public static ImmutableMap<String, Object> givenDescriptionRequestBody(String termPrefix, Map<?, ?> acceptabilityMap, String typeId) {
+		return givenDescriptionRequestBody(new Date(), termPrefix, acceptabilityMap, typeId);
+	}
+	
+	private static ImmutableMap<String, Object> givenDescriptionRequestBody(final Date creationDate, String termPrefix, Map<?, ?> acceptabilityMap, String typeId) {
+		return ImmutableMap.<String, Object>builder()
+				.put("typeId", typeId)
+				.put("term", termPrefix + creationDate)
+				.put("languageCode", "en")
+				.put("acceptability", acceptabilityMap)
+				.build();
 	}
 	
 	private static Builder<String, Object> createRelationshipRequestBuilder(final String sourceId, 
@@ -288,13 +290,20 @@ public abstract class SnomedComponentApiAssert {
 		.when().post("/{path}/{componentType}/{id}/updates", branchPath.getPath(), componentType.toLowerCasePlural(), componentId);
 	}
 
-	public static void assertComponentCanBeDeleted(final IBranchPath branchPath, 
-			final SnomedComponentType componentType, 
-			final String componentId) {
-
+	public static void assertComponentCanBeDeleted(final IBranchPath branchPath, final SnomedComponentType componentType, final String componentId) {
+		assertComponentCanBeDeleted(branchPath, componentType, componentId, false);
+	}
+	
+	public static void assertComponentCanBeDeleted(final IBranchPath branchPath, final SnomedComponentType componentType, final String componentId, boolean force) {
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-		.when().delete("/{path}/{componentType}/{id}", branchPath.getPath(), componentType.toLowerCasePlural(), componentId)
-		.then().log().ifValidationFails().assertThat().statusCode(204);
+			.when().delete("/{path}/{componentType}/{id}?force={force}", branchPath.getPath(), componentType.toLowerCasePlural(), componentId, force)
+			.then().log().ifValidationFails().assertThat().statusCode(204);
+	}
+	
+	public static void assertComponentCannotBeDeleted(final IBranchPath branchPath, final SnomedComponentType componentType, final String componentId) {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.when().delete("/{path}/{componentType}/{id}", branchPath.getPath(), componentType.toLowerCasePlural(), componentId)
+			.then().log().ifValidationFails().assertThat().statusCode(409);
 	}
 
 	/**
@@ -323,8 +332,8 @@ public abstract class SnomedComponentApiAssert {
 	 * @param branchPath the branch path to check
 	 * @param descriptionId the description identifier to check
 	 */
-	public static void assertDescriptionExists(final IBranchPath branchPath, final String descriptionId) {
-		assertComponentExists(branchPath, SnomedComponentType.DESCRIPTION, descriptionId);
+	public static ValidatableResponse assertDescriptionExists(final IBranchPath branchPath, final String descriptionId, final String... expand) {
+		return assertComponentExists(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, expand);
 	}
 
 	/**
@@ -365,11 +374,23 @@ public abstract class SnomedComponentApiAssert {
 	 * @param descriptionId the expected description identifier
 	 */
 	public static void assertPreferredTermEquals(final IBranchPath branchPath, final String conceptId, final String descriptionId) {
+		assertPreferredTermEquals(branchPath, conceptId, descriptionId, "en-GB");
+	}
+	
+	/**
+	 * Asserts that the concept's preferred term in the given language reference set matches the specified description identifier.
+	 * 
+	 * @param branchPath the branch path to test
+	 * @param conceptId the identifier of the concept where the preferred term should be compared
+	 * @param descriptionId the expected description identifier
+	 * @param language - the language reference set
+	 */
+	public static void assertPreferredTermEquals(final IBranchPath branchPath, final String conceptId, final String descriptionId, final String language) {
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-		.with().header("Accept-Language", "en-GB")
-		.when().get("/{path}/concepts/{conceptId}/pt", branchPath.getPath(), conceptId)
-		.then().assertThat().statusCode(200)
-		.and().body("id", equalTo(descriptionId));
+		.with().header("Accept-Language", language)
+		.when().get("/{path}/concepts/{conceptId}?expand=pt(),descriptions()", branchPath.getPath(), conceptId)
+		.then().log().ifValidationFails().assertThat().statusCode(200)
+		.and().body("pt.id", equalTo(descriptionId));
 	}
 	
 	public static void assertConceptPropertyEquals(final IBranchPath branchPath, final String conceptId, final String propertyName, final Object propertyValue) {
@@ -398,7 +419,7 @@ public abstract class SnomedComponentApiAssert {
 	}
 	
 	public static Map<String, Object> createRefSetRequestBody(SnomedRefSetType type, String referencedComponentType, String parent) {
-		final Map<String, Object> conceptBody = (Map<String, Object>) givenConceptRequestBody(null, parent, Concepts.MODULE_SCT_CORE, SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP, true);
+		final Map<String, ?> conceptBody = givenConceptRequestBody(null, parent, Concepts.MODULE_SCT_CORE, SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP, true);
 		final Builder<String, Object> requestBody = ImmutableMap.builder();
 		requestBody.putAll(conceptBody);
 		requestBody.put("commitComment", String.format("New %s type reference set with %s members", type, referencedComponentType));

@@ -342,7 +342,8 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void rebaseNewConceptStale() {
-		IBranchPath branchPath = createNestedBranch("A", "B");
+		givenBranchWithPath(testBranchPath);
+		IBranchPath branchPath = createNestedBranch(testBranchPath, "A", "B");
 
 		assertConceptCreated(branchPath, "CB1");
 		assertConceptExists(branchPath, "CB1");
@@ -498,7 +499,8 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void noRebaseSameBranch() {
-		final IBranchPath siblingA = createNestedBranch("A");
+		givenBranchWithPath(testBranchPath);
+		final IBranchPath siblingA = createNestedBranch(testBranchPath, "A");
 		
 		assertConceptCreated(testBranchPath, "C1");
 		assertConceptExists(testBranchPath, "C1");
