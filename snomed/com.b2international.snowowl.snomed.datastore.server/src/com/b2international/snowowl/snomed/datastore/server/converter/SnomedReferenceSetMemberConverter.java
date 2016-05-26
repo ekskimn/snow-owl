@@ -36,6 +36,7 @@ import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetM
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.services.AbstractSnomedRefSetMembershipLookupService;
 import com.google.common.base.Function;
@@ -158,6 +159,33 @@ final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConvert
 			case ASSOCIATION:
 				props.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID, entry.getTargetComponentId());
 				break;
+			case EXTENDED_MAP:
+				props.put(SnomedRf2Headers.FIELD_MAP_CATEGORY_ID, entry.getMapCategoryId());
+			case COMPLEX_MAP:
+				props.put(SnomedRf2Headers.FIELD_MAP_GROUP, entry.getMapGroup());
+				props.put(SnomedRf2Headers.FIELD_MAP_PRIORITY, entry.getMapPriority());
+				props.put(SnomedRf2Headers.FIELD_MAP_RULE, entry.getMapRule());
+				props.put(SnomedRf2Headers.FIELD_MAP_ADVICE, entry.getMapAdvice());
+				props.put(SnomedRf2Headers.FIELD_CORRELATION_ID, entry.getCorrelationId());
+			case SIMPLE_MAP:
+  				props.put(SnomedRf2Headers.FIELD_MAP_TARGET, entry.getMapTargetComponentId());
+  				props.put(SnomedMappings.memberMapTargetComponentType().fieldName(), entry.getMapTargetComponentTypeAsShort());
+  				break;
+			case CONCRETE_DATA_TYPE:
+				props.put(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, entry.getAttributeLabel());
+				props.put(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, entry.getCharacteristicTypeId());
+				props.put(SnomedRf2Headers.FIELD_VALUE, entry.getValue());
+				props.put(SnomedRf2Headers.FIELD_UNIT_ID, entry.getUomComponentId());
+				props.put(SnomedRf2Headers.FIELD_OPERATOR_ID, entry.getOperatorComponentId());
+				break;
+			case LANGUAGE:
+				props.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, entry.getAcceptabilityId());
+				break;
+			case DESCRIPTION_TYPE:
+				// XXX description format???
+				props.put(SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH, entry.getDescriptionLength());
+				break;
+			// TODO module dependency refset
 			default:
 				break;
 		}

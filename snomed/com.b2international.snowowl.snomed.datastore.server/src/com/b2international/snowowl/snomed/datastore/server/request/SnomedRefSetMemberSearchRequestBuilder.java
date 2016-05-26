@@ -61,5 +61,4 @@ public final class SnomedRefSetMemberSearchRequestBuilder extends SnomedSearchRe
 	public SnomedRefSetMemberSearchRequestBuilder filterByProps(Options memberProps) {
 		return addOption(OptionKey.PROPS, memberProps);
 	}
-	
 }

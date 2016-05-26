@@ -125,6 +125,7 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 		SnomedQueryBuilder queryBuilder = SnomedMappings.newQuery().and(SnomedMappings.memberReferencedComponentType().toExistsQuery());
 		addActiveClause(queryBuilder);
 		addModuleClause(queryBuilder);
+		addEffectiveTimeClause(queryBuilder);
 		
 		final Query query = createConstantScoreQuery(createFilteredQuery(queryBuilder.matchAll(), filter));
 		final int totalHits = getTotalHits(searcher, query);
