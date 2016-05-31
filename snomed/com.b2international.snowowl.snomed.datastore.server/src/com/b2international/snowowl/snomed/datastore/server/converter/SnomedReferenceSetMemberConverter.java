@@ -157,6 +157,7 @@ final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConvert
 				props.put(SnomedRf2Headers.FIELD_VALUE_ID, entry.getValueId());
 				break;
 			case ASSOCIATION:
+				// FIXME: Change to FIELD_TARGET_COMPONENT as that is the proper RF2 header name
 				props.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID, entry.getTargetComponentId());
 				break;
 			case EXTENDED_MAP:

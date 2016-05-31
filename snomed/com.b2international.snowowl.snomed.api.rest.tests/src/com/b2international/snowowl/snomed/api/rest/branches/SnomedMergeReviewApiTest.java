@@ -155,7 +155,8 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void createEmptyMergeReview() {
-		final IBranchPath setupBranch = createNestedBranch("a");
+		givenBranchWithPath(testBranchPath);
+		final IBranchPath setupBranch = createNestedBranch(testBranchPath, "a");
 		
 		// Create new inferred relationship on "Finding context"
 		Map<?, ?> relationshipRequestBody = givenRelationshipRequestBody(FINDING_CONTEXT, Concepts.IS_A, Concepts.ROOT_CONCEPT, 
@@ -190,7 +191,8 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void createConflictingStatedMergeReview() {
-		final IBranchPath setupBranch = createNestedBranch("a");
+		givenBranchWithPath(testBranchPath);
+		final IBranchPath setupBranch = createNestedBranch(testBranchPath, "a");
 		
 		// Create new stated relationship on "Finding context"
 		Map<?, ?> relationshipRequestBody = givenRelationshipRequestBody(FINDING_CONTEXT, Concepts.IS_A, Concepts.ROOT_CONCEPT, 
@@ -223,7 +225,8 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void createConflictingStatedAndInferredMergeReview() {
-		final IBranchPath setupBranch = createNestedBranch("a");
+		givenBranchWithPath(testBranchPath);
+		final IBranchPath setupBranch = createNestedBranch(testBranchPath, "a");
 		
 		// Create new stated relationship on "Finding context"
 		Map<?, ?> relationshipRequestBody = givenRelationshipRequestBody(FINDING_CONTEXT, Concepts.IS_A, Concepts.ROOT_CONCEPT, 
@@ -276,8 +279,9 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void setReviewStaleAfterParentRebase() {
+		givenBranchWithPath(testBranchPath);
 		// Create all branches down to MAIN/test/A
-		IBranchPath nestedBranchPath = createNestedBranch("A");
+		IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "A");
 		
 		// Create a new concept on MAIN
 		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);

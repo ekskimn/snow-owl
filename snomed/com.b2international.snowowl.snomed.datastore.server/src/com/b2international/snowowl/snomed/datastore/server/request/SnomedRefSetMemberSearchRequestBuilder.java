@@ -23,7 +23,6 @@ import com.b2international.snowowl.datastore.request.SearchRequest;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRefSetMemberSearchRequest.OptionKey;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
-import com.google.common.collect.ImmutableSet;
 
 /**
  * @since 4.5
@@ -55,10 +54,6 @@ public final class SnomedRefSetMemberSearchRequestBuilder extends SnomedSearchRe
 		return addOption(OptionKey.REFERENCED_COMPONENT, Collections3.toImmutableSet(referencedComponentIds));
 	}
 	
-	public SnomedRefSetMemberSearchRequestBuilder filterByRefSetType(final SnomedRefSetType...refSetTypes) {
-		return addOption(OptionKey.REFSET_TYPE, ImmutableSet.copyOf(refSetTypes));
-	}
-	
 	public SnomedRefSetMemberSearchRequestBuilder filterByRefSetType(final Iterable<SnomedRefSetType> refSetTypes) {
 		return addOption(OptionKey.REFSET_TYPE, Collections3.toImmutableSet(refSetTypes));
 	}
@@ -66,5 +61,4 @@ public final class SnomedRefSetMemberSearchRequestBuilder extends SnomedSearchRe
 	public SnomedRefSetMemberSearchRequestBuilder filterByProps(Options memberProps) {
 		return addOption(OptionKey.PROPS, memberProps);
 	}
-	
 }
