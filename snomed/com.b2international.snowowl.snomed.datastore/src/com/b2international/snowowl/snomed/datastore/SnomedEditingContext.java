@@ -1271,12 +1271,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		}
 		
 		for (Relationship relationship : getInboundRelationships(concept.getId())) {
-			if (IS_A.equals(relationship.getType().getId())) {
-				deletionPlan = canDelete(relationship, deletionPlan, force);
-				if (deletionPlan.isRejected()) {
-					deletionPlan.addRejectionReason(String.format(UNABLE_TO_DELETE_CONCEPT_MESSAGE, toString(concept)));
-					return deletionPlan;
-				}
+			deletionPlan = canDelete(relationship, deletionPlan, force);
+			if (deletionPlan.isRejected()) {
+				deletionPlan.addRejectionReason(String.format(UNABLE_TO_DELETE_CONCEPT_MESSAGE, toString(concept)));
+				return deletionPlan;
 			}
 		}
 		
