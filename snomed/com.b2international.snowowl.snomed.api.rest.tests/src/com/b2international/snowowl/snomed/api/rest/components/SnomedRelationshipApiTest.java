@@ -237,7 +237,7 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void createRelationshipOnNestedBranch() {
-		givenBranchWithPath(testBranchPath);
+		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
 		final Map<?, ?> requestBody = givenRelationshipRequestBody(DISEASE, TEMPORAL_CONTEXT, FINDING_CONTEXT, MODULE_SCT_CORE, "New relationship on MAIN");
 		final String relationshipId = assertComponentCreated(nestedBranchPath, SnomedComponentType.RELATIONSHIP, requestBody);		
@@ -250,7 +250,7 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void deleteRelationshipOnNestedBranch() {
-		givenBranchWithPath(testBranchPath);
+		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
 		final Map<?, ?> requestBody = givenRelationshipRequestBody(DISEASE, TEMPORAL_CONTEXT, FINDING_CONTEXT, MODULE_SCT_CORE, "New relationship on MAIN");
 		final String relationshipId = assertComponentCreated(nestedBranchPath, SnomedComponentType.RELATIONSHIP, requestBody);		
@@ -266,18 +266,6 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 	public void createCyclicIsaRelationship_Self() throws Exception {
 		final Map<?, ?> body = givenRelationshipRequestBody(DISEASE, IS_A, DISEASE, MODULE_SCT_CORE, "New cyclic ISA relationship");
 		assertComponentNotCreated(createMainPath(), SnomedComponentType.RELATIONSHIP, body);
-	}
-	
-	private static void assertRelationshipCanBeDeleted(final IBranchPath branchPath, final String relationshipId, final String... segments) {
-		assertComponentCanBeDeleted(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId);
-	}
-
-	private static void assertRelationshipCanBeUpdated(final IBranchPath branchPath, final String relationshipId, final Map<?, ?> requestBody) {
-		assertComponentCanBeUpdated(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId, requestBody);
-	}
-	
-	private static void assertCharacteristicType(final IBranchPath branchPath, final String relationshipId, final CharacteristicType characteristicType) {
-		assertComponentHasProperty(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId, "characteristicType", characteristicType.name());
 	}
 	
 	@Test
@@ -298,6 +286,18 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 		req.put("active", false);
 		final String relationshipId = assertComponentCreated(testBranchPath, SnomedComponentType.RELATIONSHIP, req.build());
 		assertComponentHasProperty(testBranchPath, SnomedComponentType.RELATIONSHIP, relationshipId, "active", false);
+	}
+	
+	private static void assertRelationshipCanBeDeleted(final IBranchPath branchPath, final String relationshipId, final String... segments) {
+		assertComponentCanBeDeleted(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId);
+	}
+
+	private static void assertRelationshipCanBeUpdated(final IBranchPath branchPath, final String relationshipId, final Map<?, ?> requestBody) {
+		assertComponentCanBeUpdated(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId, requestBody);
+	}
+	
+	private static void assertCharacteristicType(final IBranchPath branchPath, final String relationshipId, final CharacteristicType characteristicType) {
+		assertComponentHasProperty(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId, "characteristicType", characteristicType.name());
 	}
 	
 }

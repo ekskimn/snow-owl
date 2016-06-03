@@ -21,8 +21,8 @@ import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.request.DeleteRequestBuilder;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRefSetMemberUpdateRequestBuilder;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberUpdateRequestBuilder;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 /**
  * @since 4.5

@@ -25,7 +25,8 @@ import java.util.Date;
 import org.eclipse.emf.cdo.common.branch.CDOBranchPoint;
 import org.slf4j.Logger;
 
-import com.b2international.commons.collections.LongSet;
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongSet;
 import com.b2international.snowowl.datastore.cdo.ICDOTransactionAggregator;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.common.ContentSubType;
@@ -67,10 +68,12 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 
 	private String[] sortedIgnoredRefSetIds;
 	private File stagingDirectory;
-	private String languageRefSetId;
 
-	private final LongSet visitedConcepts = new LongSet();
-	private final LongSet visitedRefSets = new LongSet();
+	private final LongSet visitedConcepts = PrimitiveSets.newLongOpenHashSet();
+	private final LongSet visitedRefSets = PrimitiveSets.newLongOpenHashSet();
+
+	private String snomedReleaseShortName;
+	private String snomedReleaseOID;
 
 	@Override
 	public void close() throws Exception {
@@ -79,24 +82,6 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 		if (getEditingContext() != null) {
 			getEditingContext().close();
 		}
-	}
-
-	/**
-	 * Returns the primary language reference set identifier, used for determining component labels.
-	 * 
-	 * @return the primary language reference set identifier
-	 */
-	public String getLanguageRefSetId() {
-		return languageRefSetId;
-	}
-
-	/**
-	 * Sets a new primary language reference set identifier for the import context.
-	 * 
-	 * @param languageRefSetId the primary language reference set identifier to set
-	 */
-	public void setLanguageRefSetId(final String languageRefSetId) {
-		this.languageRefSetId = languageRefSetId;
 	}
 
 	/**
@@ -448,5 +433,33 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	 */
 	public LongSet getVisitedRefSets() {
 		return visitedRefSets;
+	}
+	
+	/**
+	 * @return the snomedReleaseShortName
+	 */
+	public String getSnomedReleaseShortName() {
+		return snomedReleaseShortName;
+	}
+
+	/**
+	 * @param snomedReleaseShortName the snomedReleaseShortName to set
+	 */
+	public void setSnomedReleaseShortName(String snomedReleaseShortName) {
+		this.snomedReleaseShortName = snomedReleaseShortName;
+	}
+
+	/**
+	 * @return the snomedReleaseOID
+	 */
+	public String getSnomedReleaseOID() {
+		return snomedReleaseOID;
+	}
+
+	/**
+	 * @param snomedReleaseOID the snomedReleaseOID to set
+	 */
+	public void setSnomedReleaseOID(String snomedReleaseOID) {
+		this.snomedReleaseOID = snomedReleaseOID;
 	}
 }

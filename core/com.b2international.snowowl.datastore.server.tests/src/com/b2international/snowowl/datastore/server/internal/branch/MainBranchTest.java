@@ -24,13 +24,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.ServiceProvider;
-import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.branch.Branch.BranchState;
+import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 
 /**
@@ -49,6 +48,7 @@ public class MainBranchTest {
 		manager = mock(BranchManagerImpl.class);
 		main = new MainBranchImpl(0L);
 		main.setBranchManager(manager);
+		when(manager.getBranch(main.path())).thenReturn(main);
 		mainWithTimestamp = new MainBranchImpl(5L);
 		mainWithTimestamp.setBranchManager(manager);
 		serializer = new BranchSerializer();
@@ -131,13 +131,7 @@ public class MainBranchTest {
 
 	@Test(expected = BadRequestException.class)
 	public void rebaseMainBranch() throws Exception {
-		RepositoryRequests.branching("")
-				.prepareMerge()
-				.setSource(main.path())
-				.setTarget(main.path())
-				.setCommitComment("Message")
-				.build()
-				.execute(context);
+		main.rebase(main, "Rebase");
 	}
 	
 	@Test

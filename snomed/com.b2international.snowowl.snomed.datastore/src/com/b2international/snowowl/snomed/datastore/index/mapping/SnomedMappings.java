@@ -24,6 +24,7 @@ import com.b2international.snowowl.datastore.index.mapping.LongIndexField;
 import com.b2international.snowowl.datastore.index.mapping.Mappings;
 import com.b2international.snowowl.datastore.index.mapping.NumericDocValuesIndexField;
 import com.b2international.snowowl.datastore.index.mapping.StoredIndexField;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.google.common.base.Predicates;
 import com.google.common.base.Strings;
 
@@ -48,6 +49,9 @@ public class SnomedMappings {
 	// Concept field instances
 	private static final LongCollectionIndexField CONCEPT_PARENT = parent("");
 	private static final LongCollectionIndexField CONCEPT_ANCESTOR = ancestor("");
+	private static final LongCollectionIndexField CONCEPT_STATED_PARENT = parent(Concepts.STATED_RELATIONSHIP);
+	private static final LongCollectionIndexField CONCEPT_STATED_ANCESTOR = ancestor(Concepts.STATED_RELATIONSHIP);
+	
 	private static final IndexField<Integer> CONCEPT_PRIMITIVE = Mappings.intDocValuesField("concept_primitive");
 	private static final IndexField<Integer> CONCEPT_EXHAUSTIVE = Mappings.intDocValuesField("concept_exhaustive");
 	private static final IndexField<Float> CONCEPT_DEGREE_OF_INTEREST = Mappings.floatDocValuesField("concept_degree_of_interest");
@@ -133,7 +137,6 @@ public class SnomedMappings {
 
 	// Concrete domain member field instances
 	private static final LongIndexField REFERENCE_SET_MEMBER_OPERATOR_ID = Mappings.longField("ref_set_member_operator_id");
-	private static final NumericDocValuesIndexField<Long> REFERENCE_SET_MEMBER_CONTAINER_MODULE_ID = Mappings.longDocValuesField("ref_set_member_container_module_id");
 	private static final NumericDocValuesIndexField<Long> REFERENCE_SET_MEMBER_UOM_ID = Mappings.longDocValuesField("ref_set_member_uom_id");
 	private static final BinaryDocValuesIndexField REFERENCE_SET_MEMBER_DATA_TYPE_LABEL = Mappings.stringDocValuesField("ref_set_member_data_type_label"); // data type label ("isVitamin")
 	private static final NumericDocValuesIndexField<Integer> REFERENCE_SET_MEMBER_DATA_TYPE_ORDINAL = Mappings.intDocValuesField("ref_set_member_data_type_ordinal");  //data type enumeration ordinal (1 for decimal) 
@@ -171,6 +174,10 @@ public class SnomedMappings {
 	public static LongCollectionIndexField parent() {
 		return CONCEPT_PARENT;
 	}
+	
+	public static LongCollectionIndexField statedParent() {
+		return CONCEPT_STATED_PARENT;
+	}
 
 	public static LongCollectionIndexField parent(final String fieldNameSuffix) {
 		final LongIndexField field = Mappings.longField(concatIfNotNullOrEmpty(Mappings.parent().fieldName(), fieldNameSuffix));
@@ -179,6 +186,10 @@ public class SnomedMappings {
 
 	public static LongCollectionIndexField ancestor() {
 		return CONCEPT_ANCESTOR;
+	}
+	
+	public static LongCollectionIndexField statedAncestor() {
+		return CONCEPT_STATED_ANCESTOR;
 	}
 
 	public static LongCollectionIndexField ancestor(final String fieldNameSuffix) {
@@ -461,10 +472,6 @@ public class SnomedMappings {
 
 	public static LongIndexField memberOperatorId() {
 		return REFERENCE_SET_MEMBER_OPERATOR_ID;
-	}
-
-	public static NumericDocValuesIndexField<Long> memberContainerModuleId() {
-		return REFERENCE_SET_MEMBER_CONTAINER_MODULE_ID;
 	}
 
 	public static NumericDocValuesIndexField<Long> memberUomId() {

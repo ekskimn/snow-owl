@@ -15,12 +15,11 @@
  */
 package com.b2international.snowowl.datastore.server.snomed.index;
 
-import static com.b2international.commons.pcj.LongSets.newLongSetWithExpectedSize;
-import static com.b2international.commons.pcj.LongSets.newLongSetWithMurMur3Hash;
-import static com.b2international.commons.pcj.LongSets.parallelForEach;
-import static com.b2international.commons.pcj.LongSets.toSet;
+import static com.b2international.commons.collect.LongSets.parallelForEach;
+import static com.b2international.commons.collect.LongSets.toSet;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Sets.newHashSet;
+import static com.google.common.hash.Hashing.murmur3_32;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -38,15 +37,23 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ReferenceManager;
 import org.apache.lucene.search.TopDocs;
+import org.eclipse.core.runtime.IProgressMonitor;
 
+import com.b2international.collections.PrimitiveMaps;
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongCollection;
+import com.b2international.collections.longs.LongCollections;
+import com.b2international.collections.longs.LongKeyLongMap;
+import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.CompareUtils;
+import com.b2international.commons.collect.LongSets;
 import com.b2international.commons.graph.GraphUtils;
-import com.b2international.commons.pcj.LongSets;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.ExtendedComponent;
 import com.b2international.snowowl.core.api.ExtendedComponentImpl;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.IComponentWithChildFlag;
+import com.b2international.snowowl.core.api.browser.IFilterClientTerminologyBrowser;
 import com.b2international.snowowl.core.api.index.IndexException;
 import com.b2international.snowowl.datastore.index.DocIdCollector;
 import com.b2international.snowowl.datastore.index.DocIdCollector.DocIdsIterator;
@@ -63,7 +70,6 @@ import com.b2international.snowowl.snomed.datastore.escg.EscgParseFailedExceptio
 import com.b2international.snowowl.snomed.datastore.escg.IEscgQueryEvaluatorService;
 import com.b2international.snowowl.snomed.datastore.filteredrefset.FilteredRefSetMemberBrowser2;
 import com.b2international.snowowl.snomed.datastore.filteredrefset.IRefSetMemberOperation;
-import com.b2international.snowowl.snomed.datastore.index.SnomedConceptReducedQueryAdapter;
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntryWithChildFlag;
@@ -75,12 +81,6 @@ import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
-
-import bak.pcj.LongCollection;
-import bak.pcj.map.LongKeyLongMap;
-import bak.pcj.map.LongKeyLongOpenHashMap;
-import bak.pcj.set.LongOpenHashSet;
-import bak.pcj.set.LongSet;
 
 /**
  * Index-based SNOMED CT Terminology browser implementation.
@@ -97,7 +97,11 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 			.primitive()
 			.exhaustive()
 			.released()
-			.build(); 
+			.parent()
+			.statedParent()
+			.ancestor()
+			.statedAncestor()
+			.build();
 	
 	/**
 	 * Class constructor.
@@ -105,6 +109,13 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 	 */
 	public SnomedServerTerminologyBrowser(final SnomedIndexService indexService) {
 		super(indexService);
+	}
+
+	@Deprecated
+	@Override
+	public IFilterClientTerminologyBrowser<SnomedConceptIndexEntry, String> filterTerminologyBrowser(IBranchPath branchPath, String expression,
+			IProgressMonitor monitor) {
+		throw new UnsupportedOperationException();
 	}
 	
 	@Override
@@ -124,12 +135,18 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 	
 	@Override
 	protected Query createFilterTerminologyBrowserQuery(final String expression) {
-		return new SnomedConceptReducedQueryAdapter(expression, SnomedConceptReducedQueryAdapter.SEARCH_EVERYTHING).createQuery();
+		throw new UnsupportedOperationException();
 	}
 	
 	@Override
 	protected SnomedConceptIndexEntry createResultObject(final IBranchPath branchPath, final Document doc) {
-		return SnomedConceptIndexEntry.builder(doc).build();
+		return SnomedConceptIndexEntry
+				.builder(doc)
+				.parents(SnomedMappings.parent().getValueAsLongList(doc))
+				.statedParents(SnomedMappings.statedParent().getValueAsLongList(doc))
+				.ancestors(SnomedMappings.ancestor().getValueAsLongList(doc))
+				.statedAncestors(SnomedMappings.statedAncestor().getValueAsLongList(doc))
+				.build();
 	}
 
 	@Override
@@ -324,7 +341,7 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 		final TopDocs topDocs = service.search(branchPath, getConceptByIdQueryBuilder(Long.toString(conceptId)), 1);
 		
 		if (CompareUtils.isEmpty(topDocs.scoreDocs)) {
-			return new LongOpenHashSet();
+			return PrimitiveSets.newLongOpenHashSet();
 		}
 		
 		final Document document = service.document(branchPath, topDocs.scoreDocs[0].doc, SnomedMappings.fieldsToLoad().parent().build());
@@ -336,17 +353,21 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 		final TopDocs topDocs = service.search(branchPath, getConceptByIdQueryBuilder(Long.toString(conceptId)), 1);
 		
 		if (CompareUtils.isEmpty(topDocs.scoreDocs)) {
-			return new LongOpenHashSet();
+			return PrimitiveSets.newLongOpenHashSet();
 		}
 		
 		final Document doc = service.document(branchPath, topDocs.scoreDocs[0].doc, SnomedMappings.fieldsToLoad().parent().ancestor().build());
 		
 		final LongSet parents = SnomedMappings.parent().getValueAsLongSet(doc);
 		final LongSet ancestors = SnomedMappings.ancestor().getValueAsLongSet(doc);
-		final LongSet ids = newLongSetWithExpectedSize(parents.size() + ancestors.size());
-		ids.addAll(parents);
-		ids.addAll(ancestors);
-		return ids;
+		if (parents.isEmpty() && ancestors.isEmpty()) {
+			return LongCollections.emptySet();
+		} else {
+			final LongSet ids = PrimitiveSets.newLongOpenHashSetWithExpectedSize(parents.size() + ancestors.size());
+			ids.addAll(parents);
+			ids.addAll(ancestors);
+			return ids;
+		}
 	}
 	
 	@Override
@@ -365,10 +386,10 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 			final int resultSize = service.getTotalHitCount(branchPath, query);
 			
 			if (0 == resultSize) {
-				return new LongOpenHashSet(); // guard against lower bound cannot be negative: 0
+				return PrimitiveSets.newLongOpenHashSet(); // guard against lower bound cannot be negative: 0
 			}
 			
-			final LongSet ids = new LongOpenHashSet(resultSize, 1.0D); //optimized load factor
+			final LongSet ids = PrimitiveSets.newLongOpenHashSetWithExpectedSize(resultSize, 1.0D); //optimized load factor
 	
 			final DocIdCollector collector = DocIdCollector.create(service.maxDoc(branchPath));
 			service.search(branchPath, query, collector);
@@ -389,7 +410,7 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 		checkNotNull(query, "Query argument cannot be null.");
 		try {
 			
-			final LongSet ids = newLongSetWithMurMur3Hash();
+			final LongSet ids = PrimitiveSets.newLongOpenHashSet(murmur3_32());
 	
 			final DocIdCollector collector = DocIdCollector.create(service.maxDoc(branchPath));
 			service.search(branchPath, query, collector);
@@ -496,7 +517,7 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 
 	@Override
 	protected Set<String> getExtendedComponentFieldsToLoad() {
-		return SnomedMappings.fieldsToLoad().fields(super.getExtendedComponentFieldsToLoad()).memberUuid().build();
+		return SnomedMappings.fieldsToLoad().fields(super.getExtendedComponentFieldsToLoad()).memberUuid().memberReferencedComponentId().memberReferencedComponentType().build();
 	}
 	
 	@Override
@@ -504,32 +525,29 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 		// if type field is null, then we are processing a reference set _member_
 		final String iconId = doc.get(Mappings.iconId().fieldName());
 		final List<Integer> types = Mappings.type().getValues(doc);
+		final String id;
 		
 		if (types.isEmpty()) {
-
-			final String uuid = SnomedMappings.memberUuid().getValue(doc);
-			return new ExtendedComponentImpl(
-					uuid, 
-					uuid, // SnomedRefSetMemberNameProvider.INSTANCE.getComponentLabel(branchPath, uuid),
-					"",
-					SnomedTerminologyComponentConstants.REFSET_MEMBER_NUMBER);
-			
+			id = Long.toString(SnomedMappings.memberReferencedComponentId().getValue(doc));
 		} else {
-			final String id = Long.toString(SnomedMappings.id().getValue(doc));
-			final short terminologyComponentId;
-			
-			if (types.size() == 1) {
-				// core SNOMED CT Component only
-				terminologyComponentId = types.get(0).shortValue();
-			} else {
-				// concept + refset
-				terminologyComponentId = SnomedTerminologyComponentConstants.CONCEPT_NUMBER;
-			}
-//			
-//			final String terminologyComponentIdAsString = CoreTerminologyBroker.getInstance().getTerminologyComponentId(terminologyComponentId);
-//			final IComponentNameProvider nameProvider = CoreTerminologyBroker.getInstance().getNameProviderFactory(terminologyComponentIdAsString).getNameProvider();
-//			final String label = nameProvider.getComponentLabel(branchPath, id);
-			
+			id = Long.toString(SnomedMappings.id().getValue(doc));
+		}
+		
+		final short terminologyComponentId;
+		
+		if (types.isEmpty()) {
+			terminologyComponentId = SnomedMappings.memberReferencedComponentType().getShortValue(doc);
+		} else if (types.size() == 1) {
+			// core SNOMED CT Component only
+			terminologyComponentId = types.get(0).shortValue();
+		} else {
+			// concept + refset
+			terminologyComponentId = SnomedTerminologyComponentConstants.CONCEPT_NUMBER;
+		}
+		
+		if (types.isEmpty()) {
+			return new ExtendedComponentImpl(SnomedMappings.memberUuid().getValue(doc), id, iconId, SnomedTerminologyComponentConstants.REFSET_MEMBER_NUMBER);
+		} else {
 			return new ExtendedComponentImpl(id, id, iconId, terminologyComponentId);
 		}
 	}
@@ -539,10 +557,10 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 		final long[][] idPairs = getAllActiveConceptIdsStorageKeys(branchPath);
 		
 		if (CompareUtils.isEmpty(idPairs)) {
-			return new LongKeyLongOpenHashMap();
+			return PrimitiveMaps.newLongKeyLongOpenHashMap();
 		}
 		
-		final LongKeyLongOpenHashMap $ = new LongKeyLongOpenHashMap(idPairs.length);
+		final LongKeyLongMap $ = PrimitiveMaps.newLongKeyLongOpenHashMapWithExpectedSize(idPairs.length);
 		for (int i = 0; i < idPairs.length; i++) {
 			$.put(idPairs[i][0], idPairs[i][1]);
 		}
@@ -612,7 +630,7 @@ public class SnomedServerTerminologyBrowser extends AbstractIndexTerminologyBrow
 		
 		final long conceptIdL = Long.parseLong(conceptId);
 		final LongSet allSuperTypeIds = getAllSuperTypeIds(branchPath, conceptIdL);
-		if (LongSets.isEmpty(allSuperTypeIds)) {
+		if (CompareUtils.isEmpty(allSuperTypeIds)) {
 			return 0;
 		}
 		

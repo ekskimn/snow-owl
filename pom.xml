@@ -5,7 +5,11 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
+<<<<<<< HEAD
 	<version>4.5.50-SNAPSHOT</version>
+=======
+	<version>4.7.0-SNAPSHOT</version>
+>>>>>>> refs/remotes/b2i/develop
 	<packaging>pom</packaging>
 
 	<properties>
@@ -14,8 +18,13 @@
 		<!-- Maven Dependency Versions -->
 		<jackson.version>2.4.5</jackson.version>
 		<!-- Build tool/compiler versions -->
+<<<<<<< HEAD
 		<tycho.version>0.22.0</tycho.version>
 		<tycho-extras.version>0.22.0</tycho-extras.version>
+=======
+		<tycho.version>0.23.0</tycho.version>
+		<tycho-extras.version>0.23.0</tycho-extras.version>
+>>>>>>> refs/remotes/b2i/develop
 		<xtend.compiler.version>2.8.4</xtend.compiler.version>
 		<!-- Versioning -->
 		<forceContextQualifier>${maven.build.timestamp}</forceContextQualifier>
@@ -283,6 +292,57 @@
 								<versionRange>[3.2.2,3.3.0)</versionRange>
 							</restrictTo>
 						</filter>
+						<!-- Restrict Jackson bundles to the selected version -->
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>com.fasterxml.jackson.core.jackson-annotations</id>
+							<restrictTo>
+								<version>${jackson.version}</version>
+							</restrictTo>
+						</filter>
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>com.fasterxml.jackson.core.jackson-core</id>
+							<restrictTo>
+								<version>${jackson.version}</version>
+							</restrictTo>
+						</filter>
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>com.fasterxml.jackson.core.jackson-databind</id>
+							<restrictTo>
+								<version>${jackson.version}</version>
+							</restrictTo>
+						</filter>
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>com.fasterxml.jackson.dataformat.jackson-dataformat-yaml</id>
+							<restrictTo>
+								<version>${jackson.version}</version>
+							</restrictTo>
+						</filter>
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>com.fasterxml.jackson.dataformat.jackson-dataformat-csv</id>
+							<restrictTo>
+								<version>${jackson.version}</version>
+							</restrictTo>
+						</filter>
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>com.fasterxml.jackson.dataformat.jackson-dataformat-afterburner</id>
+							<restrictTo>
+								<version>${jackson.version}</version>
+							</restrictTo>
+						</filter>
+						<!-- Restrict Apache Commons Collections to versions above and including 3.2.2 -->
+						<filter>
+							<type>p2-installable-unit</type>
+							<id>org.apache.commons.collections</id>
+							<restrictTo>
+								<versionRange>[3.2.2,3.3.0)</versionRange>
+							</restrictTo>
+						</filter>
 					</filters>
 					<environments>
 						<environment>
@@ -327,15 +387,6 @@
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-versions-plugin</artifactId>
 				<version>${tycho.version}</version>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>2.10.3</version>
-				<configuration>
-					<aggregate>true</aggregate>
-					<excludePackageNames>org.apache.poi.*:org.eclipse.*:org.ihtsdo.*:org.osgi.*:org.protege.*:org.supercsv.*:spiffy.*:*.test*</excludePackageNames>
-				</configuration>
 			</plugin>
 		</plugins>
 		<pluginManagement>
@@ -555,9 +606,15 @@
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
+<<<<<<< HEAD
 					<groupId>org.ihtsdo.drools</groupId>
 					<artifactId>snomed-drools</artifactId>
 					<version>1.0.2</version>
+=======
+				    <groupId>edu.stanford.protege</groupId>
+				    <artifactId>org.semanticweb.owl.owlapi</artifactId>
+				    <version>3.4.4</version>
+>>>>>>> refs/remotes/b2i/develop
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
@@ -630,8 +687,8 @@
 		<profile>
 			<id>tp_dependencies</id>
 			<properties>
-				<target.platform.version>4.5.0</target.platform.version>
-				<target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
+				<target.platform.version>4.7.0-SNAPSHOT</target.platform.version>
+				<target.platform.url>${nexus.url}/content/unzip/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
 			</properties>
 			<repositories>
 				<repository>

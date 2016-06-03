@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.Serializable;
+import java.util.Collection;
 
 import org.apache.lucene.document.Document;
 
@@ -26,10 +27,16 @@ import com.b2international.commons.BooleanUtils;
 import com.b2international.snowowl.core.api.IComponent;
 import com.b2international.snowowl.core.api.IStatement;
 import com.b2international.snowowl.core.api.index.IIndexEntry;
+import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.datastore.cdo.CDOUtils;
 import com.b2international.snowowl.datastore.index.mapping.Mappings;
+import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.google.common.base.Function;
+import com.google.common.collect.FluentIterable;
 
 /**
  * A transfer object representing a SNOMED CT description.
@@ -49,8 +56,8 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 				.typeId(SnomedMappings.relationshipType().getValueAsString(doc))
 				.destinationId(SnomedMappings.relationshipDestination().getValueAsString(doc))
 				.characteristicTypeId(SnomedMappings.relationshipCharacteristicType().getValueAsString(doc))
-				.group(SnomedMappings.relationshipGroup().getValue(doc).byteValue())
-				.unionGroup(SnomedMappings.relationshipUnionGroup().getValue(doc).byteValue())
+				.group(SnomedMappings.relationshipGroup().getValue(doc))
+				.unionGroup(SnomedMappings.relationshipUnionGroup().getValue(doc))
 				.active(BooleanUtils.valueOf(SnomedMappings.active().getValue(doc)))
 				.released(BooleanUtils.valueOf(SnomedMappings.released().getValue(doc)))
 				.modifierId(BooleanUtils.valueOf(SnomedMappings.relationshipUniversal().getValue(doc)) ? Concepts.UNIVERSAL_RESTRICTION_MODIFIER : Concepts.EXISTENTIAL_RESTRICTION_MODIFIER)
@@ -58,6 +65,56 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 				.moduleId(SnomedMappings.module().getValueAsString(doc))
 				.storageKey(Mappings.storageKey().getValue(doc))
 				.effectiveTimeLong(SnomedMappings.effectiveTime().getValue(doc));
+	}
+	
+	public static Builder builder(final ISnomedRelationship input) {
+		final Builder builder = builder()
+				.id(input.getId())
+				.sourceId(input.getSourceId())
+				.typeId(input.getTypeId())
+				.destinationId(input.getDestinationId())
+				.characteristicTypeId(input.getCharacteristicType().getConceptId())
+				.group(input.getGroup())
+				.unionGroup(input.getUnionGroup())
+				.active(input.isActive())
+				.released(input.isReleased())
+				.modifierId(input.getModifier().getConceptId())
+				.destinationNegated(input.isDestinationNegated())
+				.moduleId(input.getModuleId())
+				.effectiveTimeLong(EffectiveTimes.getEffectiveTime(input.getEffectiveTime()));
+		
+		if (input.getScore() != null) {
+			builder.score(input.getScore());
+		}
+		
+		return builder;
+	}
+	
+	public static Builder builder(Relationship relationship) {
+		return builder()
+				.id(relationship.getId())
+				.storageKey(CDOUtils.getStorageKey(relationship))
+				.active(relationship.isActive())
+				.sourceId(relationship.getSource().getId())
+				.typeId(relationship.getType().getId())
+				.destinationId(relationship.getDestination().getId())
+				.characteristicTypeId(relationship.getCharacteristicType().getId())
+				.group(relationship.getGroup())
+				.unionGroup(relationship.getUnionGroup())
+				.released(relationship.isReleased())
+				.modifierId(relationship.getModifier().getId())
+				.destinationNegated(relationship.isDestinationNegated())
+				.moduleId(relationship.getModule().getId())
+				.effectiveTimeLong(relationship.isSetEffectiveTime() ? relationship.getEffectiveTime().getTime() : EffectiveTimes.UNSET_EFFECTIVE_TIME);
+	}
+	
+	public static Collection<SnomedRelationshipIndexEntry> fromRelationships(Iterable<ISnomedRelationship> relationships) {
+		return FluentIterable.from(relationships).transform(new Function<ISnomedRelationship, SnomedRelationshipIndexEntry>() {
+			@Override
+			public SnomedRelationshipIndexEntry apply(ISnomedRelationship input) {
+				return builder(input).build();
+			}
+		}).toSet();
 	}
 
 	public static class Builder extends AbstractBuilder<Builder> {
@@ -68,8 +125,8 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 		private String characteristicTypeId;
 		private String modifierId;
 
-		private byte group;
-		private byte unionGroup;
+		private int group;
+		private int unionGroup;
 
 		private boolean destinationNegated;
 		
@@ -107,12 +164,12 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 			return getSelf();
 		}
 
-		public Builder group(final byte group) {
+		public Builder group(final int group) {
 			this.group = group;
 			return getSelf();
 		}
 
-		public Builder unionGroup(final byte unionGroup) {
+		public Builder unionGroup(final int unionGroup) {
 			this.unionGroup = unionGroup;
 			return getSelf();
 		}
@@ -123,7 +180,8 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 		}
 
 		public SnomedRelationshipIndexEntry build() {
-			return new SnomedRelationshipIndexEntry(id, 
+			return new SnomedRelationshipIndexEntry(id,
+					label,
 					score, 
 					storageKey, 
 					moduleId, 
@@ -145,11 +203,12 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 	private final String destinationId;
 	private final String characteristicTypeId;
 	private final String modifierId;
-	private final byte group;
-	private final byte unionGroup;
+	private final int group;
+	private final int unionGroup;
 	private final boolean destinationNegated;
 
 	private SnomedRelationshipIndexEntry(final String id, 
+			final String label,
 			final float score, 
 			final long storageKey, 
 			final String moduleId, 
@@ -161,11 +220,12 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 			final String destinationId,
 			final String characteristicTypeId,
 			final String modifierId,
-			final byte group,
-			final byte unionGroup,
+			final int group,
+			final int unionGroup,
 			final boolean destinationNegated) {
 
 		super(id, 
+				label,
 				typeId, // XXX: iconId is the same as typeId 
 				score, 
 				storageKey, 
@@ -174,8 +234,8 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 				active, 
 				effectiveTimeLong);
 
-		checkArgument(group >= 0, "Group number '%s' may not be negative.");
-		checkArgument(unionGroup >= 0, "Union group number '%s' may not be negative.");
+		checkArgument(group >= 0, String.format("Group number '%s' may not be negative (relationship ID: %s).", group, id));
+		checkArgument(unionGroup >= 0, String.format("Union group number '%s' may not be negative (relationship ID: %s).", unionGroup, id));
 
 		this.sourceId = checkNotNull(sourceId, "Relationship source identifier may not be null.");
 		this.destinationId = checkNotNull(destinationId, "Relationship destination identifier may not be null.");
@@ -267,14 +327,14 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 	/**
 	 * @return the relationship group
 	 */
-	public byte getGroup() {
+	public int getGroup() {
 		return group;
 	}
 
 	/**
 	 * @return the relationship union group
 	 */
-	public byte getUnionGroup() {
+	public int getUnionGroup() {
 		return unionGroup;
 	}
 
@@ -298,4 +358,5 @@ public class SnomedRelationshipIndexEntry extends SnomedIndexEntry implements IS
 				.add("destinationNegated", destinationNegated)
 				.toString();
 	}
+
 }

@@ -23,8 +23,8 @@ import java.util.Set;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 
-import bak.pcj.set.LongOpenHashSet;
-
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongSet;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.datastore.utils.ComponentUtils2;
 import com.b2international.snowowl.snomed.Concept;
@@ -37,7 +37,6 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptInd
 import com.b2international.snowowl.snomed.datastore.services.IClientSnomedComponentService;
 import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
 import com.b2international.snowowl.snomed.datastore.snor.SnomedTerminologyBrowserProvider;
-import com.b2international.snowowl.snomed.mrcm.core.configuration.SnomedSimpleTypeRefSetAttributeConfiguration;
 import com.b2international.snowowl.snomed.mrcm.core.extensions.IConceptModelExtension;
 import com.b2international.snowowl.snomed.mrcm.core.extensions.IConceptModelExtensionProvider;
 import com.b2international.snowowl.snomed.mrcm.core.widget.CDOClientWidgetBeanProvider;
@@ -114,12 +113,11 @@ public class CDOClientSnomedConceptEditorService implements IClientSnomedConcept
 		
 		// Create widget bean
 		final CDOClientWidgetBeanProvider widgetBeanProvider = new CDOClientWidgetBeanProvider(widgetModel, concept, includeUnsanctioned);
-		final SnomedSimpleTypeRefSetAttributeConfiguration configuration = SnomedSimpleTypeRefSetAttributeConfiguration.getConfiguration(concept);
-		final ConceptWidgetBean widgetBean = widgetBeanProvider.createConceptWidgetBean(conceptIdString, widgetModel, configuration, includeUnsanctioned, new NullProgressMonitor());
+		final ConceptWidgetBean widgetBean = widgetBeanProvider.createConceptWidgetBean(conceptIdString, widgetModel, null, includeUnsanctioned, new NullProgressMonitor());
 		
 		// Retrieve synonym and descendant type IDs
 		final Set<String> synonymAndDescendants = ApplicationContext.getServiceForClass(IClientSnomedComponentService.class).getSynonymAndDescendantIds();
-		final LongOpenHashSet synonymAndDescendantIds = new LongOpenHashSet();
+		final LongSet synonymAndDescendantIds = PrimitiveSets.newLongOpenHashSet();
 		for (final String synonymAndDescendant : synonymAndDescendants) {
 			synonymAndDescendantIds.add(Long.parseLong(synonymAndDescendant));
 		}
@@ -136,22 +134,15 @@ public class CDOClientSnomedConceptEditorService implements IClientSnomedConcept
 		// Use extended terminology browser for creating an index entry
 		final SnomedClientTerminologyBrowser terminologyBrowser = SnomedTerminologyBrowserProvider.getTerminologyBrowser(concept);
 		final SnomedConceptIndexEntry conceptIndexEntry = terminologyBrowser.getConcept(conceptIdString);
-		final SnomedConceptLabelAndIconIdMappings conceptMappings = getConceptMappings(conceptId, conceptIndexEntry.isActive());
 		
 		final SnomedConceptDetailsBean conceptDetailsBean = new SnomedConceptDetailsBean(conceptIndexEntry.getLabel(), 
 				Long.parseLong(conceptIndexEntry.getIconId()), 
 				widgetBean, 
-				conceptMappings, 
 				synonymAndDescendantIds, 
-				configuration,
+				null,
 				predicates);
 
 		return conceptDetailsBean;
 	}
 
-	@Override
-	public SnomedConceptLabelAndIconIdMappings getConceptMappings(final long conceptId, final boolean active) {
-		final IClientSnomedConceptEditorService conceptEditorService = ApplicationContext.getServiceForClass(IClientSnomedConceptEditorService.class);
-		return conceptEditorService.getConceptMappings(conceptId, active);
-	}
 }

@@ -15,12 +15,13 @@
  */
 package com.b2international.snowowl.server.console;
 
+import static com.google.common.collect.Lists.newArrayList;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
 import org.apache.lucene.search.Query;
 import org.eclipse.osgi.framework.console.CommandInterpreter;
@@ -29,8 +30,10 @@ import org.eclipse.osgi.framework.console.CommandProvider;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ApplicationContext.ServiceRegistryEntry;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
@@ -45,16 +48,25 @@ import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifier;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
- * OSGI command contribution with Snow Owl commands.
- * 
+ * OSGI command contribution with Snow Owl maintenance type commands.
  *
  */
 public class MaintenanceCommandProvider implements CommandProvider {
+
+	private static final String DEFAULT_BRANCH_PREFIX = "|---";
+	private static final String DEFAULT_INDENT = "    ";
+	private static final String LISTBRANCHES_COMMAND = "listbranches";
+	private static final String LISTREPOSITORIES_COMMAND = "listrepositories";
+	private static final String DBCREATEINDEX_COMMAND = "dbcreateindex";
+	private static final String CHECKSERVICES_COMMAND = "checkservices";
 
 	class Artefact {
 		public long storageKey;
@@ -77,11 +89,8 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	public String getHelp() {
 		StringBuffer buffer = new StringBuffer();
 		buffer.append("---Snow Owl commands---\n");
-		// buffer.append("\tsnowowl test - Execute Snow Owl server smoke
-		// test\n");
 		buffer.append("\tsnowowl checkservices - Checks the core services presence\n");
-		buffer.append(
-				"\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI.\n");
+		buffer.append("\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namespace URI.\n");
 		buffer.append("\tsnowowl listrepositories - prints all the repositories in the system.\n");
 		buffer.append("\tsnowowl listbranches [repository] - prints all the branches in the system for a repository.\n");
 		buffer.append("\tsnowowl replacedupids [branchPath] - replaces components with duplicate ids in the SNOMED CT repository on a given branch (e.g. MAIN/PROJECT/TASK1). If no branch is given the replacement is executed for all the branches.\n");
@@ -89,55 +98,44 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	/**
-	 * Reflective template method declaratively registered. Needs to start with
-	 * "_".
+	 * Reflective template method declaratively registered. Needs to start with "_".
 	 * 
 	 * @param interpreter
 	 */
 	public void _snowowl(CommandInterpreter interpreter) {
-		try {
 			String cmd = interpreter.nextArgument();
 
-			if ("checkservices".equals(cmd)) {
+			if (CHECKSERVICES_COMMAND.equals(cmd)) {
 				checkServices(interpreter);
 				return;
 			}
 
-			// if ("test".equals(cmd)) {
-			// test(interpreter);
-			// return;
-			// }
-
-			if ("dbcreateindex".equals(cmd)) {
-				executeCreateDbIndex(interpreter);
+			if (DBCREATEINDEX_COMMAND.equals(cmd)) {
+				createDbIndex(interpreter);
 				return;
 			}
 
-			if ("listrepositories".equals(cmd)) {
+			if (LISTREPOSITORIES_COMMAND.equals(cmd)) {
 				listRepositories(interpreter);
 				return;
 			}
 
-			if ("listbranches".equals(cmd)) {
+			if (LISTBRANCHES_COMMAND.equals(cmd)) {
 				listBranches(interpreter);
 				return;
 			}
-
+			
 			if ("replacedupids".equals(cmd)) {
 				checkDuplicateIds(interpreter);
 				return;
 			}
 
 			interpreter.println(getHelp());
-		} catch (Exception ex) {
-			interpreter.println(ex.getMessage());
-		}
 	}
 
-	public synchronized void executeCreateDbIndex(CommandInterpreter interpreter) {
-
+	public synchronized void createDbIndex(CommandInterpreter interpreter) {
 		String nsUri = interpreter.nextArgument();
-		if (null != nsUri) {
+		if (!Strings.isNullOrEmpty(nsUri)) {
 			ServerDbUtils.createCdoCreatedIndexOnTables(nsUri);
 		} else {
 			interpreter.println("Namespace URI should be specified.");
@@ -145,47 +143,30 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	public synchronized void listRepositories(CommandInterpreter interpreter) {
-		ICDORepositoryManager repositoryManager = ApplicationContext.getServiceForClass(ICDORepositoryManager.class);
-		Set<String> uuidKeySet = repositoryManager.uuidKeySet();
+		Set<String> uuidKeySet = getRepositoryManager().uuidKeySet();
 		if (!uuidKeySet.isEmpty()) {
 			interpreter.println("Repositories:");
 			for (String repositoryName : uuidKeySet) {
-				interpreter.println("  " + repositoryName);
+				interpreter.println(String.format("\t%s", repositoryName));
 			}
 		}
 	}
 
-	public synchronized void listBranches(CommandInterpreter interpreter)
-			throws InterruptedException, ExecutionException {
-
+	public synchronized void listBranches(CommandInterpreter interpreter) {
 		String repositoryName = interpreter.nextArgument();
 		if (isValidRepositoryName(repositoryName, interpreter)) {
-			IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
-			interpreter.println("Repository " + repositoryName + " branches:");
-			Branch branch = RepositoryRequests.branching(repositoryName).prepareGet("MAIN").executeSync(eventBus, 1000);
-			processBranch(branch, 0, interpreter);
+			interpreter.println(String.format("Branches for repository %s:", repositoryName));
+			
+			Branch mainBranch = BranchPathUtils.getMainBranchForRepository(repositoryName);
+			
+			List<Branch> allBranches = newArrayList(mainBranch.children());
+			allBranches.add(mainBranch);
+						
+			printBranchHierarchy(allBranches, Sets.<Branch>newHashSet(), mainBranch, interpreter);
 		}
 	}
 
-	// Depth-first traversal
-	private void processBranch(Branch childBranch, int indent, CommandInterpreter interpreter) {
-
-		StringBuffer sb = new StringBuffer();
-		for (int i = 0; i < indent; i++) {
-			sb.append(' ');
-
-		}
-		sb.append(childBranch.name());
-		interpreter.println(sb.toString());
-		indent++;
-		Collection<? extends Branch> children = childBranch.children();
-		for (Branch branch : children) {
-			processBranch(branch, indent, interpreter);
-		}
-		indent--;
-	}
-
-	private void checkDuplicateIds(CommandInterpreter interpreter) throws InterruptedException, ExecutionException {
+	private void checkDuplicateIds(CommandInterpreter interpreter) {
 
 		String repositoryId = "snomedStore";
 		String branchName = interpreter.nextArgument();
@@ -353,80 +334,52 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		}
 
 	}
+	
+	private void printBranchHierarchy(List<Branch> branches, Set<Branch> visitedBranches, Branch currentBranch, CommandInterpreter interpreter) {
+		interpreter.println(String.format("%s%s%s", getDepthOfBranch(currentBranch), DEFAULT_BRANCH_PREFIX, currentBranch.name()));
+		visitedBranches.add(currentBranch);
+		for (Branch branch : branches) {
+			if (!visitedBranches.contains(branch)) {
+				if (branch.parentPath().equals(currentBranch.path())) {
+					printBranchHierarchy(branches, visitedBranches, branch, interpreter);
+				}
+			}
+		}
+	}
 
-	public synchronized void checkServices(CommandInterpreter ci) {
+	private String getDepthOfBranch(Branch currentBranch) {
+		int depth = Splitter.on(Branch.SEPARATOR).splitToList(currentBranch.path()).size();
+		String indent = "";
+		for (int i = 1; i < depth; i++) {
+			indent = indent + DEFAULT_INDENT;
+		}
+		return indent;
+	}
 
-		ci.println("Checking core services...");
+	public synchronized void checkServices(CommandInterpreter interpreter) {
+		interpreter.println("Checking core services...");
 		try {
-
 			Collection<ServiceRegistryEntry<?>> services = ApplicationContext.getInstance().checkServices();
 			for (ServiceRegistryEntry<?> entry : services) {
-				ci.println("Interface: " + entry.getServiceInterface() + " : " + entry.getImplementation());
+				interpreter.println(String.format("Interface: %s : %s", entry.getServiceInterface(), entry.getImplementation()));
 			}
-			ci.println("Core services are registered properly and available for use.");
-
-		} catch (final Throwable t) {
-			ci.print("Error: " + t.getMessage());
+			interpreter.println("Core services are registered properly and available for use.");
+		} catch (final SnowowlRuntimeException e) {
+			interpreter.printStackTrace(e);
 		}
 	}
 
 	private boolean isValidRepositoryName(String repositoryName, CommandInterpreter interpreter) {
-		if (repositoryName == null) {
-			interpreter.println(
-					"Repository name should be specified. Execute 'listrepositories' to see the available repositories.");
-			return false;
-		}
-
-		ICDORepositoryManager repositoryManager = ApplicationContext.getServiceForClass(ICDORepositoryManager.class);
-		Set<String> uuidKeySet = repositoryManager.uuidKeySet();
+		Set<String> uuidKeySet = getRepositoryManager().uuidKeySet();
 		if (!uuidKeySet.contains(repositoryName)) {
 			interpreter.println("Could not find repository called: " + repositoryName);
 			interpreter.println("Available repository names are: " + uuidKeySet);
 			return false;
 		}
 		return true;
-
 	}
 
-	// /**
-	// * OSGi console contribution, the test touches cdo and index stores.
-	// * @param ci
-	// */
-	// public synchronized void test(CommandInterpreter ci) {
-	//
-	// ci.println("Smoke testing the Snow Owl server....");
-	// SnomedConceptIndexEntry rootConceptMini = null;
-	// SnomedClientTerminologyBrowser terminologyBrowser =
-	// ApplicationContext.getInstance().getService(SnomedClientTerminologyBrowser.class);
-	// Collection<SnomedConceptIndexEntry> rootConcepts =
-	// terminologyBrowser.getRootConcepts();
-	// for (SnomedConceptIndexEntry rootConcept : rootConcepts) {
-	// rootConceptMini = rootConcept;
-	// ci.println(" Root concept from the semantic cache: " + rootConcept);
-	// }
-	//
-	// ci.println(" Semantic cache size: " +
-	// terminologyBrowser.getConceptCount());
-	// SnomedClientIndexService indexSearcher =
-	// ApplicationContext.getInstance().getService(SnomedClientIndexService.class);
-	//
-	// SnomedConceptFullQueryAdapter adapter = new
-	// SnomedConceptFullQueryAdapter(rootConceptMini.getId(),
-	// SnomedConceptFullQueryAdapter.SEARCH_BY_CONCEPT_ID);
-	// List<SnomedConceptIndexEntry> search = indexSearcher.search(adapter);
-	// ci.println(" Root concept from the index store: " +
-	// search.get(0).getLabel());
-	//
-	// SnomedEditingContext editingContext = null;
-	// try {
-	// editingContext = new SnomedEditingContext();
-	// Concept rootConcept = new
-	// SnomedConceptLookupService().getComponent(rootConceptMini.getId(),
-	// editingContext.getTransaction());
-	// ci.println(" Root concept from the main repository: " +
-	// rootConcept.getFullySpecifiedName());
-	// } finally {
-	// editingContext.close();
-	// }
-	// }
+	private ICDORepositoryManager getRepositoryManager() {
+		return ApplicationContext.getServiceForClass(ICDORepositoryManager.class);
+	}
 }

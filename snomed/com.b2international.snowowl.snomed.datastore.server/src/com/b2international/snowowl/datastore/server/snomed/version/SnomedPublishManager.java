@@ -15,21 +15,29 @@
  */
 package com.b2international.snowowl.datastore.server.snomed.version;
 
+import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_MODULE_DEPENDENCY_TYPE;
 
 import java.util.Collection;
+import java.util.Date;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
+import com.b2international.collections.longs.LongSet;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CDOEditingContext;
+import com.b2international.snowowl.datastore.ICodeSystemVersion;
+import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.snomed.SnomedModuleDependencyCollectorService;
 import com.b2international.snowowl.datastore.server.version.PublishManager;
-import com.b2international.snowowl.snomed.SnomedFactory;
 import com.b2international.snowowl.snomed.SnomedPackage;
+import com.b2international.snowowl.snomed.SnomedRelease;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.core.store.SnomedReleases;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetLookupService;
@@ -41,12 +49,11 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedModuleDependencyRef
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRegularRefSet;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
+import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-
-import bak.pcj.set.LongSet;
 
 /**
  * Publish manager for SNOMED&nbsp;CT ontology.
@@ -69,6 +76,12 @@ public class SnomedPublishManager extends PublishManager {
 		this.snomedIdentifiers = new SnomedIdentifiers(ApplicationContext.getInstance().getServiceChecked(ISnomedIdentifierService.class));
 		this.componentService = ApplicationContext.getInstance().getServiceChecked(ISnomedComponentService.class);
 	}
+	
+	@Override
+	protected LongSet getUnversionedComponentStorageKeys(final IBranchPath branchPath) {
+		final ISnomedComponentService componentService = getServiceForClass(ISnomedComponentService.class);
+		return componentService.getAllUnpublishedComponentStorageKeys(branchPath);
+	}
 
 	@Override
 	protected EStructuralFeature getEffectiveTimeFeature(final EClass eClass) {
@@ -80,11 +93,6 @@ public class SnomedPublishManager extends PublishManager {
 		throw new IllegalArgumentException("Unsupported or unexpected component type: " + eClass);
 	}
 
-	@Override
-	protected CodeSystemVersion createCodeSystemVersion() {
-		return SnomedFactory.eINSTANCE.createCodeSystemVersion();
-	}
-	
 	@Override
 	protected CDOEditingContext createEditingContext(IBranchPath branchPath) {
 		return new SnomedEditingContext(branchPath);
@@ -155,7 +163,49 @@ public class SnomedPublishManager extends PublishManager {
 		
 		return filteredPairs;
 	}
+	
+	@Override
+	protected CodeSystemVersion createCodeSystemVersion() {
+		return SnomedReleases.newSnomedVersion()
+				.withVersionId(getVersionName())
+				.withDescription(getCodeSystemVersionDescription())
+				.withImportDate(new Date())
+				.withEffectiveDate(getEffectiveTime())
+				.withParentBranchPath(getConfiguration().getParentBranchPath())
+				// TODO modules?
+				.build();
+	}
 
+	@Override
+	protected void addCodeSystemVersion(final CodeSystemVersion codeSystemVersion) {
+		final String shortName = getConfiguration().getCodeSystemShortName();
+		if (getEditingContext().getBranch().equals(IBranchPath.MAIN_BRANCH)) {
+			final SnomedRelease snomedRelease = ((SnomedEditingContext) getEditingContext()).getSnomedRelease(shortName, null);
+			
+			if (snomedRelease == null) {
+				throw new IllegalStateException(String.format("Couldn't find SNOMED release for %s.", shortName));
+			} else {
+				snomedRelease.getCodeSystemVersions().add(codeSystemVersion);
+			}
+		} else {
+			try (final SnomedEditingContext ec = new SnomedEditingContext(BranchPathUtils.createMainPath())) {
+				final SnomedRelease snomedRelease = ec.getSnomedRelease(shortName, null);
+				if (snomedRelease == null) {
+					throw new IllegalStateException(String.format("Couldn't find SNOMED release for %s.", shortName));
+				} else {
+					snomedRelease.getCodeSystemVersions().add(codeSystemVersion);
+					
+					final String commitComment = String.format("New Snomed Version %s was added to Snomed Release %s.",
+							codeSystemVersion.getVersionId(), snomedRelease.getShortName());
+					CDOServerUtils.commit(ec, getConfiguration().getUserId(), commitComment, null);
+				}
+			} catch (Exception e) {
+				throw new SnowowlRuntimeException(String.format("An error occurred while adding Snomed Version %s to Snomed Release %s.",
+						codeSystemVersion.getVersionId(), shortName), e);
+			}
+		}
+	}
+	
 	@Override
 	protected void postProcess() {
 		LOGGER.info("Adjusting effective time changes on module dependency...");
@@ -238,5 +288,15 @@ public class SnomedPublishManager extends PublishManager {
 	private Collection<SnomedModuleDependencyRefSetMember> collectModuleDependecyRefSetMembers(final LongSet storageKeys) {
 		return SnomedModuleDependencyCollectorService.INSTANCE.collectModuleMembers(getTransaction(), storageKeys);
 	}
-
+	
+	@Override
+	protected Collection<ICodeSystemVersion> getAllVersions(final IBranchPath branchPath) {
+		return new CodeSystemRequests(getRepositoryUuid())
+				.prepareSearchCodeSystemVersion()
+				.setCodeSystemShortName(getConfiguration().getCodeSystemShortName())
+				.build(IBranchPath.MAIN_BRANCH)
+				.executeSync(getEventBus())
+				.getItems();
+	}
+	
 }

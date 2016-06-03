@@ -36,6 +36,7 @@ import org.eclipse.emf.spi.cdo.DefaultCDOMerger.Conflict;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.collections.longs.LongCollection;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.exceptions.MergeConflictException;
@@ -53,12 +54,14 @@ import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
-import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
+import com.b2international.snowowl.snomed.datastore.IsAStatementWithId;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.SnomedStatementBrowser;
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.StatementCollectionMode;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentService;
 import com.b2international.snowowl.snomed.datastore.taxonomy.IncompleteTaxonomyException;
 import com.b2international.snowowl.snomed.datastore.taxonomy.InvalidRelationship;
@@ -69,6 +72,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableMultimap.Builder;
@@ -345,21 +349,19 @@ public class SnomedCDOConflictProcessor extends AbstractCDOConflictProcessor imp
 	}
 	
 	private void postProcessTaxonomy(CDOTransaction transaction, ImmutableMultimap.Builder<String, Object> conflictingItems) {
-		postProcessTaxonomy(transaction, conflictingItems, StatementCollectionMode.STATED_ISA_ONLY, CharacteristicType.STATED_RELATIONSHIP);
-		postProcessTaxonomy(transaction, conflictingItems, StatementCollectionMode.INFERRED_ISA_ONLY, CharacteristicType.INFERRED_RELATIONSHIP);
-	}
-
-	private void postProcessTaxonomy(CDOTransaction transaction, ImmutableMultimap.Builder<String, Object> conflictingItems, 
-			StatementCollectionMode collectionMode,
-			CharacteristicType characteristicType) {
-		
 		final IBranchPath branchPath = BranchPathUtils.createPath(transaction);
-		try {
-			final SnomedTaxonomyBuilder taxonomyBuilder = new SnomedTaxonomyBuilder(branchPath, collectionMode);
-			new SnomedTaxonomyUpdateRunnable(transaction, taxonomyBuilder, characteristicType.getConceptId()).run();
-		} catch (IncompleteTaxonomyException e) {
-			for (InvalidRelationship invalidRelationship : e.getInvalidRelationships()) {
-				conflictingItems.put(Long.toString(invalidRelationship.getMissingConceptId()), invalidRelationship);
+		final ApplicationContext context = ApplicationContext.getInstance();
+		final LongCollection conceptIds = context.getService(SnomedTerminologyBrowser.class).getAllConceptIds(branchPath);
+		
+		for (StatementCollectionMode mode : ImmutableList.of(StatementCollectionMode.STATED_ISA_ONLY, StatementCollectionMode.INFERRED_ISA_ONLY)) {
+			try {
+				final IsAStatementWithId[] statements = context.getService(SnomedStatementBrowser.class).getActiveStatements(branchPath, mode);
+				final SnomedTaxonomyBuilder taxonomyBuilder = new SnomedTaxonomyBuilder(conceptIds, statements);
+				new SnomedTaxonomyUpdateRunnable(transaction, taxonomyBuilder, mode.getCharacteristicType()).run();
+			} catch (IncompleteTaxonomyException e) {
+				for (InvalidRelationship invalidRelationship : e.getInvalidRelationships()) {
+					conflictingItems.put(Long.toString(invalidRelationship.getMissingConceptId()), invalidRelationship);
+				}	
 			}
 		}
 	}

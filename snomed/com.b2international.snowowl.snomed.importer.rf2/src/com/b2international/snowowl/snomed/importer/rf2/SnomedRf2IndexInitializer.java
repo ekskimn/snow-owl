@@ -15,8 +15,6 @@
  */
 package com.b2international.snowowl.snomed.importer.rf2;
 
-import static com.b2international.commons.pcj.LongSets.newLongSet;
-import static com.b2international.commons.pcj.LongSets.toStringList;
 import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Lists.newArrayList;
@@ -44,12 +42,16 @@ import org.eclipse.emf.cdo.transaction.CDOTransaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongKeyFloatMap;
+import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.StringUtils;
+import com.b2international.commons.collect.LongSets;
 import com.b2international.commons.csv.CsvLexer.EOL;
 import com.b2international.commons.csv.CsvParser;
 import com.b2international.commons.csv.CsvSettings;
 import com.b2international.commons.csv.RecordParserCallback;
-import com.b2international.commons.pcj.LongSets;
+import com.b2international.commons.functions.LongToStringFunction;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.api.IBranchPath;
@@ -121,10 +123,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-import bak.pcj.map.LongKeyFloatMap;
-import bak.pcj.set.LongOpenHashSet;
-import bak.pcj.set.LongSet;
-
 /**
  * RF2 based incremental index initializer job.
  */
@@ -152,7 +150,6 @@ public class SnomedRf2IndexInitializer extends Job {
 	private Set<String> conceptsWithMembershipChanges;
 	private Set<String> conceptsWithTaxonomyChanges;
 	private Set<String> conceptsWithCompareUniqueKeyChanges;
-	private Set<String> descriptionsWithAcceptabilityChanges;
 	
 	// refset ID to fake SnomedRefSet EObject
 	private Map<String, SnomedRefSet> visitedRefSets;
@@ -164,7 +161,7 @@ public class SnomedRf2IndexInitializer extends Job {
 	private ISnomedTaxonomyBuilder inferredTaxonomyBuilder;
 	private ISnomedTaxonomyBuilder statedTaxonomyBuilder;
 
-	public SnomedRf2IndexInitializer(final IBranchPath branchPath, final String lastUnitEffectiveTimeKey, final List<ComponentImportUnit> importUnits, final String languageRefSetId, ISnomedTaxonomyBuilder inferredTaxonomyBuilder, ISnomedTaxonomyBuilder statedTaxonomyBuilder) {
+	public SnomedRf2IndexInitializer(final IBranchPath branchPath, final String lastUnitEffectiveTimeKey, final List<ComponentImportUnit> importUnits, ISnomedTaxonomyBuilder inferredTaxonomyBuilder, ISnomedTaxonomyBuilder statedTaxonomyBuilder) {
 		super("SNOMED CT RF2 based index initializer...");
 		this.branchPath = branchPath;
 		this.effectiveTimeKey = lastUnitEffectiveTimeKey;
@@ -212,7 +209,6 @@ public class SnomedRf2IndexInitializer extends Job {
 		conceptsWithMembershipChanges = Sets.newHashSet();
 		conceptsWithTaxonomyChanges = Sets.newHashSet();
 		conceptsWithCompareUniqueKeyChanges = Sets.newHashSet();
-		descriptionsWithAcceptabilityChanges = Sets.newHashSet();
 		
 		refSetMemberChanges = HashMultimap.create();
 		mappingRefSetMemberChanges = HashMultimap.create();
@@ -401,9 +397,6 @@ public class SnomedRf2IndexInitializer extends Job {
 							acceptableMemberChanges.put(descriptionId, negativeChange);
 						}
 					}
-
-					// Collect the description for needing an acceptability field update
-					descriptionsWithAcceptabilityChanges.add(descriptionId);
 				}
 			});
 		}
@@ -468,7 +461,6 @@ public class SnomedRf2IndexInitializer extends Job {
 				final String absolutePath = unit.getUnitFile().getAbsolutePath();
 				switch (unit.getType()) {
 	
-					//concept change processing (if any) should happen in the very end
 					case CONCEPT:
 						LOGGER.info("Indexing concepts...");
 						indexConcepts(absolutePath);
@@ -503,7 +495,6 @@ public class SnomedRf2IndexInitializer extends Job {
 				}
 				
 			} finally {
-				getSnomedIndexService().commit(branchPath);
 				delegateMonitor.worked(1);
 			}
 		}
@@ -542,7 +533,7 @@ public class SnomedRf2IndexInitializer extends Job {
 		
 		//index MRCM related changed on the concept.
 		//See issue: https://snowowl.atlassian.net/browse/SO-1532?focusedCommentId=29572&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-29572
-		unvisitedConcepts.addAll(toStringList(newLongSet(conceptIdToPredicateMap.keySet())));
+		unvisitedConcepts.addAll(LongToStringFunction.copyOf(conceptIdToPredicateMap.keySet()));
 		
 		// Finally, remove all concepts that were already processed because an RF2 row was visited.
 		unvisitedConcepts.removeAll(conceptsInImportFile);
@@ -570,11 +561,11 @@ public class SnomedRf2IndexInitializer extends Job {
 		if (!unvisitedDescriptions.isEmpty()) {
 			LOGGER.info("Reindexing unvisited descriptions...");
 			indexUnvisitedDescriptions(unvisitedDescriptions);
-			LOGGER.info("Unvisited concepts have been successfully reindexed.");
+			LOGGER.info("Unvisited descriptions have been successfully reindexed.");
 		} else {
-			LOGGER.info("No unvisited concepts have been found.");
+			LOGGER.info("No unvisited descriptions have been found.");
 		}
-
+		
 		if (!unvisitedConcepts.isEmpty() || !unvisitedDescriptions.isEmpty()) {
 			getSnomedIndexService().commit(branchPath);
 		}
@@ -583,7 +574,7 @@ public class SnomedRf2IndexInitializer extends Job {
 	}
 
 	private Set<String> getAllDescendants(final Set<String> union) {
-		final LongSet $ = new LongOpenHashSet();
+		final LongSet $ = PrimitiveSets.newLongOpenHashSet();
 		for (final String conceptId : union) {
 			if (inferredTaxonomyBuilder.containsNode(conceptId)) { //inactive one
 				$.addAll(inferredTaxonomyBuilder.getAllDescendantNodeIds(conceptId));
@@ -621,7 +612,6 @@ public class SnomedRf2IndexInitializer extends Job {
 				final long characteristicTypeConceptSctId = Long.parseLong(record.get(8));
 				final boolean active = ACTIVE_STATUS.equals(record.get(2));
 				final int group = Integer.parseInt(record.get(6));
-				final int unionGroup = 0;
 				final boolean destinationNegated = false;
 				final long moduleConceptId = Long.parseLong(record.get(3));
 				final boolean inferred = Concepts.INFERRED_RELATIONSHIP.equals(record.get(8));
@@ -629,6 +619,13 @@ public class SnomedRf2IndexInitializer extends Job {
 				
 				final long effectiveTime = getEffectiveTime(record);
 				final boolean released = isReleased(effectiveTime);
+
+				final int unionGroup;
+				if (Concepts.HAS_ACTIVE_INGREDIENT.equals(record.get(7)) && universal) {
+					unionGroup = 1;
+				} else {
+					unionGroup = 0;
+				}
 				
 				// Create relationship document
 				final Document doc = SnomedMappings.doc()
@@ -824,7 +821,7 @@ public class SnomedRf2IndexInitializer extends Job {
 	
 	protected void updateIconId(String conceptId, boolean active, SnomedDocumentBuilder doc, boolean withDocValues) {
 		final Collection<String> availableImages = SnomedIconProvider.getInstance().getAvailableIconIds();
-		new RefSetIconIdUpdater(inferredTaxonomyBuilder, conceptId, active, availableImages, identifierConceptIdsForNewRefSets).update(doc);		
+		new RefSetIconIdUpdater(inferredTaxonomyBuilder, statedTaxonomyBuilder, conceptId, active, availableImages, identifierConceptIdsForNewRefSets).update(doc);		
 	}
 
 	private void indexDescriptions(final String absolutePath) {
@@ -832,6 +829,7 @@ public class SnomedRf2IndexInitializer extends Job {
 		final SnomedIndexServerService snomedIndexService = getSnomedIndexService();
 		
 		parseFile(absolutePath, 9, new RecordParserCallback<String>() {
+			@Override
 			public void handleRecord(final int recordCount, final java.util.List<String> record) { 
 				
 				final long storageKey = getImportIndexService().getComponentCdoId(record.get(0));
@@ -1035,7 +1033,7 @@ public class SnomedRf2IndexInitializer extends Job {
 				.primitive(primitive)
 				.released(released)
 				.effectiveTime(effectiveTime)
-				.conceptNamespaceId(NamespaceMapping.getExtensionNamespaceId(conceptId))
+				.conceptNamespaceId(NamespaceMapping.getExtensionNamespaceId(conceptIdString))
 				.module(moduleId)
 				.with(new ComponentCompareFieldsUpdater<SnomedDocumentBuilder>(conceptIdString, conceptStorageKey));
 

@@ -21,7 +21,7 @@ import com.google.common.collect.Multimap;
  * Represents a SNOMED&nbsp;CT concept.
  * 
  */
-public class SnomedConcept extends BaseSnomedComponent implements ISnomedConcept {
+public class SnomedConcept extends BaseSnomedCoreComponent implements ISnomedConcept {
 
 	private DefinitionStatus definitionStatus;
 	private SubclassDefinitionStatus subclassDefinitionStatus;
@@ -33,6 +33,10 @@ public class SnomedConcept extends BaseSnomedComponent implements ISnomedConcept
 	private SnomedRelationships relationships;
 	private SnomedConcepts ancestors;
 	private SnomedConcepts descendants;
+	private long[] ancestorIds;
+	private long[] parentIds;
+	private long[] statedAncestorIds;
+	private long[] statedParentIds;
 
 	public SnomedConcept() {
 	}
@@ -91,6 +95,26 @@ public class SnomedConcept extends BaseSnomedComponent implements ISnomedConcept
 		return descendants;
 	}
 
+	@Override
+	public long[] getAncestorIds() {
+		return ancestorIds;
+	}
+	
+	@Override
+	public long[] getParentIds() {
+		return parentIds;
+	}
+	
+	@Override
+	public long[] getStatedAncestorIds() {
+		return statedAncestorIds;
+	}
+	
+	@Override
+	public long[] getStatedParentIds() {
+		return statedParentIds;
+	}
+	
 	public void setDefinitionStatus(final DefinitionStatus definitionStatus) {
 		this.definitionStatus = definitionStatus;
 	}
@@ -130,7 +154,23 @@ public class SnomedConcept extends BaseSnomedComponent implements ISnomedConcept
 	public void setDescendants(SnomedConcepts descendants) {
 		this.descendants = descendants;
 	}
-
+	
+	public void setAncestorIds(final long[] ancestorIds) {
+		this.ancestorIds = ancestorIds;
+	}
+	
+	public void setParentIds(final long[] parentIds) {
+		this.parentIds = parentIds;
+	}
+	
+	public void setStatedAncestorIds(final long[] statedAncestorIds) {
+		this.statedAncestorIds = statedAncestorIds;
+	}
+	
+	public void setStatedParentIds(final long[] statedParentIds) {
+		this.statedParentIds = statedParentIds;
+	}
+	
 	@Override
 	public String toString() {
 		final StringBuilder builder = new StringBuilder();

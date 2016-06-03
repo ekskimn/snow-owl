@@ -24,12 +24,14 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nullable;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
@@ -37,6 +39,7 @@ import org.apache.lucene.search.TopDocs;
 
 import com.b2international.commons.BooleanUtils;
 import com.b2international.commons.CompareUtils;
+import com.b2international.commons.collect.LongSets;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.datastore.index.DocIdCollector;
@@ -50,18 +53,21 @@ import com.b2international.snowowl.snomed.datastore.PredicateUtils;
 import com.b2international.snowowl.snomed.datastore.PredicateUtils.ConstraintDomain;
 import com.b2international.snowowl.snomed.datastore.SnomedPredicateBrowser;
 import com.b2international.snowowl.snomed.datastore.SnomedTaxonomyService;
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedQueryBuilder;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentService;
 import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
 import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry.PredicateType;
-import com.b2international.snowowl.snomed.mrcm.DataType;
 import com.b2international.snowowl.snomed.mrcm.GroupRule;
 import com.b2international.snowowl.snomed.mrcm.HierarchyInclusionType;
+import com.b2international.snowowl.snomed.snomedrefset.DataType;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet.Builder;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 
@@ -95,14 +101,14 @@ public class SnomedServerPredicateBrowser extends AbstractIndexBrowser<Predicate
 	}
 
 	@Override
-	public Set<ConstraintDomain> getConstraintDomains(IBranchPath branchPath, final long storageKey) {
+	public Set<ConstraintDomain> getConstraintDomains(final IBranchPath branchPath, final long storageKey) {
 		return service.executeReadTransaction(branchPath, new IndexRead<Set<ConstraintDomain>>() {
 			@Override
 			public Set<ConstraintDomain> execute(IndexSearcher index) throws IOException {
-				final String prefix = String.format("%s%s", storageKey, PredicateUtils.PREDICATE_SEPARATOR);
+				final String predicateKeyPrefix = String.format("%s%s", storageKey, PredicateUtils.PREDICATE_SEPARATOR);
 				final Query query = SnomedMappings.newQuery()
 						.concept()
-						.and(new PrefixQuery(SnomedMappings.componentReferringPredicate().toTerm(prefix)))
+						.and(new PrefixQuery(SnomedMappings.componentReferringPredicate().toTerm(predicateKeyPrefix)))
 						.matchAll();
 				
 				final DocIdCollector collector = DocIdCollector.create(index.getIndexReader().maxDoc());
@@ -113,7 +119,41 @@ public class SnomedServerPredicateBrowser extends AbstractIndexBrowser<Predicate
 					final DocIdsIterator iterator = docs.iterator();
 					while (iterator.next()) {
 						final Document doc = index.doc(iterator.getDocID(), SnomedMappings.fieldsToLoad().id().componentReferringPredicate().build());
-						result.add(ConstraintDomain.of(doc));
+						for (final Iterator<IndexableField> itr = doc.iterator(); itr.hasNext();) {
+							final IndexableField indexableField = itr.next();
+							if (indexableField.name().equals(SnomedMappings.componentReferringPredicate().fieldName()) && !indexableField.stringValue().startsWith(predicateKeyPrefix)) {
+								itr.remove();
+							}
+						}
+						result.addAll(ConstraintDomain.of(doc));
+					}
+					return result;
+				}
+				return Collections.emptySet();
+			}
+		});
+	}
+	
+	@Override
+	public Set<ConstraintDomain> getAllConstraintDomains(final IBranchPath branchPath) {
+		checkNotNull(branchPath, "branchPath");
+		return service.executeReadTransaction(branchPath, new IndexRead<Set<ConstraintDomain>>() {
+			@Override
+			public Set<ConstraintDomain> execute(final IndexSearcher index) throws IOException {
+				final Query query = SnomedMappings.newQuery()
+						.concept()
+						.and(SnomedMappings.componentReferringPredicate().toExistsQuery())
+						.matchAll();
+				
+				final DocIdCollector collector = DocIdCollector.create(index.getIndexReader().maxDoc());
+				index.search(query, collector);
+				final DocIds docs = collector.getDocIDs();
+				if (docs.size() > 0) {
+					final Set<ConstraintDomain> result = newHashSet();
+					final DocIdsIterator iterator = docs.iterator();
+					while (iterator.next()) {
+						final Document doc = index.doc(iterator.getDocID(), SnomedMappings.fieldsToLoad().id().componentReferringPredicate().build());
+						result.addAll(ConstraintDomain.of(doc));
 					}
 					return result;
 				}
@@ -161,8 +201,24 @@ public class SnomedServerPredicateBrowser extends AbstractIndexBrowser<Predicate
 		addPredicatesForFocus(conceptId, HierarchyInclusionType.SELF, predicates, newPredicates);
 		addPredicatesForFocus(conceptId, HierarchyInclusionType.SELF_OR_DESCENDANT, predicates, newPredicates);
 		
-		final Collection<String> ancestorIds = getServiceForClass(SnomedTaxonomyService.class).getAllSupertypes(branchPath, conceptId);
-		addDescendantPredicatesForAncestors(ancestorIds, predicates, newPredicates);
+		final SnomedConceptIndexEntry concept = getServiceForClass(SnomedTerminologyBrowser.class).getConcept(branchPath, conceptId);
+
+		// XXX use both the stated and inferred parent/ancestor IDs to get all possible/applicable MRCM rules
+		final Builder<String> ancestorIds = ImmutableSet.builder();
+		if (concept.getParents() != null) {
+			ancestorIds.addAll(LongSets.toStringSet(concept.getParents()));
+		}
+		if (concept.getAncestors() != null) {
+			ancestorIds.addAll(LongSets.toStringSet(concept.getAncestors()));
+		}
+		if (concept.getStatedParents() != null) {
+			ancestorIds.addAll(LongSets.toStringSet(concept.getStatedParents()));
+		}
+		if (concept.getStatedAncestors() != null) {
+			ancestorIds.addAll(LongSets.toStringSet(concept.getStatedAncestors()));
+		}
+		
+		addDescendantPredicatesForAncestors(ancestorIds.build(), predicates, newPredicates);
 		
 		final Collection<String> containerRefSetIds = newHashSet(); 
 		containerRefSetIds.addAll(getServiceForClass(SnomedTaxonomyService.class).getContainerRefSetIds(branchPath, conceptId));

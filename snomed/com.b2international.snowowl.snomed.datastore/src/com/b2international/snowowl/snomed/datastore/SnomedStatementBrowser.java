@@ -18,8 +18,7 @@ package com.b2international.snowowl.snomed.datastore;
 import java.util.Collection;
 import java.util.Map;
 
-import bak.pcj.map.LongKeyMap;
-
+import com.b2international.collections.longs.LongKeyMap;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.browser.IStatementBrowser;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
@@ -138,24 +137,18 @@ public interface SnomedStatementBrowser extends IStatementBrowser<SnomedConceptI
 	Collection<SnomedRelationshipIndexEntry> getActiveOutboundStatementsById(final IBranchPath branchPath, final String id, final String relationshipTypeId);
 	
 	/**
-	* Returns a map of concept IDs and the associated preferred terms for the concepts. The concept IDs are a set of
-	* object, value and attribute concept IDs of all source and destination relationships of the concept identifier by
-	* the specified unique SNOMED&nbsp;CT ID.
-	* @param branchPath the branch path reference limiting visibility to a particular branch.
-	* @param conceptId the concept ID.
-	* @return a map of concept IDs and concept preferred terms.
-	*/
-	Map<String, String> getAllStatementLabelsById(final IBranchPath branchPath, final String conceptId);
-
-	/**
 	* Returns a map of concept IDs and the associated image concept IDs for the concepts. The concept IDs are a set of
 	* object, value and attribute concept IDs of all source and destination relationships of the concept identifier by
 	* the specified unique SNOMED&nbsp;CT ID.
 	* @param conceptId the concept ID.
 	* @return a map of concept IDs and concept image IDs.
+	* @deprecated - unsupported, will be removed in 4.7
 	*/
 	Map<String, String> getAllStatementImageIdsById(final IBranchPath branchPath, final String conceptId);
 
+	/**
+	 * @deprecated - unsupported, will be removed in 4.7
+	 */
 	Map<String, String> getAllDestinationLabels(IBranchPath branchPath, Collection<String> sourceIds, String typeId);
 
 }

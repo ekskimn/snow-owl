@@ -20,8 +20,7 @@ import java.util.Map;
 
 import org.eclipse.emf.ecore.EPackage;
 
-import bak.pcj.map.LongKeyMap;
-
+import com.b2international.collections.longs.LongKeyMap;
 import com.b2international.snowowl.core.annotations.Client;
 import com.b2international.snowowl.datastore.browser.AbstractClientStatementBrowser;
 import com.b2international.snowowl.datastore.browser.ActiveBranchClientStatementBrowser;
@@ -111,27 +110,20 @@ public class SnomedClientStatementBrowser extends ActiveBranchClientStatementBro
 	}
 
 	/**
-	 * Returns a map of concept IDs and the associated preferred terms for the concepts. The concept IDs are a set of
-	 * object, value and attribute concept IDs of all source and destination relationships of the concept identifier by
-	 * the specified unique SNOMED&nbsp;CT ID.
-	 * @param conceptId the concept ID.
-	 * @return a map of concept IDs and concept preferred terms.
-	 */
-	public Map<String, String> getAllStatementLabelsById(final String conceptId) {
-		return ((SnomedStatementBrowser) getDelegateBrowser()).getAllStatementLabelsById(getBranchPath(), conceptId);
-	}
-
-	/**
 	 * Returns a map of concept IDs and the associated image concept IDs for the concepts. The concept IDs are a set of
 	 * object, value and attribute concept IDs of all source and destination relationships of the concept identifier by
 	 * the specified unique SNOMED&nbsp;CT ID.
 	 * @param conceptId the concept ID.
 	 * @return a map of concept IDs and concept image IDs.
+	 * @deprecated - unsupported, will be removed in 4.7
 	 */
 	public Map<String, String> getAllStatementImageIdsById(final String conceptId) {
 		return ((SnomedStatementBrowser) getDelegateBrowser()).getAllStatementImageIdsById(getBranchPath(), conceptId);
 	}
 
+	/**
+	 * @deprecated - unsupported, will be removed in 4.7
+	 */
 	public Map<String, String> getAllDestinationLabels(final Collection<String> sourceIds, final String typeId) {
 		return ((SnomedStatementBrowser) getDelegateBrowser()).getAllDestinationLabels(getBranchPath(), sourceIds, typeId);
 	}

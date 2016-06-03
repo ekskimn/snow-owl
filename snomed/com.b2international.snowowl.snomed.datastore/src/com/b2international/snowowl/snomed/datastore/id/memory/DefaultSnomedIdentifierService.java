@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import com.b2international.commons.VerhoeffCheck;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.store.MemStore;
 import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.snomed.datastore.config.SnomedIdentifierConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.AbstractSnomedIdentifierService;
@@ -35,6 +36,7 @@ import com.b2international.snowowl.snomed.datastore.id.cis.IdentifierStatus;
 import com.b2international.snowowl.snomed.datastore.id.cis.SctId;
 import com.b2international.snowowl.snomed.datastore.id.gen.ItemIdGenerationStrategy;
 import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentiferReservationService;
+import com.b2international.snowowl.snomed.datastore.internal.id.reservations.SnomedIdentifierReservationServiceImpl;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -51,6 +53,13 @@ public class DefaultSnomedIdentifierService extends AbstractSnomedIdentifierServ
 	private final Store<SctId> store;
 	private final ItemIdGenerationStrategy generationStrategy;
 
+	/*
+	 * Tests only
+	 */
+	DefaultSnomedIdentifierService(final ItemIdGenerationStrategy generationStrategy) {
+		this(new MemStore<SctId>(), generationStrategy, new SnomedIdentifierReservationServiceImpl(), new SnomedIdentifierConfiguration());
+	}
+	
 	public DefaultSnomedIdentifierService(final Store<SctId> store, final ItemIdGenerationStrategy generationStrategy,
 			final ISnomedIdentiferReservationService reservationService, final SnomedIdentifierConfiguration config) {
 		super(reservationService, config);
@@ -143,11 +152,11 @@ public class DefaultSnomedIdentifierService extends AbstractSnomedIdentifierServ
 	public void publish(final String componentId) {
 		final SctId sctId = getSctId(componentId);
 		if (sctId.isAssigned()) {
-			LOGGER.debug(String.format("publishing component ID %s.", componentId));
+			LOGGER.debug("Publishing component ID {}.", componentId);
 			sctId.setStatus(IdentifierStatus.PUBLISHED.getSerializedName());
 			store.put(componentId, sctId);
 		} else if (!sctId.isPublished()) {
-			throw new BadRequestException(String.format("Cannot publish ID in state %s.", sctId.getStatus()));
+			throw new BadRequestException("Cannot publish ID '%s' in state %s.", sctId.getSctid(), sctId.getStatus());
 		}
 	}
 
@@ -261,7 +270,7 @@ public class DefaultSnomedIdentifierService extends AbstractSnomedIdentifierServ
 	public void publish(final Collection<String> componentIds) {
 		final Map<String, SctId> publishedSctIds = Maps.newHashMap();
 
-		LOGGER.debug(String.format("Publishing %d component IDs.", componentIds.size()));
+		LOGGER.debug("Publishing {} component IDs.", componentIds.size());
 
 		for (final String componentId : componentIds) {
 			final SctId sctId = getSctId(componentId);
@@ -270,7 +279,7 @@ public class DefaultSnomedIdentifierService extends AbstractSnomedIdentifierServ
 				sctId.setStatus(IdentifierStatus.PUBLISHED.getSerializedName());
 				publishedSctIds.put(componentId, sctId);
 			} else if (!sctId.isPublished()) {
-				throw new BadRequestException(String.format("Cannot publish ID %s in state %s.", sctId.getSctid(), sctId.getStatus()));
+				throw new BadRequestException("Cannot publish ID '%s' in state '%s'.", sctId.getSctid(), sctId.getStatus());
 			}
 		}
 
@@ -297,8 +306,13 @@ public class DefaultSnomedIdentifierService extends AbstractSnomedIdentifierServ
 
 		while (componentIds.size() < quantity) {
 			String componentId = generateComponentId(namespace, category);
-			while (getReservationService().isReserved(componentId) && !store.containsKey(componentId)) {
+			int i = 1;
+			while (isReserved(componentId)) {
+				if (i == getConfig().getMaxIdGenerationAttempts()) {
+					throw new BadRequestException("Couldn't generate identifier in %s number of attempts", getConfig().getMaxIdGenerationAttempts());
+				}
 				componentId = generateComponentId(namespace, category);
+				i++;
 			}
 
 			componentIds.add(componentId);
@@ -307,6 +321,10 @@ public class DefaultSnomedIdentifierService extends AbstractSnomedIdentifierServ
 		return componentIds;
 	}
 	
+	private boolean isReserved(String componentId) {
+		return getReservationService().isReserved(componentId) || store.containsKey(componentId);
+	}
+
 	@Override
 	public boolean importSupported() {
 		return true;

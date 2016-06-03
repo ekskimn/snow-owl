@@ -34,6 +34,7 @@ import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.events.util.ApiRequestHandler;
+import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
@@ -50,6 +51,7 @@ import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexMa
 import com.b2international.snowowl.datastore.server.internal.branch.BranchSerializer;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
+import com.b2international.snowowl.datastore.server.internal.merge.MergeServiceImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
@@ -59,6 +61,12 @@ import com.b2international.snowowl.datastore.store.IndexStore;
 import com.b2international.snowowl.eventbus.EventBusUtil;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
+import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemBuilder;
+import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemBuilderBroker;
+import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemEntryBuilder;
+import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemEntryBuilderBroker;
+import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemVersionEntryBuilder;
+import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemVersionEntryBuilderBroker;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Provider;
 
@@ -73,15 +81,15 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	private final Map<Class<?>, Object> registry = newHashMap();
 
-	CDOBasedRepository(String repositoryId, int numberOfWorkers, Environment env) {
+	CDOBasedRepository(String repositoryId, int numberOfWorkers, int mergeMaxResults, Environment env) {
 		checkArgument(numberOfWorkers > 0, "At least one worker thread must be specified");
 		
 		this.repositoryId = repositoryId;
 		this.env = env;
 		this.handlers = EventBusUtil.getWorkerBus(repositoryId, numberOfWorkers);
 		
+		initializeBranchingSupport(mergeMaxResults);
 		initializeRequestSupport(numberOfWorkers);
-		initializeBranchingSupport();
 	}
 
 	@Override
@@ -137,6 +145,18 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		return CDOConflictProcessorBroker.INSTANCE.getProcessor(repositoryId);
 	}
 	
+	private CodeSystemBuilder<?> getCodeSystemBuilder() {
+		return CodeSystemBuilderBroker.INSTANCE.getCodeSystemBuilder(repositoryId);
+	}
+	
+	private CodeSystemEntryBuilder getCodeSystemEntryBuilder() {
+		return CodeSystemEntryBuilderBroker.INSTANCE.getCodeSystemEntryBuilder(repositoryId);
+	}
+	
+	private CodeSystemVersionEntryBuilder getCodeSystemVersionEntryBuilder() {
+		return CodeSystemVersionEntryBuilderBroker.INSTANCE.getCodeSystemVersionEntryBuilder(repositoryId);
+	}
+	
 	@Override
     public long getBaseTimestamp(CDOBranch branch) {
         return branch.getBase().getTimeStamp();
@@ -166,9 +186,22 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		return new ServiceProvider() {
 			@Override
 			public <T> T service(Class<T> type) {
+				if (type.isAssignableFrom(CodeSystemBuilder.class)) {
+					return (T) getCodeSystemBuilder();
+				}
+				
+				if (type.isAssignableFrom(CodeSystemEntryBuilder.class)) {
+					return (T) getCodeSystemEntryBuilder();
+				}
+				
+				if (type.isAssignableFrom(CodeSystemVersionEntryBuilder.class)) {
+					return (T) getCodeSystemVersionEntryBuilder();
+				}
+				
 				if (registry.containsKey(type)) {
 					return (T) registry.get(type);
 				}
+				
 				return env.service(type);
 			}
 			
@@ -184,7 +217,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		return new DefaultRepositoryContext(context, repositoryId);
 	}
 
-	private void initializeBranchingSupport() {
+	private void initializeBranchingSupport(int mergeMaxResults) {
 		final BranchSerializer branchSerializer = env.service(BranchSerializer.class);
 		final IndexStore<InternalBranch> branchStore = createIndex("branches", branchSerializer, InternalBranch.class);
 		registry.put(BranchManager.class, new CDOBranchManagerImpl(this, branchStore));
@@ -205,6 +238,9 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		indexManager.registerIndex(reviewStore);
 		indexManager.registerIndex(mergeReviewStore);
 		indexManager.registerIndex(conceptChangesStore);
+		
+		final MergeServiceImpl mergeService = new MergeServiceImpl(this, mergeMaxResults);
+		registry.put(MergeService.class, mergeService);
 	}
 	
 	private <T> IndexStore<T> createIndex(final String name, ObjectMapper mapper, Class<T> type) {

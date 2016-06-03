@@ -23,7 +23,7 @@ import com.b2international.snowowl.core.events.bulk.BulkResponse;
 /**
  * @since 4.5
  */
-public class RepositoryBulkReadRequestBuilder extends BaseBranchRequestBuilder<RepositoryBulkReadRequestBuilder, BulkResponse> {
+public class RepositoryBulkReadRequestBuilder extends BaseIndexReadRequestBuilder<RepositoryBulkReadRequestBuilder, BulkResponse> {
 	
 	private Request<BranchContext, BulkResponse> body;
 
@@ -39,10 +39,5 @@ public class RepositoryBulkReadRequestBuilder extends BaseBranchRequestBuilder<R
 	@Override
 	protected Request<BranchContext, BulkResponse> doBuild() {
 		return body;
-	}
-	
-	@Override
-	protected Request<BranchContext, BulkResponse> wrap(Request<BranchContext, BulkResponse> req) {
-		return new IndexReadRequest<>(super.wrap(req));
 	}
 }

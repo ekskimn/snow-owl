@@ -21,7 +21,6 @@ import static com.b2international.commons.exceptions.Exceptions.extractCause;
 import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.text.MessageFormat.format;
 
 import java.io.File;
@@ -68,9 +67,11 @@ import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.exception.RepositoryLockException;
 import com.b2international.snowowl.datastore.tasks.TaskManager;
-import com.b2international.snowowl.terminologymetadata.CodeSystemVersionGroup;
+import com.b2international.snowowl.datastore.utils.ComponentUtils2;
+import com.b2international.snowowl.terminologymetadata.CodeSystem;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.collect.FluentIterable;
 
 /**
  * This class is a thin, generic wrapper around the underlying {@link CDOTransaction}. 
@@ -114,29 +115,41 @@ public abstract class CDOEditingContext implements AutoCloseable {
 		return BranchPathUtils.createPath(getTransaction()).getPath();
 	}
 	
+	public final <T extends CDOObject> Iterable<T> getNewObjects(Class<T> type) {
+		return ComponentUtils2.getNewObjects(getTransaction(), type);
+	}
+	
+	public final <T extends CDOObject> Iterable<T> getDetachedObjects(Class<T> type) {
+		return ComponentUtils2.getDetachedObjects(getTransaction(), type);
+	}
+	
+	public final <T extends CDOObject> Iterable<T> getChangedObjects(Class<T> type) {
+		return ComponentUtils2.getDirtyObjects(getTransaction(), type);
+	}
+	
 	/*
 	 * get the index from the database for an EObject on the given table.
 	 * If the object is not in the database, a RTE will be thrown.
 	 */
-	public int getIndexFromDatabase(final EObject object, final String tableName)  {
-			
+	public int getIndexFromDatabase(final CDOObject cdoObject, final CDOObject container, final String tableName)  {
 		// the object must be a cdoObject, otherwise the database cannot contain it
-		if (!(object instanceof CDOObject)) {
-			throw new RuntimeException("The removable object is not a CDOObject.");
-		}
 		if (tableName == null) {
 			throw new RuntimeException("Argument tableName must not be null.");
 		}
-		final CDOObject cdoObject = (CDOObject) object;
-		 		
-		// query the resources table, to get the index directly
-		final CDOObject container = object.eContainer()== null ? cdoObject.cdoResource() : (CDOObject) object.eContainer();
+		
+		// params
+		final long cdoId = CDOIDUtil.getLong(cdoObject.cdoID());
+		final long containerId = CDOIDUtil.getLong(container.cdoID());
 		final int version = container.cdoRevision().getVersion();
+		
+		// query the resources table, to get the index directly
 		final String sqlGetIndexFormatted = DatastoreQueries.SQL_GET_INDEX_AND_BRANCH_FOR_VALUE.getQuery(tableName);
 		final CDOQuery query = transaction.createQuery("sql", sqlGetIndexFormatted);
 		query.setParameter(CDOQueryUtils.CDO_OBJECT_QUERY, false);
-		query.setParameter("cdoId", CDOIDUtil.getLong(cdoObject.cdoID()));
+		query.setParameter("cdoId", cdoId);
+		query.setParameter("containerId", containerId);
 		query.setParameter("versionMaxAdded", version);
+		// exec query
 		final List<Object[]> result = query.getResult(Object[].class);
 		// neither 0 nor more than 1 results are acceptable
 		if (result.size() <= 0) {			
@@ -328,11 +341,37 @@ public abstract class CDOEditingContext implements AutoCloseable {
 	}
 	
 	/**
-	 * Returns with the {@link CodeSystemVersionGroup} for the repository where the current editing context works on.
-	 * @return the code system version group for storing meta information for the underlying repository such as code systems and versions.
+	 * Returns with an immutable list of the available code systems for the
+	 * repository where the current editing context works on.
+	 * 
+	 * @return an immutable list of the available code systems.
 	 */
-	public CodeSystemVersionGroup getCodeSystemVersionGroup() {
-		return (CodeSystemVersionGroup) getOnlyElement(transaction.getOrCreateResource(getMetaRootResourceName()).getContents());
+	public List<CodeSystem> getCodeSystems() {
+		final CDOResource cdoResource = transaction.getOrCreateResource(getMetaRootResourceName());
+		return FluentIterable.from(cdoResource.getContents()).filter(CodeSystem.class).toList();
+	}
+
+	/**
+	 * Adds the given code system to the available code systems.
+	 * 
+	 * @return <code>true</code> if the code system collection changed as a
+	 *         result of the call.
+	 * @deprecated use {@link #add(EObject)} instead
+	 */
+	public boolean addCodeSystem(final CodeSystem codeSystem) {
+		final CDOResource cdoResource = transaction.getOrCreateResource(getMetaRootResourceName());
+		return cdoResource.getContents().add(codeSystem);
+	}
+
+	/**
+	 * Removes the given code system from the available code systems.
+	 * 
+	 * @return true if the code system was removed as a result of this call.
+	 * @deprecated use {@link #delete(EObject)} instead
+	 */
+	public boolean removeCodeSystem(final CodeSystem codeSystem) {
+		final CDOResource cdoResource = transaction.getOrCreateResource(getMetaRootResourceName());
+		return cdoResource.getContents().remove(codeSystem);
 	}
 	
 	/**
@@ -364,7 +403,11 @@ public abstract class CDOEditingContext implements AutoCloseable {
 	 * @param object the object to be added to the contents of the editing context.
 	 */
 	public void add(final EObject object) {
-		getContents().add(checkNotNull(object, "object"));
+		if (object instanceof CodeSystem) {
+			transaction.getOrCreateResource(getMetaRootResourceName()).getContents().add(object);
+		} else {
+			getContents().add(checkNotNull(object, "object"));
+		}
 	}
 	
 	/**
@@ -392,7 +435,11 @@ public abstract class CDOEditingContext implements AutoCloseable {
 	 * @throws ConflictException - if the component cannot be deleted
 	 */
 	public void delete(EObject object, boolean force) throws ConflictException {
-		EcoreUtil.remove(object);
+		if (object instanceof CodeSystem) {
+			transaction.getOrCreateResource(getMetaRootResourceName()).getContents().remove(object);
+		} else {
+			EcoreUtil.remove(object);
+		}
 	}
 	
 	/**

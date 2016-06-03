@@ -21,16 +21,16 @@ import org.apache.lucene.index.AtomicReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.NumericDocValues;
 
-import bak.pcj.LongCollection;
-import bak.pcj.map.LongKeyMap;
-import bak.pcj.map.LongKeyOpenHashMap;
-
-import com.b2international.commons.pcj.LongSets;
-import com.b2international.commons.pcj.LongSets.LongPredicate;
+import com.b2international.collections.PrimitiveMaps;
+import com.b2international.collections.longs.LongCollection;
+import com.b2international.collections.longs.LongKeyMap;
+import com.b2international.commons.collect.LongSets;
+import com.b2international.commons.collect.LongSets.LongPredicate;
 import com.b2international.snowowl.core.api.index.CommonIndexConstants;
 import com.b2international.snowowl.datastore.index.AbstractDocsOutOfOrderCollector;
 import com.b2international.snowowl.datastore.index.mapping.Mappings;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 /**
  * Collector for gathering SNOMED CT component IDs and a human readable label for the component.
@@ -40,11 +40,12 @@ import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings
  * This collector can be used if the component label is stored as the
  * {@link CommonIndexConstants#COMPONENT_LABEL_SINGLE} field and the component ID is stored as a numeric doc value field
  * called {@link CommonIndexConstants#COMPONENT_ID}.
+ * @deprecated - UNSUPPORTED, will be removed in 4.6, label is not indexed anymore, use the {@link SnomedRequests SCT Request API} to fetch labels
  */
 public class SnomedComponentLabelCollector extends AbstractDocsOutOfOrderCollector {
 
 	private final LongPredicate componentIdsPredicate;
-	private final LongKeyMap idLabelMapping;
+	private final LongKeyMap<String> idLabelMapping;
 
 	private BinaryDocValues labelDocValues;
 	private NumericDocValues idDocValues;
@@ -58,7 +59,7 @@ public class SnomedComponentLabelCollector extends AbstractDocsOutOfOrderCollect
 	 * results.
 	 */
 	public SnomedComponentLabelCollector() {
-		this(LongPredicate.ALL_PREDICATE, new LongKeyOpenHashMap());
+		this(LongPredicate.ALL_PREDICATE, PrimitiveMaps.<String>newLongKeyOpenHashMap());
 	}
 
 	/**
@@ -68,10 +69,10 @@ public class SnomedComponentLabelCollector extends AbstractDocsOutOfOrderCollect
 	 * @param componentIds the component identifiers to accept
 	 */
 	public SnomedComponentLabelCollector(final LongCollection componentIds) {
-		this(LongSets.in(componentIds), new LongKeyOpenHashMap(getExpectedSize(componentIds)));
+		this(LongSets.in(componentIds), PrimitiveMaps.<String>newLongKeyOpenHashMapWithExpectedSize(getExpectedSize(componentIds)));
 	}
 
-	private SnomedComponentLabelCollector(final LongPredicate componentIdsPredicate, final LongKeyMap idLabelMapping) {
+	private SnomedComponentLabelCollector(final LongPredicate componentIdsPredicate, final LongKeyMap<String> idLabelMapping) {
 		this.componentIdsPredicate = componentIdsPredicate;
 		this.idLabelMapping = idLabelMapping;
 	}
@@ -103,7 +104,7 @@ public class SnomedComponentLabelCollector extends AbstractDocsOutOfOrderCollect
 	 * 
 	 * @return the map between component IDs and their human readable labels
 	 */
-	public LongKeyMap getIdLabelMapping() {
+	public LongKeyMap<String> getIdLabelMapping() {
 		return idLabelMapping;
 	}
 }

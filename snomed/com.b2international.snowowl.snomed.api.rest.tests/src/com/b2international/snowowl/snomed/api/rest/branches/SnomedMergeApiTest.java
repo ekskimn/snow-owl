@@ -21,11 +21,10 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeMerged;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeRebased;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchConflicts;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertMergeJobFails;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
 import static com.google.common.collect.Maps.newHashMap;
-import static org.junit.Assert.fail;
 
 import java.util.Date;
 import java.util.Map;
@@ -186,10 +185,22 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertComponentCanBeDeleted(branchPath, symbolicName, SnomedComponentType.DESCRIPTION);
 	}
 
+	@Override
+	public void setup() {
+		super.setup();
+		givenBranchWithPath(testBranchPath);
+	}
+	
+	@Override
+	protected IBranchPath createRandomBranchPath() {
+		// XXX make sure we nest the merge test cases under MAIN, so MAIN is not affected at all
+		final IBranchPath parentBranch = super.createRandomBranchPath();
+		givenBranchWithPath(parentBranch);
+		return BranchPathUtils.createPath(parentBranch, "merge-test");
+	}
+
 	@Test
 	public void mergeNewConceptForward() {
-		givenBranchWithPath(testBranchPath);
-
 		assertConceptCreated(testBranchPath, "C1");
 		assertConceptExists(testBranchPath, "C1");
 
@@ -201,8 +212,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void mergeNewDescriptionForward() {
-		givenBranchWithPath(testBranchPath);
-
 		assertDescriptionCreated(testBranchPath, "D1", ACCEPTABLE_ACCEPTABILITY_MAP);
 		assertDescriptionExists(testBranchPath, "D1");
 
@@ -214,8 +223,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void mergeNewRelationshipForward() {
-		givenBranchWithPath(testBranchPath);
-
 		assertRelationshipCreated(testBranchPath, "R1");
 		assertRelationshipExists(testBranchPath, "R1");
 
@@ -227,8 +234,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void noMergeNewConceptDiverged() {
-		givenBranchWithPath(testBranchPath);
-
 		assertConceptCreated(testBranchPath, "C1");
 		assertConceptExists(testBranchPath, "C1");
 		assertConceptNotExists(testBranchPath.getParent(), "C1");
@@ -237,7 +242,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertConceptExists(testBranchPath.getParent(), "C2");
 		assertConceptNotExists(testBranchPath, "C2");
 
-		assertBranchConflicts(testBranchPath, testBranchPath.getParent(), "Merge new concept");
+		assertMergeJobFails(testBranchPath, testBranchPath.getParent(), "Merge new concept");
 
 		assertConceptExists(testBranchPath, "C1");
 		assertConceptNotExists(testBranchPath.getParent(), "C1");
@@ -247,8 +252,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void noMergeNewDescriptionDiverged() {
-		givenBranchWithPath(testBranchPath);
-
 		assertDescriptionCreated(testBranchPath, "D1", SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP);
 		assertDescriptionExists(testBranchPath, "D1");
 		assertDescriptionNotExists(testBranchPath.getParent(), "D1");
@@ -257,7 +260,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertDescriptionExists(testBranchPath.getParent(), "D2");
 		assertDescriptionNotExists(testBranchPath, "D2");
 
-		assertBranchConflicts(testBranchPath, testBranchPath.getParent(), "Merge new description");
+		assertMergeJobFails(testBranchPath, testBranchPath.getParent(), "Merge new description");
 
 		assertDescriptionExists(testBranchPath, "D1");
 		assertDescriptionNotExists(testBranchPath.getParent(), "D1");
@@ -267,8 +270,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void noMergeNewRelationshipDiverged() {
-		givenBranchWithPath(testBranchPath);
-
 		assertRelationshipCreated(testBranchPath, "R1");
 		assertRelationshipExists(testBranchPath, "R1");
 		assertRelationshipNotExists(testBranchPath.getParent(), "R1");
@@ -277,7 +278,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertRelationshipExists(testBranchPath.getParent(), "R2");
 		assertRelationshipNotExists(testBranchPath, "R2");
 
-		assertBranchConflicts(testBranchPath, testBranchPath.getParent(), "Merge new relationship");
+		assertMergeJobFails(testBranchPath, testBranchPath.getParent(), "Merge new relationship");
 
 		assertRelationshipExists(testBranchPath, "R1");
 		assertRelationshipNotExists(testBranchPath.getParent(), "R1");
@@ -287,8 +288,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void rebaseNewConceptDiverged() {
-		givenBranchWithPath(testBranchPath);
-
 		assertConceptCreated(testBranchPath, "C1");
 		assertConceptExists(testBranchPath, "C1");
 		assertConceptNotExists(testBranchPath.getParent(), "C1");
@@ -307,8 +306,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void rebaseNewDescriptionDiverged() {
-		givenBranchWithPath(testBranchPath);
-
 		assertDescriptionCreated(testBranchPath, "D1", ACCEPTABLE_ACCEPTABILITY_MAP);
 		assertDescriptionExists(testBranchPath, "D1");
 		assertDescriptionNotExists(testBranchPath.getParent(), "D1");
@@ -327,8 +324,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void rebaseNewRelationshipDiverged() {
-		givenBranchWithPath(testBranchPath);
-
 		assertRelationshipCreated(testBranchPath, "R1");
 		assertRelationshipExists(testBranchPath, "R1");
 		assertRelationshipNotExists(testBranchPath.getParent(), "R1");
@@ -347,7 +342,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void rebaseNewConceptStale() {
-		givenBranchWithPath(testBranchPath);
 		IBranchPath branchPath = createNestedBranch(testBranchPath, "A", "B");
 
 		assertConceptCreated(branchPath, "CB1");
@@ -393,8 +387,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void noRebaseNewPreferredTerm() {
-		givenBranchWithPath(testBranchPath);
-
 		assertDescriptionCreated(testBranchPath, "D1", PREFERRED_ACCEPTABILITY_MAP);
 		assertDescriptionExists(testBranchPath, "D1");
 		assertDescriptionNotExists(testBranchPath.getParent(), "D1");
@@ -403,7 +395,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertDescriptionExists(testBranchPath.getParent(), "D2");
 		assertDescriptionNotExists(testBranchPath,"D2");
 
-		assertBranchConflicts(testBranchPath.getParent(), testBranchPath, "Rebase new preferred term");
+		assertMergeJobFails(testBranchPath.getParent(), testBranchPath, "Rebase new preferred term");
 
 		assertDescriptionExists(testBranchPath, "D1");
 		assertDescriptionNotExists(testBranchPath.getParent(), "D1");
@@ -417,7 +409,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertDescriptionCanBeUpdated(testBranchPath.getParent(), "D1", changesOnParent);
 		assertDescriptionCanBeUpdated(testBranchPath, "D1", changesOnBranch);
 
-		assertBranchConflicts(testBranchPath.getParent(), testBranchPath, "Rebase conflicting description change");
+		assertMergeJobFails(testBranchPath.getParent(), testBranchPath, "Rebase conflicting description change");
 	}
 
 	@Test
@@ -464,70 +456,33 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertConceptCanBeDeleted(testBranchPath.getParent(), "C1");
 		assertConceptCanBeUpdated(testBranchPath, "C1", changeOnBranch);
 
-		assertBranchConflicts(testBranchPath.getParent(), testBranchPath, "Rebase conflicting concept deletion");
-	}
-
-	@Test
-	public void noRebaseLockedBranch() {
-		final IBranchPath siblingA = BranchPathUtils.createPath(testBranchPath, "A");
-		final IBranchPath siblingB = BranchPathUtils.createPath(testBranchPath, "B");
-		
-		givenBranchWithPath(testBranchPath);
-		givenBranchWithPath(siblingA);
-		givenBranchWithPath(siblingB);
-		
-		assertConceptCreated(testBranchPath, "C1");
-		assertConceptExists(testBranchPath, "C1");
-		assertConceptNotExists(siblingA, "C1");
-		assertConceptNotExists(siblingB, "C1");
-		
-		// XXX: RestAssured doesn't support parallel requests, test may fail spuriously
-		new Thread() {
-			@Override
-			public void run() {
-				try {
-					Thread.sleep(100L);
-				} catch (InterruptedException e) {
-					fail("Interrupted while waiting in the asynchronous request thread.");
-				}
-				
-				assertBranchConflicts(testBranchPath, siblingB, "Rebase sibling B");
-			}
-		}.start();
-		
-		assertBranchCanBeRebased(siblingA, "Rebase sibling A");
-		
-		assertConceptExists(testBranchPath, "C1");
-		assertConceptExists(siblingA, "C1");
-		assertConceptNotExists(siblingB, "C1");
+		assertMergeJobFails(testBranchPath.getParent(), testBranchPath, "Rebase conflicting concept deletion");
 	}
 	
 	@Test
-	public void noRebaseSameBranch() {
-		givenBranchWithPath(testBranchPath);
-		final IBranchPath siblingA = createNestedBranch(testBranchPath, "A");
+	public void noRebaseInactivatedConceptOnBranchNewRelationshipOnParent() {
+		mergeNewConceptForward();
 		
-		assertConceptCreated(testBranchPath, "C1");
-		assertConceptExists(testBranchPath, "C1");
-		assertConceptNotExists(siblingA, "C1");
+		final Map<?, ?> changeOnBranch = ImmutableMap.builder()
+				.put("active", false)
+				.put("commitComment", "Inactivated concept on branch")
+				.build();
 		
-		new Thread() {
-			@Override
-			public void run() {
-				try {
-					Thread.sleep(100L);
-				} catch (InterruptedException e) {
-					fail("Interrupted while waiting in the asynchronous request thread.");
-				}
+		assertConceptCanBeUpdated(testBranchPath, "C1", changeOnBranch);
 
-				assertBranchConflicts(testBranchPath, siblingA, "Rebase sibling A (again)");
-			}
-		}.start();
+		final Map<?, ?> changeOnParent = ImmutableMap.builder()
+				.put("sourceId", symbolicNameMap.get("C1"))
+				.put("moduleId", Concepts.MODULE_SCT_CORE)
+				.put("typeId", Concepts.IS_A)
+				.put("destinationId", "49755003") // Morphologic abnormality
+				.put("commitComment", "New relationship")
+				.build();
+
+		assertComponentCreated(testBranchPath.getParent(), "R1", SnomedComponentType.RELATIONSHIP, changeOnParent);
+		assertMergeJobFails(testBranchPath.getParent(), testBranchPath, "Rebase conflicting concept inactivation");
 		
-		assertBranchCanBeRebased(siblingA, "Rebase sibling A");
-		
-		assertConceptExists(testBranchPath, "C1");
-		assertConceptExists(siblingA, "C1");
+		// If changes could not be taken over, C1 will be active on the test branch
+		SnomedComponentApiAssert.assertComponentActive(testBranchPath, SnomedComponentType.CONCEPT, symbolicNameMap.get("C1"), false);
 	}
 
 	@Test
@@ -596,7 +551,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		 * not be promoted.
 		 */
 		assertBranchCanBeRebased(testBranchPath, "Rebase description dual deletion");
-		assertBranchConflicts(testBranchPath, testBranchPath.getParent(), "Merge description dual deletion");
+		assertMergeJobFails(testBranchPath, testBranchPath.getParent(), "Merge description dual deletion");
 
 		assertDescriptionNotExists(testBranchPath, "D1");
 		assertDescriptionNotExists(testBranchPath.getParent(), "D1");
@@ -639,7 +594,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void rebaseTwoNewTextDefinitionsWithDifferentAcceptabilityMapShouldNotConflict() throws Exception {
-		givenBranchWithPath(testBranchPath);
 		// create two new text definitions with different lang. acceptability on testBranchPath
 		assertDescriptionCreated(testBranchPath, "D1", Concepts.TEXT_DEFINITION, ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED, Concepts.REFSET_LANGUAGE_TYPE_US, Acceptability.ACCEPTABLE));
 		assertDescriptionCreated(testBranchPath, "D2", Concepts.TEXT_DEFINITION, ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.ACCEPTABLE, Concepts.REFSET_LANGUAGE_TYPE_US, Acceptability.PREFERRED));

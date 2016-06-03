@@ -15,20 +15,13 @@
  */
 package com.b2international.snowowl.snomed.datastore.taxonomy;
 
-import bak.pcj.LongCollection;
-import bak.pcj.LongIterator;
-import bak.pcj.map.LongKeyMap;
-
+import com.b2international.collections.PrimitiveMaps;
+import com.b2international.collections.longs.LongCollection;
+import com.b2international.collections.longs.LongIterator;
+import com.b2international.collections.longs.LongKeyMap;
 import com.b2international.commons.arrays.Arrays2;
 import com.b2international.commons.arrays.LongBidiMapWithInternalId;
-import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
-import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.datastore.IsAStatementWithId;
-import com.b2international.snowowl.snomed.datastore.SnomedStatementBrowser;
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.StatementCollectionMode;
-import com.b2international.snowowl.snomed.datastore.index.StatementMap;
 import com.google.common.base.Preconditions;
 
 /**
@@ -45,17 +38,14 @@ public class SnomedTaxonomyBuilder extends AbstractSnomedTaxonomyBuilder {
 		Preconditions.checkNotNull(builder, "Builder argument cannot be null.");
 		
 		final SnomedTaxonomyBuilder $ = new SnomedTaxonomyBuilder();
-		$.branchPath = builder.branchPath;
-		$.nodes = new LongBidiMapWithInternalId( builder.nodes);
-		$.edges = (StatementMap) ((StatementMap) builder.edges).clone();
+		$.nodes = new LongBidiMapWithInternalId(builder.nodes);
+		$.edges = PrimitiveMaps.newLongKeyOpenHashMap(builder.edges);
 		$.setDirty(builder.isDirty());
 		$.descendants = Arrays2.copy(builder.descendants);
 		$.ancestors = Arrays2.copy(builder.ancestors);
 		
 		return $;
 	}
-
-	private IBranchPath branchPath;
 
 	/**
 	 * Bi-directional map for storing SNOMED CT concept IDs. 
@@ -66,89 +56,36 @@ public class SnomedTaxonomyBuilder extends AbstractSnomedTaxonomyBuilder {
 	 * Map for storing active IS_A type SNOMED CT relationship representations. Keys are the unique relationship identifiers.
 	 * <br>For values see: {@link IsAStatementWithId}.
 	 */
-	private LongKeyMap edges;
+	private LongKeyMap<long[]> edges;
 
 	private SnomedTaxonomyBuilder() {}
 	
-	public SnomedTaxonomyBuilder(final IBranchPath branchPath, final IsAStatementWithId[] isAStatements, final long[] conceptIds) {
-		this.branchPath = Preconditions.checkNotNull(branchPath, "Branch path argument cannot be null.");
+	public SnomedTaxonomyBuilder(final LongCollection conceptIds, final IsAStatementWithId[] isAStatements) {
+		nodes = new LongBidiMapWithInternalId(conceptIds.size());
+		for (final LongIterator itr = conceptIds.iterator(); itr.hasNext(); /**/) {
+			final long id = itr.next();
+			nodes.put(id, id);
+		}
 		
-		final Runnable initStatementsRunnable = new Runnable() {
-			@Override public void run() {
-				
-				edges = isAStatements.length < 1 ? new StatementMap() : new StatementMap(isAStatements.length);
-				
-				for (final IsAStatementWithId statement : isAStatements) {
-					edges.put(statement.getRelationshipId(), new long[] { statement.getDestinationId(), statement.getSourceId() });
-				}
-				
-			}
-		};
+		edges = isAStatements.length > 0 
+				? PrimitiveMaps.<long[]>newLongKeyOpenHashMapWithExpectedSize(isAStatements.length) 
+				: PrimitiveMaps.<long[]>newLongKeyOpenHashMap();
+
+		for (final IsAStatementWithId statement : isAStatements) {
+			edges.put(statement.getRelationshipId(), new long[] { statement.getDestinationId(), statement.getSourceId() });
+		}
 		
-		final Runnable initConceptsRunnable = new Runnable() {
-			@Override public void run() {
-				nodes = new LongBidiMapWithInternalId(conceptIds.length);
-				for (final long ids : conceptIds) {
-					nodes.put(ids/*conceptId*/, ids/*conceptId*/);
-				}
-			}
-		};
-		
-		ForkJoinUtils.runInParallel(initConceptsRunnable, initStatementsRunnable);
 		setDirty(true);
 	}
 	
-	public SnomedTaxonomyBuilder(final IBranchPath branchPath, final StatementCollectionMode mode) {
-		this.branchPath = Preconditions.checkNotNull(branchPath, "Branch path argument cannot be null.");
-		
-		final Runnable initStatementsRunnable = new Runnable() {
-			@Override public void run() {
-				
-				final IsAStatementWithId[] isAStatements = getStatementBrowser().getActiveStatements(branchPath, mode);
-				edges = 0 < isAStatements.length ? new StatementMap(isAStatements.length) : new StatementMap();
-				
-				for (final IsAStatementWithId statement : isAStatements) {
-					edges.put(statement.getRelationshipId(), new long[] { statement.getDestinationId(), statement.getSourceId() });
-				}
-				
-			}
-
-		};
-
-		final Runnable initConceptsRunnable = new Runnable() {
-			@Override public void run() {
-
-				final LongCollection idsStorageMap = getTerminologyBrowser().getAllConceptIds(branchPath);
-				nodes = new LongBidiMapWithInternalId(idsStorageMap.size());
-				for (final LongIterator itr = idsStorageMap.iterator(); itr.hasNext(); /**/) {
-					final long id = itr.next();
-					nodes.put(id/*conceptId*/, id/*storageKey*/);
-				}
-				
-			}
-
-		};
-		
-		ForkJoinUtils.runInParallel(initConceptsRunnable, initStatementsRunnable);
-		setDirty(true);
-	}
-
 	@Override
 	public LongBidiMapWithInternalId getNodes() {
 		return nodes;
 	}
 
 	@Override
-	public LongKeyMap getEdges() {
+	public LongKeyMap<long[]> getEdges() {
 		return edges;
 	}
 
-	private SnomedStatementBrowser getStatementBrowser() {
-		return ApplicationContext.getInstance().getService(SnomedStatementBrowser.class);
-	}
-
-	private SnomedTerminologyBrowser getTerminologyBrowser() {
-		return ApplicationContext.getInstance().getService(SnomedTerminologyBrowser.class);
-	}
-	
 }

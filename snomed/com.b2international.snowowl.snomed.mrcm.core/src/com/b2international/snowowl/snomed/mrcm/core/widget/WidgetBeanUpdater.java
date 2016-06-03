@@ -51,7 +51,6 @@ import com.b2international.snowowl.datastore.utils.ComponentUtils2;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.Relationship;
-import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.datastore.CaseSignificance;
@@ -84,8 +83,8 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedSimpleMapRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedStructuralRefSet;
 import com.google.common.base.Function;
+import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -95,13 +94,6 @@ public class WidgetBeanUpdater implements IWidgetBeanUpdater {
 
 	private static final String PREFERRED = REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED;
 	private static final String ACCEPTABLE = REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE;
-	
-	private static final Map<DataType, String> TYPE_TO_REFSET_MAP = ImmutableMap.of(
-			DataType.BOOLEAN, Concepts.REFSET_BOOLEAN_TYPE,
-			DataType.DATE, Concepts.REFSET_DATETIME_TYPE,
-			DataType.DECIMAL, Concepts.REFSET_FLOAT_TYPE,
-			DataType.INTEGER, Concepts.REFSET_INTEGER_TYPE,
-			DataType.STRING, Concepts.REFSET_STRING_TYPE);
 	
 	private Map<String, IdStorageKeyPair> preferredTermMemberPair;
 	private final AtomicBoolean hasPreferredTermChanges = new AtomicBoolean(false);
@@ -731,9 +723,7 @@ public class WidgetBeanUpdater implements IWidgetBeanUpdater {
 				
 				final SnomedConcreteDataTypeRefSetMember existingMember = findDataType(context, uuid, unvisitedDataTypes);
 				
-				if (StringUtils.isEmpty(selectedValue) 
-						|| !SnomedRefSetUtil.deserializeValue(existingMember.getDataType(), existingMember.getSerializedValue()).equals(
-								SnomedRefSetUtil.deserializeValue(existingMember.getDataType(), selectedValue))) {
+				if (hasLabelChanges(selectedLabel, existingMember.getLabel()) || hasValueChanges(existingMember.getDataType(), selectedValue, existingMember.getSerializedValue())) {
 					
 					SnomedModelExtensions.removeOrDeactivate(existingMember);
 					dataTypeBean.setUuid(DataTypeWidgetBean.UNINITIALIZED);
@@ -761,6 +751,14 @@ public class WidgetBeanUpdater implements IWidgetBeanUpdater {
 				SnomedModelExtensions.removeOrDeactivate(existingMember);
 			}
 		}
+	}
+
+	private boolean hasLabelChanges(String newLabel, String oldLabel) {
+		return !Objects.equal(newLabel, oldLabel);
+	}
+
+	private boolean hasValueChanges(final DataType dataType, final String newValue, final String oldValue) {
+		return StringUtils.isEmpty(newValue) || !SnomedRefSetUtil.deserializeValue(dataType, oldValue).equals(SnomedRefSetUtil.deserializeValue(dataType, newValue));
 	}
 
 	private SnomedConcreteDataTypeRefSetMember findDataType(final SnomedEditingContext context, final String uuid, 
@@ -794,8 +792,7 @@ public class WidgetBeanUpdater implements IWidgetBeanUpdater {
 
 	private void addDataType(final SnomedEditingContext context, final Concept concept, final DataTypeWidgetBean dataTypeBean, final String moduleId) {
 		
-		final com.b2international.snowowl.snomed.mrcm.DataType mrcmDataType = dataTypeBean.getAllowedType();
-		final DataType ecoreDataType = WidgetBeanUtils.TYPE_CONVERSION_MAP.inverse().get(mrcmDataType);
+		final DataType ecoreDataType = dataTypeBean.getAllowedType();
 		
 		final Object serializedValue = SnomedRefSetUtil.deserializeValue(ecoreDataType, 
 				dataTypeBean.getSelectedValue());
@@ -805,7 +802,7 @@ public class WidgetBeanUpdater implements IWidgetBeanUpdater {
 				SnomedTerminologyComponentConstants.CONCEPT_NUMBER, concept.getId());
 		
 		final ILookupService<String, SnomedRefSet, CDOView> lookupService = CoreTerminologyBroker.getInstance().getLookupService(SnomedTerminologyComponentConstants.REFSET);
-		final String refSetId = TYPE_TO_REFSET_MAP.get(ecoreDataType);
+		final String refSetId = SnomedRefSetUtil.DATATYPE_TO_REFSET_MAP.get(ecoreDataType);
 		final SnomedRefSet refSet = lookupService.getComponent(refSetId, context.getTransaction());
 		
 		

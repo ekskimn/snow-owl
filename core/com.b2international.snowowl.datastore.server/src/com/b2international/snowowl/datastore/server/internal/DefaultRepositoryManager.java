@@ -41,13 +41,13 @@ public final class DefaultRepositoryManager implements RepositoryManager {
 	public Collection<Repository> repositories() {
 		return ImmutableList.copyOf(repositories.values());
 	}
-
-	/* package */ void put(String repositoryId, Repository repository) {
+	
+	/*package*/ void put(String repositoryId, Repository repository) {
 		checkNotNull(repositoryId, "repositoryId");
 		checkNotNull(repository, "repository");
 		repositories.put(repositoryId, repository);
 	}
-
+	
 	public RepositoryBuilder prepareCreate(String repositoryId) {
 		return new RepositoryBuilder(this, repositoryId);
 	}

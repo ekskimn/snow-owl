@@ -38,9 +38,7 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 	@NotEmpty
 	private final String branchPath;
 	
-	@NotEmpty
-	private final String languageRefSetId;
-	
+	@NotNull
 	private final boolean createVersion;
 	
 	private boolean releasePatch;
@@ -51,6 +49,9 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 	private Date startDate;
 	private Date completionDate;
 	
+	@NotEmpty
+	private final String snomedReleaseShortName;
+	
 	/**
 	 * Creates a new import configuration instance.
 	 * @param rf2ReleaseType the RF2 release type.
@@ -59,15 +60,14 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 	 * @param createVersion boolean indicating whether a new version has to be created for each individual 
 	 * effective times. Has no effect if the RF2 release type in *NOT* full.
 	 */
-	public SnomedImportConfiguration(final Rf2ReleaseType rf2ReleaseType, final String branchPath,  
-			final String languageRefSetId, final boolean createVersion) {
-		
-		this.rf2ReleaseType = checkNotNull(rf2ReleaseType, "rf2ReleaseType");
-		this.branchPath = checkNotNull(branchPath, "branchPath");
-		this.languageRefSetId = checkNotNull(languageRefSetId, "languageRefSetId");
-		this.createVersion = checkNotNull(createVersion, "createVersion");
+	public SnomedImportConfiguration(final Rf2ReleaseType rf2ReleaseType, final String branchPath, final boolean createVersion,
+			final String snomedReleaseShortName) {
+		this.rf2ReleaseType = rf2ReleaseType;
+		this.branchPath = branchPath;
+		this.createVersion = createVersion;
+		this.snomedReleaseShortName = snomedReleaseShortName;
 	}
-	
+
 	public static ISnomedImportConfiguration newReleasePatchConfiguration(final String branchPath, final String languageRefSetId, String patchReleaseVersion) {
 		final SnomedImportConfiguration configuration = new SnomedImportConfiguration(Rf2ReleaseType.DELTA, branchPath, languageRefSetId, false);
 		configuration.releasePatch = true;
@@ -75,7 +75,7 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 		configuration.patchReleaseVersion = EffectiveTimes.parse(patchReleaseVersion);
 		return configuration;
 	}
-
+	
 	@Override
 	public Rf2ReleaseType getRf2ReleaseType() {
 		return rf2ReleaseType;
@@ -86,11 +86,6 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 		return branchPath;
 	}
 	
-	@Override
-	public String getLanguageRefSetId() {
-		return languageRefSetId;
-	}
-
 	@Override
 	public boolean shouldCreateVersion() {
 		return createVersion;
@@ -119,6 +114,11 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 	@Override
 	public Date getPatchReleaseVersion() {
 		return patchReleaseVersion;
+	}
+	
+	@Override
+	public String getSnomedReleaseShortName() {
+		return snomedReleaseShortName;
 	}
 	
 	/**

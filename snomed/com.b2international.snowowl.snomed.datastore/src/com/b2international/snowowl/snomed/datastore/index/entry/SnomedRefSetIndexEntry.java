@@ -19,16 +19,22 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.Serializable;
+import java.util.Collection;
+import java.util.List;
 
 import org.apache.lucene.document.Document;
 
 import com.b2international.commons.BooleanUtils;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.api.IComponent;
+import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.datastore.IRefSetComponent;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.google.common.base.Function;
+import com.google.common.collect.FluentIterable;
 
 /**
  * A transfer object representing a SNOMED CT reference set.
@@ -53,6 +59,45 @@ public class SnomedRefSetIndexEntry extends SnomedIndexEntry implements IRefSetC
 				.type(SnomedRefSetType.get(SnomedMappings.refSetType().getValue(doc)))
 				.referencedComponentType(SnomedMappings.refSetReferencedComponentType().getShortValue(doc))
 				.structural(BooleanUtils.valueOf(SnomedMappings.refSetStructural().getValue(doc).intValue()));
+	}
+	
+	public static Builder builder(SnomedReferenceSet refSet) {
+		final short terminologyComponentIdAsShort = CoreTerminologyBroker.getInstance().getTerminologyComponentIdAsShort(refSet.getReferencedComponentType());
+		return builder()
+				.id(refSet.getId())
+				.iconId(refSet.getIconId())
+				.moduleId(refSet.getModuleId())
+				.active(refSet.isActive())
+				.released(refSet.isReleased())
+				.effectiveTimeLong(EffectiveTimes.getEffectiveTime(refSet.getEffectiveTime()))
+				.type(refSet.getType())
+				.referencedComponentType(terminologyComponentIdAsShort)
+				.structural(SnomedRefSetUtil.isStructural(refSet.getId(), refSet.getType()));
+	}
+	
+	public static Builder builder(SnomedRefSetIndexEntry entry) {
+		return builder()
+				.id(entry.getId())
+				.iconId(entry.getIconId())
+				.moduleId(entry.getModuleId())
+				.active(entry.isActive())
+				.released(entry.isReleased())
+				.effectiveTimeLong(entry.getEffectiveTimeAsLong())
+				.type(entry.getType())
+				.referencedComponentType(entry.getReferencedComponentType())
+				.structural(entry.isStructural())
+				.label(entry.getLabel())
+				.score(entry.getScore())
+				.storageKey(entry.getStorageKey());
+	}
+	
+	public static List<SnomedRefSetIndexEntry> from(final Collection<SnomedReferenceSet> refSets) {
+		return FluentIterable.from(refSets).transform(new Function<SnomedReferenceSet, SnomedRefSetIndexEntry>() {
+			@Override
+			public SnomedRefSetIndexEntry apply(SnomedReferenceSet input) {
+				return SnomedRefSetIndexEntry.builder(input).build();
+			}
+		}).toList();
 	}
 
 	public static class Builder extends AbstractBuilder<Builder> {
@@ -92,7 +137,8 @@ public class SnomedRefSetIndexEntry extends SnomedIndexEntry implements IRefSetC
 		}
 
 		public SnomedRefSetIndexEntry build() {
-			return new SnomedRefSetIndexEntry(id, 
+			return new SnomedRefSetIndexEntry(id,
+					label,
 					iconId,
 					score, 
 					storageKey, 
@@ -110,7 +156,8 @@ public class SnomedRefSetIndexEntry extends SnomedIndexEntry implements IRefSetC
 	private final short referencedComponentType;
 	private final boolean structural;
 
-	private SnomedRefSetIndexEntry(final String id, 
+	private SnomedRefSetIndexEntry(final String id,
+			final String label,
 			final String iconId,
 			final float score, 
 			final long storageKey, 
@@ -123,6 +170,7 @@ public class SnomedRefSetIndexEntry extends SnomedIndexEntry implements IRefSetC
 			final boolean structural) {
 
 		super(id, 
+				label,
 				iconId,
 				score, 
 				storageKey, 
@@ -175,4 +223,5 @@ public class SnomedRefSetIndexEntry extends SnomedIndexEntry implements IRefSetC
 				.add("structural", structural)
 				.toString();
 	}
+
 }

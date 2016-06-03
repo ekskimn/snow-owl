@@ -20,26 +20,25 @@ import static com.google.common.collect.Iterables.isEmpty;
 
 import java.util.BitSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongCollections;
+import com.b2international.collections.longs.LongIterator;
+import com.b2international.collections.longs.LongKeyMap;
+import com.b2international.collections.longs.LongSet;
+
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.Pair;
 import com.b2international.commons.arrays.LongBidiMapWithInternalId;
-import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
-import com.b2international.commons.pcj.LongSets;
+import com.b2international.commons.collect.LongSets;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.exceptions.CycleDetectedException;
 import com.b2international.snowowl.snomed.datastore.taxonomy.InvalidRelationship.MissingConcept;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-
-import bak.pcj.map.LongKeyMap;
-import bak.pcj.map.LongKeyMapIterator;
-import bak.pcj.set.LongOpenHashSet;
-import bak.pcj.set.LongSet;
 
 /**
  *
@@ -102,17 +101,15 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 		//2D integer array for storing concept internal IDs and for saving ~1M additional internal ID lookup via hash code
 		//0 index source/subject concept internal ID
 		//1 index destination/object concept internal ID
-		final int[][] _conceptInternalIds  = new int[getEdges().size()][2];
+		final LongKeyMap<long[]> edges = getEdges();
+		final int[][] _conceptInternalIds  = new int[edges.size()][2];
 		int count = 0;
 		
 		// refresh all RelationshipMini concepts, since they may have been modified
-		for (final LongKeyMapIterator itr = getEdges().entries(); itr.hasNext(); /* nothing */) {
+		for (final LongIterator keys = edges.keySet().iterator(); keys.hasNext(); /* nothing */) {
 			
-			itr.next(); //keep iterating
-			
-			final long[] statement = (long[]) itr.getValue();
-
-			final long relationshipId = itr.getKey();
+			final long relationshipId = keys.next(); //keep iterating
+			final long[] statement = edges.get(relationshipId);
 			final long destinationId = statement[0];
 			final long sourceId = statement[1];
 			
@@ -266,48 +263,21 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 		dirty = true;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see com.b2international.snowowl.snomed.datastore.index.ISnomedTaxonomyBuilder#difference(com.b2international.snowowl.snomed.datastore.index.ISnomedTaxonomyBuilder)
-	 */
 	@Override
 	public Pair<LongSet, LongSet> difference(final ISnomedTaxonomyBuilder other) {
-		
 		Preconditions.checkNotNull(other, "Taxonomy builder argument cannot be null.");
 		
 		if (other == this) {
-			return new Pair<LongSet, LongSet>(new LongOpenHashSet(), new LongOpenHashSet());
+			return Pair.of(LongCollections.emptySet(), LongCollections.emptySet());
 		}
 		
-		final AtomicReference<LongSet> otherStatements = new AtomicReference<LongSet>();
-		final AtomicReference<LongSet> thisStatements = new AtomicReference<LongSet>();
+		final LongSet thisStatements = getEdges().keySet();
+		final LongSet otherStatements = ((AbstractSnomedTaxonomyBuilder) other).getEdges().keySet();
 		
-		final Runnable getOtherStatementsRunnable = new Runnable() {
-			@Override public void run() { otherStatements.set(((AbstractSnomedTaxonomyBuilder) other).getEdges().keySet()); }
-		};
+		final LongSet thisDiff = LongSets.difference(thisStatements, otherStatements);
+		final LongSet otherDiff = LongSets.difference(otherStatements, thisStatements);
 		
-		final Runnable getThisStatementsRunnable = new Runnable() {
-			@Override public void run() { thisStatements.set(getEdges().keySet()); }
-		};
-		
-		ForkJoinUtils.runInParallel(getOtherStatementsRunnable, getThisStatementsRunnable);
-		
-		final AtomicReference<LongSet> newStatements = new AtomicReference<LongSet>();
-		final AtomicReference<LongSet> detachedStatements = new AtomicReference<LongSet>();
-
-		final Runnable calculateNewStatementsRunnable = new Runnable() {
-			@Override public void run() { newStatements.set(LongSets.difference(thisStatements.get(), otherStatements.get()));
-			}
-		};
-
-		final Runnable calculateDetachedStatementsRunnable = new Runnable() {
-			@Override public void run() { detachedStatements.set(LongSets.difference(otherStatements.get(), thisStatements.get()));
-			}
-		};
-
-		ForkJoinUtils.runInParallel(calculateNewStatementsRunnable, calculateDetachedStatementsRunnable);
-		
-		return new Pair<LongSet, LongSet>(newStatements.get(), detachedStatements.get());
+		return Pair.of(thisDiff, otherDiff);
 	}
 	
 	
@@ -378,7 +348,7 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 
 	public abstract LongBidiMapWithInternalId getNodes();
 	
-	public abstract LongKeyMap getEdges();
+	public abstract LongKeyMap<long[]> getEdges();
 	
 	public int[][] getAncestors() {
 		return ancestors;
@@ -441,18 +411,18 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 	}
 
 	private long[] getEdges0(final long statementId) {
-		return (long[]) getEdges().get(statementId);
+		return getEdges().get(statementId);
 	}
 
 	private LongSet processElements(final long conceptId, final IntToLongFunction function, final BitSet bitSet) {
 		Preconditions.checkNotNull(function, "Function argument cannot be null.");
 		Preconditions.checkNotNull(function, "Bit set argument cannot be null.");
 		if (CompareUtils.isEmpty(bitSet)) {
-			return new LongOpenHashSet();
+			return PrimitiveSets.newLongOpenHashSet();
 		}
 		final int count = bitSet.cardinality();
 	
-		final LongSet $ = new LongOpenHashSet(count);
+		final LongSet $ = PrimitiveSets.newLongOpenHashSetWithExpectedSize(count);
 		for (int i = bitSet.nextSetBit(0); i >= 0; i = bitSet.nextSetBit(i + 1)) {
 			long convertedId = function.apply(i);
 			if (convertedId == conceptId) {
@@ -467,9 +437,9 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 	private LongSet processElements(final String conceptId, final IntToLongFunction function, final int... internalIds) {
 		Preconditions.checkNotNull(function, "Function argument cannot be null.");
 		if (CompareUtils.isEmpty(internalIds)) {
-			return new LongOpenHashSet();
+			return PrimitiveSets.newLongOpenHashSet();
 		}
-		final LongSet $ = new LongOpenHashSet(internalIds.length); //optimized load factor
+		final LongSet $ = PrimitiveSets.newLongOpenHashSetWithExpectedSize(internalIds.length);
 		final long conceptIdLong = Long.parseLong(conceptId);
 		for (final int i : internalIds) {
 			long convertedId = function.apply(i);

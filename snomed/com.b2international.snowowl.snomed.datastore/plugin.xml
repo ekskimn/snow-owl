@@ -283,6 +283,9 @@
          <adapter
                type="com.b2international.snowowl.core.api.IComponent">
          </adapter>
+         <adapter
+               type="com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry">
+         </adapter>
       </factory>
    </extension>
    <extension
@@ -402,14 +405,6 @@
       </serviceConfigJob>
    </extension>
    <extension
-         point="com.b2international.snowowl.datastore.revisionCacheWarmerJob">
-      <revisionCacheWarmerJob
-            class="com.b2international.snowowl.snomed.datastore.services.SnomedRevisionCacheWarmerJob"
-            id="com.b2international.snowowl.snomed.datastore.services.SnomedRevisionCacheWarmJob"
-            terminologyId="com.b2international.snowowl.terminology.snomed">
-      </revisionCacheWarmerJob>
-   </extension>
-   <extension
          point="com.b2international.snowowl.core.terminologyComponentUriResolver">
       <resolver
             class="com.b2international.snowowl.snomed.datastore.uri.SnomedComponentUriResolver"
@@ -437,7 +432,7 @@
       <provider
             class="com.b2international.snowowl.snomed.datastore.SnomedRelationshipIconIdProvider"
             id="com.b2international.snowowl.snomed.datastore.SnomedRelationshipIconIdProvider"
-            terminologyComponentId="com.b2international.snowowl.terminology.snomed.">
+            terminologyComponentId="com.b2international.snowowl.terminology.snomed.relationship">
       </provider>
    </extension>
    <extension
@@ -503,5 +498,23 @@
       <bootstrapFragment
             class="com.b2international.snowowl.snomed.datastore.id.SnomedIdentifierBootstrap">
       </bootstrapFragment>
+   </extension>
+   <extension
+         point="com.b2international.snowowl.terminologyregistry.core.codeSystemBuilder">
+      <codeSystemBuilder
+            class="com.b2international.snowowl.snomed.core.store.SnomedReleaseBuilder">
+      </codeSystemBuilder>
+   </extension>
+   <extension
+         point="com.b2international.snowowl.terminologyregistry.core.codeSystemEntryBuilder">
+      <codeSystemEntryBuilder
+            class="com.b2international.snowowl.snomed.datastore.index.SnomedReleaseEntryBuilder">
+      </codeSystemEntryBuilder>
+   </extension>
+   <extension
+         point="com.b2international.snowowl.terminologyregistry.core.codeSystemVersionEntryBuilder">
+      <codeSystemVersionEntryBuilder
+            class="com.b2international.snowowl.snomed.datastore.index.SnomedVersionEntryBuilder">
+      </codeSystemVersionEntryBuilder>
    </extension>
 </plugin>

@@ -51,12 +51,27 @@ public abstract class SnomedTerminologyComponentConstants {
 	public static final short DATA_TYPE_STRING_NUMBER = 105;
 	public static final String DATA_TYPE_INTEGER = "com.b2international.snowowl.terminology.snomed.datatype.integer";
 	public static final short DATA_TYPE_INTEGER_NUMBER = 106;
-	public static final String DATA_TYPE_FLOAT= "com.b2international.snowowl.terminology.snomed.datatype.float";
-	public static final short DATA_TYPE_FLOAT_NUMBER = 107;
+	public static final String DATA_TYPE_DECIMAL= "com.b2international.snowowl.terminology.snomed.datatype.decimal";
+	public static final short DATA_TYPE_DECIMAL_NUMBER = 107;
 	public static final String DATA_TYPE_BOOLEAN = "com.b2international.snowowl.terminology.snomed.datatype.boolean";
 	public static final short DATA_TYPE_BOOLEAN_NUMBER = 108;
 	public static final String DATA_TYPE_DATE = "com.b2international.snowowl.terminology.snomed.datatype.date";
 	public static final short DATA_TYPE_DATE_NUMBER = 109;
+	
+	public static final String SNOMED_INT_SHORT_NAME = "SNOMEDCT";
+	public static final String SNOMED_INT_NAME = "Systematized Nomenclature of Medicine Clinical Terms International Version";
+	public static final String SNOMED_INT_OID = "2.16.840.1.113883.6.96";
+	public static final String SNOMED_INT_LANGUAGE = "ENG";
+	public static final String SNOMED_INT_LINK = "http://www.ihtsdo.org";
+	public static final String SNOMED_INT_ICON_PATH = "icons/snomed.png";
+	public static final String SNOMED_INT_CITATION = "SNOMED CT contributes to the improvement of patient care by underpinning the " +
+			"development of Electronic Health Records that record clinical information in ways that enable meaning-based retrieval. " +
+			"This provides effective access to information required for decision support and consistent reporting and analysis. " +
+			"Patients benefit from the use of SNOMED CT because it improves the recording of EHR information and facilitates better communication, " +
+			"leading to improvements in the quality of care.";
+	
+	public static final String SNOMED_RELEASE_BASE_CODE_SYSTEM_OID = "baseCodeSystemOID";
+	public static final String SNOMED_RELEASE_RELEASE_TYPE = "releaseType";
 	
 	/**
 	 * Fake terminology component type ID for predicates.
@@ -154,7 +169,7 @@ public abstract class SnomedTerminologyComponentConstants {
 			case REFSET_MEMBER_NUMBER: return REFSET_MEMBER;
 			case DATA_TYPE_BOOLEAN_NUMBER: return DATA_TYPE_BOOLEAN;
 			case DATA_TYPE_DATE_NUMBER: return DATA_TYPE_DATE;
-			case DATA_TYPE_FLOAT_NUMBER: return DATA_TYPE_FLOAT;
+			case DATA_TYPE_DECIMAL_NUMBER: return DATA_TYPE_DECIMAL;
 			case DATA_TYPE_INTEGER_NUMBER: return DATA_TYPE_INTEGER;
 			case DATA_TYPE_STRING_NUMBER: return DATA_TYPE_STRING;
 			default: throw new IllegalArgumentException("Unknown terminology component identifier value: " + value);
@@ -181,8 +196,8 @@ public abstract class SnomedTerminologyComponentConstants {
 			return DATA_TYPE_BOOLEAN_NUMBER;
 		} else if (DATA_TYPE_DATE.equals(id)) {
 			return DATA_TYPE_DATE_NUMBER;
-		} else if (DATA_TYPE_FLOAT.equals(id)) {
-			return DATA_TYPE_FLOAT_NUMBER;
+		} else if (DATA_TYPE_DECIMAL.equals(id)) {
+			return DATA_TYPE_DECIMAL_NUMBER;
 		} else if (DATA_TYPE_INTEGER.equals(id)) {
 			return DATA_TYPE_INTEGER_NUMBER;
 		} else if (DATA_TYPE_STRING.equals(id)) {

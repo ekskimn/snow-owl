@@ -24,45 +24,45 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.emf.cdo.util.CommitException;
 
 import com.b2international.commons.CompareUtils;
+import com.b2international.commons.StringUtils;
 import com.b2international.commons.csv.CsvLexer.EOL;
 import com.b2international.commons.csv.CsvParser;
 import com.b2international.commons.csv.CsvSettings;
 import com.b2international.commons.csv.RecordParserCallback;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.ComponentIdentifierPair;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.api.browser.ITerminologyBrowser;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.cdo.CDOUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
-import com.b2international.snowowl.datastore.server.CDOServerUtils;
-import com.b2international.snowowl.datastore.utils.ComponentUtils2;
+import com.b2international.snowowl.datastore.server.snomed.ImportOnlySnomedTransactionContext;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
-import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.ReservingIdStrategy;
+import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
-import com.b2international.snowowl.snomed.datastore.SnomedRefSetEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
+import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequestBuilder;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedUnimportedRefSets;
 import com.b2international.snowowl.snomed.refset.core.automap.CsvVariableFieldCountParser;
 import com.b2international.snowowl.snomed.refset.core.automap.XlsParser;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedRegularRefSet;
-import com.google.common.base.Preconditions;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.collect.Sets;
-import com.google.common.io.Closeables;
 
 /**
  * Import simple type reference sets into Snow Owl from a SNOMED&nbsp;CT RF1
@@ -91,7 +91,6 @@ public class SnomedSubsetImporter {
 	private final String subsetName;
 	private final String namespace;
 	private SnomedUnimportedRefSets unimportedRefSets;
-	private final SnomedEditingContext context;
 	private final String userId;
 	private final Set<String> importedConceptIds;
 
@@ -133,7 +132,6 @@ public class SnomedSubsetImporter {
 			fieldSeparatorCharacter = fieldSeparator.charAt(0);
 		}
 
-		this.context = new SnomedEditingContext(this.branchPath);
 	}
 
 	/**
@@ -144,10 +142,11 @@ public class SnomedSubsetImporter {
 	 *             if there was an error during the import
 	 */
 	public SnomedUnimportedRefSets doImport() throws SnowowlServiceException {
-		BufferedReader reader = null;
-
-		try {
-			SubsetInformation information = createSubsetInformation();
+		
+		try (TransactionContext context = new ImportOnlySnomedTransactionContext(new SnomedEditingContext(this.branchPath))) {
+			
+			final SubsetInformation information = createSubsetInformation();
+			
 			if (null != information.getEffectiveTime()) {
 				unimportedRefSets = new SnomedUnimportedRefSets(
 						importFile.getName(), 
@@ -158,9 +157,9 @@ public class SnomedSubsetImporter {
 				unimportedRefSets = new SnomedUnimportedRefSets(importFile.getName(), information.getSubsetName(), information.getNameSpace(), null);
 			}
 			
-			createHierarchy();
-			SubsetImporterCallback callBack = createCallBack(information);
-			CsvSettings csvSettings = createCVSSettings();
+			createHierarchy(context);
+			final SubsetImporterCallback callBack = createCallBack(context, information);
+			final CsvSettings csvSettings = createCSVSettings();
 			
 			if (fileExtension.equals("csv")) {
 				CsvVariableFieldCountParser parser = new CsvVariableFieldCountParser(new File(importFile.getAbsolutePath()), csvSettings, hasHeader, skipEmptyLines);
@@ -173,108 +172,98 @@ public class SnomedSubsetImporter {
 				
 				callBack.handleNonTxtFileRecord(parser.getContent());
 			} else if (fileExtension.equals("txt")) {
-				int refSetColumnCount = getRefSetColumnCount();
-				reader = new BufferedReader(new FileReader(importFile));
-				CsvParser csvParser = new CsvParser(reader, csvSettings, callBack, refSetColumnCount);
-				csvParser.parse();
+				try (BufferedReader reader = new BufferedReader(new FileReader(importFile))) {
+					new CsvParser(reader, csvSettings, callBack, getRefSetColumnCount()).parse();
+				}
 			}
 
 			if (null != information.getEffectiveTime()) {
-				updateEffectiveTimes(information.getEffectiveTime());
+				updateEffectiveTimes(context, information.getEffectiveTime());
 			}
 
-			try {
-				String comment = new StringBuilder("Imported ").append(information.getSubsetName()).append(".").toString();
-				CDOServerUtils.commit(context.getTransaction(), userId, comment, new NullProgressMonitor());
-			} catch (CommitException e) {
-				LOGGER.error("Error while committing imported reference set members.");
-				throw new SnowowlServiceException("Error while committing imported reference set members.", e);
-			}
-
+			final String comment = new StringBuilder("Imported ").append(information.getSubsetName()).append(".").toString();
+			context.commit(userId, comment);
 		} catch (IOException e) {
 			LOGGER.error("Error while reading input file.");
 			throw new SnowowlServiceException("Error while reading input file.", e);
 		} catch (ParseException e) {
 			LOGGER.error("Error while parsing input file.");
 			throw new SnowowlServiceException("Error while parsing input file.", e);
-		} catch (final CommitException e) {
-			LOGGER.error("Error while persisting changes.");
-			throw new SnowowlServiceException("Error while persisting changes.", e);
-		} finally {
-			context.close();
-			Closeables.closeQuietly(reader);
+		} catch (Exception e) {
+			throw new SnowowlServiceException("Error while importing subsets.", e);
 		}
 
 		return unimportedRefSets;
 	}
 	
 	// Creates the SubsetImporterCallBack for the given RefSet type
-	private SubsetImporterCallback createCallBack(SubsetInformation information) {
+	private SubsetImporterCallback createCallBack(TransactionContext context, SubsetInformation information) {
+		final String label = information.getSubsetName();
 		switch (refSetType) {
 			case 0:	// place under Simple type reference set
-				return new SubsetImporterCallback(information, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_SIMPLE_TYPE);
+				return new SubsetImporterCallback(label, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_SIMPLE_TYPE);
 			case 1:	 // place under B2i examples
-				return new SubsetImporterCallback(information, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_B2I_EXAMPLE);
+				return new SubsetImporterCallback(label, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_B2I_EXAMPLE);
 			case 2:	// place under KP CONVERGENT MEDICAL TERMINOLOGY
-				return new SubsetImporterCallback(information, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_KP_CONVERGENT_MEDICAL_TERMINOLOGY);
+				return new SubsetImporterCallback(label, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_KP_CONVERGENT_MEDICAL_TERMINOLOGY);
 			case 3:	// place under CORE PROBLEM LIST REFERENCE SETS
-				return new SubsetImporterCallback(information, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_CORE_PROBLEM_LIST_REFERENCE_SETS);
+				return new SubsetImporterCallback(label, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_CORE_PROBLEM_LIST_REFERENCE_SETS);
 			case 4:	// place under INFOWAY PRIMARY HEALTH CARE REFERENCE SETS
-				return new SubsetImporterCallback(information, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_INFOWAY_PRIMARY_HEALTH_CARE_REFERENCE_SETS);
+				return new SubsetImporterCallback(label, unimportedRefSets, context, idColumnNumber, hasHeader, Concepts.REFSET_INFOWAY_PRIMARY_HEALTH_CARE_REFERENCE_SETS);
 			default:
 				return null;
 		}
 	}
 
 	// Creates the hierarchy where the RefSet will be placed
-	private void createHierarchy() throws CommitException {
+	private void createHierarchy(TransactionContext context) throws CommitException {
 		if (1 == refSetType) { // place under B2i examples
-			createB2iExampleConcept();
+			createB2iExampleConcept(context);
 		} else if (2 == refSetType) {  // place under KP CONVERGENT MEDICAL TERMINOLOGY
-			createB2iExampleConcept();
-			createKpConvergentMedicalTerminologyConcept();
+			createB2iExampleConcept(context);
+			createKpConvergentMedicalTerminologyConcept(context);
 		} else if (3 == refSetType) {  // place under CORE PROBLEM LIST REFERENCE SETS
-			createB2iExampleConcept();
-			createCOREProblemListConcept();
+			createB2iExampleConcept(context);
+			createCOREProblemListConcept(context);
 		} else if (4 == refSetType) {  // place under INFOWAY PRIMARY HEALTH CARE REFERENCE SETS
-			createB2iExampleConcept();
-			createInfowayPrimaryHealthCareConcept();
+			createB2iExampleConcept(context);
+			createInfowayPrimaryHealthCareConcept(context);
 		}
 	}
 
 	// Creates the B2i examples concept
-	private void createB2iExampleConcept() throws CommitException {
+	private void createB2iExampleConcept(TransactionContext context) {
 		if (null == getTerminologyBrowser().getConcept(branchPath, Concepts.REFSET_B2I_EXAMPLE)) {
-			createConcept(Concepts.REFSET_SIMPLE_TYPE, Concepts.REFSET_B2I_EXAMPLE, Concepts.MODULE_B2I_EXTENSION, "B2i examples");
+			createConcept(context, Concepts.REFSET_SIMPLE_TYPE, Concepts.REFSET_B2I_EXAMPLE, Concepts.MODULE_B2I_EXTENSION, "B2i examples");
 		}
 	}
 
 	// Creates the KP Convergent Medical Terminology concept
-	private void createKpConvergentMedicalTerminologyConcept() throws CommitException {
+	private void createKpConvergentMedicalTerminologyConcept(TransactionContext context) {
 		if (null == getTerminologyBrowser().getConcept(branchPath, Concepts.REFSET_KP_CONVERGENT_MEDICAL_TERMINOLOGY)) {
-			createConcept(Concepts.REFSET_B2I_EXAMPLE, Concepts.REFSET_KP_CONVERGENT_MEDICAL_TERMINOLOGY, Concepts.MODULE_B2I_EXTENSION,
+			createConcept(context, Concepts.REFSET_B2I_EXAMPLE, Concepts.REFSET_KP_CONVERGENT_MEDICAL_TERMINOLOGY, Concepts.MODULE_B2I_EXTENSION,
 					"KP Convergent Medical Terminology");
 		}
 	}
 	
 	// Creates the CORE Problem List concept
-	private void createCOREProblemListConcept() throws CommitException {
+	private void createCOREProblemListConcept(TransactionContext context) {
 		if (null == getTerminologyBrowser().getConcept(branchPath, Concepts.REFSET_CORE_PROBLEM_LIST_REFERENCE_SETS)) {
-			createConcept(Concepts.REFSET_B2I_EXAMPLE, Concepts.REFSET_CORE_PROBLEM_LIST_REFERENCE_SETS, Concepts.MODULE_B2I_EXTENSION,
+			createConcept(context, Concepts.REFSET_B2I_EXAMPLE, Concepts.REFSET_CORE_PROBLEM_LIST_REFERENCE_SETS, Concepts.MODULE_B2I_EXTENSION,
 					"CORE Problem List Reference Sets");
 		}
 	}
 
 	// Creates the Infoway Primary Health Care concept
-	private void createInfowayPrimaryHealthCareConcept() throws CommitException {
+	private void createInfowayPrimaryHealthCareConcept(TransactionContext context) throws CommitException {
 		if (null == getTerminologyBrowser().getConcept(branchPath, Concepts.REFSET_INFOWAY_PRIMARY_HEALTH_CARE_REFERENCE_SETS)) {
-			createConcept(Concepts.REFSET_B2I_EXAMPLE, Concepts.REFSET_INFOWAY_PRIMARY_HEALTH_CARE_REFERENCE_SETS, Concepts.MODULE_B2I_EXTENSION,
+			createConcept(context, Concepts.REFSET_B2I_EXAMPLE, Concepts.REFSET_INFOWAY_PRIMARY_HEALTH_CARE_REFERENCE_SETS, Concepts.MODULE_B2I_EXTENSION,
 					"Infoway Primary Health Care Reference Sets");
 		}
 	}
 
 	// Sets the CVS settings
-	private CsvSettings createCVSSettings() {
+	private CsvSettings createCSVSettings() {
 		return new CsvSettings("".equals(quoteCharacter) ? '\0' : quoteCharacter.charAt(0), fieldSeparatorCharacter, lineFeedCharacter, true);
 	}
 
@@ -283,12 +272,7 @@ public class SnomedSubsetImporter {
 		SubsetInformation subsetInformation = new SubsetInformation(importFile.getName());
 		if (isUiImport) {
 			subsetInformation.setSubsetName(subsetName);
-			if (!CompareUtils.isEmpty(namespace)) {
-				subsetInformation.setNameSpace(namespace);
-			} else {
-				// default namespace is 1000154
-				subsetInformation.setNameSpace("1000154");
-			}
+			subsetInformation.setNameSpace(StringUtils.isEmpty(namespace) ? Concepts.B2I_NAMESPACE : namespace);
 			if (!CompareUtils.isEmpty(effectiveTime)) {
 				subsetInformation.setEffectiveTime(EffectiveTimes.parse(effectiveTime, DateFormats.SHORT));
 			}
@@ -299,37 +283,57 @@ public class SnomedSubsetImporter {
 	}
 
 	// Updates the effective time
-	private void updateEffectiveTimes(Date effectiveTime) {
-		for (final Component item : ComponentUtils2.getNewObjects(context.getTransaction(), Component.class)) {
+	private void updateEffectiveTimes(TransactionContext context, Date effectiveTime) {
+		final SnomedEditingContext editingContext = context.service(SnomedEditingContext.class);
+		for (final Component item : editingContext.getNewObjects(Component.class)) {
 			item.setEffectiveTime(effectiveTime);
 			item.setReleased(true);
 		}
-		for (final SnomedRefSetMember member : ComponentUtils2.getNewObjects(context.getTransaction(), SnomedRefSetMember.class)) {
+		for (final SnomedRefSetMember member : editingContext.getNewObjects(SnomedRefSetMember.class)) {
 			member.setEffectiveTime(effectiveTime);
 			member.setReleased(true);
 		}
 	}
 
-	// FSN ID: 250928901000154112
-	// PT ID: 94920731000154113
-	// IS_A ID: 864454871000154127
-
 	// Creates a concept
-	private void createConcept(final String parentConceptId, final String conceptId, final String moduleId, final String label)
-			throws CommitException {
-		final Concept parentConcept = findConceptById(parentConceptId);
-		if (parentConcept != null) {
-			Concept module = findConceptById(moduleId);
-			if (null == module) {
-				module = context.getDefaultModuleConcept();
-			}
-			Concept concept = context.buildDefaultConcept(label, "1000154", module, parentConcept);
-			concept.setId(conceptId);
-			String comment = "Created '" + label + "' concept";
-			CDOServerUtils.commit(context.getTransaction(), userId, comment, new NullProgressMonitor());
-		} else {
-			throw new RuntimeException("Couldn't find parent concept 'Module'!");
-		}
+	private void createConcept(final TransactionContext context, final String parentConceptId, final String conceptId, final String moduleId, final String label) {
+		// TODO remove lang refset ID from here, and use hard coded one for these custom concepts to be reproducible
+		final String languageRefSetId = context.service(SnomedEditingContext.class).getLanguageRefSetId();
+		final String createdConceptId = SnomedRequests
+			.prepareNewConcept()
+			.setId(conceptId)
+			.setModuleId(moduleId)
+			.setParent(parentConceptId)
+			.setIsAId(new ReservingIdStrategy(ComponentCategory.RELATIONSHIP, Concepts.B2I_NAMESPACE))
+			.addDescription(SnomedRequests
+					.prepareNewDescription()
+					.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+					.setModuleId(moduleId)
+					.setTerm(String.format("%s (%s)", label, "foundation metadata concept"))
+					.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
+					.preferredIn(languageRefSetId))
+			.addDescription(SnomedRequests
+					.prepareNewDescription()
+					.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+					.setModuleId(moduleId)
+					.setTerm(label)
+					.setTypeId(Concepts.SYNONYM)
+					.preferredIn(languageRefSetId))
+			.build()
+			.execute(context);
+		
+		SnomedRequests
+			.prepareNewRelationship()
+			.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+			.setModuleId(moduleId)
+			.setSourceId(createdConceptId)
+			.setDestinationId(parentConceptId)
+			.setTypeId(Concepts.IS_A)
+			.setCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP)
+			.build()
+			.execute(context);
+		
+		context.commit(userId, "Created '" + label + "' concept");
 	}
 
 	/*
@@ -340,11 +344,9 @@ public class SnomedSubsetImporter {
 	 * @throws SnowowlServiceException
 	 */
 	private int getRefSetColumnCount() throws SnowowlServiceException {
-		int columnCount = 0;
-		BufferedReader reader = null;
-		try {
-			reader = new BufferedReader(new FileReader(importFile));
-			
+		try (BufferedReader reader = new BufferedReader(new FileReader(importFile))) {
+
+			int columnCount = 0;
 			char[] charArray = new char[1024];
 			reader.read(charArray, 0, 1024);
 			
@@ -364,8 +366,6 @@ public class SnomedSubsetImporter {
 		} catch (IOException e) {
 			LOGGER.error("Error while counting columns.");
 			throw new SnowowlServiceException("Error while reading input file.", e);
-		} finally {
-			Closeables.closeQuietly(reader);
 		}
 	}
 	
@@ -377,39 +377,76 @@ public class SnomedSubsetImporter {
 		return ApplicationContext.getInstance().getService(SnomedTerminologyBrowser.class);
 	}
 	
-	/*returns with the SNOMED CT concept identified by its unique ID. may return with null, if concept cannot be found with the specifeid ID.*/
-	private Concept findConceptById(final String conceptId) {
-		Preconditions.checkNotNull(context, "Editing context argument cannot be null.");
-		CDOUtils.check(context.getTransaction());
-		return new SnomedConceptLookupService().getComponent(conceptId, context.getTransaction());
-	}
-
 	/*
-	 * Class which will creates the reference set and extracted the members from
-	 * the import file rows and adds them to the reference set.
+	 * Class which creates the reference set and extracts and adds the members from the import file rows to the reference set.
 	 */
 	private final class SubsetImporterCallback implements RecordParserCallback<String> {
 
-		private SnomedRefSetEditingContext refSetEditingContext;
-		private SnomedRegularRefSet refSet;
 		private final SnomedUnimportedRefSets unImportedRefSets;
-		private final SubsetInformation information;
 		private String moduleId;
 		private final int idColumnNumber;
 		private final boolean hasHeader;
+		private final String refSetId;
+		private final TransactionContext context;
 
-		private SubsetImporterCallback(SubsetInformation information, SnomedUnimportedRefSets unimportedRefSet, SnomedEditingContext editingContext,
+		private SubsetImporterCallback(String label, SnomedUnimportedRefSets unimportedRefSet, TransactionContext context,
 				int idColumnNumber, boolean hasHeader, String refSetType) {
-			this.information = information;
+			
 			this.unImportedRefSets = unimportedRefSet;
+			this.context = context;
 			this.idColumnNumber = idColumnNumber;
 			this.hasHeader = hasHeader; 
-			refSetEditingContext = editingContext.getRefSetEditingContext();
-			Concept parentConcept = findConceptById(refSetType);
-			final Concept module = findConceptById(parentConcept.getModule().getId());
-			refSet = refSetEditingContext.createSnomedSimpleTypeRefSet(this.information.getSubsetName(), SnomedTerminologyComponentConstants.CONCEPT_NUMBER,
-					"1000154", module, parentConcept);
-			moduleId = module.getId();
+			this.moduleId = context.lookup(refSetType, Concept.class).getModule().getId();
+			final String languageReferenceSetId = context.service(SnomedEditingContext.class).getLanguageRefSetId();
+			
+			SnomedConceptCreateRequestBuilder identifierConceptReq = SnomedRequests
+					.prepareNewConcept()
+					.setModuleId(moduleId)
+					.setParent(refSetType)
+					.setIsAId(new ReservingIdStrategy(ComponentCategory.RELATIONSHIP, Concepts.B2I_NAMESPACE))
+					.addDescription(SnomedRequests
+							.prepareNewDescription()
+							.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+							.setModuleId(moduleId)
+							.setTerm(String.format("%s (%s)", label, "foundation metadata concept"))
+							.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
+							.preferredIn(languageReferenceSetId))
+					.addDescription(SnomedRequests
+							.prepareNewDescription()
+							.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+							.setModuleId(moduleId)
+							.setTerm(label)
+							.setTypeId(Concepts.SYNONYM)
+							.preferredIn(languageReferenceSetId));
+			
+			final String cmtRefSetId = getIdIfCMTConcept(label);
+			if (cmtRefSetId == null) {
+				identifierConceptReq.setIdFromNamespace(Concepts.B2I_NAMESPACE);
+			} else {
+				identifierConceptReq.setId(cmtRefSetId);
+			}
+			
+			this.refSetId = SnomedRequests
+				.prepareNewRefSet()
+				.setType(SnomedRefSetType.SIMPLE)
+				.setReferencedComponentType(SnomedTerminologyComponentConstants.CONCEPT)
+				.setIdentifierConcept(identifierConceptReq)
+				.build()
+				.execute(context);
+			
+			// We create an inferred ISA manually to the same parent
+			SnomedRequests.prepareNewRelationship()
+				.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+				.setModuleId(moduleId)
+				.setSourceId(refSetId)
+				.setDestinationId(refSetType)
+				.setTypeId(Concepts.IS_A)
+				.setCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP)
+				.build().execute(context);
+		}
+		
+		private String getIdIfCMTConcept(String label) {
+			return Concepts.CMT_REFSET_NAME_ID_MAP.get(label.replaceAll(" reference set", ""));
 		}
 
 		@Override
@@ -426,9 +463,8 @@ public class SnomedSubsetImporter {
 		public void handleNonTxtFileRecord(List<List<String>> content) {
 			for (List<String> rowsList : content) {
 				SnomedConceptIndexEntry concept = getConcept(rowsList.get(idColumnNumber));
-				if (concept != null && concept.isActive() && importedConceptIds.add(concept.getId())) {
-					SnomedRefSetMember member = createMember(concept);
-					refSet.getMembers().add(member);
+				if (concept != null && importedConceptIds.add(concept.getId())) {
+					createMember(concept);
 				} else {
 					createUnimportedRefsetMember(rowsList, concept);
 				}
@@ -437,9 +473,8 @@ public class SnomedSubsetImporter {
 		
 		private void createMember(List<String> record) {
 			SnomedConceptIndexEntry concept = getConcept(record.get(idColumnNumber));
-			if (concept != null && concept.isActive() && importedConceptIds.add(concept.getId())) {
-				SnomedRefSetMember member = createMember(concept);
-				refSet.getMembers().add(member);
+			if (concept != null && importedConceptIds.add(concept.getId())) {
+				createMember(concept);
 			} else {
 				createUnimportedRefsetMember(record, concept);
 			}
@@ -448,7 +483,7 @@ public class SnomedSubsetImporter {
 		private void createUnimportedRefsetMember(List<String> rowsList, SnomedConceptIndexEntry concept) {
 			String identifier;
 			if (null != getFullySpecifiedName(rowsList)) {
-				 identifier = getFullySpecifiedName(rowsList);
+				identifier = getFullySpecifiedName(rowsList);
 			} else {
 				identifier = rowsList.get(idColumnNumber) ;
 			}
@@ -458,7 +493,7 @@ public class SnomedSubsetImporter {
 			} else if (!importedConceptIds.add(concept.getId())) {
 				unImportedRefSets.addRefSetMember("Duplicated", rowsList.get(idColumnNumber), identifier);
 			} else {
-				unImportedRefSets.addRefSetMember("Inactive", rowsList.get(idColumnNumber), identifier);
+				unImportedRefSets.addRefSetMember("Unknown", rowsList.get(idColumnNumber), identifier);
 			}
 		}
 		
@@ -471,12 +506,13 @@ public class SnomedSubsetImporter {
 			return null;
 		}
 
-		private SnomedRefSetMember createMember(SnomedConceptIndexEntry concept) {
-			return refSetEditingContext.createSimpleTypeRefSetMember(createIdentifierPair(concept), moduleId, refSet);
-		}
-
-		private ComponentIdentifierPair<String> createIdentifierPair(SnomedConceptIndexEntry concept) {
-			return SnomedRefSetEditingContext.createConceptTypePair(concept.getId());
+		private void createMember(SnomedConceptIndexEntry concept) {
+			SnomedComponents.newSimpleMember()
+				.withActive(concept.isActive())
+				.withReferencedComponent(concept.getId())
+				.withModule(moduleId)
+				.withRefSet(refSetId)
+				.addTo(context);
 		}
 
 		private SnomedConceptIndexEntry getConcept(final String conceptId) {

@@ -49,7 +49,7 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.wordnik.swagger.annotations.Api;
@@ -272,11 +272,15 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage) {
+			final String acceptLanguage,
 		
+			@ApiParam(value="Return stated or inferred descendants")
+			@RequestParam(value="form", defaultValue="inferred", required=false)
+			final String form) {
+	
 		return DeferredResults.wrap(SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
-				.setExpand(String.format("descendants(direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", direct, offset, limit))
+				.setExpand(String.format("descendants(form:\"%s\",direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", form, direct, offset, limit))
 				.setLocales(getExtendedLocales(acceptLanguage))
 				.build(branchPath)
 				.execute(bus));
@@ -310,13 +314,17 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 			@RequestParam(value="limit", defaultValue="50", required=false) 
 			final int limit,
 
-			@ApiParam(value="Return direct descendants only")
+			@ApiParam(value="Return direct ancestors only")
 			@RequestParam(value="direct", defaultValue="false", required=false) 
-			final boolean direct) {
+			final boolean direct,
+			
+			@ApiParam(value="Return stated or inferred ancestors")
+			@RequestParam(value="form", defaultValue="inferred", required=false)
+			final String form) {
 
 		return DeferredResults.wrap(SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
-				.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", direct, offset, limit))
+				.setExpand(String.format("ancestors(form:\"%s\",direct:%s,offset:%d,limit:%d)", form, direct, offset, limit))
 				.build(branchPath)
 				.execute(bus)
 				.then(new Function<ISnomedConcept, SnomedConcepts>() {
