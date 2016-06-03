@@ -68,8 +68,8 @@ public class SnomedImportConfiguration implements ISnomedImportConfiguration {
 		this.snomedReleaseShortName = snomedReleaseShortName;
 	}
 
-	public static ISnomedImportConfiguration newReleasePatchConfiguration(final String branchPath, final String languageRefSetId, String patchReleaseVersion) {
-		final SnomedImportConfiguration configuration = new SnomedImportConfiguration(Rf2ReleaseType.DELTA, branchPath, languageRefSetId, false);
+	public static ISnomedImportConfiguration newReleasePatchConfiguration(final String branchPath, String patchReleaseVersion, String shortName) {
+		final SnomedImportConfiguration configuration = new SnomedImportConfiguration(Rf2ReleaseType.DELTA, branchPath, false, shortName);
 		configuration.releasePatch = true;
 		checkNotNull(patchReleaseVersion, "patchReleaseVersion");
 		configuration.patchReleaseVersion = EffectiveTimes.parse(patchReleaseVersion);

@@ -144,6 +144,18 @@ public final class ImportUtil {
 			throw new ImportException(e);
 		}
 	}
+	
+	public SnomedImportResult doImport(
+			final SnomedRelease snomedRelease,
+			final ContentSubType contentSubType,
+			final IBranchPath branchPath,
+			final File releaseArchive,
+			final boolean shouldCreateVersions,
+			final boolean releasePatch,
+			final Date patchReleaseVersion) throws Exception {
+		
+		return doImport(snomedRelease, branchPath, contentSubType, releaseArchive, shouldCreateVersions, releasePatch, patchReleaseVersion, SYSTEM_USER_NAME, new NullProgressMonitor());
+	}
 
 	public SnomedImportResult doImport(
 			final SnomedRelease snomedRelease,

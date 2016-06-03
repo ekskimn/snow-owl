@@ -1,7 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,7 +50,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 		
 		final SnomedExpression expression = new SnomedExpression();
-		final Map<Byte, SnomedExpressionGroup> groups = new HashMap<>();
+		final Map<Integer, SnomedExpressionGroup> groups = new HashMap<>();
 		final Map<String, SnomedExpressionConcept> concepts = new HashMap<>();
 		final Collection<SnomedRelationshipIndexEntry> relationships = getStatementBrowser().getActiveOutboundStatementsById(iBranchPath, conceptId);
 		final Set<String> parents = new HashSet<>();
@@ -61,7 +60,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				if (Concepts.IS_A.equals(attributeId)) {
 					parents.add(relationship.getValueId());
 				} else {
-					final byte groupNum = relationship.getGroup();
+					final int groupNum = relationship.getGroup();
 					List<ISnomedExpressionAttribute> attributes;
 					if (groupNum == 0) {
 						attributes = expression.getAttributes();

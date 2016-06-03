@@ -83,15 +83,18 @@ public class SnomedImportRestConfiguration implements SnomedStandardImportRestCo
 
 	@Override
 	public ISnomedImportConfiguration toConfig() {
+		final String shortNameOrDefault = StringUtils.isEmpty(getSnomedReleaseShortName()) 
+				? SNOMED_INT_SHORT_NAME 
+				: getSnomedReleaseShortName();
+		
 		if (getPatchReleaseVersion() == null) {
 			return new SnomedImportConfiguration(
 					getType(), 
 					getBranchPath(),
 					getCreateVersions(),
-					StringUtils.isEmpty(getSnomedReleaseShortName()) 
-						? SNOMED_INT_SHORT_NAME : getSnomedReleaseShortName());
+					shortNameOrDefault);
 		} else {
-			return SnomedImportConfiguration.newReleasePatchConfiguration(branchPath, languageRefSetId, patchReleaseVersion);
+			return SnomedImportConfiguration.newReleasePatchConfiguration(branchPath, patchReleaseVersion, shortNameOrDefault);
 		}
 	}
 

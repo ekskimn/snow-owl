@@ -19,19 +19,6 @@ public interface SnomedStandardImportRestConfiguration {
 
 	void setCreateVersions(Boolean createVersions);
 
-	/**
-	 * Returns with the language reference set identifier concept ID for the import configuration.
-	 * @return the language reference set ID for the preferred language.
-	 */
-	String getLanguageRefSetId();
-
-	/**
-	 * Sets the language reference set identifier concept ID based on
-	 * the language reference set identifier concept ID argument.
-	 * @param languageRefSetId the language reference set ID for the preferred language. 
-	 */
-	void setLanguageRefSetId(String languageRefSetId);
-
 	public ISnomedImportConfiguration toConfig();
 
 }
