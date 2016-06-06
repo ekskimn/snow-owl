@@ -17,16 +17,20 @@ package com.b2international.snowowl.datastore.request;
 
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.BaseRequest;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.merge.Merge;
+import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 
 /**
  * @since 4.5
+ * @deprecated Use requests in {@link Merging} for asynchronous operation
  */
+@Deprecated
 public final class BranchMergeRequestBuilder {
 	
 	private String source;
@@ -66,9 +70,19 @@ public final class BranchMergeRequestBuilder {
 		final BaseRequest<RepositoryContext, Merge> next;
 		
 		if (sourcePath.getParent().equals(targetPath)) {
-			next = new BranchMergeRequest(source, target, commitComment, reviewId);
+			next = new BranchMergeRequest(source, target, commitComment, reviewId) {
+				@Override
+				protected Merge execute(RepositoryContext context, Branch source, Branch target) {
+					return context.service(MergeService.class).executeBlocking(sourcePath, targetPath, commitMessage, reviewId);
+				}
+			};
 		} else if (targetPath.getParent().equals(sourcePath)) {
-			next = new BranchRebaseRequest(source, target, commitComment, reviewId);
+			next = new BranchRebaseRequest(source, target, commitComment, reviewId) {
+				@Override
+				protected Merge execute(RepositoryContext context, Branch source, Branch target) {
+					return context.service(MergeService.class).executeBlocking(sourcePath, targetPath, commitMessage, reviewId);
+				}
+			};
 		} else {
 			throw new BadRequestException("Branches '%s' and '%s' can only be merged or rebased if one branch is the direct parent of the other.", source, target);
 		}

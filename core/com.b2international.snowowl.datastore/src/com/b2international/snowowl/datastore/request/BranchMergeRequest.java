@@ -26,7 +26,7 @@ import com.google.common.base.Strings;
  * 
  * @since 4.1
  */
-public final class BranchMergeRequest extends AbstractBranchChangeRequest<Merge> {
+public class BranchMergeRequest extends AbstractBranchChangeRequest<Merge> {
 
 	private static String commitMessageOrDefault(final String sourcePath, final String targetPath, final String commitMessage) {
 		return !Strings.isNullOrEmpty(commitMessage) 

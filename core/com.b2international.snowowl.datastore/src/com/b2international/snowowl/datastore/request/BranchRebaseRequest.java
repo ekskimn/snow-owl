@@ -33,7 +33,7 @@ import com.google.common.base.Strings;
  *
  * @since 4.6
  */
-public final class BranchRebaseRequest extends AbstractBranchChangeRequest<Merge> {
+public class BranchRebaseRequest extends AbstractBranchChangeRequest<Merge> {
 
 	private static String commitMessageOrDefault(final String sourcePath, final String targetPath, final String commitMessage) {
 		return !Strings.isNullOrEmpty(commitMessage) 
