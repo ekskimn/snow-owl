@@ -128,17 +128,17 @@ public final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseReque
 			}
 			
 			if (acceptability.equals(newLanguageMembersToCreate.get(languageReferenceSetId))) {
-				ensureMemberActive(context, existingMember);
+				if (ensureMemberActive(context, existingMember)) { updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); }
 				newLanguageMembersToCreate.remove(languageReferenceSetId);
 			} else if (newLanguageMembersToCreate.containsKey(languageReferenceSetId)) {
 				final Acceptability newAcceptability = newLanguageMembersToCreate.get(languageReferenceSetId);
-				existingMember.setAcceptabilityId(newAcceptability.getConceptId());
 				ensureMemberActive(context, existingMember);
+				existingMember.setAcceptabilityId(newAcceptability.getConceptId());
+				updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); // Always check; we know that the acceptabilityId has changed
 				newLanguageMembersToCreate.remove(languageReferenceSetId);
 			} else {
 				removeOrDeactivate(context, existingMember);
 			}
-			
 		}
 		
 		for (final Entry<String, Acceptability> languageMemberEntry : newLanguageMembersToCreate.entrySet()) {
@@ -162,16 +162,14 @@ public final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseReque
 		return referenceBranchFunction.apply(context);
 	}
 	
-	private void ensureMemberActive(final TransactionContext context, final SnomedLanguageRefSetMember existingMember) {
-		
+	private boolean ensureMemberActive(final TransactionContext context, final SnomedLanguageRefSetMember existingMember) {
 		if (!existingMember.isActive()) {
-			
 			if (LOG.isDebugEnabled()) { LOG.debug("Reactivating association member {}.", existingMember.getUuid()); }
 			existingMember.setActive(true);
-			updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember);
-			
+			return true;
 		} else {
 			if (LOG.isDebugEnabled()) { LOG.debug("Association member {} already active, not updating.", existingMember.getUuid()); }
+			return false;
 		}
 	}
 	
