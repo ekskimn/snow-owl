@@ -61,7 +61,7 @@ All notable changes to this project will be documented in this file.
  * New, expandable `typeConcept` object property on SNOMED CT Relationships (by default only `id` is available on the object)
  * New, expandable `sourceConcept` object property on SNOMED CT Relationships (by default only `id` is available on the object)
  * New, expandable `destinationConcept` object property on SNOMED CT Relationships (by default only `id` is available on the object)
- * New, expandable `type` object property on SNOMED CT Relationships (by default only `id` is available on the object)
+ * New, expandable `type` object property on SNOMED CT Descriptions (by default only `id` is available on the object)
 
 ### Changed
 - REST API property changes
