@@ -59,6 +59,7 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -190,7 +191,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		}
 		
 		private boolean hasConceptChanges(final ISnomedConcept sourceConcept, final ISnomedConcept targetConcept) {
-			return hasSinglePropertyChanges(sourceConcept, targetConcept);
+			return hasSinglePropertyChanges(sourceConcept, targetConcept, "iconId", "score");
 		}
 		
 		private SnomedDescriptions getDescriptions(final String path, final String conceptId) {
@@ -224,7 +225,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				final ISnomedDescription sourceDescription = sourceMap.get(descriptionId);
 				final ISnomedDescription targetDescription = targetMap.get(descriptionId);
 				
-				if (hasSinglePropertyChanges(sourceDescription, targetDescription)) {
+				if (hasSinglePropertyChanges(sourceDescription, targetDescription, "iconId", "score")) {
 					return true;
 				}
 			}
@@ -272,7 +273,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				final ISnomedRelationship sourceRelationship = sourceMap.get(relationshipId);
 				final ISnomedRelationship targetRelationship = targetMap.get(relationshipId);
 				
-				if (hasSinglePropertyChanges(sourceRelationship, targetRelationship)) {
+				if (hasSinglePropertyChanges(sourceRelationship, targetRelationship, "iconId", "score")) {
 					return true;
 				}
 			}
@@ -281,17 +282,32 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		}
 		
 		@SuppressWarnings("deprecation") // Using deprecated org.apache.commons.collections.BeanMap because of split packages
-		private boolean hasSinglePropertyChanges(final Object sourceBean, final Object targetBean) {
+		private boolean hasSinglePropertyChanges(final Object sourceBean, final Object targetBean, final String... ignoredProperties) {
 			final BeanMap sourceMap = new BeanMap(sourceBean);
 			final BeanMap targetMap = new BeanMap(targetBean);
+			final Set<String> ignoredPropertySet = ImmutableSet.copyOf(ignoredProperties);
+			final Set<Object> checkedPropertySet = ImmutableSet.copyOf(Sets.difference(sourceMap.keySet(), ignoredPropertySet));
 			
-		    for (final Object key : sourceMap.keySet()) {
-		        
+		    for (final Object key : checkedPropertySet) {
+		    	
 		    	Object sourceValue = sourceMap.get(key);
 		    	Object targetValue = targetMap.get(key);
 		        
-		    	// Skip multi-valued properties (but arrays are not checked)
+		    	// Skip multi-valued properties
 		    	if (sourceValue instanceof Iterable) {
+		    		continue;
+		    	}
+		    	
+		    	if (targetValue instanceof Iterable) {
+		    		continue;
+		    	}
+		    	
+		    	// Skip arrays as well
+		    	if (sourceValue != null && sourceValue.getClass().isArray()) {
+		    		continue;
+		    	}
+		    	
+		    	if (targetValue != null && targetValue.getClass().isArray()) {
 		    		continue;
 		    	}
 		    	

@@ -561,8 +561,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void rebaseOverReusedRelationshipId() {
-		givenBranchWithPath(testBranchPath);
-		
 		assertRelationshipCreated(testBranchPath.getParent(), "R1");
 		assertRelationshipExists(testBranchPath.getParent(), "R1");
 		final String relationshipId = symbolicNameMap.get("R1");

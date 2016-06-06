@@ -151,8 +151,8 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final Map<String, Object> concept = response.and().extract().jsonPath().get();
 		concept.remove("relationships");
 
-		// when deleting all relationships of a concept, the concept should not be deleted
-		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 200);
+		// Removing all relationships without leaving at least one stated IS A is not allowed
+		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 400);
 	}
 
 }
