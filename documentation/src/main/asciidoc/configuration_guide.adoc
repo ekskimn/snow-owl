@@ -739,6 +739,10 @@ authentication:
 |indexTimeout
 |`240`
 |The timeout in minutes after indexes will be closed if they are not in use anymore.
+
+|mergeMaxResults
+|`100`
+|The number of most recent merge results to keep.
 |===
 
 --------------------------
