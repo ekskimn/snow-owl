@@ -18,6 +18,7 @@ package com.b2international.snowowl.datastore.server.internal.merge;
 import java.util.List;
 import java.util.UUID;
 
+import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.merge.Merge;
@@ -44,11 +45,23 @@ public class MergeServiceImpl implements MergeService {
 				.build();
 	}
 
-	@Override
-	public Merge enqueue(String source, String target, String commitMessage, String reviewId) {
+	private AbstractBranchChangeRemoteJob registerJob(String source, String target, String commitMessage, String reviewId) {
 		AbstractBranchChangeRemoteJob job = AbstractBranchChangeRemoteJob.create(repository, source, target, commitMessage, reviewId);
 		merges.put(job.getMerge().getId(), job);
+		return job;
+	}
+	
+	@Override
+	public Merge enqueue(String source, String target, String commitMessage, String reviewId) {
+		AbstractBranchChangeRemoteJob job = registerJob(source, target, commitMessage, reviewId);
 		job.schedule();
+		return job.getMerge();
+	}
+
+	@Override
+	public Merge executeBlocking(String source, String target, String commitMessage, String reviewId) {
+		AbstractBranchChangeRemoteJob job = registerJob(source, target, commitMessage, reviewId);
+		ForkJoinUtils.runJobsInParallel(job);
 		return job.getMerge();
 	}
 
