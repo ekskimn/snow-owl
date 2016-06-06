@@ -19,7 +19,6 @@ All notable changes to this project will be documented in this file.
  * `POST` `/codesystems/:id/versions` - create a new version in a codesystem (or release in SNOMED CT)
 - SNOMED CT RF2 import
  * `POST` `/imports` - new optional property `snomedReleaseShortName`, identifies the target code system of the import, the default value is the short name of the SNOMED CT International Release
- * 
 - Revise handling of structural reference set members (language, inactivation and association members)
  * Try to reuse members where possible (reactivate if necessary)
  * Keep only one active language reference set member per description and do not create new ones when acceptability changes
@@ -72,7 +71,8 @@ All notable changes to this project will be documented in this file.
  * Support for DOI based scoring (using a default DOI file, not configurable yet)
  * Support for search profiles
 - The type of the `group` property changed from `byte` to `int` to support greater than `127` values
-- Using time based rolling policy with 90 days worth of history instead of fixed window with size restriction
+- Logging changes
+ * Using time based rolling policy with 90 days worth of history instead of fixed window with size restriction
 
 ## 4.5.0
 
