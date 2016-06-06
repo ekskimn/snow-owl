@@ -49,7 +49,7 @@
 			<id>site</id>
 			<modules>
 				<module>com.b2international.snowowl.server.update</module>
-				<module>com.b2international.snowowl.javadoc</module>
+				<!--  <module>com.b2international.snowowl.javadoc</module> -->
 			</modules>
 		</profile>
 		<profile>
