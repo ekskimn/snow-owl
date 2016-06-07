@@ -141,6 +141,13 @@
 						</filter>
 						<filter>
 							<type>eclipse-plugin</type>
+							<id>org.eclipse.xtext.common.types</id>
+							<restrictTo>
+								<versionRange>[2.8.0,2.9.0)</versionRange>
+							</restrictTo>
+						</filter>
+						<filter>
+							<type>eclipse-plugin</type>
 							<id>org.eclipse.xtext.smap</id>
 							<restrictTo>
 								<versionRange>[2.8.0,2.9.0)</versionRange>
