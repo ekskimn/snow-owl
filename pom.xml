@@ -176,7 +176,7 @@
 						</filter>
 						<filter>
 							<type>eclipse-plugin</type>
-							<id>org.eclipse.xtend.generator</id>
+							<id>org.eclipse.xtext.generator</id>
 							<restrictTo>
 								<versionRange>[2.8.0,2.9.0)</versionRange>
 							</restrictTo>
