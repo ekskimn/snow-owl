@@ -145,7 +145,7 @@ final class SnomedInactivationReasonUpdateRequest<C extends Inactivatable & Comp
 			if (existingMember.getValueId().equals(inactivationValueId)) {
 
 				// Exact match, just make sure that the member is active
-				ensureMemberActive(context, existingMember);
+				if (ensureMemberActive(context, existingMember)) { updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); }
 				firstMemberFound = true;
 
 			} else if (!CLEAR.equals(inactivationValueId)) {
@@ -158,8 +158,9 @@ final class SnomedInactivationReasonUpdateRequest<C extends Inactivatable & Comp
 							inactivationValueId);
 				}
 
-				existingMember.setValueId(inactivationValueId);
 				ensureMemberActive(context, existingMember);
+				existingMember.setValueId(inactivationValueId);
+				updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); // Always check; we know that valueId has changed
 				
 			} else /* if (CLEAR.equals(inactivationValueId) */ {
 				
@@ -190,16 +191,15 @@ final class SnomedInactivationReasonUpdateRequest<C extends Inactivatable & Comp
 		return referenceBranchFunction.apply(context);
 	}
 
-	private void ensureMemberActive(final TransactionContext context, final SnomedAttributeValueRefSetMember existingMember) {
+	private boolean ensureMemberActive(final TransactionContext context, final SnomedAttributeValueRefSetMember existingMember) {
 
 		if (!existingMember.isActive()) {
-
 			if (LOG.isDebugEnabled()) { LOG.debug("Reactivating attribute-value member {}.", existingMember.getUuid()); }
 			existingMember.setActive(true);
-			updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember);
-
+			return true;
 		} else {
 			if (LOG.isDebugEnabled()) { LOG.debug("Attribute-value member {} already active, not updating.", existingMember.getUuid()); }
+			return false;
 		}
 	}
 

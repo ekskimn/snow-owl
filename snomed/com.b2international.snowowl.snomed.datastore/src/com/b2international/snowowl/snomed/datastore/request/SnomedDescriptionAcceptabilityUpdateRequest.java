@@ -34,7 +34,6 @@ import com.b2international.snowowl.datastore.ICodeSystemVersion;
 import com.b2international.snowowl.datastore.TerminologyRegistryService;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Description;
-import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
@@ -129,17 +128,17 @@ final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseRequest<Tran
 			}
 			
 			if (acceptability.equals(newLanguageMembersToCreate.get(languageReferenceSetId))) {
-				ensureMemberActive(context, existingMember);
+				if (ensureMemberActive(context, existingMember)) { updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); }
 				newLanguageMembersToCreate.remove(languageReferenceSetId);
 			} else if (newLanguageMembersToCreate.containsKey(languageReferenceSetId)) {
 				final Acceptability newAcceptability = newLanguageMembersToCreate.get(languageReferenceSetId);
 				ensureMemberActive(context, existingMember);
 				existingMember.setAcceptabilityId(newAcceptability.getConceptId());
+				updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); // Always check; we know that the acceptabilityId has changed
 				newLanguageMembersToCreate.remove(languageReferenceSetId);
 			} else {
 				removeOrDeactivate(context, existingMember);
 			}
-			
 		}
 		
 		for (final Entry<String, Acceptability> languageMemberEntry : newLanguageMembersToCreate.entrySet()) {
@@ -163,16 +162,14 @@ final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseRequest<Tran
 		return referenceBranchFunction.apply(context);
 	}
 	
-	private void ensureMemberActive(final TransactionContext context, final SnomedLanguageRefSetMember existingMember) {
-		
+	private boolean ensureMemberActive(final TransactionContext context, final SnomedLanguageRefSetMember existingMember) {
 		if (!existingMember.isActive()) {
-			
 			if (LOG.isDebugEnabled()) { LOG.debug("Reactivating association member {}.", existingMember.getUuid()); }
 			existingMember.setActive(true);
-			updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember);
-			
+			return true;
 		} else {
 			if (LOG.isDebugEnabled()) { LOG.debug("Association member {} already active, not updating.", existingMember.getUuid()); }
+			return false;
 		}
 	}
 	
@@ -223,29 +220,47 @@ final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseRequest<Tran
 
 		for (final Description description : preferredDescription.getConcept().getDescriptions()) {
 			
-			if (!description.isActive() || description.equals(preferredDescription)) {
+			// Skip the description that has just been set to Preferred acceptability
+			if (description.equals(preferredDescription)) {
 				continue;
 			}
-
+			
+			// Ignore inactive descriptions
+			if (!description.isActive()) {
+				continue;
+			} 
+			
+			// Skip active descriptions that are not of the same type
 			if (!preferredDescription.getType().getId().equals(description.getType().getId())) {
 				continue;
 			}
 
 			final Map<String, Acceptability> acceptabilityMap = Maps.newHashMap();
+			
 			for (final SnomedLanguageRefSetMember languageMember : description.getLanguageRefSetMembers()) {
+				
+				// Ignore inactive language reference set members
 				if (!languageMember.isActive()) {
 					continue;
 				}
 
-				if (!languageMember.getRefSetIdentifierId().equals(languageRefSetId)) {
-					acceptabilityMap.put(languageMember.getRefSetIdentifierId(), Acceptability.getByConceptId(languageMember.getAcceptabilityId()));
-				} else if (languageMember.getAcceptabilityId().equals(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED)) {
+				final Acceptability acceptability = Acceptability.getByConceptId(languageMember.getAcceptabilityId());
+				
+				if (languageMember.getRefSetIdentifierId().equals(languageRefSetId)) {
+					/* 
+					 * Active members for active descriptions that are not the newly set Preferred Term in the language 
+					 * reference set in question should be changed to Acceptable.
+					 */
 					acceptabilityMap.put(languageMember.getRefSetIdentifierId(), Acceptability.ACCEPTABLE);
+				} else {
+					/* 
+					 * Active members in other language reference set(s) should not be changed.
+					 */
+					acceptabilityMap.put(languageMember.getRefSetIdentifierId(), acceptability);
 				}
 			}
 			
 			updateAcceptabilityMap(context, description, acceptabilityMap);
 		}
 	}
-
 }

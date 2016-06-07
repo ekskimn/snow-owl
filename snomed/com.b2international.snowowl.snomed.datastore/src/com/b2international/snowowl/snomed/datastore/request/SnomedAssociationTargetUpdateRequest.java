@@ -149,7 +149,7 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 			if (newAssociationTargetsToCreate.remove(associationType, existingTargetId)) {
 
 				// Exact match, just make sure that the member is active and remove it from the working list
-				ensureMemberActive(context, existingMember);
+				if (ensureMemberActive(context, existingMember)) { updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); }
 				memberIterator.remove();
 			}
 		}
@@ -176,8 +176,9 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 							newTargetId);
 				}
 
-				existingMember.setTargetComponentId(newTargetId);
 				ensureMemberActive(context, existingMember);
+				existingMember.setTargetComponentId(newTargetId);
+				updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember); // Always check; we know that targetComponentId has changed
 
 			} else {
 				
@@ -205,16 +206,14 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 		return referenceBranchFunction.apply(context);
 	}
 
-	private void ensureMemberActive(final TransactionContext context, final SnomedAssociationRefSetMember existingMember) {
-		
+	private boolean ensureMemberActive(final TransactionContext context, final SnomedAssociationRefSetMember existingMember) {
 		if (!existingMember.isActive()) {
-			
 			if (LOG.isDebugEnabled()) { LOG.debug("Reactivating association member {}.", existingMember.getUuid()); }
 			existingMember.setActive(true);
-			updateEffectiveTime(context, getLatestReleaseBranch(context), existingMember);
-			
+			return true;
 		} else {
 			if (LOG.isDebugEnabled()) { LOG.debug("Association member {} already active, not updating.", existingMember.getUuid()); }
+			return false;
 		}
 	}
 
