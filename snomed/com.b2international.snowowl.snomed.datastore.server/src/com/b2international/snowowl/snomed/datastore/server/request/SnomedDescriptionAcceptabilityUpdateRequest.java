@@ -44,7 +44,6 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.google.common.base.Function;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
-import com.google.common.collect.Maps;
 
 /**
  * @since 4.5
@@ -75,9 +74,6 @@ public final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseReque
 		} else {
 			final Description description = context.lookup(descriptionId, Description.class);
 			updateAcceptabilityMap(context, description, newAcceptabilityMap);
-			if (description.isActive()) {
-				updateOtherDescriptionAcceptabilities(context, description);
-			}
 			return null;
 		}
 	}
@@ -150,14 +146,6 @@ public final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseReque
 		}
 	}
 	
-	private void updateOtherDescriptionAcceptabilities(TransactionContext context, final Description description) {
-		for (final Entry<String, Acceptability> languageMemberEntry : newAcceptabilityMap.entrySet()) {
-			if (Acceptability.PREFERRED.equals(languageMemberEntry.getValue())) {
-				updateOtherPreferredDescriptions(context, description, languageMemberEntry.getKey());
-			}
-		}
-	}
-	
 	private String getLatestReleaseBranch(final TransactionContext context) {
 		return referenceBranchFunction.apply(context);
 	}
@@ -213,54 +201,6 @@ public final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseReque
 			existingMember.unsetEffectiveTime();
 		} else {
 			if (LOG.isDebugEnabled()) { LOG.debug("Effective time on association member {} already unset, not updating.", existingMember.getUuid()); }
-		}
-	}
-	
-	private void updateOtherPreferredDescriptions(final TransactionContext context, final Description preferredDescription, final String languageRefSetId) {
-
-		for (final Description description : preferredDescription.getConcept().getDescriptions()) {
-			
-			// Skip the description that has just been set to Preferred acceptability
-			if (description.equals(preferredDescription)) {
-				continue;
-			}
-			
-			// Ignore inactive descriptions
-			if (!description.isActive()) {
-				continue;
-			} 
-			
-			// Skip active descriptions that are not of the same type
-			if (!preferredDescription.getType().getId().equals(description.getType().getId())) {
-				continue;
-			}
-
-			final Map<String, Acceptability> acceptabilityMap = Maps.newHashMap();
-			
-			for (final SnomedLanguageRefSetMember languageMember : description.getLanguageRefSetMembers()) {
-				
-				// Ignore inactive language reference set members
-				if (!languageMember.isActive()) {
-					continue;
-				}
-
-				final Acceptability acceptability = Acceptability.getByConceptId(languageMember.getAcceptabilityId());
-				
-				if (languageMember.getRefSetIdentifierId().equals(languageRefSetId)) {
-					/* 
-					 * Active members for active descriptions that are not the newly set Preferred Term in the language 
-					 * reference set in question should be changed to Acceptable.
-					 */
-					acceptabilityMap.put(languageMember.getRefSetIdentifierId(), Acceptability.ACCEPTABLE);
-				} else {
-					/* 
-					 * Active members in other language reference set(s) should not be changed.
-					 */
-					acceptabilityMap.put(languageMember.getRefSetIdentifierId(), acceptability);
-				}
-			}
-			
-			updateAcceptabilityMap(context, description, acceptabilityMap);
 		}
 	}
 }
