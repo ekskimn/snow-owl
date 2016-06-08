@@ -28,6 +28,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -51,8 +52,10 @@ import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetFactory;
+import com.b2international.snowowl.test.commons.rest.RestExtensions;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Iterables;
@@ -303,24 +306,47 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void updateAcceptability() {
+		final String oldPtId = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.with().header("Accept-Language", "en-GB")
+				.when().get("/{path}/concepts/{conceptId}/pt", createMainPath(), DISEASE)
+				.then().extract()
+				.body().path("id");
+
 		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
-		final String descriptionId = assertComponentCreated(createMainPath(), SnomedComponentType.DESCRIPTION, createRequestBody);
-		final Collection<Map<String, Object>> members = getDescriptionMembers(createMainPath(), descriptionId);
-		final Map<String, Object> member = Iterables.getOnlyElement(members);
+		final String newPtId = assertComponentCreated(createMainPath(), SnomedComponentType.DESCRIPTION, createRequestBody);
+		final Map<String, Object> newPtMember = Iterables.getOnlyElement(getDescriptionMembers(createMainPath(), newPtId));
+		final Map<String, Object> oldPtMember = Iterables.getOnlyElement(getDescriptionMembers(createMainPath(), oldPtId));
 		
-		final Map<?, ?> updateRequestBody = ImmutableMap.builder()
-				.put("acceptability", SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP)
-				.put("commitComment", "Changed description acceptability")
+		final Map<String, Object> newPtRequest = ImmutableMap.<String, Object>builder()
+				.put("action", "update")
+				.put("memberId", newPtMember.get("id"))
+				.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED)
+				.build();
+		
+		final Map<String, Object> oldPtRequest = ImmutableMap.<String, Object>builder()
+				.put("action", "update")
+				.put("memberId", oldPtMember.get("id"))
+				.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE)
 				.build();
 
-		assertDescriptionCanBeUpdated(createMainPath(), descriptionId, updateRequestBody);
-		final Collection<Map<String, Object>> updatedMembers = getDescriptionMembers(createMainPath(), descriptionId);
-		final Map<String, Object> updatedMember = Iterables.getOnlyElement(updatedMembers);
-		// changing acceptability should change the acceptabilityId of the same member and not create a new one
-		assertEquals(member.get("id"), updatedMember.get("id"));
-		assertEquals(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED, updatedMember.get("acceptabilityId"));
+		final List<Map<String, Object>> bulkRequests = ImmutableList.<Map<String, Object>>builder()
+				.add(newPtRequest)
+				.add(oldPtRequest)
+				.build();
 		
-		assertPreferredTermEquals(createMainPath(), DISEASE, descriptionId);
+		final Map<String, Object> bulk = ImmutableMap.<String, Object>of("requests", bulkRequests, "commitComment", "Update preferred acceptability");
+		
+		RestExtensions
+			.givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.accept(ContentType.JSON)
+			.contentType(ContentType.JSON)
+			.body(bulk)
+			.put("/{path}/refsets/{id}/members", createMainPath(), Concepts.REFSET_LANGUAGE_TYPE_UK)
+			.then()
+			.log().ifValidationFails()
+			.statusCode(204);
+
+		assertPreferredTermEquals(createMainPath(), DISEASE, newPtId);
 	}
 	
 	@Test
