@@ -106,7 +106,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 	public Branch delete() {
 		return branchManager.delete(this);
 	}
-
+	
 	@Override
 	public Branch merge(Branch source, String commitMessage) throws BranchMergeException {
 		if (path().equals(source.path())) {
@@ -234,6 +234,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 		if (headTimestamp != other.headTimestamp) { return false; }
 		if (!name.equals(other.name)) { return false; }
 		if (!parentPath.equals(other.parentPath)) { return false; }
+		if (!metadata().equals(other.metadata())) { return false; }
 		
 		return true;
 	}

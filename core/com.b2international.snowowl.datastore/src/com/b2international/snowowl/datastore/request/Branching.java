@@ -55,6 +55,10 @@ public class Branching {
 		return new BranchMergeRequestBuilder(repositoryId);
 	}
 
+	public BranchUpdateRequestBuilder prepareUpdate(String path) {
+		return new BranchUpdateRequestBuilder(repositoryId, path);
+	}
+	
 	public Request<ServiceProvider, Branch> prepareDelete(String branchPath) {
 		return RepositoryRequests.wrap(repositoryId, new DeleteBranchRequest(branchPath));
 	}

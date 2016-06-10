@@ -47,12 +47,27 @@ public abstract class SnomedBranchingApiAssert {
 				.and().body(requestBody)
 				.when().post("/branches");
 	}
+	
+	private static Response whenUpdatingBranch(final IBranchPath branchPath, final Map<?, ?> metadata) {
+		final Map<?, ?> requestBody = ImmutableMap.<String, Object> builder()
+				.put("metadata", metadata).build();
+
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.and().contentType(ContentType.JSON)
+				.and().body(requestBody)
+				.when().put("/branches/" + branchPath);
+	}
 
 	private static ValidatableResponse assertBranchCreatedWithStatus(final IBranchPath branchPath, final Map<?, ?> metadata, final int statusCode) {
 		return whenCreatingBranch(branchPath, metadata)
 				.then().assertThat().statusCode(statusCode);
 	}
-
+	
+	private static ValidatableResponse assertBranchUpdatedWithStatus(final IBranchPath branchPath, final Map<?, ?> metadata, final int statusCode) {
+		return whenUpdatingBranch(branchPath, metadata)
+				.then().assertThat().statusCode(statusCode);
+	}
+	
 	/**
 	 * Asserts that a branch with the given branch path can be created.
 	 * <p>
@@ -75,6 +90,16 @@ public abstract class SnomedBranchingApiAssert {
 	public static void givenBranchWithPathAndMetadata(final IBranchPath branchPath, final Map<?, ?> metadata) {
 		assertBranchCreatedWithStatus(branchPath, metadata, 201)
 		.and().header("Location", endsWith(String.format("/branches/%s", branchPath.getPath())));
+	}
+	
+	/**
+	 * Asserts that setting the given metadata on the existing branch with the given path returns a 200 response.
+	 * 
+	 * @param branchPath the branch path to test
+	 * @param metadata the metadata to set on the existing branch
+	 */
+	public static void whenUpdatingBranchWithPathAndMetadata(final IBranchPath branchPath, final Map<?, ?> metadata) {
+		assertBranchUpdatedWithStatus(branchPath, metadata, 200);
 	}
 
 	/**

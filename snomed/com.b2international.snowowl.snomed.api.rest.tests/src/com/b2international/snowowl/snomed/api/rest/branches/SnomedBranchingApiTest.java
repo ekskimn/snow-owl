@@ -59,6 +59,26 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 	}
 
 	@Test
+	public void createBranchWithMetadataAndUpdateMetadata() {
+		final String description = "Description of branch";
+		final Map<?, ?> metadata = ImmutableMap.of("description", description);
+
+		givenBranchWithPathAndMetadata(testBranchPath, metadata);
+		assertBranchExists(testBranchPath)
+		.and().body("metadata.description", equalTo(description));
+		
+		final String descriptionUpdated = "Description of branch";
+		final String title = "Title of branch";
+		final Map<?, ?> metadataUpdated = ImmutableMap.of("description", descriptionUpdated, "title", title);
+		whenUpdatingBranchWithPathAndMetadata(testBranchPath, metadataUpdated);
+		
+		assertBranchReadWithStatus(testBranchPath, 200)
+			.and()
+			.body("metadata.description", equalTo(descriptionUpdated))
+			.body("metadata.title", equalTo(title));
+	}
+
+	@Test
 	public void createBranchTwice() {
 		givenBranchWithPath(testBranchPath);
 		assertBranchCreationConflicts(testBranchPath);

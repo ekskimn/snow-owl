@@ -204,6 +204,19 @@ public abstract class BranchManagerImpl implements BranchManager {
 
 	abstract InternalBranch applyChangeSet(InternalBranch target, InternalBranch source, boolean dryRun, String commitMessage);
 
+	public Branch updateBranchMetadata(String path, Metadata metadata) {
+		final InternalBranch branchToUpdate = branchStore.get(path);
+		if (branchToUpdate == null) {
+			throw new NotFoundException(Branch.class.getSimpleName(), path);
+		}
+		branchToUpdate.metadata(metadata);
+		final InternalBranch existingBranch = branchStore.get(path);
+		branchStore.replace(existingBranch.path(), existingBranch, branchToUpdate);
+		
+		// Return branch including transient lock metadata
+		return getBranch(path);
+	}
+	
 	/*package*/ final InternalBranch delete(final InternalBranch branchImpl) {
 		for (Branch child : branchImpl.children()) {
 			doDelete((InternalBranch) child);
