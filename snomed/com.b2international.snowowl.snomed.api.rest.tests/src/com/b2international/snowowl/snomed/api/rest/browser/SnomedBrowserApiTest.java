@@ -44,6 +44,7 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -105,13 +106,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 	public void createConceptWithGeneratedId() {
 		final String conceptId = generateComponentId(null, ComponentCategory.CONCEPT);
 
-		final Date creationDate = new Date();
-		final String fsn = "New FSN at " + creationDate;
-		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
-		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate);
-		final Map<?, ?> requestBody = givenConceptRequestBody(conceptId, true, fsn, MODULE_SCT_CORE, descriptions, relationships,
-				creationDate);
-		assertComponentCreatedWithStatus(createMainPath(), requestBody, 200);
+		createConcept(conceptId);
 	}
 
 	@Test
@@ -181,8 +176,8 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "descriptions.released[0]", false);
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "relationships.released[0]", false);
 
-		final String effectiveDate = "20160501";
-		whenCreatingVersion("2016-05-01", effectiveDate).then().assertThat().statusCode(201);
+		final String effectiveDate = "20170131";
+		whenCreatingVersion("2017-01-31", effectiveDate).then().assertThat().statusCode(201);
 		
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "effectiveTime", effectiveDate);
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "released", true);

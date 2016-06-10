@@ -32,6 +32,11 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
  */
 public abstract class AbstractSnomedApiTest {
 
+	/**
+	 * The context-relative base URL for the administrative controller. 
+	 */
+	protected static String ADMIN_API = "/admin";
+
 	protected static final String DISEASE = "64572001";
 	protected static final String BLEEDING = "50960005";
 	protected IBranchPath testBranchPath;

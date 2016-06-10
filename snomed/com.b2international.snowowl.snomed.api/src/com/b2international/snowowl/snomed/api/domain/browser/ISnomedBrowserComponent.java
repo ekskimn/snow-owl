@@ -24,4 +24,8 @@ public interface ISnomedBrowserComponent extends IStatusWithModuleIdProvider {
 
 	/** @return the component effective time (in {@code yyyyMMdd} format in JSON responses) */
 	Date getEffectiveTime();
+	
+	/** @return if the component has already been released as part of a version, {@code false} otherwise */
+	Boolean isReleased();
+
 }
