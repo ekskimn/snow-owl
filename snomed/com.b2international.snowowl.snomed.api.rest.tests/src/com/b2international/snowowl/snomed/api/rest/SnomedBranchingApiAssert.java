@@ -35,6 +35,11 @@ import com.jayway.restassured.response.ValidatableResponse;
  * @since 2.0
  */
 public abstract class SnomedBranchingApiAssert {
+	
+	/**
+	 * The context-relative base URL for the administrative controller. 
+	 */
+	private static String ADMIN_API = "/admin";
 
 	private static Response whenCreatingBranch(final IBranchPath branchPath, final Map<?, ?> metadata) {
 		final Map<?, ?> requestBody = ImmutableMap.<String, Object> builder()
@@ -251,6 +256,19 @@ public abstract class SnomedBranchingApiAssert {
 		whenMergingOrRebasingBranches(source, target, commitComment)
 		.then()
 			.statusCode(409);
+	}
+	
+	public static Response whenCreatingVersion(final String version, final String effectiveDate) {
+		final Map<?, ?> requestBody = ImmutableMap.builder()
+				.put("version", version)
+				.put("description", version)
+				.put("effectiveDate", effectiveDate)
+				.build();
+
+		return givenAuthenticatedRequest(ADMIN_API)
+				.and().contentType(ContentType.JSON)
+				.and().body(requestBody)
+				.when().post("/codesystems/SNOMEDCT/versions");
 	}
 	
 	private SnomedBranchingApiAssert() {

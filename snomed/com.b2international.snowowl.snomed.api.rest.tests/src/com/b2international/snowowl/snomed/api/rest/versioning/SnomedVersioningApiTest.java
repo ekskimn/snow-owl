@@ -16,26 +16,17 @@
 package com.b2international.snowowl.snomed.api.rest.versioning;
 
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenCreatingVersion;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-
-import java.util.Map;
 
 import org.junit.Test;
 
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
-import com.google.common.collect.ImmutableMap;
-import com.jayway.restassured.http.ContentType;
-import com.jayway.restassured.response.Response;
 
 /**
  * @since 2.0
  */
 public class SnomedVersioningApiTest extends AbstractSnomedApiTest {
-
-	/**
-	 * The context-relative base URL for the administrative controller. 
-	 */
-	private static String ADMIN_API = "/admin";
 
 	@Test
 	public void getNonExistentVersion() {
@@ -75,16 +66,5 @@ public class SnomedVersioningApiTest extends AbstractSnomedApiTest {
 		.then().assertThat().statusCode(status);
 	}
 
-	private Response whenCreatingVersion(final String version, final String effectiveDate) {
-		final Map<?, ?> requestBody = ImmutableMap.builder()
-				.put("version", version)
-				.put("description", version)
-				.put("effectiveDate", effectiveDate)
-				.build();
 
-		return givenAuthenticatedRequest(ADMIN_API)
-				.and().contentType(ContentType.JSON)
-				.and().body(requestBody)
-				.when().post("/codesystems/SNOMEDCT/versions");
-	}
 }

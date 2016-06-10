@@ -24,6 +24,7 @@ public abstract class SnomedBrowserComponent implements ISnomedBrowserComponent 
 	private Date effectiveTime;
 	private String moduleId;
 	private boolean active;
+	private boolean released;
 
 	@Override
 	public Date getEffectiveTime() {
@@ -39,6 +40,11 @@ public abstract class SnomedBrowserComponent implements ISnomedBrowserComponent 
 	public boolean isActive() {
 		return active;
 	}
+	
+	@Override
+	public Boolean isReleased() {
+		return released;
+	}
 
 	public void setEffectiveTime(final Date effectiveTime) {
 		this.effectiveTime = effectiveTime;
@@ -50,5 +56,9 @@ public abstract class SnomedBrowserComponent implements ISnomedBrowserComponent 
 
 	public void setActive(final boolean active) {
 		this.active = active;
+	}
+	
+	public void setReleased(boolean released) {
+		this.released = released;
 	}
 }

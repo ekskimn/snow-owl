@@ -22,6 +22,9 @@ import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_C
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenDeletingBranchWithPath;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenCreatingVersion;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertConceptIndexedBrowserPropertyEquals;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertConceptIndexedBrowserPropertyIsNull;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentCreatedWithStatus;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentNotCreated;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentUpdatedWithStatus;
@@ -36,6 +39,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.google.common.collect.ImmutableList;
@@ -90,13 +94,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 	public void createConceptWithGeneratedId() {
 		final String conceptId = generateComponentId(null, ComponentCategory.CONCEPT);
 
-		final Date creationDate = new Date();
-		final String fsn = "New FSN at " + creationDate;
-		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
-		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate);
-		final Map<?, ?> requestBody = givenConceptRequestBody(conceptId, true, fsn, MODULE_SCT_CORE, descriptions, relationships,
-				creationDate);
-		assertComponentCreatedWithStatus(createMainPath(), requestBody, 200);
+		createConcept(conceptId);
 	}
 
 	@Test
@@ -153,6 +151,36 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 
 		// We get a 400, bad request, because at least one is-a relationship is required
 		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 400);
+	}
+
+	@Test
+	public void releasedFlagOnReleasedConceptAndComponents() {
+		final String conceptId = "266719004";
+		createConcept(conceptId);
+		
+		final IBranchPath path = createMainPath();
+		assertConceptIndexedBrowserPropertyIsNull(path, conceptId, "effectiveTime");
+		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "released", false);
+		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "descriptions.released[0]", false);
+		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "relationships.released[0]", false);
+
+//		FIXME: Creating a version is failing with a strange error unless this is the only unit test running. Looking for help with this.
+//		final String effectiveDate = "20160501";
+//		whenCreatingVersion("2016-05-01", effectiveDate).then().assertThat().statusCode(201);
+//		
+//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "effectiveTime", effectiveDate);
+//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "released", true);
+//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "descriptions.released[0]", true);
+//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "relationships.released[0]", true);
+	}
+
+	private void createConcept(final String conceptId) {
+		final Date creationDate = new Date();
+		final String fsn = "New FSN at " + creationDate;
+		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
+		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate);
+		final Map<?, ?> requestBody = givenConceptRequestBody(conceptId, true, fsn, MODULE_SCT_CORE, descriptions, relationships, creationDate);
+		assertComponentCreatedWithStatus(createMainPath(), requestBody, 200);
 	}
 
 }

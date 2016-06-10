@@ -203,6 +203,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final SnomedBrowserConcept result = new SnomedBrowserConcept();
 
 		result.setActive(concept.isActive());
+		result.setReleased(concept.isReleased());
 		result.setConceptId(concept.getId());
 		result.setDefinitionStatus(concept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
 		result.setEffectiveTime(EffectiveTimes.toDate(concept.getEffectiveTimeAsLong()));
@@ -427,6 +428,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				continue;
 			}
 			convertedDescription.setActive(description.isActive());
+			convertedDescription.setReleased(description.isReleased());
 			convertedDescription.setCaseSignificance(description.getCaseSignificance());
 			convertedDescription.setConceptId(description.getConceptId());
 			convertedDescription.setDescriptionId(descriptionId);
@@ -455,6 +457,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		for (final SnomedRelationshipIndexEntry relationship : relationships) {
 			final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship(relationship.getId());
 			convertedRelationship.setActive(relationship.isActive());
+			convertedRelationship.setReleased(relationship.isReleased());
 			convertedRelationship.setCharacteristicType(CharacteristicType.getByConceptId(relationship.getCharacteristicTypeId()));
 			convertedRelationship.setEffectiveTime(EffectiveTimes.toDate(relationship.getEffectiveTimeAsLong()));
 			convertedRelationship.setGroupId(relationship.getGroup());

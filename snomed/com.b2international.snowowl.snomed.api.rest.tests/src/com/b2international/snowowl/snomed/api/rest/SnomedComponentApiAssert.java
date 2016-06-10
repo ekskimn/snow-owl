@@ -22,11 +22,14 @@ import static com.b2international.snowowl.test.commons.rest.RestExtensions.given
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
+
+import org.hamcrest.CoreMatchers;
 
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -423,7 +426,14 @@ public abstract class SnomedComponentApiAssert {
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 		.when().get("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
 		.then().assertThat().statusCode(200)
-		.and().body(propertyName, equalTo(propertyValue));		
+		.and().body(propertyName, equalTo(propertyValue));
+	}
+
+	public static void assertConceptIndexedBrowserPropertyIsNull(final IBranchPath branchPath, final String conceptId, final String propertyName) {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+		.when().get("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
+		.then().assertThat().statusCode(200)
+		.and().body(propertyName, nullValue());
 	}
 
 	public static void assertDescriptionPropertyEquals(final IBranchPath branchPath, final String descriptionId, final String propertyName, final Object propertyValue) {
