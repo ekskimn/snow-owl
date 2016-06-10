@@ -164,14 +164,13 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "descriptions.released[0]", false);
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "relationships.released[0]", false);
 
-//		FIXME: Creating a version is failing with a strange error unless this is the only unit test running. Looking for help with this.
-//		final String effectiveDate = "20160501";
-//		whenCreatingVersion("2016-05-01", effectiveDate).then().assertThat().statusCode(201);
-//		
-//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "effectiveTime", effectiveDate);
-//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "released", true);
-//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "descriptions.released[0]", true);
-//		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "relationships.released[0]", true);
+		final String effectiveDate = "20160501";
+		whenCreatingVersion("2016-05-01", effectiveDate).then().assertThat().statusCode(201);
+		
+		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "effectiveTime", effectiveDate);
+		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "released", true);
+		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "descriptions.released[0]", true);
+		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "relationships.released[0]", true);
 	}
 
 	private void createConcept(final String conceptId) {
