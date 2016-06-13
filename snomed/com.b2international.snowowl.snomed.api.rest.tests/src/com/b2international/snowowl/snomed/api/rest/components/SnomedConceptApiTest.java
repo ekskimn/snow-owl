@@ -32,6 +32,7 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -47,9 +48,11 @@ import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.jayway.restassured.response.ResponseBodyExtractionOptions;
 
 /**
@@ -356,6 +359,21 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		dupRequestBody.put("id", conceptId);
 		dupRequestBody.put("commitComment", "New duplicate concept on MAIN");
 		assertComponentCreatedWithStatus(createMainPath(), SnomedComponentType.CONCEPT, dupRequestBody, 409);
+	}
+	
+	@Test
+	public void findConceptsById() {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.when().get("/{path}/concepts?conceptIds=255203001,72670004", createMainPath().getPath())
+				.then()
+				.log()
+				.ifValidationFails()
+				.assertThat()
+				.statusCode(200)
+				.body("total", equalTo(2))
+				.body("items.id[0]", equalTo("255203001"))
+				.body("items.id[1]", equalTo("72670004"))
+				;
 	}
 
 	private ResponseBodyExtractionOptions getComponentMembers(IBranchPath branchPath, String componentId) {

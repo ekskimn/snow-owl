@@ -15,6 +15,9 @@
  */
 package com.b2international.snowowl.snomed.datastore.server.request;
 
+import java.util.Collection;
+
+import com.b2international.commons.CompareUtils;
 import com.b2international.snowowl.datastore.request.SearchRequest;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedConceptSearchRequest.OptionKey;
@@ -34,6 +37,13 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedSearchRequest
 
 	public final SnomedConceptSearchRequestBuilder filterByEscg(String expression) {
 		return addOption(OptionKey.ESCG, expression);
+	}
+	
+	public final SnomedConceptSearchRequestBuilder filterByComponentIds(Collection<String> componentIds) {
+		if (!CompareUtils.isEmpty(componentIds)) {
+			return setComponentIds(componentIds);
+		}
+		return this;
 	}
 	
 	public final SnomedConceptSearchRequestBuilder filterByParent(String parentId) {

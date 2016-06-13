@@ -22,6 +22,7 @@ import java.io.StringReader;
 import java.net.URI;
 import java.security.Principal;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -97,6 +98,10 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="escg", required=false) 
 			final String escgFilter,
 			
+			@ApiParam(value="A set of Concept identifiers")
+			@RequestParam(value="conceptIds", required=false) 
+			final Set<String> conceptIds,
+			
 			@ApiParam(value="The concept module identifier to match")
 			@RequestParam(value="module", required=false) 
 			final String moduleFilter,
@@ -138,6 +143,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.setOffset(offset)
 					.filterByTerm(termFilter)
 					.filterByEscg(escgFilter)
+					.filterByComponentIds(conceptIds)
 					.filterByModule(moduleFilter)
 					.filterByActive(activeFilter)
 					.setExpand(expand)
