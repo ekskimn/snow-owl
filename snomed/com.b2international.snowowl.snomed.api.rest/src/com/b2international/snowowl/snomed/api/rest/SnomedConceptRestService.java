@@ -24,6 +24,8 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Set;
 
+import javax.ws.rs.DefaultValue;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,6 +50,7 @@ import com.b2international.snowowl.snomed.api.impl.SnomedExpressionService;
 import com.b2international.snowowl.snomed.api.rest.domain.ChangeRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestInput;
+import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestSearch;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
@@ -126,6 +129,48 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
+		return doSearch(branch, termFilter, escgFilter, conceptIds,
+				moduleFilter, activeFilter, offset, limit, expand,
+				acceptLanguage);
+	}
+
+	@ApiOperation(
+			value="Alternate search endpoint. Retrieve Concepts from a branch", 
+			notes="This is an alternative to the standard {path}/concepts search endpoint.<br/>"
+					+ "Returns a list with all/filtered Concepts from a branch."
+					+ "<p>The following properties can be expanded:"
+					+ "<p>"
+					+ "&bull; pt() &ndash; the description representing the concept's preferred term in the given locale<br>"
+					+ "&bull; fsn() &ndash; the description representing the concept's fully specified name in the given locale<br>"
+					+ "&bull; descriptions() &ndash; the list of descriptions for the concept<br>")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK", response = PageableCollectionResource.class),
+		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
+		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
+	})
+	@RequestMapping(value="/{path:**}/concepts/search", method = {RequestMethod.POST})
+	public @ResponseBody DeferredResult<SnomedConcepts> searchViaPost(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branch,
+
+			@RequestBody
+			final SnomedConceptRestSearch body,
+			
+			@ApiParam(value="Accepted language tags, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String acceptLanguage) {
+
+		return doSearch(branch, body.getTermFilter(), body.getEscgFilter(), body.getConceptIds(),
+				body.getModuleFilter(), body.getActiveFilter(), body.getOffset(), body.getLimit(), body.getExpand(),
+				acceptLanguage);
+	}
+
+	private DeferredResult<SnomedConcepts> doSearch(final String branch,
+			final String termFilter, final String escgFilter,
+			final Set<String> conceptIds, final String moduleFilter,
+			final Boolean activeFilter, final int offset, final int limit,
+			final String expand, final String acceptLanguage) {
 		final List<ExtendedLocale> extendedLocales;
 		
 		try {
