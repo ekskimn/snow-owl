@@ -29,7 +29,7 @@ import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -59,7 +59,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 		
 		ValidationConceptService validationConceptService = new ValidationConceptService(path, terminologyBrowser);
-		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService);
+		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService, branchPath, bus);
 		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(branchPath, bus);
 		try {
 			List<InvalidContent> list = ruleExecutor.execute(assertionGroupNames, new ValidationConcept(browserConcept), 
