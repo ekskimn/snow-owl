@@ -6,17 +6,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.ihtsdo.drools.domain.Description;
+
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
+import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 
 public class ValidationDescriptionService implements org.ihtsdo.drools.service.DescriptionService {
 
 	private DescriptionService descriptionService;
+	private String branchPath;
+	private IEventBus bus;
 
-	public ValidationDescriptionService(DescriptionService descriptionService) {
+	public ValidationDescriptionService(DescriptionService descriptionService, String branchPath, IEventBus bus) {
 		this.descriptionService = descriptionService;
+		this.branchPath = branchPath;
+		this.bus = bus;
 	}
 
 	@Override
@@ -32,6 +43,23 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			fsns.add(description.getTerm());
 		}
 		return fsns;
+	}
+
+	@Override
+	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(exactTerm)
+				.build(branchPath)
+				.executeSync(bus);
+
+		Set<Description> matches = new HashSet<>();
+		for (ISnomedDescription iSnomedDescription : descriptions) {
+			if (iSnomedDescription.getTerm().equals(exactTerm)) {
+				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
+			}
+		}
+		return matches;
 	}
 
 }

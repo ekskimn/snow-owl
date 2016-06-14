@@ -3,36 +3,36 @@ package com.b2international.snowowl.snomed.api.impl.validation.domain;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
+import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 
 /**
- * Wrapper for the ISnomedBrowserDescription class 
+ * Wrapper for the ISnomedDescription class 
  */
-public class ValidationDescription implements org.ihtsdo.drools.domain.Description {
+public class ValidationSnomedDescription implements org.ihtsdo.drools.domain.Description {
 
-	private ISnomedBrowserDescription browserDesciption;
+	private ISnomedDescription description;
 	private String conceptId;
 
-	public ValidationDescription(ISnomedBrowserDescription browserDesciption, String conceptId) {
-		this.browserDesciption = browserDesciption;
+	public ValidationSnomedDescription(ISnomedDescription description, String conceptId) {
+		this.description = description;
 		this.conceptId = conceptId;
 	}
 
 	@Override
 	public String getId() {
-		return browserDesciption.getDescriptionId();
+		return description.getId();
 	}
 
 	@Override
 	public boolean isActive() {
-		return browserDesciption.isActive();
+		return description.isActive();
 	}
 
 	@Override
 	public boolean isPublished() {
-		return browserDesciption.getEffectiveTime() != null;
+		return description.getEffectiveTime() != null;
 	}
 
 	@Override
@@ -42,28 +42,28 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 
 	@Override
 	public String getTypeId() {
-		return browserDesciption.getType().getConceptId();
+		return description.getTypeId();
 	}
 
 	@Override
 	public String getCaseSignificanceId() {
-		return browserDesciption.getCaseSignificance().getConceptId();
+		return description.getCaseSignificance().getConceptId();
 	}
 	
 	@Override
 	public String getTerm() {
-		return browserDesciption.getTerm();
+		return description.getTerm();
 	}
 
 	@Override
 	public boolean isTextDefinition() {
-		return browserDesciption.getType() == SnomedBrowserDescriptionType.TEXT_DEFINITION;
+		return SnomedBrowserDescriptionType.TEXT_DEFINITION.getConceptId().equals(description.getTypeId());
 	}
 	
 	@Override
 	public Map<String, String> getAcceptabilityMap() {
 		Map<String, String> langRefsetIdToAcceptabliltyIdMap = new HashMap<>();
-		Map<String, Acceptability> acceptabilityMap = browserDesciption.getAcceptabilityMap();
+		Map<String, Acceptability> acceptabilityMap = description.getAcceptabilityMap();
 		for (String langRefsetId : acceptabilityMap.keySet()) {
 			langRefsetIdToAcceptabliltyIdMap.put(langRefsetId, acceptabilityMap.get(langRefsetId).getConceptId());
 		}

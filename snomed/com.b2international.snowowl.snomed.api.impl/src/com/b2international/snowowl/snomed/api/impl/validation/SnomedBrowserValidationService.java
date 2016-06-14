@@ -44,7 +44,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 		
 		ValidationConceptService validationConceptService = new ValidationConceptService(path, terminologyBrowser);
-		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService);
+		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService, branchPath, bus);
 		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(branchPath, bus);
 		try {
 			List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), validationConceptService, validationDescriptionService, validationRelationshipService,
