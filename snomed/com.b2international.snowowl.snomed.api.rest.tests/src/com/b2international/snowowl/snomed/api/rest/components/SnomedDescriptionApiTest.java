@@ -607,5 +607,13 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		assertEquals(true, updatedMember.get(SnomedRf2Headers.FIELD_ACTIVE));
 		assertEquals(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED, updatedMember.get(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID));
 	}
-	
+
+	@Test
+	public void findUtf8Term() {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.when().get("/MAIN/concepts?term=Ménière")
+			.then().log().ifValidationFails()
+			.and().assertThat().statusCode(200)
+			.and().body("total", equalTo(1));
+	}
 }
