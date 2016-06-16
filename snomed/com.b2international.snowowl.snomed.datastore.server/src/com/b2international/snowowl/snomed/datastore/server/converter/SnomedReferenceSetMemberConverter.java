@@ -175,7 +175,7 @@ final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConvert
 			case CONCRETE_DATA_TYPE:
 				props.put(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, entry.getAttributeLabel());
 				props.put(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, entry.getCharacteristicTypeId());
-				props.put(SnomedRf2Headers.FIELD_VALUE, entry.getValue());
+				props.put(SnomedRf2Headers.FIELD_VALUE, entry.getSerializedValue());
 				props.put(SnomedRf2Headers.FIELD_UNIT_ID, entry.getUomComponentId());
 				props.put(SnomedRf2Headers.FIELD_OPERATOR_ID, entry.getOperatorComponentId());
 				break;
@@ -183,15 +183,21 @@ final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConvert
 				props.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, entry.getAcceptabilityId());
 				break;
 			case DESCRIPTION_TYPE:
-				// XXX description format???
+				props.put(SnomedRf2Headers.FIELD_DESCRIPTION_FORMAT, entry.getDescriptionFormatId());
 				props.put(SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH, entry.getDescriptionLength());
 				break;
-			// TODO module dependency refset
-			default:
+			case MODULE_DEPENDENCY:
+				props.put(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME, entry.getSourceEffectiveTime());
+				props.put(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME, entry.getTargetEffectiveTime());
 				break;
+			case SIMPLE:
+				// No additional fields on simple type reference set member
+				break;
+			default:
+				throw new IllegalStateException("Unexpected type '" + entry.getRefSetType() + "'.");
 		}
-		member.setProperties(props.build());
 		
+		member.setProperties(props.build());
 		setReferencedComponent(member, entry.getReferencedComponentId(), entry.getReferencedComponentType());
 		return member;
 	}
