@@ -516,4 +516,13 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 			.when().get("/{path}/{componentType}?referencedComponentId={componentId}", branchPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), descriptionId)
 			.then().log().ifValidationFails().extract().body().path("items");
 	}
+
+	@Test
+	public void findUtf8Term() {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.when().get("/MAIN/concepts?term=Ménière")
+			.then().log().ifValidationFails()
+			.and().assertThat().statusCode(200)
+			.and().body("total", equalTo(1));
+	}
 }
