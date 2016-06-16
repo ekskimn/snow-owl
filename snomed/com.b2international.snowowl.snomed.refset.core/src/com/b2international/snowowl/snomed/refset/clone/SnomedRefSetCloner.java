@@ -34,6 +34,7 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRegularRefSet;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.SignedBytes;
 
 /**
  * Clones the members of a given {@link SnomedRefSet reference set}.
@@ -62,7 +63,7 @@ public class SnomedRefSetCloner {
 		loadChildMonitor.setTaskName("Loading reference set members...");
 		loadChildMonitor.setWorkRemaining(1);
 		SnomedClientIndexService indexService = ApplicationContext.getInstance().getService(SnomedClientIndexService.class);
-		SnomedRefSetMemberIndexQueryAdapter originalMembersQueryAdapter = new SnomedRefSetMemberIndexQueryAdapter((String) originalRefSetId, "");
+		SnomedRefSetMemberIndexQueryAdapter originalMembersQueryAdapter = new SnomedRefSetMemberIndexQueryAdapter(originalRefSetId, "");
 		List<SnomedRefSetMemberIndexEntry> originalMembers = indexService.search(originalMembersQueryAdapter);
 		loadChildMonitor.worked(1);
 
@@ -91,12 +92,11 @@ public class SnomedRefSetCloner {
 				String mapTargetComponentType = originalMemberIndexEntry.getMapTargetComponentType();
 				specialFieldPair = ComponentIdentifierPair.<String>createWithUncheckedComponentId(mapTargetComponentType, mapTargetId);
 				SnomedComplexMapRefSetMember newComplexMapRefSetMember = editingContext.createComplexMapRefSetMember(identifierPair, specialFieldPair, originalMemberIndexEntry.getModuleId(), (SnomedMappingRefSet) cloneRefSet);
-				SnomedRefSetMemberIndexEntry complexMapRefSetMemberIndexEntry = (SnomedRefSetMemberIndexEntry) originalMemberIndexEntry;
-				newComplexMapRefSetMember.setCorrelationId(complexMapRefSetMemberIndexEntry.getCorrelationId());
-				newComplexMapRefSetMember.setMapAdvice(complexMapRefSetMemberIndexEntry.getMapAdvice());
-				newComplexMapRefSetMember.setMapGroup((byte) complexMapRefSetMemberIndexEntry.getMapGroup());
-				newComplexMapRefSetMember.setMapPriority((byte) complexMapRefSetMemberIndexEntry.getMapPriority());
-				newComplexMapRefSetMember.setMapRule(complexMapRefSetMemberIndexEntry.getMapRule());
+				newComplexMapRefSetMember.setCorrelationId(originalMemberIndexEntry.getCorrelationId());
+				newComplexMapRefSetMember.setMapAdvice(originalMemberIndexEntry.getMapAdvice());
+				newComplexMapRefSetMember.setMapGroup(SignedBytes.checkedCast(originalMemberIndexEntry.getMapGroup()));
+				newComplexMapRefSetMember.setMapPriority(SignedBytes.checkedCast(originalMemberIndexEntry.getMapPriority()));
+				newComplexMapRefSetMember.setMapRule(originalMemberIndexEntry.getMapRule());
 				newRefSetMember = newComplexMapRefSetMember;
 				break;
 			case SIMPLE_MAP:
