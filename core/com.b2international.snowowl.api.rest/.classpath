@@ -32,7 +32,7 @@
 	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/scala-reflect-2.10.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/scalap-2.10.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/spring-aop-4.0.5.RELEASE.jar"/>
-	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/spring-beans-4.0.5.RELEASE.jar" sourcepath="C:/Users/mczotter/.m2/repository/org/springframework/spring-beans/4.0.5.RELEASE/spring-beans-4.0.5.RELEASE-sources.jar"/>
+	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/spring-beans-4.0.5.RELEASE.jar"/>
 	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/spring-context-4.0.5.RELEASE.jar"/>
 	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/spring-core-4.0.5.RELEASE.jar"/>
 	<classpathentry exported="true" kind="lib" path="WEB-INF/lib/spring-expression-4.0.5.RELEASE.jar"/>
