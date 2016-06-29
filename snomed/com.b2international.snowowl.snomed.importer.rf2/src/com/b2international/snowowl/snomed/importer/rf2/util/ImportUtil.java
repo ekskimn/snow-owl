@@ -54,10 +54,12 @@ import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.ConsoleProgressMonitor;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.platform.Extensions;
+import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
+import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.oplock.IOperationLockManager;
@@ -73,14 +75,12 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.importer.Importer;
 import com.b2international.snowowl.snomed.SnomedPackage;
-import com.b2international.snowowl.snomed.SnomedRelease;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSets;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
-import com.b2international.snowowl.snomed.core.store.SnomedReleaseBuilder;
 import com.b2international.snowowl.snomed.datastore.ILanguageConfigurationProvider;
 import com.b2international.snowowl.snomed.datastore.ISnomedImportPostProcessor;
 import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
@@ -116,7 +116,6 @@ import com.google.common.base.Predicates;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -146,7 +145,7 @@ public final class ImportUtil {
 	}
 	
 	public SnomedImportResult doImport(
-			final SnomedRelease snomedRelease,
+			final CodeSystem codeSystem,
 			final ContentSubType contentSubType,
 			final IBranchPath branchPath,
 			final File releaseArchive,
@@ -154,11 +153,11 @@ public final class ImportUtil {
 			final boolean releasePatch,
 			final Date patchReleaseVersion) throws Exception {
 		
-		return doImport(snomedRelease, branchPath, contentSubType, releaseArchive, shouldCreateVersions, releasePatch, patchReleaseVersion, SYSTEM_USER_NAME, new NullProgressMonitor());
+		return doImport(codeSystem, branchPath, contentSubType, releaseArchive, shouldCreateVersions, releasePatch, patchReleaseVersion, SYSTEM_USER_NAME, new NullProgressMonitor());
 	}
 
 	public SnomedImportResult doImport(
-			final SnomedRelease snomedRelease,
+			final CodeSystem codeSystem,
 			final String userId,
 			final ContentSubType contentSubType,
 			final String branchPathName,
@@ -166,11 +165,11 @@ public final class ImportUtil {
 			final boolean createVersions,
 			final IProgressMonitor monitor) throws ImportException {
 		
-		return doImport(snomedRelease, BranchPathUtils.createPath(branchPathName), contentSubType, releaseArchive, createVersions, false, null, userId, monitor);
+		return doImport(codeSystem, BranchPathUtils.createPath(branchPathName), contentSubType, releaseArchive, createVersions, false, null, userId, monitor);
 	}
 
 	private SnomedImportResult doImport(
-			final SnomedRelease snomedRelease,
+			final CodeSystem codeSystem,
 			final IBranchPath branchPath,
 			final ContentSubType contentSubType,
 			final File releaseArchive,
@@ -190,9 +189,10 @@ public final class ImportUtil {
 		}
 
 		checkArgument(BranchPathUtils.exists(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath()));
+		ApiValidation.checkInput(codeSystem);
 		
 		final ImportConfiguration config = new ImportConfiguration();
-		config.setSnomedRelease(snomedRelease);
+		config.setCodeSystem(codeSystem);
 		config.setVersion(contentSubType);
 		config.setBranchPath(branchPath.getPath());
 		config.setCreateVersions(shouldCreateVersions);
@@ -277,7 +277,7 @@ public final class ImportUtil {
 			return result;
 		}
 		
-		createSnomedReleaseIfNotExists(configuration.getSnomedRelease(), requestingUserId);
+		createCodeSystemIfNotExists(configuration.getCodeSystem(), requestingUserId);
 		
 		final Set<URL> patchedRefSetURLs = Sets.newHashSet(configuration.getRefSetUrls());
 		final Set<String> patchedExcludedRefSetIDs = Sets.newHashSet(configuration.getExcludedRefSetIds());
@@ -292,8 +292,8 @@ public final class ImportUtil {
 		context.setIgnoredRefSetIds(patchedExcludedRefSetIDs);
 		context.setReleasePatch(configuration.isReleasePatch());
 		context.setPatchReleaseVersion(configuration.getPatchReleaseVersion());
-		context.setSnomedReleaseShortName(configuration.getSnomedRelease().getShortName());
-		context.setSnomedReleaseOID(configuration.getSnomedRelease().getCodeSystemOID());
+		context.setCodeSystemShortName(configuration.getCodeSystem().getShortName());
+		context.setCodeSystemOID(configuration.getCodeSystem().getOid());
 
 		try {
 
@@ -391,26 +391,24 @@ public final class ImportUtil {
 		return resultHolder[0];
 	}
 	
-	private void createSnomedReleaseIfNotExists(final SnomedRelease snomedRelease, final String userId) {
+	private void createCodeSystemIfNotExists(final CodeSystem codeSystem, final String userId) {
 		try {
-			new CodeSystemRequests(snomedRelease.getRepositoryUuid())
+			new CodeSystemRequests(codeSystem.getRepositoryUuid())
 				.prepareNewCodeSystem()
-				.setBranchPath(snomedRelease.getBranchPath())
-				.setName(snomedRelease.getName())
-				.setShortName(snomedRelease.getShortName())
-				.setLanguage(snomedRelease.getLanguage())
-				.setLink(snomedRelease.getMaintainingOrganizationLink())
-				.setOid(snomedRelease.getCodeSystemOID())
-				.setCitation(snomedRelease.getCitation())
-				.setIconPath(snomedRelease.getIconPath())
-				.setTerminologyId(snomedRelease.getTerminologyComponentId())
-				.setRepositoryUuid(snomedRelease.getRepositoryUuid())
-				.setAdditionaProperties(ImmutableMap.<String, String>builder()
-						.put(SnomedReleaseBuilder.KEY_BASE_CODE_SYSTEM_OID, snomedRelease.getBaseCodeSystemOID())
-						.put(SnomedReleaseBuilder.KEY_RELEASE_TYPE, snomedRelease.getReleaseType().getName())
-						.build())
-						.build(userId, IBranchPath.MAIN_BRANCH, String.format("Created SNOMED CT code system '%s' (OID: %s)", snomedRelease.getShortName(), snomedRelease.getCodeSystemOID()))
-						.executeSync(getEventBus());
+				.setBranchPath(codeSystem.getBranchPath())
+				.setName(codeSystem.getName())
+				.setShortName(codeSystem.getShortName())
+				.setLanguage(codeSystem.getPrimaryLanguage())
+				.setLink(codeSystem.getOrganizationLink())
+				.setOid(codeSystem.getOid())
+				.setCitation(codeSystem.getCitation())
+				.setIconPath(codeSystem.getIconPath())
+				.setTerminologyId(codeSystem.getTerminologyId())
+				.setRepositoryUuid(codeSystem.getRepositoryUuid())
+				.setExtensionOf(codeSystem.getExtensionOf())
+				.build(userId, IBranchPath.MAIN_BRANCH, String.format("Created SNOMED CT code system '%s' (OID: %s)",
+					codeSystem.getShortName(), codeSystem.getOid()))
+				.executeSync(getEventBus());
 		} catch (AlreadyExistsException e) {
 			// ignore and continue import
 		}

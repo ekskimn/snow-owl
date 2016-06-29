@@ -26,6 +26,7 @@ import com.b2international.snowowl.snomed.api.japi.branches.SnomedBranchRequestT
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedBranchingApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeReviewApiTest;
+import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeConflictTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiTest;
 import com.b2international.snowowl.snomed.api.rest.classification.SnomedClassificationApiTest;
@@ -55,6 +56,7 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	// RESTful API test cases
 	SnomedBranchingApiTest.class,
 	SnomedMergeApiTest.class,
+	SnomedMergeConflictTest.class,
 	SnomedReviewApiTest.class,
 	SnomedMergeReviewApiTest.class,
 	SnomedVersioningApiTest.class,
@@ -80,5 +82,5 @@ public class AllSnomedApiTests {
 			.outerRule(SnowOwlAppRule.snowOwl().clearResources(true).config(PlatformUtil.toAbsolutePath(AllSnomedApiTests.class, "rest-configuration.yml")))
 			.around(new BundleStartRule("com.b2international.snowowl.api.rest"))
 			.around(new BundleStartRule("com.b2international.snowowl.snomed.api.rest"))
-			.around(new SnomedContentRule(SnomedReleases.newSnomedInternationalRelease().build(), Resources.Snomed.MINI_RF2_INT, ContentSubType.FULL));
+			.around(new SnomedContentRule(SnomedReleases.newSnomedInternationalRelease(), Resources.Snomed.MINI_RF2_INT, ContentSubType.FULL));
 }

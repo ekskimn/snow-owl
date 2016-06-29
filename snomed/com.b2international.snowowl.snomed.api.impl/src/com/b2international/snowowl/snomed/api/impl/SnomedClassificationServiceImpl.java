@@ -90,8 +90,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedClassificationServiceImpl.class);
 	
-	private static final int MAX_INDEXED_RESULTS = 1000;
-	
 	private final class PersistenceCompletionHandler implements IHandler<IMessage> {
 
 		private final UUID uuid;
@@ -235,7 +233,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		}
 
 		try {
-			indexService.trimIndex(MAX_INDEXED_RESULTS);
+			indexService.trimIndex(maxReasonerRuns);
 			indexService.invalidateClassificationRuns();
 		} catch (final IOException e) {
 			LOG.error("Failed to run housekeeping tasks for the classification index.", e);

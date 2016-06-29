@@ -31,7 +31,7 @@ public class SnomedImportRestConfiguration implements SnomedStandardImportRestCo
 	private String branchPath;
 	private Boolean createVersions = Boolean.FALSE;
 	private String patchReleaseVersion;
-	private String snomedReleaseShortName = SNOMED_INT_SHORT_NAME;
+	private String codeSystemShortName = SNOMED_INT_SHORT_NAME;
 
 	@Override
 	public String getBranchPath() {
@@ -63,12 +63,12 @@ public class SnomedImportRestConfiguration implements SnomedStandardImportRestCo
 		this.createVersions = createVersions;
 	}
 
-	public String getSnomedReleaseShortName() {
-		return snomedReleaseShortName;
+	public String getCodeSystemShortName() {
+		return codeSystemShortName;
 	}
 	
-	public void setSnomedReleaseShortName(String snomedReleaseShortName) {
-		this.snomedReleaseShortName = snomedReleaseShortName;
+	public void setCodeSystemShortName(String codeSystemShortName) {
+		this.codeSystemShortName = codeSystemShortName;
 	}
 	
 	@Override
@@ -83,9 +83,9 @@ public class SnomedImportRestConfiguration implements SnomedStandardImportRestCo
 
 	@Override
 	public ISnomedImportConfiguration toConfig() {
-		final String shortNameOrDefault = StringUtils.isEmpty(getSnomedReleaseShortName()) 
+		final String shortNameOrDefault = StringUtils.isEmpty(getCodeSystemShortName()) 
 				? SNOMED_INT_SHORT_NAME 
-				: getSnomedReleaseShortName();
+				: getCodeSystemShortName();
 		
 		if (getPatchReleaseVersion() == null) {
 			return new SnomedImportConfiguration(
@@ -109,8 +109,8 @@ public class SnomedImportRestConfiguration implements SnomedStandardImportRestCo
 		builder.append(createVersions);
 		builder.append(", patchReleaseVersion=");
 		builder.append(patchReleaseVersion);
-		builder.append(", snomedReleaseShortName=");
-		builder.append(snomedReleaseShortName);
+		builder.append(", codeSystemShortName=");
+		builder.append(codeSystemShortName);
 		builder.append("]");
 		return builder.toString();
 	}

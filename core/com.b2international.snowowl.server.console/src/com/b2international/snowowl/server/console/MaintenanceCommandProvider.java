@@ -24,6 +24,11 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.lucene.search.Query;
+import org.eclipse.emf.cdo.common.CDOCommonRepository.State;
+import org.eclipse.emf.cdo.internal.server.syncing.RepositorySynchronizer;
+import org.eclipse.emf.cdo.net4j.CDONet4jSessionConfiguration;
+import org.eclipse.emf.cdo.session.CDOSessionConfiguration;
+import org.eclipse.emf.cdo.session.CDOSessionConfigurationFactory;
 import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
 
@@ -34,6 +39,8 @@ import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.datastore.cdo.ICDOConnection;
+import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
@@ -61,12 +68,16 @@ import com.google.common.collect.Sets;
  */
 public class MaintenanceCommandProvider implements CommandProvider {
 
+	/**
+	 * 
+	 */
 	private static final String DEFAULT_BRANCH_PREFIX = "|---";
 	private static final String DEFAULT_INDENT = "    ";
 	private static final String LISTBRANCHES_COMMAND = "listbranches";
 	private static final String LISTREPOSITORIES_COMMAND = "listrepositories";
 	private static final String DBCREATEINDEX_COMMAND = "dbcreateindex";
 	private static final String CHECKSERVICES_COMMAND = "checkservices";
+	private static final String RECREATEINDEX = "recreateindex";
 
 	class Artefact {
 		public long storageKey;
@@ -90,47 +101,55 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		StringBuffer buffer = new StringBuffer();
 		buffer.append("---Snow Owl commands---\n");
 		buffer.append("\tsnowowl checkservices - Checks the core services presence\n");
-		buffer.append("\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namespace URI.\n");
 		buffer.append("\tsnowowl listrepositories - prints all the repositories in the system.\n");
 		buffer.append("\tsnowowl listbranches [repository] - prints all the branches in the system for a repository.\n");
 		buffer.append("\tsnowowl replacedupids [branchPath] - replaces components with duplicate ids in the SNOMED CT repository on a given branch (e.g. MAIN/PROJECT/TASK1). If no branch is given the replacement is executed for all the branches.\n");
+		buffer.append(
+				"\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI\n");
+		buffer.append("\tsnowowl recreateindex - recreates the index from the CDO store.");
 		return buffer.toString();
 	}
 
 	/**
-	 * Reflective template method declaratively registered. Needs to start with "_".
+	 * Reflective template method declaratively registered. Needs to start with
+	 * "_".
 	 * 
 	 * @param interpreter
+	 * @throws InterruptedException
 	 */
-	public void _snowowl(CommandInterpreter interpreter) {
-			String cmd = interpreter.nextArgument();
+	public void _snowowl(CommandInterpreter interpreter) throws InterruptedException {
+		String cmd = interpreter.nextArgument();
 
-			if (CHECKSERVICES_COMMAND.equals(cmd)) {
-				checkServices(interpreter);
-				return;
-			}
+		if (CHECKSERVICES_COMMAND.equals(cmd)) {
+			checkServices(interpreter);
+			return;
+		}
 
-			if (DBCREATEINDEX_COMMAND.equals(cmd)) {
-				createDbIndex(interpreter);
-				return;
-			}
+		if (DBCREATEINDEX_COMMAND.equals(cmd)) {
+			createDbIndex(interpreter);
+			return;
+		}
 
-			if (LISTREPOSITORIES_COMMAND.equals(cmd)) {
-				listRepositories(interpreter);
-				return;
-			}
+		if (LISTREPOSITORIES_COMMAND.equals(cmd)) {
+			listRepositories(interpreter);
+			return;
+		}
 
-			if (LISTBRANCHES_COMMAND.equals(cmd)) {
-				listBranches(interpreter);
-				return;
-			}
-			
-			if ("replacedupids".equals(cmd)) {
-				checkDuplicateIds(interpreter);
-				return;
-			}
+		if (LISTBRANCHES_COMMAND.equals(cmd)) {
+			listBranches(interpreter);
+			return;
+		}
+		
+		if ("replacedupids".equals(cmd)) {
+			checkDuplicateIds(interpreter);
+			return;
+		}
 
-			interpreter.println(getHelp());
+		if (RECREATEINDEX.equals(cmd)) {
+			executeRecreateIndex(interpreter);
+			return;
+		}
+		interpreter.println(getHelp());
 	}
 
 	public synchronized void createDbIndex(CommandInterpreter interpreter) {
@@ -156,13 +175,13 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		String repositoryName = interpreter.nextArgument();
 		if (isValidRepositoryName(repositoryName, interpreter)) {
 			interpreter.println(String.format("Branches for repository %s:", repositoryName));
-			
+
 			Branch mainBranch = BranchPathUtils.getMainBranchForRepository(repositoryName);
-			
+
 			List<Branch> allBranches = newArrayList(mainBranch.children());
 			allBranches.add(mainBranch);
-						
-			printBranchHierarchy(allBranches, Sets.<Branch>newHashSet(), mainBranch, interpreter);
+
+			printBranchHierarchy(allBranches, Sets.<Branch> newHashSet(), mainBranch, interpreter);
 		}
 	}
 
@@ -334,7 +353,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		}
 
 	}
-	
+
 	private void printBranchHierarchy(List<Branch> branches, Set<Branch> visitedBranches, Branch currentBranch, CommandInterpreter interpreter) {
 		interpreter.println(String.format("%s%s%s", getDepthOfBranch(currentBranch), DEFAULT_BRANCH_PREFIX, currentBranch.name()));
 		visitedBranches.add(currentBranch);
@@ -357,7 +376,9 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	public synchronized void checkServices(CommandInterpreter interpreter) {
+
 		interpreter.println("Checking core services...");
+
 		try {
 			Collection<ServiceRegistryEntry<?>> services = ApplicationContext.getInstance().checkServices();
 			for (ServiceRegistryEntry<?> entry : services) {
@@ -367,6 +388,38 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		} catch (final SnowowlRuntimeException e) {
 			interpreter.printStackTrace(e);
 		}
+	}
+
+	@SuppressWarnings("restriction")
+	public synchronized void executeRecreateIndex(CommandInterpreter interpreter) throws InterruptedException {
+
+		String repositoryName = "snomedStore";
+
+		ICDOConnectionManager connectionManager = ApplicationContext.getServiceForClass(ICDOConnectionManager.class);
+
+		RepositorySynchronizer synchronizer = new RepositorySynchronizer();
+		ICDOConnection cdoConnection = connectionManager.getByUuid(repositoryName);
+		final CDONet4jSessionConfiguration sessionConfiguration = cdoConnection.getSessionConfiguration();
+		synchronizer.setRemoteSessionConfigurationFactory(new CDOSessionConfigurationFactory() {
+
+			@Override
+			public CDOSessionConfiguration createSessionConfiguration() {
+				return sessionConfiguration;
+			}
+		});
+
+		// replicate commits as opposed to raw lines
+		synchronizer.setRawReplication(false);
+		SnowOwlDummyInternalRepository localRepository = new SnowOwlDummyInternalRepository();
+		synchronizer.setLocalRepository(localRepository);
+		synchronizer.activate();
+
+		// do the work, wait until it finishes
+		do {
+			Thread.sleep(10000);
+		} while (localRepository.getState() == State.ONLINE);
+
+		synchronizer.deactivate();
 	}
 
 	private boolean isValidRepositoryName(String repositoryName, CommandInterpreter interpreter) {

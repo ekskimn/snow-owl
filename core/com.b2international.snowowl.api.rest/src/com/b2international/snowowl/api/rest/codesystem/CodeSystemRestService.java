@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b2international.commons.StringUtils;
 import com.b2international.snowowl.api.codesystem.ICodeSystemService;
 import com.b2international.snowowl.api.codesystem.domain.ICodeSystem;
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
@@ -41,9 +42,9 @@ import com.b2international.snowowl.api.rest.util.Responses;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
-import com.google.common.collect.Maps;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -122,7 +123,7 @@ public class CodeSystemRestService extends AbstractRestService {
 				.setRepositoryUuid(codeSystem.getRepositoryUuid())
 				.setShortName(codeSystem.getShortName())
 				.setTerminologyId(codeSystem.getTerminologyId())
-				.setAdditionaProperties(codeSystem.getAdditionalProperties() == null ? Maps.<String, String> newHashMap() : codeSystem.getAdditionalProperties())
+				.setExtensionOf(codeSystem.getExtensionOf())
 				.build(userId, IBranchPath.MAIN_BRANCH, commitComment)
 				.executeSync(bus)
 				.getResultAs(String.class);
@@ -132,6 +133,50 @@ public class CodeSystemRestService extends AbstractRestService {
 				.slash(shortName)
 				.toUri())
 				.build();
+	}
+	
+	@ApiOperation(
+			value="Update a code system",
+			notes="Update a Code System with the given parameters")
+	@ApiResponses({
+		@ApiResponse(code = 204, message = "No content", response = Void.class),
+		@ApiResponse(code = 400, message = "Code System cannot be updated", response = RestApiError.class)
+	})
+	@RequestMapping(value="/{shortNameOrOid}", 
+		method = RequestMethod.PUT, 
+		consumes = { AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void updateCodeSystem(
+			@ApiParam(value="The code system identifier (short name or OID)")
+			@PathVariable(value="shortNameOrOid") 
+			final String shortNameOrOId,
+			
+			@RequestBody
+			final CodeSystem codeSystem,
+			
+			final Principal principal
+			) {
+		validateUpdateInput(shortNameOrOId, codeSystem.getRepositoryUuid());
+		final String commitComment = String.format("Updated Code System %s", shortNameOrOId);
+		
+		new CodeSystemRequests(codeSystem.getRepositoryUuid())
+				.prepareUpdateCodeSystem(shortNameOrOId)
+				.setName(codeSystem.getName())
+				.setBranchPath(codeSystem.getBranchPath())
+				.setCitation(codeSystem.getCitation())
+				.setIconPath(codeSystem.getIconPath())
+				.setLanguage(codeSystem.getPrimaryLanguage())
+				.setLink(codeSystem.getOrganizationLink())
+				.build(principal.getName(), IBranchPath.MAIN_BRANCH, commitComment)
+				.executeSync(bus);
+	}
+
+	private void validateUpdateInput(final String shortNameOrOId, final String repositoryUuid) {
+		if (StringUtils.isEmpty(shortNameOrOId)) {
+			throw new BadRequestException("Unique ID cannot be empty for Code System update.");
+		} else if (StringUtils.isEmpty(repositoryUuid)) {
+			throw new BadRequestException("Repository ID cannot be empty for Code System update.");
+		}
 	}
 
 }

@@ -55,11 +55,11 @@ public interface ISnomedImportConfiguration extends ISnomedRF2Configuration {
 	Date getCompletionDate();
 	
 	/**
-	 * Returns the short name of the SnomedRelease to use for the import.
+	 * Returns the short name of the Code System to use for the import.
 	 * 
-	 * @return the short name of the Snomed Release to use.
+	 * @return the short name of the Code System to use.
 	 */
-	String getSnomedReleaseShortName();
+	String getCodeSystemShortName();
 
 	/**
 	 * Determines whether the import should overwrite released component states, this is restricted by the date {@link #getPatchReleaseVersion()}.
