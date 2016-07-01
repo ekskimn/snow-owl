@@ -21,6 +21,7 @@ import static com.b2international.snowowl.test.commons.rest.RestExtensions.given
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 import com.b2international.snowowl.core.ApplicationContext;
@@ -85,6 +86,17 @@ public class SnomedBrowserApiAssert {
 				.and().body(requestBody)
 				.when().put("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId);
 	}
+	
+	public static void assertConceptsUpdatedWithStatus(final IBranchPath branchPath, 
+			final List<Map<String, Object>> requestBody, 
+			final int statusCode) {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().contentType(ContentType.JSON)
+			.and().body(requestBody)
+			.when().put("/browser/{path}/concepts/bulk", branchPath.getPath())
+			.then().log().ifValidationFails().assertThat().statusCode(statusCode);
+	}
+
 	
 	public static Map<String, Object> givenConceptRequestBody(final String conceptId, final boolean active, final String fsn, final String moduleId,
 			final ImmutableList<?> descriptions, final ImmutableList<?> relationships, final Date creationDate) {

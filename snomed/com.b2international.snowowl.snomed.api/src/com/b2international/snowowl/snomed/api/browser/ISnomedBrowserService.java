@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.api.browser;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.IComponentRef;
@@ -104,6 +105,6 @@ public interface ISnomedBrowserService {
 
 	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, List<ExtendedLocale> extendedLocales);
 
-	void update(String branchPath, List<ISnomedBrowserConceptUpdate> concept, String userId, List<ExtendedLocale> extendedLocales);
+	void update(String branchPath, List<? extends ISnomedBrowserConceptUpdate> concept, String userId, List<ExtendedLocale> extendedLocales);
 
 }
