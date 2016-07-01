@@ -17,9 +17,12 @@ import java.io.StringReader;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
@@ -37,6 +42,7 @@ import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
@@ -205,6 +211,49 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		return browserService.update(branchPath, concept, userId, extendedLocales);
+	}
+
+	@ApiOperation(
+			value="Bulk update concepts",
+			notes="Updates the specified Concepts on a branch.")
+	@ApiResponses({
+			@ApiResponse(code = 200, message = "OK", response = Void.class),
+			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
+	})
+	@RequestMapping(value="/concepts/bulk", 
+			method=RequestMethod.PUT,
+			consumes={ IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void bulkUpdateConcepts(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
+			final String languageSetting,
+
+			@RequestBody
+			final List<SnomedBrowserConceptUpdate> concepts,
+
+			final Principal principal) {
+
+		final String userId = principal.getName();
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
+		try {
+			browserService.update(branchPath, concepts, userId, extendedLocales);
+		} catch (Exception e) {
+			throw e;
+		}
 	}
 
 	@ApiOperation(
