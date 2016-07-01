@@ -31,7 +31,7 @@ import com.wordnik.swagger.annotations.ApiResponses;
 @Api("IHTSDO SNOMED CT Validation Maintenence")
 @Controller
 @RequestMapping(
-		value="/validation-maintenence/{path:**}",
+		value="/validation-maintenence",
 		produces={ MediaType.APPLICATION_JSON_VALUE })
 public class SnomedValidationMaintenenceRestService extends AbstractSnomedRestService {
 

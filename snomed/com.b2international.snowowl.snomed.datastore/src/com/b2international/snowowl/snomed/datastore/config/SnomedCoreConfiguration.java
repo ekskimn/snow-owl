@@ -41,6 +41,7 @@ public class SnomedCoreConfiguration {
 	public static final String DEFAULT_NAMESPACE = ""; //$NON-NLS-1$
 	public static final String DEFAULT_MODULE = Concepts.MODULE_SCT_CORE;
 	public static final String BRANCH_DEFAULT_NAMESPACE_KEY = "defaultNamespace";
+	public static final String BRANCH_ASSERTION_GROUP_NAMES = "assertionGroupNames";
 	
 	@Min(1)
 	@Max(3)
