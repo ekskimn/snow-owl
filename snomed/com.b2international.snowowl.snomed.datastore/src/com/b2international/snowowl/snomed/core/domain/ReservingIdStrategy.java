@@ -54,26 +54,13 @@ public class ReservingIdStrategy implements IdGenerationStrategy {
 		if (null != namespaceId) {
 			return namespaceId;
 		} else {
-			final String branchDefaultNamespace = getBranchDefaultNamespace(branch);
+			final String branchDefaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_NAMESPACE_KEY);
 			if (branchDefaultNamespace != null) {
 				return branchDefaultNamespace;
 			} else {
 				return SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getDefaultNamespace();
 			}
 		}
-	}
-
-	private String getBranchDefaultNamespace(Branch branch) {
-		final String branchDefaultNamespace = branch.metadata().getString(SnomedCoreConfiguration.BRANCH_DEFAULT_NAMESPACE_KEY);
-		if (branchDefaultNamespace != null) {
-			return branchDefaultNamespace;
-		} else {
-			final Branch parent = branch.parent();
-			if (parent != null && branch != parent) {
-				return getBranchDefaultNamespace(parent);
-			}
-		}
-		return null;
 	}
 
 	@Override

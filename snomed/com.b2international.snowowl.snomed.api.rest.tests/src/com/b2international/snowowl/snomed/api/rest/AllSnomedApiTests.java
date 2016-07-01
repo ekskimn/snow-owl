@@ -50,21 +50,21 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
  */
 @RunWith(Suite.class)
 @SuiteClasses({ 
-//	SnomedBranchingApiTest.class,
-//	SnomedMergeApiTest.class,
-//	SnomedReviewApiTest.class,
-//	SnomedMergeReviewApiTest.class,
-//	SnomedVersioningApiTest.class,
-//	SnomedImportApiTest.class,
-//	SnomedImportApiExamplesTest.class,
-//	SnomedIdentifierApiTest.class,
-//	SnomedConceptApiTest.class,
-//	SnomedReleasedConceptApiTest.class,
-//	SnomedDescriptionApiTest.class,
-//	SnomedRelationshipApiTest.class,
-//	SnomedRefSetApiTest.class,
-//	SnomedRefSetMemberApiTest.class,
-//	SnomedRefSetBulkApiTest.class,
+	SnomedBranchingApiTest.class,
+	SnomedMergeApiTest.class,
+	SnomedReviewApiTest.class,
+	SnomedMergeReviewApiTest.class,
+	SnomedVersioningApiTest.class,
+	SnomedImportApiTest.class,
+	SnomedImportApiExamplesTest.class,
+	SnomedIdentifierApiTest.class,
+	SnomedConceptApiTest.class,
+	SnomedReleasedConceptApiTest.class,
+	SnomedDescriptionApiTest.class,
+	SnomedRelationshipApiTest.class,
+	SnomedRefSetApiTest.class,
+	SnomedRefSetMemberApiTest.class,
+	SnomedRefSetBulkApiTest.class,
 	SnomedBrowserApiTest.class
 })
 public class AllSnomedApiTests {
