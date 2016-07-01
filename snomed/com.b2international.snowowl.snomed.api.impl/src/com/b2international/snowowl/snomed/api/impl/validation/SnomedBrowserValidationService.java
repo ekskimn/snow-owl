@@ -47,16 +47,15 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService);
 		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(branchPath, bus);
 		try {
-//			List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), validationConceptService, validationDescriptionService, validationRelationshipService,
-//					false, false);
-//			List<ISnomedInvalidContent> invalidContent = Lists.transform(list, new Function<InvalidContent, ISnomedInvalidContent>() {
-//				@Override
-//				public ISnomedInvalidContent apply(InvalidContent input) {
-//					return new SnomedInvalidContent(input);
-//				}
-//			});
-//			return invalidContent;
-			return null;
+			List<InvalidContent> list = ruleExecutor.execute(new ValidationConcept(browserConcept), validationConceptService, validationDescriptionService, validationRelationshipService,
+					false, false);
+			List<ISnomedInvalidContent> invalidContent = Lists.transform(list, new Function<InvalidContent, ISnomedInvalidContent>() {
+				@Override
+				public ISnomedInvalidContent apply(InvalidContent input) {
+					return new SnomedInvalidContent(input);
+				}
+			});
+			return invalidContent;
 		} catch (BadRequestRuleExecutorException e) {
 			throw new BadRequestException(e.getMessage());
 		}
