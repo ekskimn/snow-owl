@@ -298,7 +298,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 	
 	@Override
-	public void update(String branchPath, List<ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales) {
+	public void update(String branchPath, List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales) {
 		final BulkRequestBuilder<TransactionContext> commitReq = BulkRequest.create();
 		
 		for (ISnomedBrowserConceptUpdate newVersionConcept : newVersionConcepts) {
