@@ -631,7 +631,7 @@
 			<id>tp_dependencies</id>
 			<properties>
 				<target.platform.version>4.5.58-SNAPSHOT</target.platform.version>
-				<target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
+				<target.platform.url>${nexus.url}/content/unzip/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
 			</properties>
 			<repositories>
 				<repository>
