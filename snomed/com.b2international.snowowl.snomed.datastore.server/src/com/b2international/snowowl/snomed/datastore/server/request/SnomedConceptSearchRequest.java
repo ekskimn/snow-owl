@@ -41,18 +41,21 @@ import com.b2international.commons.options.Options;
 import com.b2international.commons.pcj.LongSets;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.escg.EscgParseFailedException;
 import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
 import com.b2international.snowowl.snomed.datastore.escg.IEscgQueryEvaluatorService;
 import com.b2international.snowowl.snomed.datastore.escg.IndexQueryQueryEvaluator;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedQueryBuilder;
 import com.b2international.snowowl.snomed.datastore.server.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.Ints;
 
 import bak.pcj.LongCollection;
 
@@ -139,7 +142,22 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 		}
 		
 		if (containsKey(OptionKey.TERM)) {
-			final Map<String, Integer> conceptScoreMap = executeDescriptionSearch(context, getString(OptionKey.TERM));
+			final String term = getString(OptionKey.TERM);
+			final Map<String, Integer> conceptScoreMap = executeDescriptionSearch(context, term);
+			
+			try {
+				final ComponentCategory category = SnomedIdentifiers.getComponentCategory(term);
+				if (category == ComponentCategory.CONCEPT) {
+					if (conceptScoreMap.isEmpty()) {
+						conceptScoreMap.put(term, 1);
+					} else {
+						conceptScoreMap.put(term, Ints.max(Ints.toArray(conceptScoreMap.values())) + 1);
+					}
+				}
+			} catch (IllegalArgumentException e) {
+				// ignored
+			}
+			
 			if (conceptScoreMap.isEmpty()) {
 				return new SnomedConcepts(offset(), limit(), 0);
 			}
