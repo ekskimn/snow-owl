@@ -57,6 +57,7 @@ final class SnomedRelationshipSearchRequest extends SnomedSearchRequest<SnomedRe
 		
 		final SnomedQueryBuilder queryBuilder = SnomedMappings.newQuery().relationship();
 		addActiveClause(queryBuilder);
+		addEffectiveTimeClause(queryBuilder);
 		addModuleClause(queryBuilder);
 		
 		if (containsKey(OptionKey.TYPE)) {

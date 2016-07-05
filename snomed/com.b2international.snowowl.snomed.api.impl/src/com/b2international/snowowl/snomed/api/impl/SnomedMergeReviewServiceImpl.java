@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.ReviewManager;
@@ -172,8 +173,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				return onSuccess();
 			}
 			
-			final SnomedRelationships sourceRelationships = getRelationships(parameters.getSourcePath(), conceptId);
-			final SnomedRelationships targetRelationships = getRelationships(parameters.getTargetPath(), conceptId);
+			final SnomedRelationships sourceRelationships = getUnpublishedRelationships(parameters.getSourcePath(), conceptId);
+			final SnomedRelationships targetRelationships = getUnpublishedRelationships(parameters.getTargetPath(), conceptId);
 			
 			if (hasNonInferredRelationshipChanges(sourceRelationships.getItems(), targetRelationships.getItems())) {
 				return onSuccess();
@@ -232,10 +233,11 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			return false;
 		}
 
-		private SnomedRelationships getRelationships(final String path, final String conceptId) {
+		private SnomedRelationships getUnpublishedRelationships(final String path, final String conceptId) {
 			return SnomedRequests.prepareSearchRelationship()
 				.all()
 				.filterBySource(conceptId)
+				.filterByEffectiveTime(EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL)
 				.build(path)
 				.executeSync(bus);
 		}
@@ -257,6 +259,11 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 					.uniqueIndex(new Function<ISnomedRelationship, String>() {
 						@Override public String apply(final ISnomedRelationship input) { return input.getId(); }
 					});
+
+			// If there are no new or changed stated relationships on one side of the comparison, no merge conflict should be indicated
+			if (sourceMap.isEmpty() || targetMap.isEmpty()) {
+				return false;
+			}
 
 			// XXX: Need to process the relationships first so that filtered sizes can be compared
 			if (sourceMap.size() != targetMap.size()) {

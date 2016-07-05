@@ -256,7 +256,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		// Concept will still be returned as requiring manual merge.
 		assertTrue(reviewDetails.isArray());
-		assertEquals(1, reviewDetails.size());
+		assertEquals(0, reviewDetails.size());
 	}
 	
 	@Test
