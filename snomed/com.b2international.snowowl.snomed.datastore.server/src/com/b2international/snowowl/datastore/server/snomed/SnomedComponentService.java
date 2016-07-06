@@ -148,7 +148,6 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMembe
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Function;
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
@@ -2247,6 +2246,11 @@ public class SnomedComponentService implements ISnomedComponentService, IPostSto
 					final String predicateStorageKey = split[0];
 					final String key = split[1];
 					final PredicateIndexEntry predicate = predicateMappings.get(predicateStorageKey);
+					
+					if (predicate == null) {
+						continue;
+					}
+					
 					final HierarchyInclusionType type = HierarchyInclusionType.get(key);
 					if (type != null) {
 						predicates.get(type).put(componentId, predicate);	
