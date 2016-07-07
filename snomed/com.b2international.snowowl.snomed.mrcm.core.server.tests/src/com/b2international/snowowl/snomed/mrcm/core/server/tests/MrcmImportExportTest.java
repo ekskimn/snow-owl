@@ -54,7 +54,27 @@ public class MrcmImportExportTest {
 		final Path path = Paths.get(PlatformUtil.toAbsolutePath(MrcmImportExportTest.class, "mrcm_defaults.xmi"));
 		
 		try (final InputStream stream = Files.newInputStream(path, StandardOpenOption.READ)) {
-			Services.service(MrcmImporter.class).doImport("test", stream);
+			Services.service(MrcmImporter.class).doImport("MAIN", "test", stream);
+		} 
+		
+		
+		// verify CDO content
+		try (MrcmEditingContext context = new MrcmEditingContext(branch)) {
+			assertEquals(58, context.getOrCreateConceptModel().getConstraints().size());
+		}
+		// verify index
+		final Collection<PredicateIndexEntry> allPredicates = ApplicationContext.getServiceForClass(SnomedPredicateBrowser.class).getAllPredicates(branch);
+		assertEquals(58, allPredicates.size());
+	}
+	
+	@Test
+	public void importBranchTest() throws Exception {
+		// default/old MRCM import file contains 58 rules
+		final IBranchPath branch = BranchPathUtils.createMainPath();
+		final Path path = Paths.get(PlatformUtil.toAbsolutePath(MrcmImportExportTest.class, "mrcm_defaults.xmi"));
+		
+		try (final InputStream stream = Files.newInputStream(path, StandardOpenOption.READ)) {
+			Services.service(MrcmImporter.class).doImport("MAIN/2002-01-31", "test", stream);
 		} 
 		
 		
@@ -76,7 +96,7 @@ public class MrcmImportExportTest {
 		Path exportedFile = target.resolve("mrcm_" + Dates.now() + ".xmi");
 		assertFalse(exportedFile.toFile().exists());
 		try (final OutputStream stream = Files.newOutputStream(exportedFile, StandardOpenOption.CREATE_NEW)) {
-			Services.service(MrcmExporter.class).doExport("test", stream, MrcmExportFormat.XMI);
+			Services.service(MrcmExporter.class).doExport("MAIN", "test", stream, MrcmExportFormat.XMI);
 		}
 		assertTrue(exportedFile.toFile().exists());
 		
@@ -85,7 +105,7 @@ public class MrcmImportExportTest {
 		exportedFile = target.resolve("mrcm_" + Dates.now() + ".csv");
 		assertFalse(exportedFile.toFile().exists());
 		try (final OutputStream stream = Files.newOutputStream(exportedFile, StandardOpenOption.CREATE_NEW)) {
-			Services.service(MrcmExporter.class).doExport("test", stream, MrcmExportFormat.CSV);
+			Services.service(MrcmExporter.class).doExport("MAIN", "test", stream, MrcmExportFormat.CSV);
 		}
 		assertTrue(exportedFile.toFile().exists());
 		
