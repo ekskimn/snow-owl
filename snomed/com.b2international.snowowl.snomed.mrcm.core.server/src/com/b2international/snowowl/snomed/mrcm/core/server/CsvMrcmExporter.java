@@ -47,8 +47,8 @@ public class CsvMrcmExporter {
 
 	private static final Joiner TAB_JOINER = Joiner.on('\t').useForNull("");
 
-	public void doExport(String sourcePath, String user, OutputStream stream) {
-		final IBranchPath branch = BranchPathUtils.createPath(sourcePath);
+	public void doExport(String user, OutputStream stream) {
+		final IBranchPath branch = BranchPathUtils.createMainPath();
 		final ConceptModelComponentRenderer renderer = new ConceptModelComponentRenderer();
 
 		try (MrcmEditingContext context = new MrcmEditingContext(branch)) {

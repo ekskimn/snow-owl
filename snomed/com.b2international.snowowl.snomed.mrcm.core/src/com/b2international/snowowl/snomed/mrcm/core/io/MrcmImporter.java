@@ -25,10 +25,11 @@ public interface MrcmImporter {
 	/**
 	 * Imports the given MRCM file impersonating a user given with the user name argument.
 	 * 
-	 * @param targetPath the path of the branch to import to 		
-	 * @param userName the user name
-	 * @param mrcmFile the MRCM file to process and import
+	 * @param userName
+	 *            the user name.
+	 * @param mrcmFile
+	 *            the MRCM file to process and import.
 	 */
-	void doImport(String targetPath, String user, InputStream source);
+	void doImport(String user, InputStream source);
 
 }

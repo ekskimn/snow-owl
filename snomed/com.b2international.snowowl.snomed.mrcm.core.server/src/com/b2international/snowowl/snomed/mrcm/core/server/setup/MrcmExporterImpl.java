@@ -31,11 +31,11 @@ import com.b2international.snowowl.snomed.mrcm.core.server.XMIMrcmExporter;
 public class MrcmExporterImpl implements MrcmExporter {
 
 	@Override
-	public void doExport(String sourcePath, String user, OutputStream content, MrcmExportFormat exportFormat) {
+	public void doExport(String user, OutputStream content, MrcmExportFormat exportFormat) {
 		if (exportFormat == MrcmExportFormat.XMI) {
-			new XMIMrcmExporter().doExport(sourcePath, user, content);
+			new XMIMrcmExporter().doExport(user, content);
 		} else if (exportFormat == MrcmExportFormat.CSV) {
-			new CsvMrcmExporter().doExport(sourcePath, user, content);
+			new CsvMrcmExporter().doExport(user, content);
 		} else {
 			throw new UnsupportedOperationException("No exporter is registered for " + exportFormat);
 		}

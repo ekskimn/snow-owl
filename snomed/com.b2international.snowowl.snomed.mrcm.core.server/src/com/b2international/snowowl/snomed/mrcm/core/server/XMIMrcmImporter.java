@@ -43,8 +43,8 @@ public class XMIMrcmImporter implements MrcmImporter {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MrcmImporter.class);
 
 	@Override
-	public void doImport(final String targetPath, String userName, final InputStream content) {
-		final IBranchPath branch = BranchPathUtils.createPath(targetPath);
+	public void doImport(final String userName, final InputStream content) {
+		final IBranchPath branch = BranchPathUtils.createMainPath();
 		LogUtils.logImportActivity(LOGGER, userName, branch, "Importing MRCM rules...");
 		final URI uri = URI.createFileURI(UUID.randomUUID().toString());
 		try (MrcmEditingContext context = new MrcmEditingContext(branch)) {
