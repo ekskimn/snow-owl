@@ -32,6 +32,8 @@ import org.junit.Test;
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.datastore.MrcmEditingContext;
@@ -69,21 +71,22 @@ public class MrcmImportExportTest {
 	
 	@Test
 	public void importBranchTest() throws Exception {
+		final Branch childBranch = Services.service(BranchManager.class).getMainBranch().createChild("A");
+
 		// default/old MRCM import file contains 58 rules
-		final IBranchPath branch = BranchPathUtils.createMainPath();
+		final IBranchPath branchPath = childBranch.branchPath();
 		final Path path = Paths.get(PlatformUtil.toAbsolutePath(MrcmImportExportTest.class, "mrcm_defaults.xmi"));
 		
 		try (final InputStream stream = Files.newInputStream(path, StandardOpenOption.READ)) {
-			Services.service(MrcmImporter.class).doImport("MAIN/2002-01-31", "test", stream);
+			Services.service(MrcmImporter.class).doImport(childBranch.path(), "test", stream);
 		} 
 		
-		
 		// verify CDO content
-		try (MrcmEditingContext context = new MrcmEditingContext(branch)) {
+		try (MrcmEditingContext context = new MrcmEditingContext(branchPath)) {
 			assertEquals(58, context.getOrCreateConceptModel().getConstraints().size());
 		}
 		// verify index
-		final Collection<PredicateIndexEntry> allPredicates = ApplicationContext.getServiceForClass(SnomedPredicateBrowser.class).getAllPredicates(branch);
+		final Collection<PredicateIndexEntry> allPredicates = ApplicationContext.getServiceForClass(SnomedPredicateBrowser.class).getAllPredicates(branchPath);
 		assertEquals(58, allPredicates.size());
 	}
 	
