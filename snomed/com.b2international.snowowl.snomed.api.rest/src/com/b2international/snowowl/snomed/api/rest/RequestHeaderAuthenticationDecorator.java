@@ -28,6 +28,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -46,6 +48,7 @@ public class RequestHeaderAuthenticationDecorator extends OncePerRequestFilter {
     	final Authentication currentAuthentication = SecurityContextHolder.getContext().getAuthentication();
         
     	// Pass through recorded credentials and details object
+    	final Object currentPrincipal = currentAuthentication.getPrincipal();
     	final Object currentCredentials = currentAuthentication.getCredentials();
     	final Object currentDetails = currentAuthentication.getDetails();
     	
@@ -56,7 +59,22 @@ public class RequestHeaderAuthenticationDecorator extends OncePerRequestFilter {
         final List<GrantedAuthority> decoratedRoles = AuthorityUtils.commaSeparatedStringToAuthorityList(request.getHeader(ROLES));
         decoratedRoles.addAll(currentAuthentication.getAuthorities());
         
-        final AbstractAuthenticationToken decoratedAuthentication = new PreAuthenticatedAuthenticationToken(decoratedUsername, currentCredentials, decoratedRoles);
+        final Object decoratedPrincipal;
+        
+        if (currentPrincipal instanceof UserDetails) {
+        	final UserDetails currentUser = (UserDetails) currentPrincipal;
+        	decoratedPrincipal = new User(decoratedUsername, 
+        			currentUser.getPassword(), 
+        			currentUser.isEnabled(), 
+        			currentUser.isAccountNonExpired(), 
+        			currentUser.isCredentialsNonExpired(), 
+        			currentUser.isAccountNonLocked(),
+        			decoratedRoles);
+        } else {
+        	decoratedPrincipal = decoratedUsername;
+        }
+        
+        final AbstractAuthenticationToken decoratedAuthentication = new PreAuthenticatedAuthenticationToken(decoratedPrincipal, currentCredentials, decoratedRoles);
         decoratedAuthentication.setDetails(currentDetails);
         SecurityContextHolder.getContext().setAuthentication(decoratedAuthentication);            
         
