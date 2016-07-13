@@ -12,13 +12,20 @@
  */
 package com.b2international.snowowl.snomed.api.rest.browser;
 
+import static org.springframework.hateoas.mvc.ControllerLinkBuilder.linkTo;
+
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.core.LinkBuilderSupport;
+import org.springframework.hateoas.mvc.ControllerLinkBuilder;
+import org.springframework.hateoas.mvc.ControllerLinkBuilderFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
@@ -37,6 +44,7 @@ import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
@@ -47,6 +55,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserC
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
+import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.wordnik.swagger.annotations.Api;
@@ -61,7 +70,7 @@ import com.wordnik.swagger.annotations.ApiResponses;
 @Api("IHTSDO SNOMED CT Browser")
 @Controller
 @RequestMapping(
-		value="/browser/{path:**}",
+		value="/browser",
 		produces={ SnomedBrowserRestService.IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
@@ -83,7 +92,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 200, message = "OK", response = Void.class),
 		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/concepts/{conceptId}", method=RequestMethod.GET)
+	@RequestMapping(value="/{path:**}/concepts/{conceptId}", method=RequestMethod.GET)
 	public @ResponseBody ISnomedBrowserConcept getConceptDetails(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -110,7 +119,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 200, message = "OK", response = Void.class),
 			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/concepts", 
+	@RequestMapping(value="/{path:**}/concepts", 
 			method=RequestMethod.POST, 
 			consumes={ IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	public @ResponseBody ISnomedBrowserConcept createConcept(
@@ -148,7 +157,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 200, message = "OK", response = Void.class),
 			@ApiResponse(code = 404, message = "Code system version or concept not found")
 	})
-	@RequestMapping(value="/validate/concept", method=RequestMethod.POST)
+	@RequestMapping(value="/{path:**}/validate/concept", method=RequestMethod.POST)
 	public @ResponseBody List<ISnomedInvalidContent> validateNewConcept(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
@@ -171,7 +180,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 200, message = "OK", response = Void.class),
 			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
-	@RequestMapping(value="/concepts/{conceptId}", 
+	@RequestMapping(value="/{path:**}/concepts/{conceptId}", 
 			method=RequestMethod.PUT,
 			consumes={ IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 	public @ResponseBody ISnomedBrowserConcept updateConcept(
@@ -211,17 +220,19 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	}
 
 	@ApiOperation(
-			value="Bulk update concepts",
-			notes="Updates the specified Concepts on a branch.")
+			value="Start a bulk concept change on a branch",
+			notes = "Bulk concept changes are async jobs. The call to this method immediately returns with a unique URL "
+					+ "pointing to the bulk run.<p>The URL can be used to fetch the state of the bulk run "
+					+ "to determine whether it's completed or not.")
 	@ApiResponses({
-			@ApiResponse(code = 200, message = "OK", response = Void.class),
-			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
+		@ApiResponse(code = 201, message = "Created"),
+		@ApiResponse(code = 404, message = "Branch not found", response=RestApiError.class)
 	})
-	@RequestMapping(value="/concepts/bulk", 
-			method=RequestMethod.PUT,
+	@RequestMapping(value="/{path:**}/concepts/bulk", 
+			method=RequestMethod.POST,
 			consumes={ IHTSDO_V1_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void bulkUpdateConcepts(
+	@ResponseStatus(HttpStatus.CREATED)
+	public ResponseEntity<Void> beginBulkConceptChange(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -233,7 +244,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@RequestBody
 			final List<SnomedBrowserConceptUpdate> concepts,
 
-			final Principal principal) {
+			final Principal principal) throws URISyntaxException {
 
 		final String userId = principal.getName();
 		final List<ExtendedLocale> extendedLocales;
@@ -246,11 +257,27 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException(e.getMessage());
 		}
 		
-		try {
-			browserService.update(branchPath, concepts, userId, extendedLocales);
-		} catch (Exception e) {
-			throw e;
-		}
+		final ISnomedBrowserBulkChangeRun bulkChangeRun = browserService.beginBulkChange(branchPath, concepts, userId, extendedLocales);
+		return Responses.created(getBulkChangeRunUri(branchPath, bulkChangeRun)).build();
+	}
+	
+	@ApiOperation(
+			value="Retrieve the state of a bulk concepts change from branch")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK"),
+		@ApiResponse(code = 404, message = "Branch or classification not found", response=RestApiError.class)
+	})
+	@RequestMapping(value="/{path:**}/concepts/bulk/{bulkChangeId}", method=RequestMethod.GET)
+	public @ResponseBody ISnomedBrowserBulkChangeRun getBulkRun(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="The branch path")
+			@PathVariable(value="bulkChangeId")
+			final String bulkChangeId
+			) {
+		return browserService.getBulkChangeRun(bulkChangeId);
 	}
 
 	@ApiOperation(
@@ -262,7 +289,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
-			value="/concepts/{conceptId}/parents",
+			value="/{path:**}/concepts/{conceptId}/parents",
 			method = RequestMethod.GET)
 	public @ResponseBody List<ISnomedBrowserParentConcept> getConceptParents(
 			@ApiParam(value="The branch path")
@@ -300,7 +327,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
-			value="/concepts/{conceptId}/children",
+			value="/{path:**}/concepts/{conceptId}/children",
 			method = RequestMethod.GET)
 	public @ResponseBody List<ISnomedBrowserChildConcept> getConceptChildren(
 			@ApiParam(value="The branch path")
@@ -350,7 +377,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
-			value="/descriptions",
+			value="/{path:**}/descriptions",
 			method = RequestMethod.GET)
 	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
 			@ApiParam(value="The branch path")
@@ -397,7 +424,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@ApiResponses({
 		@ApiResponse(code = 200, message = "OK", response = Void.class)
 	})
-	@RequestMapping(value="/constants", method=RequestMethod.GET)
+	@RequestMapping(value="/{path:**}/constants", method=RequestMethod.GET)
 	public @ResponseBody Map<String, ISnomedBrowserConstant> getConstants(
 
 			@ApiParam(value="The branch path")
@@ -420,4 +447,9 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		
 		return browserService.getConstants(branchPath, extendedLocales);
 	}
+
+	private URI getBulkChangeRunUri(final String branchPath, final ISnomedBrowserBulkChangeRun bulkChangeRun) throws URISyntaxException {
+		return linkTo(getClass()).slash(branchPath).slash("concepts").slash("bulk").slash(bulkChangeRun.getId()).toUri();
+	}
+
 }

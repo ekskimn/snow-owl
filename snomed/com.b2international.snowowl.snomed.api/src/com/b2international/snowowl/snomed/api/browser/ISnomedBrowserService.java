@@ -24,6 +24,7 @@ import com.b2international.snowowl.core.domain.IStorageRef;
 import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundException;
 import com.b2international.snowowl.core.domain.exceptions.CodeSystemVersionNotFoundException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
@@ -111,5 +112,9 @@ public interface ISnomedBrowserService {
 	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, List<ExtendedLocale> locales);
 
 	void update(String branchPath, List<? extends ISnomedBrowserConceptUpdate> concept, String userId, List<ExtendedLocale> locales);
+
+	ISnomedBrowserBulkChangeRun beginBulkChange(String branchPath, List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales);
+
+	ISnomedBrowserBulkChangeRun getBulkChangeRun(String bulkChangeId);
 
 }

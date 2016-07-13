@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
@@ -32,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.ClassUtils;
+import com.b2international.commons.collections.Procedure;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.commons.options.OptionsBuilder;
@@ -48,12 +50,16 @@ import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.AbstractIndexQueryAdapter;
+import com.b2international.snowowl.datastore.index.mapping.LongCollectionIndexField;
+import com.b2international.snowowl.datastore.request.CommitInfo;
+import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
 import com.b2international.snowowl.datastore.server.domain.InternalComponentRef;
 import com.b2international.snowowl.datastore.server.domain.InternalStorageRef;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
@@ -62,9 +68,11 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescr
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserBulkChangeStatus;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.domain.browser.TaxonomyNode;
 import com.b2international.snowowl.snomed.api.impl.domain.InputFactory;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConstant;
@@ -153,6 +161,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	private final InputFactory inputFactory;
+	
+	private final Cache<String, SnomedBrowserBulkChangeRun> bulkChangeRuns = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS).build();
 
 	@Resource
 	private IEventBus bus;
@@ -286,7 +296,54 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 	
 	@Override
+	public SnomedBrowserBulkChangeRun beginBulkChange(final String branchPath, List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales) {
+		final SnomedBrowserBulkChangeRun run = new SnomedBrowserBulkChangeRun();
+		createBulkCommit(branchPath, newVersionConcepts, userId, locales, 
+				userId + " Bulk update.")
+			.build()
+			.execute(bus)
+			.then(new Function<CommitInfo, Void>() {
+				@Override
+				public Void apply(CommitInfo input) {
+					run.end(SnomedBrowserBulkChangeStatus.COMPLETED);
+					LOGGER.info("Committed bulk concept changes on {}", branchPath);
+					return null;
+				}
+			})
+			.fail(new Procedure<Throwable>() {
+				@Override
+				protected void doApply(Throwable throwable) {
+					run.end(SnomedBrowserBulkChangeStatus.FAILED);
+					LOGGER.error("Bulk concept changes failed on {}", branchPath, throwable);
+				}
+			});
+		
+		run.start();
+		bulkChangeRuns.put(run.getId(), run);
+		
+		return run;
+	}
+	
+	
+	@Override
+	public ISnomedBrowserBulkChangeRun getBulkChangeRun(String bulkChangeId) {
+		return bulkChangeRuns.getIfPresent(bulkChangeId);
+	}
+	
+	@Override
 	public void update(String branchPath, List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales) {
+		createBulkCommit(branchPath, newVersionConcepts, userId, locales, 
+				userId + " Bulk update.")
+			.build()
+			.executeSync(bus);
+		
+		LOGGER.info("Committed bulk concept changes on {}", branchPath);
+	}
+
+	private RepositoryCommitRequestBuilder createBulkCommit(String branchPath,
+			List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts,
+			String userId, List<ExtendedLocale> locales,
+			final String commitComment) {
 		final BulkRequestBuilder<TransactionContext> commitReq = BulkRequest.create();
 		
 		for (ISnomedBrowserConceptUpdate newVersionConcept : newVersionConcepts) {
@@ -294,17 +351,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}
 		
 		// Commit
-		final String commitComment = userId + " Bulk update.";
-		SnomedRequests
+		final RepositoryCommitRequestBuilder commit = SnomedRequests
 			.prepareCommit()
 			.setUserId(userId)
 			.setBranch(branchPath)
 			.setCommitComment(commitComment)
-			.setBody(commitReq)
-			.build()
-			.executeSync(bus);
-		
-		LOGGER.info("Committed bulk concept changes on {}", branchPath);
+			.setBody(commitReq);
+		return commit;
 	}
 
 	private IComponentRef update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, List<ExtendedLocale> locales, final BulkRequestBuilder<TransactionContext> commitReq) {
