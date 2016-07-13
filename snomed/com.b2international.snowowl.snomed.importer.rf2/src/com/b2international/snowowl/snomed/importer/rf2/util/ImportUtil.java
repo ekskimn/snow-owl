@@ -67,6 +67,7 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.oplock.IOperationLockManager;
@@ -398,7 +399,9 @@ public final class ImportUtil {
 		final SnomedImportResult[] resultHolder = new SnomedImportResult[1];
 		final IDatastoreOperationLockManager lockManager = ApplicationContext.getInstance().getServiceChecked(IDatastoreOperationLockManager.class);
 		
+		final FeatureToggles features = ApplicationContext.getServiceForClass(FeatureToggles.class);
 		try {
+			features.enable(SnomedDatastoreActivator.REPOSITORY_UUID + ".import");
 			OperationLockRunner.with(lockManager).run(new Runnable() { @Override public void run() {
 				resultHolder[0] = doImportLocked(requestingUserId, configuration, result, branchPath, context, subMonitor, importers, editingContext, branch, repositoryState);
 			}}, lockContext, IOperationLockManager.NO_TIMEOUT, lockTarget);
@@ -406,6 +409,8 @@ public final class ImportUtil {
 			throw new ImportException(e);
 		} catch (final InvocationTargetException e) {
 			throw new ImportException(e.getCause());
+		} finally {
+			features.disable(SnomedDatastoreActivator.REPOSITORY_UUID + ".import");
 		}
 		
 		return resultHolder[0];
