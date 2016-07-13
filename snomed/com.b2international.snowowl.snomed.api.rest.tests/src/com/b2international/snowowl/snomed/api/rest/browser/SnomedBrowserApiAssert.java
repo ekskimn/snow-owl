@@ -20,9 +20,14 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 
+import java.security.acl.LastOwnerException;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
+
+import org.junit.Assert;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
@@ -34,6 +39,7 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
+import com.b2international.snowowl.test.commons.rest.RestExtensions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -87,16 +93,33 @@ public class SnomedBrowserApiAssert {
 				.when().put("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId);
 	}
 	
-	public static void assertConceptsUpdatedWithStatus(final IBranchPath branchPath, 
+	public static String assertConceptsUpdateStartsWithStatus(final IBranchPath branchPath, 
 			final List<Map<String, Object>> requestBody, 
 			final int statusCode) {
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-			.with().contentType(ContentType.JSON)
-			.and().body(requestBody)
-			.when().put("/browser/{path}/concepts/bulk", branchPath.getPath())
-			.then().log().ifValidationFails().assertThat().statusCode(statusCode);
+		final String location = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+					.with().contentType(ContentType.JSON)
+					.and().body(requestBody)
+					.when().post("/browser/{path}/concepts/bulk", branchPath.getPath())
+					.then().log().ifValidationFails().assertThat().statusCode(statusCode).extract().header("Location");
+		return RestExtensions.lastPathSegment(location);
 	}
 
+	public static void assertConceptsBulkJobCompletes(IBranchPath branchPath, String bulkId) throws InterruptedException {
+		final GregorianCalendar endCal = new GregorianCalendar();
+		endCal.add(Calendar.MINUTE, 1);
+		final Date end = endCal.getTime();
+		while (end.after(new Date())) {
+			final String status = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+					.with().contentType(ContentType.JSON)
+					.when().get("/browser/{path}/concepts/bulk/{bulkId}", branchPath.getPath(), bulkId)
+					.then().extract().jsonPath().getString("status");
+			if (!"RUNNING".equals(status)) {
+				Assert.assertEquals("COMPLETED", status);
+				return;
+			}
+			Thread.sleep(500);
+		}
+	}
 	
 	public static Map<String, Object> givenConceptRequestBody(final String conceptId, final boolean active, final String fsn, final String moduleId,
 			final ImmutableList<?> descriptions, final ImmutableList<?> relationships, final Date creationDate) {
@@ -197,4 +220,5 @@ public class SnomedBrowserApiAssert {
 				.when().get("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
 				.then().extract().jsonPath().get();
 	}
+	
 }
