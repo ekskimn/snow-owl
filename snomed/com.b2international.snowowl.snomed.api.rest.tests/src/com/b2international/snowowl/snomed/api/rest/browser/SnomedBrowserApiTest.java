@@ -28,7 +28,8 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentCreatedWithStatus;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentNotCreated;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentUpdatedWithStatus;
-import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertConceptsUpdatedWithStatus;
+import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertConceptsUpdateStartsWithStatus;
+import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertConceptsBulkJobCompletes;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.createDescriptions;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.createIsaRelationship;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.generateComponentId;
@@ -185,7 +186,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@Test
-	public void bulkUpdateConcepts() throws JsonProcessingException, IOException {
+	public void bulkUpdateConcepts() throws JsonProcessingException, IOException, InterruptedException {
 		
 		// Create concepts
 		final Map<String, Object> conceptOne = createConceptWithFsn("One");
@@ -209,7 +210,10 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 
 		// Post updates
 		final IBranchPath branchPath = createMainPath();
-		assertConceptsUpdatedWithStatus(branchPath, concepts, 204);
+		final String bulkId = assertConceptsUpdateStartsWithStatus(branchPath, concepts, 201);
+		
+		// Wait for completion
+		assertConceptsBulkJobCompletes(branchPath, bulkId);
 		
 		// Load concepts and assert updated
 		Assert.assertEquals("OneA", getFsn(SnomedBrowserApiAssert.getConcept(branchPath, (String) conceptOne.get("conceptId"))).get("term"));
