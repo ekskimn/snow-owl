@@ -15,7 +15,6 @@
  */
 package com.b2international.snowowl.datastore.server.snomed.version;
 
-import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_MODULE_DEPENDENCY_TYPE;
 import static com.google.common.collect.Sets.newHashSet;
 
@@ -114,12 +113,6 @@ public class SnomedPublishManager extends PublishManager {
 				.getSync();
 	}
 	
-	@Override
-	protected LongSet getUnversionedComponentStorageKeys(final IBranchPath branchPath) {
-		final ISnomedComponentService componentService = getServiceForClass(ISnomedComponentService.class);
-		return componentService.getAllUnpublishedComponentStorageKeys(branchPath);
-	}
-
 	@Override
 	protected EStructuralFeature getEffectiveTimeFeature(final EClass eClass) {
 		if (isCoreComponent(eClass)) {

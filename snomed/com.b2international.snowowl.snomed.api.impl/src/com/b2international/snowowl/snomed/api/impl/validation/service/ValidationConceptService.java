@@ -2,22 +2,27 @@ package com.b2international.snowowl.snomed.api.impl.validation.service;
 
 import org.ihtsdo.drools.service.ConceptService;
 
-import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationConceptService implements ConceptService {
 
-	private SnomedTerminologyBrowser terminologyBrowser;
-	private IBranchPath branchPath = null;
+	private final String branchPath;
+	private final IEventBus bus;
 
-	public ValidationConceptService(IBranchPath branchPath, SnomedTerminologyBrowser terminologyBrowser) {
+	public ValidationConceptService(String branchPath, IEventBus bus) {
 		this.branchPath = branchPath;
-		this.terminologyBrowser = terminologyBrowser;
+		this.bus = bus;
 	}
 
 	@Override
 	public boolean isActive(String conceptId) {
-		return terminologyBrowser.getConcept(branchPath, conceptId).isActive();
+		return SnomedRequests.prepareGetConcept()
+				.setComponentId(conceptId)
+				.build(branchPath)
+				.execute(bus)
+				.getSync()
+				.isActive();
 	}
 
 }
