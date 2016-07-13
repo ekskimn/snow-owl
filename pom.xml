@@ -555,17 +555,12 @@
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
-<<<<<<< HEAD
 					<groupId>org.ihtsdo.drools</groupId>
 					<artifactId>snomed-drools</artifactId>
 					<version>1.0.5</version>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
-				    <groupId>commons-collections</groupId>
-				    <artifactId>commons-collections</artifactId>
-				    <version>3.2.2</version>
-=======
 				    <groupId>edu.stanford.protege</groupId>
 				    <artifactId>org.semanticweb.owl.owlapi</artifactId>
 				    <version>3.4.4</version>
@@ -581,7 +576,6 @@
 				    <groupId>org.semanticweb.elk</groupId>
 				    <artifactId>elk-protege</artifactId>
 				    <version>0.4.2</version>
->>>>>>> refs/remotes/b2i/improvement_flat_index_structure
 				    <scope>provided</scope>
 				</dependency>
 			</dependencies>
