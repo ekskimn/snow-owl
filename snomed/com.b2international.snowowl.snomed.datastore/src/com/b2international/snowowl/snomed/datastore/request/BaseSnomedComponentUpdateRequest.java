@@ -16,20 +16,14 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import java.util.List;
-import java.util.Map.Entry;
 
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.datastore.ICodeSystemVersion;
+import com.b2international.snowowl.datastore.TerminologyRegistryService;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
-import com.b2international.snowowl.snomed.Inactivatable;
-import com.b2international.snowowl.snomed.core.domain.AssociationType;
-import com.b2international.snowowl.snomed.core.store.SnomedComponents;
-import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedAssociationRefSetMember;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Multimap;
 
 /** 
  * @since 4.5
@@ -75,6 +69,14 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 		return Void.class;
 	}
 	
+	protected String getLatestReleaseBranch(TransactionContext context) {
+		final TerminologyRegistryService registryService = context.service(TerminologyRegistryService.class);
+		final List<ICodeSystemVersion> allVersions = registryService.getAllVersion().get(context.id());
+		final ICodeSystemVersion systemVersion = allVersions.get(1);
+		final IBranchPath branchPath = ICodeSystemVersion.TO_BRANCH_PATH_FUNC.apply(systemVersion);
+		return branchPath.getPath();
+	}
+
 	protected boolean updateModule(final TransactionContext context, final Component component, final String newModuleId) {
 		if (null == newModuleId) {
 			return false;
@@ -101,48 +103,4 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 			return false;
 		}
 	}
-	
-	protected final void updateAssociationTargets(TransactionContext context, final Inactivatable component, final Multimap<AssociationType, String> newAssociationTargets) {
-		
-		if (null == newAssociationTargets) {
-			return;
-		}
-		
-		if (!(component instanceof Component)) {
-			throw new IllegalArgumentException("Only concepts and descriptions can  can be inactivated");
-		}
-	
-		final List<SnomedAssociationRefSetMember> associationMembers = ImmutableList.copyOf(component.getAssociationRefSetMembers());
-		final Multimap<AssociationType, String> newAssociationTargetsToCreate = HashMultimap.create(newAssociationTargets);
-	
-		for (final SnomedAssociationRefSetMember associationMember : associationMembers) {
-			if (!associationMember.isActive()) {
-				continue;
-			}
-	
-			final AssociationType type = AssociationType.getByConceptId(associationMember.getRefSetIdentifierId());
-			if (null == type) {
-				continue;
-			}
-	
-			final String targetId = associationMember.getTargetComponentId();
-			if (newAssociationTargets.containsEntry(type, targetId)) {
-				newAssociationTargetsToCreate.remove(type, targetId);
-			} else {
-				SnomedModelExtensions.removeOrDeactivate(associationMember);
-			}
-		}
-	
-		for (final Entry<AssociationType, String> newAssociationEntry : newAssociationTargetsToCreate.entries()) {
-			final SnomedAssociationRefSetMember member = SnomedComponents
-				.newAssociationMember()
-				.withRefSet(newAssociationEntry.getKey().getConceptId())
-				.withTargetComponentId(newAssociationEntry.getValue())
-				.withReferencedComponent(((Component) component).getId())
-				.withModule(((Component) component).getModule().getId())
-				.addTo(context);
-			component.getAssociationRefSetMembers().add(member);
-		}
-	}
-	
 }

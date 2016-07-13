@@ -17,6 +17,9 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import javax.validation.constraints.NotNull;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequest;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
@@ -32,6 +35,8 @@ import com.b2international.snowowl.snomed.core.domain.ReservingIdStrategy;
  */
 public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<TransactionContext, String> implements SnomedComponentCreateRequest {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(BaseSnomedComponentCreateRequest.class);
+	
 	/** 
 	 * The maximum number of identifier service reservation calls (after which a namespace is known to be completely full). 
 	 */
@@ -91,6 +96,8 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 					setIdGenerationStrategy(new RegisteringIdStrategy(componentId));
 					return;
 				}
+				
+				LOGGER.warn("SCTID generation returned component id already in use: %s.  Requesting another...", componentId);
 			}
 			
 			throw new BadRequestException("Couldn't generate unique identifier for %s after %d attempts.", type, ID_GENERATION_ATTEMPTS); 

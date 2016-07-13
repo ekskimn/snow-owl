@@ -27,6 +27,7 @@ import com.b2international.snowowl.core.events.bulk.BulkResponse;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.datastore.request.Branching;
 import com.b2international.snowowl.datastore.request.DeleteRequestBuilder;
+import com.b2international.snowowl.datastore.request.MergeReviews;
 import com.b2international.snowowl.datastore.request.Merging;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.request.Reviews;
@@ -146,6 +147,10 @@ public abstract class SnomedRequests {
 
 	public static Reviews review() {
 		return RepositoryRequests.reviews(REPOSITORY_ID);
+	}
+	
+	public static MergeReviews mergeReview() {
+		return RepositoryRequests.mergeReviews(REPOSITORY_ID);
 	}
 
 	public static QueryRefSetEvaluationRequestBuilder prepareQueryRefSetEvaluation(String referenceSetId) {

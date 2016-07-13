@@ -51,7 +51,9 @@ public abstract class SearchRequestBuilder<B extends SearchRequestBuilder<B, R>,
 	}
 	
 	public final B setComponentIds(Collection<String> componentIds) {
-		this.componentIds = componentIds;
+		if (!CompareUtils.isEmpty(componentIds)) {
+			this.componentIds = componentIds;
+		}
 		return getSelf();
 	}
 	
