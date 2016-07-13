@@ -30,7 +30,8 @@ public class ReadMergeReviewRequest extends ReviewRequest<MergeReview> {
 	
 	@Override
 	public MergeReview execute(RepositoryContext context) {
-		return context.service(ReviewManager.class).getMergeReview(getReviewId());
+//		return context.service(ReviewManager.class).getMergeReview(getReviewId());
+		return null;
 	}
 	
 	@Override

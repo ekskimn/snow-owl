@@ -42,7 +42,8 @@ public class CreateMergeReviewRequest extends BaseRequest<RepositoryContext, Mer
 			final Branch source = branchManager.getBranch(sourcePath);
 			final Branch target = branchManager.getBranch(targetPath);
 			
-			return reviewManager.createMergeReview(source, target);
+//			return reviewManager.createMergeReview(source, target);
+			return null;
 		} catch (final NotFoundException e) {
 			// Non-existent branches are reported as Bad Requests for reviews
 			throw e.toBadRequestException();

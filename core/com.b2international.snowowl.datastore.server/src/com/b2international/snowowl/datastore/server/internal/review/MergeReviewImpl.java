@@ -100,12 +100,14 @@ public class MergeReviewImpl implements MergeReview {
 
 	@Override
 	public MergeReview delete() {
-		return reviewManager.deleteMergeReview(this);
+//		return reviewManager.deleteMergeReview(this);
+		return null;
 	}
 
 	@Override
 	public Set<String> mergeReviewIntersection() {
-		return reviewManager.getMergeReviewIntersection(this);
+//		return reviewManager.getMergeReviewIntersection(this);
+		return null;
 	}
 	
 }
