@@ -39,7 +39,6 @@ import org.apache.lucene.search.TotalHitCountCollector;
 
 import com.b2international.index.lucene.Fields;
 import com.b2international.index.lucene.QueryBuilderBase.QueryBuilder;
-import com.b2international.index.mapping.Mappings;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
@@ -92,78 +91,6 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	public ClassificationRunIndex(final File directory) {
 		super(directory);
 		objectMapper = new ObjectMapper();
-	}
-
-	public void trimIndex(int maximumResultsToKeep) throws IOException {
-		final Query query = Mappings.newQuery()
-				.field(FIELD_CLASS, ClassificationRun.class.getSimpleName())
-				.matchAll();
-		
-		// Sort by decreasing document order
-		final Sort sort = new Sort(new SortField(null, Type.DOC, true));
-		
-		final ClassificationRun lastRunToKeep = Iterables.getFirst(search(query, ClassificationRun.class, sort, maximumResultsToKeep - 1, 1), null);
-		if (lastRunToKeep == null) {
-			return;
-		}
-		
-		final Date lastCreationDate = lastRunToKeep.getCreationDate();
-		final Query trimmingQuery = NumericRangeQuery.newLongRange(FIELD_CREATION_DATE, null, lastCreationDate.getTime(), false, false);
-		writer.deleteDocuments(trimmingQuery);
-		commit();
-	}
-	
-	public void invalidateClassificationRuns() throws IOException {
-		
-		final Query statusQuery = Mappings.newQuery()
-				.field(FIELD_STATUS, ClassificationStatus.COMPLETED.name())
-				.field(FIELD_STATUS, ClassificationStatus.RUNNING.name())
-				.field(FIELD_STATUS, ClassificationStatus.SAVING_IN_PROGRESS.name())
-				.field(FIELD_STATUS, ClassificationStatus.SCHEDULED.name())
-				.matchAny();
-		
-		final Query query = Mappings.newQuery()
-				.field(FIELD_CLASS, ClassificationRun.class.getSimpleName())
-				.and(statusQuery)
-				.matchAll();
-		
-		IndexSearcher searcher = null;
-
-		try {
-
-			searcher = manager.acquire();
-
-			final TotalHitCountCollector collector = new TotalHitCountCollector();
-			searcher.search(query, collector);
-			final int totalHits = collector.getTotalHits();
-			
-			final int docsToRetrieve = Ints.min(searcher.getIndexReader().maxDoc(), totalHits);
-			if (docsToRetrieve < 1) {
-				return;
-			}
-			
-			final TopDocs docs = searcher.search(query, null, docsToRetrieve, Sort.INDEXORDER, false, false);
-			final ScoreDoc[] scoreDocs = docs.scoreDocs;
-
-			for (int i = 0; i < scoreDocs.length; i++) {
-				final Document sourceDocument = searcher.doc(scoreDocs[i].doc, ImmutableSet.of(FIELD_BRANCH_PATH, FIELD_SOURCE));
-				
-				final String branchPath = sourceDocument.get(FIELD_BRANCH_PATH);
-				final String source = sourceDocument.get(FIELD_SOURCE);
-				final ClassificationRun run = objectMapper.reader(ClassificationRun.class).readValue(source);
-				
-				run.setStatus(ClassificationStatus.STALE);
-				
-				upsertClassificationRunNoCommit(BranchPathUtils.createPath(branchPath), run);
-			}
-
-			commit();
-			
-		} finally {
-			if (null != searcher) {
-				manager.release(searcher);
-			}
-		}
 	}
 
 	public void trimIndex(int maximumResultsToKeep) throws IOException {
