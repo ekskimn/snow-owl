@@ -15,7 +15,13 @@
  */
 package com.b2international.snowowl.snomed.core.domain;
 
+import static com.google.common.collect.Sets.newHashSet;
+
+import java.util.Set;
+
 import com.b2international.snowowl.core.domain.IComponentNode;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.common.base.Function;
 import com.google.common.collect.Multimap;
 
 /**
@@ -26,6 +32,29 @@ import com.google.common.collect.Multimap;
  */
 public interface ISnomedConcept extends SnomedCoreComponent, IComponentNode, DefinitionStatusProvider {
 
+	/**
+	 * Helper function to get ancestors of a given {@link ISnomedConcept}.
+	 */
+	Function<ISnomedConcept, Set<String>> GET_ANCESTORS = new Function<ISnomedConcept, Set<String>>() {
+		@Override
+		public Set<String> apply(ISnomedConcept concept) {
+			final Set<String> ancestors = newHashSet();
+			for (long parent : concept.getParentIds()) {
+				ancestors.add(Long.toString(parent));
+			}
+			for (long ancestor : concept.getAncestorIds()) {
+				ancestors.add(Long.toString(ancestor));
+			}
+			for (long parent : concept.getStatedParentIds()) {
+				ancestors.add(Long.toString(parent));
+			}
+			for (long ancestor : concept.getStatedAncestorIds()) {
+				ancestors.add(Long.toString(ancestor));
+			}
+			return ancestors;
+		}
+	};
+	
 	/**
 	 * Returns the subclass definition status of the concept.
 	 * 
@@ -85,4 +114,29 @@ public interface ISnomedConcept extends SnomedCoreComponent, IComponentNode, Def
 	 * @return the descendants of the SNOMED CT concept
 	 */
 	SnomedConcepts getDescendants();
+
+	/**
+	 * @return the concept IDs of the ancestors
+	 */
+	@JsonIgnore
+	long[] getAncestorIds();
+	
+	/**
+	 * @return the concept IDs of the parents
+	 */
+	@JsonIgnore
+	long[] getParentIds();
+
+	/**
+	 * @return the concept IDs of the stated parents
+	 */
+	@JsonIgnore
+	long[] getStatedParentIds();
+	
+	/**
+	 * @return the concept IDs of the stated ancestors
+	 */
+	@JsonIgnore
+	long[] getStatedAncestorIds();
+
 }

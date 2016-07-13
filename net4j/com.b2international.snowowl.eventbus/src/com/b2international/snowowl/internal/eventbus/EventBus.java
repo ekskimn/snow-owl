@@ -121,7 +121,7 @@ public class EventBus extends Lifecycle implements IEventBus {
 			}
 		} else {
 			// TODO send reply to indicate that there is no handler
-			LOG.warn("No event handler registered to handle message: {}", message);
+			LOG.trace("No event handler registered to handle message: {}", message);
 		}
 	}
 	
@@ -259,7 +259,8 @@ public class EventBus extends Lifecycle implements IEventBus {
 		@Override
 		public Object create(String description) throws ProductCreationException {
 			final String[] values = description.split(":");
-			return new EventBus(values[0], Integer.parseInt(values[1]));
+			final boolean worker = Boolean.parseBoolean(values[2]);
+			return new EventBus(values[0], Integer.parseInt(values[1]), worker ? new WorkerExecutorServiceFactory() : new DefaultExecutorServiceFactory());
 		}
 
 	}

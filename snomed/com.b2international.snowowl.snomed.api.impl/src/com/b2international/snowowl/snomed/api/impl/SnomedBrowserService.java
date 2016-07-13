@@ -14,7 +14,6 @@ package com.b2international.snowowl.snomed.api.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.ArrayList;
@@ -28,16 +27,14 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
-import org.apache.lucene.search.Query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.ClassUtils;
 import com.b2international.commons.collections.Procedure;
 import com.b2international.commons.http.ExtendedLocale;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.date.EffectiveTimes;
+import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.domain.IStorageRef;
 import com.b2international.snowowl.core.domain.TransactionContext;
@@ -45,8 +42,6 @@ import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
-import com.b2international.snowowl.core.terminology.ComponentCategory;
-import com.b2international.snowowl.datastore.index.AbstractIndexQueryAdapter;
 import com.b2international.snowowl.datastore.request.CommitInfo;
 import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
 import com.b2international.snowowl.datastore.server.domain.InternalComponentRef;
@@ -83,23 +78,18 @@ import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ConceptEnum;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
+import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
-import com.b2international.snowowl.snomed.datastore.SnomedStatementBrowser;
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.index.SnomedConceptIndexQueryAdapter;
-import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
-import com.b2international.snowowl.snomed.datastore.index.SnomedRelationshipIndexQueryAdapter;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
-import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedConceptCreateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedConceptUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionCreateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRelationshipCreateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRelationshipUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.cache.Cache;
@@ -110,50 +100,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
 public class SnomedBrowserService implements ISnomedBrowserService {
-
-	private static final class ConceptSubTypesAdapter extends SnomedConceptIndexQueryAdapter {
-		
-		private static final long serialVersionUID = 1L;
-		
-		private final String parentFieldSuffix;
-
-		private ConceptSubTypesAdapter(String conceptId, String parentFieldSuffix) {
-			super(conceptId, AbstractIndexQueryAdapter.SEARCH_DEFAULT, null);
-			this.parentFieldSuffix = parentFieldSuffix;
-		}
-
-		@Override
-		public Query createQuery() {
-			return SnomedMappings.newQuery()
-				.concept()
-				.active()
-				.field(SnomedMappings.parent(parentFieldSuffix).fieldName(), Long.valueOf(searchString))
-				.matchAll();
-		}
-	}
-
-	private static final class ChildLeafQueryAdapter extends SnomedRelationshipIndexQueryAdapter {
-		
-		private static final long serialVersionUID = 1L;
-		
-		private final String characteristicTypeId;
-
-		private ChildLeafQueryAdapter(String queryString, String characteristicTypeId) {
-			super(queryString, AbstractIndexQueryAdapter.SEARCH_DEFAULT);
-			this.characteristicTypeId = characteristicTypeId;
-		}
-
-		@Override
-		public Query createQuery() {
-			return SnomedMappings.newQuery()
-					.relationship()
-					.active()
-					.relationshipCharacteristicType(characteristicTypeId)
-					.relationshipDestination(Long.valueOf(searchString))
-					.relationshipType(Concepts.IS_A)
-					.matchAll();
-		}
-	}
 
 	private static final List<ConceptEnum> CONCEPT_ENUMS;
 
@@ -190,37 +136,31 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		
 		final IBranchPath branchPath = internalConceptRef.getBranch().branchPath();
 		final String conceptId = conceptRef.getComponentId();
-		final SnomedConceptIndexEntry concept = getTerminologyBrowser().getConcept(branchPath, conceptId);
+		final ISnomedConcept concept = SnomedRequests.prepareGetConcept()
+				.setComponentId(conceptId)
+				.setLocales(locales)
+				.setExpand("pt(),fsn(),descriptions(limit:"+Integer.MAX_VALUE+"),relationships(limit:"+Integer.MAX_VALUE+")")
+				.build(branchPath.getPath())
+				.execute(bus)
+				.getSync();
 		
-		if (null == concept) {
-			throw new ComponentNotFoundException(ComponentCategory.CONCEPT, conceptId);
-		}
-		
-		final List<ISnomedDescription> descriptions = ImmutableList.copyOf(SnomedRequests.prepareSearchDescription()
-				.all()
-				.filterByConceptId(conceptId)
-				.build(conceptRef.getBranchPath())
-				.executeSync(bus)
-				.getItems());
-
 		final DescriptionService descriptionService = new DescriptionService(bus, conceptRef.getBranchPath());
 		
-		final ISnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(conceptId, locales);
-		final ISnomedDescription preferredSynonym = descriptionService.getPreferredTerm(conceptId, locales);
-		final List<SnomedRelationshipIndexEntry> relationships = getStatementBrowser().getOutboundStatements(branchPath, concept);
+		final ISnomedDescription fullySpecifiedName = concept.getFsn();
+		final ISnomedDescription preferredSynonym = concept.getPt();
 
 		final SnomedBrowserConcept result = new SnomedBrowserConcept();
 
 		result.setActive(concept.isActive());
 		result.setReleased(concept.isReleased());
 		result.setConceptId(concept.getId());
-		result.setDefinitionStatus(concept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-		result.setEffectiveTime(EffectiveTimes.toDate(concept.getEffectiveTimeAsLong()));
+		result.setDefinitionStatus(concept.getDefinitionStatus());
+		result.setEffectiveTime(concept.getEffectiveTime());
 		result.setModuleId(concept.getModuleId());
 		
-		populateLeafFields(branchPath, conceptId, result);
+		populateLeafFields(branchPath.getPath(), conceptId, result);
 		
-		result.setDescriptions(convertDescriptions(newArrayList(descriptions)));
+		result.setDescriptions(convertDescriptions(concept.getDescriptions()));
 		
 		if (fullySpecifiedName != null) {
 			result.setFsn(fullySpecifiedName.getTerm());
@@ -232,7 +172,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			result.setPreferredSynonym(preferredSynonym.getTerm());
 		}
 
-		result.setRelationships(convertRelationships(relationships, conceptRef, locales));
+		result.setRelationships(convertRelationships(concept.getRelationships(), conceptRef, locales));
 		
 		return result;
 	}
@@ -467,7 +407,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return null;
 	}
 
-	private List<ISnomedBrowserDescription> convertDescriptions(final List<ISnomedDescription> descriptions) {
+	private List<ISnomedBrowserDescription> convertDescriptions(final Iterable<ISnomedDescription> descriptions) {
 		final ImmutableList.Builder<ISnomedBrowserDescription> convertedDescriptionBuilder = ImmutableList.builder();
 
 		for (final ISnomedDescription description : descriptions) {
@@ -500,22 +440,22 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return SnomedBrowserDescriptionType.getByConceptId(typeId);
 	}
 
-	private List<ISnomedBrowserRelationship> convertRelationships(final List<SnomedRelationshipIndexEntry> relationships, final IComponentRef sourceConceptRef, final List<ExtendedLocale> locales) {
+	private List<ISnomedBrowserRelationship> convertRelationships(final Iterable<ISnomedRelationship> relationships, final IComponentRef sourceConceptRef, final List<ExtendedLocale> locales) {
 		final InternalComponentRef internalConceptRef = ClassUtils.checkAndCast(sourceConceptRef, InternalComponentRef.class);
 		final IBranchPath branchPath = internalConceptRef.getBranch().branchPath();
 		final DescriptionService descriptionService = new DescriptionService(bus, sourceConceptRef.getBranchPath());
 
 		final ImmutableMap.Builder<String, ISnomedBrowserRelationship> convertedRelationshipBuilder = ImmutableMap.builder();
-		for (final SnomedRelationshipIndexEntry relationship : relationships) {
+		for (final ISnomedRelationship relationship : relationships) {
 			final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship(relationship.getId());
 			convertedRelationship.setActive(relationship.isActive());
 			convertedRelationship.setReleased(relationship.isReleased());
-			convertedRelationship.setCharacteristicType(CharacteristicType.getByConceptId(relationship.getCharacteristicTypeId()));
-			convertedRelationship.setEffectiveTime(EffectiveTimes.toDate(relationship.getEffectiveTimeAsLong()));
+			convertedRelationship.setCharacteristicType(relationship.getCharacteristicType());
+			convertedRelationship.setEffectiveTime(relationship.getEffectiveTime());
 			convertedRelationship.setGroupId(relationship.getGroup());
-			convertedRelationship.setModifier(relationship.isUniversal() ? RelationshipModifier.UNIVERSAL : RelationshipModifier.EXISTENTIAL);
+			convertedRelationship.setModifier(relationship.getModifier());
 			convertedRelationship.setModuleId(relationship.getModuleId());
-			convertedRelationship.setSourceId(relationship.getObjectId());
+			convertedRelationship.setSourceId(relationship.getSourceId());
 			convertedRelationshipBuilder.put(relationship.getId(), convertedRelationship);
 		}
 		
@@ -526,16 +466,16 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				descriptionService) {
 			
 			@Override
-			protected Collection<SnomedConceptIndexEntry> getConceptEntries(String conceptId) {
+			protected Iterable<ISnomedConcept> getConceptEntries(String conceptId) {
 				final Set<String> typeIds = newHashSet();
-				for (final SnomedRelationshipIndexEntry relationship : relationships) {
-					typeIds.add(relationship.getAttributeId());
+				for (final ISnomedRelationship relationship : relationships) {
+					typeIds.add(relationship.getTypeId());
 				}
-				return getTerminologyBrowser().getConcepts(branchPath, typeIds);
+				return getConcepts(branchPath, typeIds);
 			}
 
 			@Override
-			protected SnomedBrowserRelationshipType convertConceptEntry(SnomedConceptIndexEntry conceptEntry, Optional<String> optionalFsn) {
+			protected SnomedBrowserRelationshipType convertConceptEntry(ISnomedConcept conceptEntry, Optional<String> optionalFsn) {
 				final SnomedBrowserRelationshipType type = new SnomedBrowserRelationshipType();
 				type.setConceptId(conceptEntry.getId());
 				type.setFsn(optionalFsn.or(conceptEntry.getId()));
@@ -555,21 +495,21 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				descriptionService) {
 			
 			@Override
-			protected Collection<SnomedConceptIndexEntry> getConceptEntries(String conceptId) {
+			protected Iterable<ISnomedConcept> getConceptEntries(String conceptId) {
 				final Set<String> destinationConceptIds = newHashSet();
-				for (final SnomedRelationshipIndexEntry relationship : relationships) {
-					destinationConceptIds.add(relationship.getValueId());
+				for (final ISnomedRelationship relationship : relationships) {
+					destinationConceptIds.add(relationship.getDestinationId());
 				}
-				return getTerminologyBrowser().getConcepts(branchPath, destinationConceptIds);
+				return getConcepts(branchPath, destinationConceptIds);
 			}
 
 			@Override
-			protected SnomedBrowserRelationshipTarget convertConceptEntry(SnomedConceptIndexEntry destinationConcept, Optional<String> optionalFsn) {
+			protected SnomedBrowserRelationshipTarget convertConceptEntry(ISnomedConcept destinationConcept, Optional<String> optionalFsn) {
 				final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget();
 				target.setActive(destinationConcept.isActive());
 				target.setConceptId(destinationConcept.getId());
-				target.setDefinitionStatus(destinationConcept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-				target.setEffectiveTime(EffectiveTimes.toDate(destinationConcept.getEffectiveTimeAsLong()));
+				target.setDefinitionStatus(destinationConcept.getDefinitionStatus());
+				target.setEffectiveTime(destinationConcept.getEffectiveTime());
 				target.setModuleId(destinationConcept.getModuleId());
 				target.setFsn(optionalFsn.or(destinationConcept.getId()));
 				return target;
@@ -583,25 +523,37 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			}
 		});
 		
-		for (SnomedRelationshipIndexEntry entry : relationships) {
+		for (ISnomedRelationship entry : relationships) {
 			SnomedBrowserRelationship rel = (SnomedBrowserRelationship) convertedRelationships.get(entry.getId());
-			SnomedBrowserRelationshipType type = typesById.get(entry.getAttributeId());
-			SnomedBrowserRelationshipTarget target = targetsById.get(entry.getValueId());
+			SnomedBrowserRelationshipType type = typesById.get(entry.getTypeId());
+			SnomedBrowserRelationshipTarget target = targetsById.get(entry.getDestinationId());
 			rel.setType(type);
 			rel.setTarget(target);
 		}
 		
 		return ImmutableList.copyOf(convertedRelationships.values());
 	}
+	
+	private SnomedConcepts getConcepts(final IBranchPath branchPath, final Set<String> destinationConceptIds) {
+		if (destinationConceptIds.isEmpty()) {
+			return new SnomedConcepts(0, 0, 0);
+		}
+		return SnomedRequests.prepareSearchConcept()
+				.all()
+				.setComponentIds(destinationConceptIds)
+				.build(branchPath.getPath())
+				.execute(bus)
+				.getSync();
+	}
 
-	protected SnomedBrowserRelationshipTarget getSnomedBrowserRelationshipTarget(SnomedConceptIndexEntry destinationConcept, String branch, List<ExtendedLocale> locales) {
+	protected SnomedBrowserRelationshipTarget getSnomedBrowserRelationshipTarget(ISnomedConcept destinationConcept, String branch, List<ExtendedLocale> locales) {
 		final DescriptionService descriptionService = new DescriptionService(bus, branch);
 		final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget();
 
 		target.setActive(destinationConcept.isActive());
 		target.setConceptId(destinationConcept.getId());
-		target.setDefinitionStatus(destinationConcept.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
-		target.setEffectiveTime(EffectiveTimes.toDate(destinationConcept.getEffectiveTimeAsLong()));
+		target.setDefinitionStatus(destinationConcept.getDefinitionStatus());
+		target.setEffectiveTime(destinationConcept.getEffectiveTime());
 		target.setModuleId(destinationConcept.getModuleId());
 
 		ISnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(destinationConcept.getId(), locales);
@@ -615,7 +567,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	@Override
-	public List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef conceptRef, List<ExtendedLocale> locales) {
+	public List<ISnomedBrowserParentConcept> getConceptParents(final IComponentRef conceptRef, final List<ExtendedLocale> locales) {
 		final InternalComponentRef internalConceptRef = ClassUtils.checkAndCast(conceptRef, InternalComponentRef.class);
 		final IBranchPath branchPath = internalConceptRef.getBranch().branchPath();
 		final DescriptionService descriptionService = new DescriptionService(bus, conceptRef.getBranchPath());
@@ -623,17 +575,23 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return new FsnJoinerOperation<ISnomedBrowserParentConcept>(conceptRef.getComponentId(), locales, descriptionService) {
 			
 			@Override
-			protected Collection<SnomedConceptIndexEntry> getConceptEntries(String conceptId) {
-				return getTerminologyBrowser().getSuperTypesById(branchPath, conceptId);
+			protected Iterable<ISnomedConcept> getConceptEntries(String conceptId) {
+				return SnomedRequests.prepareGetConcept()
+						.setComponentId(conceptId)
+						.setExpand("ancestors(form:\"inferred\",direct:true)")
+						.setLocales(locales)
+						.build(branchPath.getPath())
+						.execute(bus)
+						.getSync().getAncestors();
 			}
 
 			@Override
-			protected ISnomedBrowserParentConcept convertConceptEntry(SnomedConceptIndexEntry conceptEntry, Optional<String> optionalFsn) {
+			protected ISnomedBrowserParentConcept convertConceptEntry(ISnomedConcept conceptEntry, Optional<String> optionalFsn) {
 				final String childConceptId = conceptEntry.getId();
 				final SnomedBrowserParentConcept convertedConcept = new SnomedBrowserParentConcept(); 
 
 				convertedConcept.setConceptId(childConceptId);
-				convertedConcept.setDefinitionStatus(conceptEntry.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
+				convertedConcept.setDefinitionStatus(conceptEntry.getDefinitionStatus());
 				convertedConcept.setFsn(optionalFsn.or(childConceptId));
 
 				return convertedConcept;
@@ -645,35 +603,36 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	@Override
 	public List<ISnomedBrowserChildConcept> getConceptChildren(final IComponentRef conceptRef, final List<ExtendedLocale> locales, final boolean stated) {
 		final InternalComponentRef internalConceptRef = ClassUtils.checkAndCast(conceptRef, InternalComponentRef.class);
-		final IBranchPath branchPath = internalConceptRef.getBranch().branchPath();
+		final String branch = internalConceptRef.getBranch().path();
 		final DescriptionService descriptionService = new DescriptionService(bus, conceptRef.getBranchPath());
 
 		return new FsnJoinerOperation<ISnomedBrowserChildConcept>(conceptRef.getComponentId(), locales, descriptionService) {
 			
 			@Override
-			protected Collection<SnomedConceptIndexEntry> getConceptEntries(String conceptId) {
-				final SnomedConceptIndexQueryAdapter queryAdapter;
-				if (!stated) {
-					queryAdapter = new ConceptSubTypesAdapter(conceptId, "");
-				} else {
-					queryAdapter = new ConceptSubTypesAdapter(conceptId, Concepts.STATED_RELATIONSHIP);
-				}
+			protected Iterable<ISnomedConcept> getConceptEntries(String conceptId) {
+				return SnomedRequests.prepareSearchConcept()
+						.all()
+						.filterByActive(true)
+						.filterByParent(stated ? null : conceptId)
+						.filterByStatedParent(stated ? conceptId : null)
+						.build(branch)
+						.execute(bus)
+						.getSync();
 				
-				return getIndexService().searchUnsorted(branchPath, queryAdapter);
 			}
 
 			@Override
-			protected ISnomedBrowserChildConcept convertConceptEntry(SnomedConceptIndexEntry conceptEntry, Optional<String> optionalFsn) {
+			protected ISnomedBrowserChildConcept convertConceptEntry(ISnomedConcept conceptEntry, Optional<String> optionalFsn) {
 				final String childConceptId = conceptEntry.getId();
 				final SnomedBrowserChildConcept convertedConcept = new SnomedBrowserChildConcept(); 
 
 				convertedConcept.setConceptId(childConceptId);
 				convertedConcept.setActive(conceptEntry.isActive());
-				convertedConcept.setDefinitionStatus(conceptEntry.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
+				convertedConcept.setDefinitionStatus(conceptEntry.getDefinitionStatus());
 				convertedConcept.setModuleId(conceptEntry.getModuleId());
 				convertedConcept.setFsn(optionalFsn.or(childConceptId));
 
-				populateLeafFields(branchPath, childConceptId, convertedConcept);
+				populateLeafFields(branch, childConceptId, convertedConcept);
 
 				return convertedConcept;
 			}
@@ -681,20 +640,21 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}.run();
 	}
 
-	private void populateLeafFields(final IBranchPath branchPath, final String conceptId, final TaxonomyNode node) {
-		ChildLeafQueryAdapter queryAdapter = new ChildLeafQueryAdapter(conceptId, Concepts.STATED_RELATIONSHIP);
-		node.setIsLeafStated(getIndexService().getHitCount(branchPath, queryAdapter) < 1);
-
-		queryAdapter = new ChildLeafQueryAdapter(conceptId, Concepts.INFERRED_RELATIONSHIP);
-		node.setIsLeafInferred(getIndexService().getHitCount(branchPath, queryAdapter) < 1);
+	private void populateLeafFields(final String branch, final String conceptId, final TaxonomyNode node) {
+		node.setIsLeafStated(!hasInboundRelationships(branch, conceptId, Concepts.STATED_RELATIONSHIP));
+		node.setIsLeafInferred(!hasInboundRelationships(branch, conceptId, Concepts.INFERRED_RELATIONSHIP));
 	}
 
-	private static SnomedTerminologyBrowser getTerminologyBrowser() {
-		return ApplicationContext.getServiceForClass(SnomedTerminologyBrowser.class);
-	}
-
-	private static SnomedStatementBrowser getStatementBrowser() {
-		return ApplicationContext.getServiceForClass(SnomedStatementBrowser.class);
+	private boolean hasInboundRelationships(String branch, String conceptId, String characteristicTypeId) {
+		return SnomedRequests.prepareSearchRelationship()
+				.filterByActive(true)
+				.filterByCharacteristicType(characteristicTypeId)
+				.filterByDestination(conceptId)
+				.filterByType(Concepts.IS_A)
+				.setLimit(0)
+				.build(branch)
+				.execute(bus)
+				.getSync().getTotal() > 0;
 	}
 
 	@Override
@@ -725,13 +685,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			})
 			.toSet();
 		
-		final Collection<SnomedConceptIndexEntry> conceptIndexEntries = getTerminologyBrowser().getConcepts(branchPath, conceptIds);
-		final Map<String, SnomedConceptIndexEntry> conceptMap = Maps.uniqueIndex(conceptIndexEntries, new Function<SnomedConceptIndexEntry, String>() {
-			@Override
-			public String apply(final SnomedConceptIndexEntry input) {
-				return input.getId();
-			}
-		});
+		final Iterable<ISnomedConcept> conceptIndexEntries = getConcepts(branchPath, conceptIds);
+		final Map<String, ISnomedConcept> conceptMap = Maps.uniqueIndex(conceptIndexEntries, IComponent.ID_FUNCTION);
 		
 		final Map<String, ISnomedDescription> fsnPropertyMap = descriptionService.getFullySpecifiedNames(conceptIds, locales);
 		final Cache<String, SnomedBrowserDescriptionResultDetails> detailCache = CacheBuilder.newBuilder().build();
@@ -755,13 +710,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 					@Override
 					public SnomedBrowserDescriptionResultDetails call() throws Exception {
 						final String conceptId = description.getConceptId();
-						final SnomedConceptIndexEntry conceptIndexEntry = conceptMap.get(conceptId);
+						final ISnomedConcept conceptIndexEntry = conceptMap.get(conceptId);
 						final SnomedBrowserDescriptionResultDetails details = new SnomedBrowserDescriptionResultDetails();
 						
 						if (conceptIndexEntry != null) {
 							details.setActive(conceptIndexEntry.isActive());
 							details.setConceptId(conceptIndexEntry.getId());
-							details.setDefinitionStatus(conceptIndexEntry.isPrimitive() ? DefinitionStatus.PRIMITIVE : DefinitionStatus.FULLY_DEFINED);
+							details.setDefinitionStatus(conceptIndexEntry.getDefinitionStatus());
 							details.setModuleId(conceptIndexEntry.getModuleId());
 							
 							if (fsnPropertyMap.containsKey(conceptId)) {
@@ -822,7 +777,4 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return resultBuilder.build();
 	}
 	
-	private static SnomedIndexService getIndexService() {
-		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
-	}
 }

@@ -19,7 +19,7 @@ import static com.b2international.snowowl.datastore.cdo.CDOUtils.check;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Sets.newHashSet;
 
-import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -34,11 +34,13 @@ import org.eclipse.emf.cdo.transaction.CDOTransaction;
 import org.eclipse.emf.cdo.util.CommitException;
 import org.slf4j.Logger;
 
+import com.b2international.collections.longs.LongCollection;
+import com.b2international.commons.collect.LongSets;
 import com.b2international.commons.functions.UncheckedCastFunction;
-import com.b2international.commons.pcj.LongSets;
+import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.BranchPathUtils;
@@ -47,10 +49,6 @@ import com.b2international.snowowl.datastore.cdo.ICDOTransactionAggregator;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.server.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
-import com.b2international.snowowl.datastore.server.snomed.index.SnomedIndexServerService;
-import com.b2international.snowowl.datastore.server.snomed.index.init.ImportIndexServerService;
-import com.b2international.snowowl.datastore.server.snomed.index.init.IndexBasedImportIndexServiceFeeder;
-import com.b2international.snowowl.datastore.server.snomed.index.init.Rf2BasedImportIndexServiceFeeder;
 import com.b2international.snowowl.datastore.server.snomed.index.init.Rf2BasedSnomedTaxonomyBuilder;
 import com.b2international.snowowl.datastore.version.ITagConfiguration;
 import com.b2international.snowowl.datastore.version.ITagService;
@@ -65,9 +63,11 @@ import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.datastore.SnomedCodeSystemFactory;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
-import com.b2international.snowowl.snomed.datastore.StatementCollectionMode;
-import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.b2international.snowowl.snomed.datastore.taxonomy.IncompleteTaxonomyException;
+import com.b2international.snowowl.snomed.datastore.taxonomy.InvalidRelationship;
 import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilder;
+import com.b2international.snowowl.snomed.datastore.taxonomy.SnomedTaxonomyBuilderResult;
 import com.b2international.snowowl.snomed.importer.rf2.model.AbstractSnomedImporter;
 import com.b2international.snowowl.snomed.importer.rf2.model.ComponentImportType;
 import com.b2international.snowowl.snomed.importer.rf2.model.ComponentImportUnit;
@@ -100,16 +100,23 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 	private final List<Importer> importers;
 	private final Ordering<AbstractImportUnit> unitOrdering;
 	private final SnomedImportContext importContext; //will be used when tagging version (Snow Owl 3.1)
+	private final RepositoryState repositoryState;
+	
 	private Rf2BasedSnomedTaxonomyBuilder inferredTaxonomyBuilder;
 	private Rf2BasedSnomedTaxonomyBuilder statedTaxonomyBuilder;
 	
-	public SnomedCompositeImporter(final Logger logger, final SnomedImportContext importContext, final List<Importer> importers, final Ordering<AbstractImportUnit> unitOrdering) {
+	public SnomedCompositeImporter(final Logger logger,
+			final RepositoryState repositoryState,
+			final SnomedImportContext importContext,
+			final List<Importer> importers, 
+			final Ordering<AbstractImportUnit> unitOrdering) {
 		super(logger);
+		this.repositoryState = repositoryState;
 		this.importContext = Preconditions.checkNotNull(importContext, "Import context argument cannot be null.");
 		this.importers = ImmutableList.copyOf(checkNotNull(importers, "importers"));
 		this.unitOrdering = checkNotNull(unitOrdering, "unitOrdering");
 	}
-
+	
 	@Override
 	public void preImport(final SubMonitor subMonitor) {
 		
@@ -150,86 +157,62 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 
 	@Override
 	public void doImport(final SubMonitor subMonitor, final AbstractImportUnit unit) {
-
-		try {
-			
-			final IBranchPath branchPath = getImportBranchPath();
-			
-			final SnomedCompositeImportUnit compositeUnit = (SnomedCompositeImportUnit) unit;
-			final UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit> castFunction = new UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit>(ComponentImportUnit.class);
-			final List<ComponentImportUnit> units = Lists.newArrayList(Iterables.transform(compositeUnit.getUnits(), castFunction));
-			Preconditions.checkArgument(!units.isEmpty(), "Archive contains no importable content.");
-			
-			subMonitor.setWorkRemaining(units.size() + 1);
-
-			if (isRefSetImport(units)) {
-			
-				String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
-				
-				for (final ComponentImportUnit subUnit : units) {
-					
-					final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
-					
-					if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
-						updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
-						lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
-					}
-					
-					subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
-				}
-				
-				updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
-				
-			} else {
-			
-				Preconditions.checkState(!ApplicationContext.getInstance().exists(ImportIndexServerService.class), "SNOMED CT import already in progress.");
-	
-				final ImportIndexServerService importIndexServerService = new ImportIndexServerService(branchPath);
-				final IndexBasedImportIndexServiceFeeder feeder = new IndexBasedImportIndexServiceFeeder();
-				feeder.initContent(importIndexServerService, branchPath, subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
-				
-				ApplicationContext.getInstance().registerService(ImportIndexServerService.class, importIndexServerService);
-	
-				String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
-				
-				for (final ComponentImportUnit subUnit : units) {
-					
-					/*
-					 * First import unit seen with an effective time different from the previous set of import units;
-					 * initialize taxonomy builder and update import index server service, then perform tagging if
-					 * required.
-					 * 
-					 * Note that different effective times should only be seen in FULL or DELTA import, and the 
-					 * collected values can be used as is.
-					 */
-					final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
-					
-					if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
-						updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
-						updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
-						lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
-					}
-						
-					subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
-				}
-				
-				updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
-				updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
-			}
-			
-		} finally {	
-				
-			if (ApplicationContext.getInstance().exists(ImportIndexServerService.class)) {
-				ApplicationContext.getInstance().getService(ImportIndexServerService.class).dispose();
-			}
-
-			//dispose services
-			if (ApplicationContext.getInstance().exists(ImportIndexServerService.class)) {
-				ApplicationContext.getInstance().unregisterService(ImportIndexServerService.class);
-			}
-
-		}
+		final IBranchPath branchPath = getImportBranchPath();
 		
+		final SnomedCompositeImportUnit compositeUnit = (SnomedCompositeImportUnit) unit;
+		final UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit> castFunction = new UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit>(ComponentImportUnit.class);
+		final List<ComponentImportUnit> units = Lists.newArrayList(Iterables.transform(compositeUnit.getUnits(), castFunction));
+		Preconditions.checkArgument(!units.isEmpty(), "Archive contains no importable content.");
+		
+		subMonitor.setWorkRemaining(units.size() + 1);
+
+		if (isRefSetImport(units)) {
+			// enable commit notifications in case of refset import
+			importContext.setCommitNotificationEnabled(true);
+			String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
+			
+			for (final ComponentImportUnit subUnit : units) {
+				
+				final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
+				
+				if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
+					updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
+					lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
+				}
+				
+				subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
+			}
+			
+			updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
+			
+		} else {
+		
+			String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
+			
+			for (final ComponentImportUnit subUnit : units) {
+				
+				/*
+				 * First import unit seen with an effective time different from the previous set of import units;
+				 * initialize taxonomy builder and update import index server service, then perform tagging if
+				 * required.
+				 * 
+				 * Note that different effective times should only be seen in FULL or DELTA import, and the 
+				 * collected values can be used as is.
+				 */
+				final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
+				
+				if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
+					updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
+					updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
+					lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
+				}
+					
+				subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
+			}
+			
+			updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
+			updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
+		}
 	}
 
 	private IBranchPath getImportBranchPath() {
@@ -303,47 +286,47 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 		
 		if (null == inferredTaxonomyBuilder) {
 			// First iteration: initialize release file-based builder with existing contents (if any)
-			final SnomedTaxonomyBuilder baseBuilder = new SnomedTaxonomyBuilder(branchPath, StatementCollectionMode.INFERRED_ISA_ONLY);
-			final Rf2BasedSnomedTaxonomyBuilder rf2TaxonomyBuilder = Rf2BasedSnomedTaxonomyBuilder.newInstance(baseBuilder, Concepts.INFERRED_RELATIONSHIP);
-			inferredTaxonomyBuilder = rf2TaxonomyBuilder;
+			inferredTaxonomyBuilder = buildTaxonomy(Concepts.INFERRED_RELATIONSHIP);
 		}
 		
 		inferredTaxonomyBuilder.applyNodeChanges(conceptFilePath);
 		inferredTaxonomyBuilder.applyEdgeChanges(relationshipFilePath);
-		inferredTaxonomyBuilder.build();
+		final SnomedTaxonomyBuilderResult inferredTaxonomyResult = inferredTaxonomyBuilder.build();
 		
 		if (null == statedTaxonomyBuilder) {
 			// First iteration: initialize release file-based builder with existing contents (if any)
-			final SnomedTaxonomyBuilder baseBuilder = new SnomedTaxonomyBuilder(branchPath, StatementCollectionMode.STATED_ISA_ONLY);
-			final Rf2BasedSnomedTaxonomyBuilder rf2TaxonomyBuilder = Rf2BasedSnomedTaxonomyBuilder.newInstance(baseBuilder, Concepts.STATED_RELATIONSHIP);
-			statedTaxonomyBuilder = rf2TaxonomyBuilder;
+			statedTaxonomyBuilder = buildTaxonomy(Concepts.STATED_RELATIONSHIP);
 		}
 		
 		statedTaxonomyBuilder.applyNodeChanges(conceptFilePath);
 		statedTaxonomyBuilder.applyEdgeChanges(statedRelationshipFilePath);
-		statedTaxonomyBuilder.build();
+		final SnomedTaxonomyBuilderResult statedTaxonomyResult = statedTaxonomyBuilder.build();
+		
+		if (!inferredTaxonomyResult.getStatus().isOK() || !statedTaxonomyResult.getStatus().isOK()) {
+			throw new IncompleteTaxonomyException(ImmutableList.<InvalidRelationship> builder()
+					.addAll(inferredTaxonomyResult.getInvalidRelationships())
+					.addAll(statedTaxonomyResult.getInvalidRelationships())
+					.build());
+		}
 		
 		final Set<String> synonymAndDescendants = LongSets.toStringSet(inferredTaxonomyBuilder.getAllDescendantNodeIds(Concepts.SYNONYM));
 		synonymAndDescendants.add(Concepts.SYNONYM);
 		
-		final ImportIndexServerService importIndexService = ApplicationContext.getInstance().getService(ImportIndexServerService.class);
-		
-		final Rf2BasedImportIndexServiceFeeder feeder = new Rf2BasedImportIndexServiceFeeder(
-				descriptionFilePaths, 
-				languageFilePaths, 
-				synonymAndDescendants, 
-				getImportBranchPath());
-		
-		try {
-			feeder.initContent(importIndexService, branchPath, new NullProgressMonitor());
-			initializeIndex(branchPath, lastUnitEffectiveTimeKey, units);
-		} catch (final SnowowlServiceException e) {
-			throw new ImportException(e);
-		}
+		initializeIndex(importContext, lastUnitEffectiveTimeKey, units);
 	}
 
-	private void initializeIndex(final IBranchPath branchPath, final String lastUnitEffectiveTimeKey, final List<ComponentImportUnit> units) {
-		final SnomedRf2IndexInitializer snomedRf2IndexInitializer = new SnomedRf2IndexInitializer(branchPath, lastUnitEffectiveTimeKey, units, importContext.getLanguageRefSetId(), inferredTaxonomyBuilder, statedTaxonomyBuilder);
+	private Rf2BasedSnomedTaxonomyBuilder buildTaxonomy(final String characteristicType) {
+		final LongCollection conceptIds = repositoryState.getConceptIds();
+		final Collection<SnomedRelationshipIndexEntry.Views.StatementWithId> statements = Concepts.INFERRED_RELATIONSHIP.equals(characteristicType) ? repositoryState.getInferredStatements() : repositoryState.getStatedStatements();
+		return Rf2BasedSnomedTaxonomyBuilder.newInstance(new SnomedTaxonomyBuilder(conceptIds, statements), characteristicType);
+	}
+
+	private RevisionIndex getIndex() {
+		return ApplicationContext.getInstance().getService(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
+	}
+	
+	private void initializeIndex(final SnomedImportContext context, final String lastUnitEffectiveTimeKey, final List<ComponentImportUnit> units) {
+		final SnomedRf2IndexInitializer snomedRf2IndexInitializer = new SnomedRf2IndexInitializer(getIndex(), context, lastUnitEffectiveTimeKey, units, importContext.getLanguageRefSetId(), inferredTaxonomyBuilder, statedTaxonomyBuilder);
 		snomedRf2IndexInitializer.run(new NullProgressMonitor());
 	}
 
@@ -396,8 +379,6 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 				final Date effectiveDate = EffectiveTimes.parse(lastUnitEffectiveTimeKey, DateFormats.SHORT);
 				final String formattedEffectiveDate = EffectiveTimes.format(effectiveDate);
 				
-				((SnomedIndexServerService) ApplicationContext.getInstance().getService(SnomedIndexService.class)).getBranchService(snomedBranchPath).optimize();
-				
 				final ITagConfiguration configuration = TagConfigurationBuilder.createForRepositoryUuid(SnomedDatastoreActivator.REPOSITORY_UUID, formattedEffectiveDate)
 					.setBranchPath(snomedBranchPath)
 					.setUserId(importContext.getUserId())
@@ -407,7 +388,7 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 				ApplicationContext.getInstance().getService(ITagService.class).tag(configuration);
 			}
 			
-		} catch (final CommitException | IOException e) {
+		} catch (final CommitException e) {
 			throw new ImportException("Cannot create tag for SNOMED CT " + lastUnitEffectiveTimeKey, e);
 		} finally {
 			importContext.setCommitTime(CDOServerUtils.getLastCommitTime(editingContext.getTransaction().getBranch()));

@@ -16,42 +16,31 @@
 package com.b2international.snowowl.server.console;
 
 import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-import org.apache.lucene.search.Query;
 import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
 
+import com.b2international.commons.StringUtils;
+import com.b2international.index.revision.Purge;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ApplicationContext.ServiceRegistryEntry;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
-import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
-import com.b2international.snowowl.datastore.server.index.IndexServerService;
-import com.b2international.snowowl.datastore.server.snomed.index.ConceptIdStorageKeyCollector;
+import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
+import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
+import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
+import com.b2international.snowowl.datastore.server.reindex.ReindexRequestBuilder;
+import com.b2international.snowowl.datastore.server.reindex.ReindexResult;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifier;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
-import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
-import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 /**
  * OSGI command contribution with Snow Owl commands.
- * 
  *
  */
 public class MaintenanceCommandProvider implements CommandProvider {
@@ -77,14 +66,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	public String getHelp() {
 		StringBuffer buffer = new StringBuffer();
 		buffer.append("---Snow Owl commands---\n");
-		// buffer.append("\tsnowowl test - Execute Snow Owl server smoke
-		// test\n");
 		buffer.append("\tsnowowl checkservices - Checks the core services presence\n");
-		buffer.append(
-				"\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI.\n");
-		buffer.append("\tsnowowl listrepositories - prints all the repositories in the system.\n");
-		buffer.append("\tsnowowl listbranches [repository] - prints all the branches in the system for a repository.\n");
-		buffer.append("\tsnowowl replacedupids [branchPath] - replaces components with duplicate ids in the SNOMED CT repository on a given branch (e.g. MAIN/PROJECT/TASK1). If no branch is given the replacement is executed for all the branches.\n");
+		buffer.append("\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI\n");
+		buffer.append("\tsnowowl reindex [repositoryId] [failedCommitTimestamp]- reindexes the content for the given repository ID from the given failed commit timestamp (optional, default timestamp is 1 which means no failed commit).\n");
+		buffer.append("\tsnowowl optimize [repositoryId] [maxSegments] - optimizes the underlying index for the repository to have the supplied maximum number of segments (default number is 1)\n");
+		buffer.append("\tsnowowl purge [repositoryId] [branchPath] [ALL|LATEST|HISTORY] - optimizes the underlying index by deleting unnecessary documents from the given branch using the given purge strategy (default strategy is LATEST)\n");
 		return buffer.toString();
 	}
 
@@ -103,11 +89,6 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				return;
 			}
 
-			// if ("test".equals(cmd)) {
-			// test(interpreter);
-			// return;
-			// }
-
 			if ("dbcreateindex".equals(cmd)) {
 				executeCreateDbIndex(interpreter);
 				return;
@@ -123,15 +104,112 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				return;
 			}
 
-			if ("replacedupids".equals(cmd)) {
-				checkDuplicateIds(interpreter);
+			if ("reindex".equals(cmd)) {
+				reindex(interpreter);
 				return;
 			}
-
+			
+			if ("optimize".equals(cmd)) {
+				optimize(interpreter);
+				return; 
+			}
+			
+			if ("purge".equals(cmd)) {
+				purge(interpreter);
+				return;
+			}
+			
 			interpreter.println(getHelp());
 		} catch (Exception ex) {
-			interpreter.println(ex.getMessage());
+			if (Strings.isNullOrEmpty(ex.getMessage())) {
+				interpreter.println("Something went wrong during the processing of your request.");
+				ex.printStackTrace();
+			} else {
+				interpreter.println(ex.getMessage());
+			}
 		}
+	}
+
+	private void purge(CommandInterpreter interpreter) {
+		final String repositoryId = interpreter.nextArgument();
+		
+		if (Strings.isNullOrEmpty(repositoryId)) {
+			interpreter.println("RepositoryId parameter is required");
+			return;
+		}
+		
+		final String branchPath = interpreter.nextArgument();
+		
+		if (Strings.isNullOrEmpty(branchPath)) {
+			interpreter.print("BranchPath parameter is required");
+			return;
+		}
+		
+		
+		final String purgeArg = interpreter.nextArgument();
+		final Purge purge = Strings.isNullOrEmpty(purgeArg) ? Purge.LATEST : Purge.valueOf(purgeArg);
+		if (purge == null) {
+			interpreter.print("Invalid purge parameter. Select one of " + Joiner.on(",").join(Purge.values()));
+			return;
+		}
+		
+		PurgeRequest.builder(repositoryId)
+			.setBranchPath(branchPath)
+			.setPurge(purge)
+			.create()
+			.execute(getBus())
+			.getSync();
+	}
+
+	private void reindex(CommandInterpreter interpreter) {
+		final String repositoryId = interpreter.nextArgument();
+		
+		if (Strings.isNullOrEmpty(repositoryId)) {
+			interpreter.println("RepositoryId parameter is required");
+			return;
+		}
+		
+		final ReindexRequestBuilder req = ReindexRequest.builder(repositoryId);
+		
+		final String failedCommitTimestamp = interpreter.nextArgument();
+		if (!StringUtils.isEmpty(failedCommitTimestamp)) {
+			req.setFailedCommitTimestamp(Long.parseLong(failedCommitTimestamp));
+		}
+		
+		final ReindexResult result = req
+				.create()
+				.execute(getBus())
+				.getSync();
+		
+		interpreter.println(result.getMessage());
+	}
+
+	private static IEventBus getBus() {
+		return ApplicationContext.getServiceForClass(IEventBus.class);
+	}
+	
+	private void optimize(CommandInterpreter interpreter) {
+		final String repositoryId = interpreter.nextArgument();
+		if (Strings.isNullOrEmpty(repositoryId)) {
+			interpreter.println("RepositoryId parameter is required.");
+			return;
+		}
+		
+		// default max segments is 1
+		int maxSegments = 1;
+		final String maxSegmentsArg = interpreter.nextArgument();
+		if (!Strings.isNullOrEmpty(maxSegmentsArg)) {
+			maxSegments = Integer.parseInt(maxSegmentsArg);
+		}
+
+		// TODO convert this to a request
+		interpreter.println("Optimizing index to max. " + maxSegments + " number of segments...");
+		OptimizeRequest.builder(repositoryId)
+			.setMaxSegments(maxSegments)
+			.create()
+			.execute(getBus())
+			.getSync();
+		interpreter.println("Index optimization completed.");
 	}
 
 	public synchronized void executeCreateDbIndex(CommandInterpreter interpreter) {
@@ -185,186 +263,15 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		indent--;
 	}
 
-	private void checkDuplicateIds(CommandInterpreter interpreter) throws InterruptedException, ExecutionException {
-
-		String repositoryId = "snomedStore";
-		String branchName = interpreter.nextArgument();
-
-		IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
-		Branch mainBranch = RepositoryRequests.branching(repositoryId).prepareGet("MAIN").executeSync(eventBus);
-
-		Map<Long, Artefact> artefactMap = Maps.newHashMap();
-		Branch selectedBranch = null;
-		if (branchName != null) {
-			selectedBranch = RepositoryRequests.branching(repositoryId).prepareGet(branchName).executeSync(eventBus, 1000);
-			chechBranch(mainBranch, artefactMap, interpreter, selectedBranch);
-		}
-	}
-
-	// Depth-first traversal
-	private void chechBranch(Branch childBranch, Map<Long, Artefact> artefactMap, CommandInterpreter interpreter,
-			Branch selectedBranch) {
-
-		// These are already published versions with no dups
-		List<String> skipVersions = Lists.newArrayList("2002-01-31", "2002-07-31", "2003-01-31", "2003-07-31",
-				"2003-10-31", "2004-01-31", "2004-07-31", "2004-09-30", "2005-01-31", "2005-07-31", "2005-09-30",
-				"2006-01-31", "2006-07-31", "2006-09-30", "2007-01-31", "2007-07-31", "2007-10-01", "2008-01-31",
-				"2008-07-31", "2008-10-31", "2009-01-31", "2009-07-31", "2009-10-31", "2010-01-31", "2010-07-31",
-				"2010-10-01", "2011-01-31", "2013-07-31", "2014-01-31", "2014-07-31", "2015-01-31", "2011-07-31",
-				"2011-10-01", "2012-01-31", "2012-07-31", "2013-01-31", "2015-07-31");
-
-		if (!skipVersions.contains(childBranch.name())) {
-			//run for all branches
-			if (selectedBranch == null) {
-				interpreter.println("Processing: " + childBranch.path());
-				processBranchContent(childBranch, artefactMap, interpreter);
-				Collection<? extends Branch> children = childBranch.children();
-				for (Branch branch : children) {
-					chechBranch(branch, artefactMap, interpreter, selectedBranch);
-				}
-			
-			//process the selected branch and its direct parent
-			} else {
-				interpreter.println("Processing: " + selectedBranch.parent().path());
-				processBranchContent(selectedBranch.parent(), artefactMap, interpreter);
-				interpreter.println("Processing: " + selectedBranch.path());
-				processBranchContent(selectedBranch, artefactMap, interpreter);
-			}
-		}
-	}
-
-	@SuppressWarnings("rawtypes")
-	private void processBranchContent(Branch childBranch, Map<Long, Artefact> artefactMap,
-			CommandInterpreter interpreter) {
-
-		final IndexServerService indexService = (IndexServerService) ApplicationContext.getInstance()
-				.getService(SnomedIndexService.class);
-		final Query query = SnomedMappings.newQuery().concept().description().relationship().matchAny();
-
-		IBranchPath branchPath = childBranch.branchPath();
-		final int hitCount = indexService.getTotalHitCount(branchPath, query);
-		final ConceptIdStorageKeyCollector collector = new ConceptIdStorageKeyCollector(hitCount);
-		indexService.search(branchPath, query, collector);
-
-		long[][] branchIds = collector.getIds();
-		for (int i = 0; i < branchIds.length; i++) {
-			long snomedId = branchIds[i][0];
-			long storageKey = branchIds[i][1];
-			Artefact artefact = artefactMap.get(snomedId);
-			if (artefactMap.containsKey(snomedId) && artefact.storageKey != storageKey) {
-				Artefact newArtefact = new Artefact(childBranch.path(), snomedId, storageKey);
-				interpreter.println("Found duplicate in: " + artefact + " and: " + newArtefact);
-				replaceDuplicateId(artefact, newArtefact, interpreter);
-			} else {
-				artefactMap.put(branchIds[i][0], new Artefact(childBranch.path(), branchIds[i][0], storageKey));
-			}
-		}
-		interpreter.println("Branch '" + childBranch.name() + "' size: " + branchIds.length + ", total id map size: "
-				+ artefactMap.size() + "\n");
-
-	}
-
-	private void replaceDuplicateId(Artefact artefact, Artefact otherArtefact, CommandInterpreter interpreter) {
-		String artefactPath = artefact.branchPath;
-		String otherArtefactPath = otherArtefact.branchPath;
-
-		if (artefactPath.contains(otherArtefactPath)) {
-			interpreter.println("Event triggered to replace the id for the component on the child branch:" + artefact);
-			replaceComponent(artefact, interpreter);
-		} else if (otherArtefactPath.contains(artefactPath)) {
-			interpreter.println(
-					"Event triggered to replace the id for the component on the child branch:" + otherArtefactPath);
-			replaceComponent(otherArtefact, interpreter);
-		} else {
-			interpreter.println(
-					"No parent child relation between the artefacts, event trigggered to replace the id on the newer branch: "
-							+ otherArtefactPath);
-			replaceComponent(otherArtefact, interpreter);
-		}
-	}
-
-	private void replaceComponent(final Artefact artefact, final CommandInterpreter interpreter) {
-
-		final long timeout = 600000;
-		final IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
-
-		final SnomedIdentifier snomedIdToReplace = SnomedIdentifiers.create(Long.toString(artefact.snomedId));
-		interpreter.println("Replacing component: " + snomedIdToReplace.getComponentCategory());
-		ComponentCategory componentCategory = snomedIdToReplace.getComponentCategory();
-
-		if (componentCategory == ComponentCategory.RELATIONSHIP) {
-
-			SnomedRelationships replationships = SnomedRequests.prepareSearchRelationship().one()
-					.setComponentIds(Collections.singleton(Long.toString(artefact.snomedId))).build(artefact.branchPath)
-					.executeSync(eventBus, timeout);
-
-			for (ISnomedRelationship relationship : replationships) {
-
-				if (!relationship.isActive()) {
-					interpreter.println("**** Inactive relationship found, skipping!" + relationship);
-					System.err.println("**** Inactive relationship found, skipping!" + relationship);
-					continue;
-				}
-				SnomedRequests.prepareNewRelationship().setIdFromNamespace(snomedIdToReplace.getNamespace())
-						.setCharacteristicType(relationship.getCharacteristicType())
-						.setDestinationId(relationship.getDestinationId()).setGroup(relationship.getGroup())
-						.setModifier(relationship.getModifier()).setModuleId(relationship.getModuleId())
-						.setSourceId(relationship.getSourceId()).setTypeId(relationship.getTypeId())
-						.setUnionGroup(relationship.getUnionGroup()).build("info@b2international.com",
-								artefact.branchPath, "Id replaced due to duplicate artefact present.")
-						.executeSync(eventBus, timeout);
-
-				// delete the replaced component
-				SnomedRequests.prepareDeleteRelationship().setComponentId(relationship.getId())
-						.build("info@b2international.com", artefact.branchPath, "Deleted due to duplicate artefact id.")
-						.executeSync(eventBus, timeout);
-			}
-
-		} else if (componentCategory == ComponentCategory.DESCRIPTION) {
-
-			SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().one()
-					.setComponentIds(Collections.singleton(Long.toString(artefact.snomedId))).build(artefact.branchPath)
-					.executeSync(eventBus, timeout);
-			for (ISnomedDescription description : descriptions) {
-
-				if (!description.isActive()) {
-					interpreter.println("**** Inactive description found, skipping" + description);
-					System.err.println("**** Inactive description found, skipping!" + description);
-					continue;
-				}
-
-				SnomedRequests.prepareNewDescription().setIdFromNamespace(snomedIdToReplace.getNamespace())
-						.setAcceptability(description.getAcceptabilityMap())
-						.setCaseSignificance(description.getCaseSignificance()).setConceptId(description.getConceptId())
-						.setLanguageCode(description.getLanguageCode()).setModuleId(description.getModuleId())
-						.setTerm(description.getTerm()).setTypeId(description.getTypeId())
-						.build("info@b2international.com", artefact.branchPath,
-								"Id replaced due to duplicate artefact present.")
-						.executeSync(eventBus, timeout);
-
-				// delete the replaced component
-				SnomedRequests.prepareDeleteDescription().setComponentId(description.getId())
-						.build("info@b2international.com", artefact.branchPath, "Deleted due to duplicate artefact id.")
-						.executeSync(eventBus, timeout);
-			}
-
-		} else {
-			interpreter.println("Not handled: " + componentCategory);
-		}
-
-	}
-
 	public synchronized void checkServices(CommandInterpreter ci) {
-
+		
 		ci.println("Checking core services...");
 		try {
-
 			Collection<ServiceRegistryEntry<?>> services = ApplicationContext.getInstance().checkServices();
 			for (ServiceRegistryEntry<?> entry : services) {
 				ci.println("Interface: " + entry.getServiceInterface() + " : " + entry.getImplementation());
 			}
 			ci.println("Core services are registered properly and available for use.");
-
 		} catch (final Throwable t) {
 			ci.print("Error: " + t.getMessage());
 		}
@@ -387,46 +294,4 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		return true;
 
 	}
-
-	// /**
-	// * OSGi console contribution, the test touches cdo and index stores.
-	// * @param ci
-	// */
-	// public synchronized void test(CommandInterpreter ci) {
-	//
-	// ci.println("Smoke testing the Snow Owl server....");
-	// SnomedConceptIndexEntry rootConceptMini = null;
-	// SnomedClientTerminologyBrowser terminologyBrowser =
-	// ApplicationContext.getInstance().getService(SnomedClientTerminologyBrowser.class);
-	// Collection<SnomedConceptIndexEntry> rootConcepts =
-	// terminologyBrowser.getRootConcepts();
-	// for (SnomedConceptIndexEntry rootConcept : rootConcepts) {
-	// rootConceptMini = rootConcept;
-	// ci.println(" Root concept from the semantic cache: " + rootConcept);
-	// }
-	//
-	// ci.println(" Semantic cache size: " +
-	// terminologyBrowser.getConceptCount());
-	// SnomedClientIndexService indexSearcher =
-	// ApplicationContext.getInstance().getService(SnomedClientIndexService.class);
-	//
-	// SnomedConceptFullQueryAdapter adapter = new
-	// SnomedConceptFullQueryAdapter(rootConceptMini.getId(),
-	// SnomedConceptFullQueryAdapter.SEARCH_BY_CONCEPT_ID);
-	// List<SnomedConceptIndexEntry> search = indexSearcher.search(adapter);
-	// ci.println(" Root concept from the index store: " +
-	// search.get(0).getLabel());
-	//
-	// SnomedEditingContext editingContext = null;
-	// try {
-	// editingContext = new SnomedEditingContext();
-	// Concept rootConcept = new
-	// SnomedConceptLookupService().getComponent(rootConceptMini.getId(),
-	// editingContext.getTransaction());
-	// ci.println(" Root concept from the main repository: " +
-	// rootConcept.getFullySpecifiedName());
-	// } finally {
-	// editingContext.close();
-	// }
-	// }
 }

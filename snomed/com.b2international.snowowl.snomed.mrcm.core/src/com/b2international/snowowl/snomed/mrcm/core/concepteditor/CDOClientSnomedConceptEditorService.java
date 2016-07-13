@@ -15,29 +15,30 @@
  */
 package com.b2international.snowowl.snomed.mrcm.core.concepteditor;
 
-import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newHashSet;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 
-import bak.pcj.set.LongOpenHashSet;
-
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongSet;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.domain.IComponent;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.utils.ComponentUtils2;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
-import com.b2international.snowowl.snomed.datastore.SnomedClientPredicateBrowser;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedClientTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
-import com.b2international.snowowl.snomed.datastore.services.IClientSnomedComponentService;
-import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument;
 import com.b2international.snowowl.snomed.datastore.snor.SnomedTerminologyBrowserProvider;
-import com.b2international.snowowl.snomed.mrcm.core.configuration.SnomedSimpleTypeRefSetAttributeConfiguration;
 import com.b2international.snowowl.snomed.mrcm.core.extensions.IConceptModelExtension;
 import com.b2international.snowowl.snomed.mrcm.core.extensions.IConceptModelExtensionProvider;
 import com.b2international.snowowl.snomed.mrcm.core.widget.CDOClientWidgetBeanProvider;
@@ -45,6 +46,9 @@ import com.b2international.snowowl.snomed.mrcm.core.widget.IClientWidgetModelPro
 import com.b2international.snowowl.snomed.mrcm.core.widget.bean.ConceptWidgetBean;
 import com.b2international.snowowl.snomed.mrcm.core.widget.model.ConceptWidgetModel;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
+import com.google.common.base.Function;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.Iterables;
 
 /**
  * Client-side SNOMED concept editor service implementation, which uses CDO and RPC calls.
@@ -70,8 +74,9 @@ public class CDOClientSnomedConceptEditorService implements IClientSnomedConcept
 	@Override
 	public SnomedConceptDetailsBean getConceptDetailsBean(final long conceptId, final boolean includeUnsanctioned) {
 		
-		final List<String> ruleParentIds = newArrayList();
-		String ruleRefSetId = null;
+		final Set<String> selfIds = newHashSet(Long.toString(conceptId));
+		final Set<String> refSetIds = newHashSet();
+		final Set<String> ruleParentIds = newHashSet();
 		
 		// XXX: no IS A relationships with non-defining characteristic types expected; dirty and detached relationships will not be taken into account
 		for (final Relationship newRelationship : ComponentUtils2.getNewObjects(concept.cdoView(), Relationship.class)) {
@@ -83,13 +88,12 @@ public class CDOClientSnomedConceptEditorService implements IClientSnomedConcept
 			}
 		}
 
-		// XXX: at most one new reference set membership will be used
 		for (final SnomedRefSetMember newRefSetMember : ComponentUtils2.getNewObjects(concept.cdoView(), SnomedRefSetMember.class)) {
 			if (newRefSetMember.isActive() 
 					&& SnomedTerminologyComponentConstants.CONCEPT_NUMBER == newRefSetMember.getReferencedComponentType() 
 					&& concept.getId().equals(newRefSetMember.getReferencedComponentId())) {
 				
-				ruleRefSetId = newRefSetMember.getRefSetIdentifierId();
+				refSetIds.add(newRefSetMember.getRefSetIdentifierId());
 				break;
 			}
 		}
@@ -100,9 +104,9 @@ public class CDOClientSnomedConceptEditorService implements IClientSnomedConcept
 		
 		final ConceptWidgetModel widgetModel;
 		if (ruleParentIds.isEmpty()) {
-			widgetModel = widgetModelProvider.createConceptWidgetModel(conceptIdString, ruleRefSetId);
+			widgetModel = widgetModelProvider.createConceptWidgetModel(conceptIdString, Iterables.getOnlyElement(refSetIds, null));
 		} else {
-			widgetModel = widgetModelProvider.createConceptWidgetModel(ruleParentIds, ruleRefSetId);
+			widgetModel = widgetModelProvider.createConceptWidgetModel(ruleParentIds, Iterables.getOnlyElement(refSetIds, null));
 		}
 		
 		// Apply concept model extensions
@@ -114,44 +118,47 @@ public class CDOClientSnomedConceptEditorService implements IClientSnomedConcept
 		
 		// Create widget bean
 		final CDOClientWidgetBeanProvider widgetBeanProvider = new CDOClientWidgetBeanProvider(widgetModel, concept, includeUnsanctioned);
-		final SnomedSimpleTypeRefSetAttributeConfiguration configuration = SnomedSimpleTypeRefSetAttributeConfiguration.getConfiguration(concept);
-		final ConceptWidgetBean widgetBean = widgetBeanProvider.createConceptWidgetBean(conceptIdString, widgetModel, configuration, includeUnsanctioned, new NullProgressMonitor());
+		final ConceptWidgetBean widgetBean = widgetBeanProvider.createConceptWidgetBean(conceptIdString, widgetModel, null, includeUnsanctioned, new NullProgressMonitor());
 		
 		// Retrieve synonym and descendant type IDs
-		final Set<String> synonymAndDescendants = ApplicationContext.getServiceForClass(IClientSnomedComponentService.class).getSynonymAndDescendantIds();
-		final LongOpenHashSet synonymAndDescendantIds = new LongOpenHashSet();
+		final Set<String> synonymAndDescendants = SnomedRequests.prepareGetSynonyms()
+				.build(getBranch())
+				.execute(getBus())
+				.then(new Function<SnomedConcepts, Set<String>>() {
+					@Override
+					public Set<String> apply(SnomedConcepts input) {
+						return FluentIterable.from(input).transform(IComponent.ID_FUNCTION).toSet();
+					}
+				})
+				.getSync();
+		final LongSet synonymAndDescendantIds = PrimitiveSets.newLongOpenHashSet();
 		for (final String synonymAndDescendant : synonymAndDescendants) {
 			synonymAndDescendantIds.add(Long.parseLong(synonymAndDescendant));
 		}
 
 		// Retrieve applicable predicates
-		final SnomedClientPredicateBrowser predicateBrowser = ApplicationContext.getServiceForClass(SnomedClientPredicateBrowser.class);
-		final Collection<PredicateIndexEntry> predicates;
-		if (ruleParentIds.isEmpty()) {
-			predicates = predicateBrowser.getPredicates(conceptIdString, ruleRefSetId);
-		} else {
-			predicates = predicateBrowser.getPredicates(ruleParentIds, ruleRefSetId);
-		}
+		final Collection<SnomedConstraintDocument> predicates = SnomedRequests.prepareGetApplicablePredicates(getBranch(), selfIds, ruleParentIds, refSetIds).getSync();
 
 		// Use extended terminology browser for creating an index entry
 		final SnomedClientTerminologyBrowser terminologyBrowser = SnomedTerminologyBrowserProvider.getTerminologyBrowser(concept);
-		final SnomedConceptIndexEntry conceptIndexEntry = terminologyBrowser.getConcept(conceptIdString);
-		final SnomedConceptLabelAndIconIdMappings conceptMappings = getConceptMappings(conceptId, conceptIndexEntry.isActive());
+		final SnomedConceptDocument conceptIndexEntry = terminologyBrowser.getConcept(conceptIdString);
 		
 		final SnomedConceptDetailsBean conceptDetailsBean = new SnomedConceptDetailsBean(conceptIndexEntry.getLabel(), 
 				Long.parseLong(conceptIndexEntry.getIconId()), 
 				widgetBean, 
-				conceptMappings, 
 				synonymAndDescendantIds, 
-				configuration,
+				null,
 				predicates);
 
 		return conceptDetailsBean;
 	}
 
-	@Override
-	public SnomedConceptLabelAndIconIdMappings getConceptMappings(final long conceptId, final boolean active) {
-		final IClientSnomedConceptEditorService conceptEditorService = ApplicationContext.getServiceForClass(IClientSnomedConceptEditorService.class);
-		return conceptEditorService.getConceptMappings(conceptId, active);
+	private String getBranch() {
+		return BranchPathUtils.createPath(concept.cdoView()).getPath();
 	}
+	
+	private IEventBus getBus() {
+		return ApplicationContext.getServiceForClass(IEventBus.class);
+	}
+
 }

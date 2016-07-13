@@ -20,11 +20,10 @@ import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.A
 import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.COMPLEX_MAP;
 import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.DESCRIPTION_TYPE;
 import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.EXTENDED_MAP;
-import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.LANGUAGE;
 import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.QUERY;
 import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.SIMPLE;
 import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.SIMPLE_MAP;
-import static com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType.get;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.unmodifiableSet;
 
@@ -35,15 +34,14 @@ import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.Map;
 
-import javax.annotation.Nullable;
-
-import org.apache.lucene.document.Document;
 import org.eclipse.emf.ecore.EClass;
 
+import com.b2international.commons.BooleanUtils;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
-import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.snomedrefset.DataType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
@@ -52,6 +50,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSet.Builder;
 
 /** 
  * Utility class collecting commons operations related to SNOMED CT reference sets. 
@@ -74,7 +74,6 @@ public abstract class SnomedRefSetUtil {
 	 * their CAPITAL CASE preferred terms.
 	 */
 	public static final Map<String, String> ASSOCIATION_REFSETS = ImmutableMap.<String, String>builder()
-			.put(Concepts.REFSET_CONCEPT_INACTIVITY_INDICATOR, "Inactivity status")
 			.put(Concepts.REFSET_ALTERNATIVE_ASSOCIATION, "Alternative concept")
 			.put(Concepts.REFSET_MOVED_FROM_ASSOCIATION, "Moved from")
 			.put(Concepts.REFSET_MOVED_TO_ASSOCIATION, "Moved to")
@@ -85,38 +84,38 @@ public abstract class SnomedRefSetUtil {
 			.put(Concepts.REFSET_SIMILAR_TO_ASSOCIATION, "Similar to")
 			.put(Concepts.REFSET_WAS_A_ASSOCIATION, "Was a")
 			.build();
-		
 	
-	/**
-	 * Map for looking up the concrete data type reference set identifier
-	 * concept IDs based on the associated concrete domain data types.
-	 */
-	private static final BiMap<com.b2international.snowowl.snomed.mrcm.DataType, String> TYPE_TO_REFSET_MAP = ImmutableBiMap.<com.b2international.snowowl.snomed.mrcm.DataType, String>builder()
-			.put(com.b2international.snowowl.snomed.mrcm.DataType.BOOLEAN, Concepts.REFSET_BOOLEAN_TYPE)
-			.put(com.b2international.snowowl.snomed.mrcm.DataType.DATE, Concepts.REFSET_DATETIME_TYPE)
-			.put(com.b2international.snowowl.snomed.mrcm.DataType.FLOAT, Concepts.REFSET_FLOAT_TYPE)
-			.put(com.b2international.snowowl.snomed.mrcm.DataType.INTEGER, Concepts.REFSET_INTEGER_TYPE)
-			.put(com.b2international.snowowl.snomed.mrcm.DataType.STRING, Concepts.REFSET_STRING_TYPE)
+	
+	private static BiMap<DataType, String> DATATYPE_TO_REFSET_MAP;
+	
+	public static final BiMap<DataType, String> getConcreteDomainRefSetMap() {
+		if (DATATYPE_TO_REFSET_MAP == null) {
+			DATATYPE_TO_REFSET_MAP = ImmutableBiMap.<DataType, String>builder()
+				.put(DataType.BOOLEAN, getCoreConfiguration().getBooleanDatatypeRefsetIdentifier())
+				.put(DataType.DATE, getCoreConfiguration().getDatetimeDatatypeRefsetIdentifier())
+				.put(DataType.DECIMAL, getCoreConfiguration().getFloatDatatypeRefsetIdentifier())
+				.put(DataType.INTEGER, getCoreConfiguration().getIntegerDatatypeRefsetIdentifier())
+				.put(DataType.STRING, getCoreConfiguration().getStringDatatypeRefsetIdentifier())
+				.build();
+		}
+		return DATATYPE_TO_REFSET_MAP;
+	} 
+	
+	// NEHTA AMT SNOMED CT extension
+	// TODO refactor extension data type handling
+	@Deprecated
+	public static final Map<String, DataType> AMT_REFSET_TO_DATATYPE_MAP = ImmutableMap.<String, DataType>builder()
+			.put(Concepts.REFSET_STRENGTH, DataType.DECIMAL)
+			.put(Concepts.REFSET_UNIT_OF_USE_QUANTITY, DataType.DECIMAL)
+			.put(Concepts.REFSET_UNIT_OF_USE_SIZE, DataType.DECIMAL)
+			.put(Concepts.REFSET_SUBPACK_QUANTITY, DataType.INTEGER)
 			.build();
+
+	public static final ImmutableSet<DataType> UNSUPPORTED_DATATYPES = ImmutableSet.<DataType> of(DataType.DATE);
 	
-	/**
-	 * Map for looking up MRCM datatype enum values for AU concrete domain reference set identifiers.
-	 */
-	private static final Map<String, com.b2international.snowowl.snomed.mrcm.DataType> AU_REFSET_TO_TYPE_MAP = ImmutableMap.<String, com.b2international.snowowl.snomed.mrcm.DataType>builder()
-			.put(Concepts.REFSET_STRENGTH, com.b2international.snowowl.snomed.mrcm.DataType.FLOAT)
-			.put(Concepts.REFSET_UNIT_OF_USE_QUANTITY, com.b2international.snowowl.snomed.mrcm.DataType.FLOAT)
-			.put(Concepts.REFSET_UNIT_OF_USE_SIZE, com.b2international.snowowl.snomed.mrcm.DataType.FLOAT)
-			.put(Concepts.REFSET_SUBPACK_QUANTITY, com.b2international.snowowl.snomed.mrcm.DataType.INTEGER)
-			.build();
-	
-	/**
-	 * Map for navigating between the {@link com.b2international.snowowl.snomed.mrcm.DataType} and the
-	 * {@link DataType} enumerations.
-	 */
-	public static final BiMap<com.b2international.snowowl.snomed.mrcm.DataType, DataType> DATA_TYPE_BIMAP = ImmutableBiMap
-			.<com.b2international.snowowl.snomed.mrcm.DataType, DataType> builder().put(com.b2international.snowowl.snomed.mrcm.DataType.BOOLEAN, DataType.BOOLEAN)
-			.put(com.b2international.snowowl.snomed.mrcm.DataType.DATE, DataType.DATE).put(com.b2international.snowowl.snomed.mrcm.DataType.FLOAT, DataType.DECIMAL)
-			.put(com.b2international.snowowl.snomed.mrcm.DataType.INTEGER, DataType.INTEGER).put(com.b2international.snowowl.snomed.mrcm.DataType.STRING, DataType.STRING).build();
+	private static SnomedCoreConfiguration getCoreConfiguration() {
+		return SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class);
+	}
 	
 	public static EClass getRefSetMemberClass(final SnomedRefSetType type) {
 		
@@ -200,78 +199,28 @@ public abstract class SnomedRefSetUtil {
 	}
 	
 	/**
-	 * Returns with the identifier concept ID of the concrete data type reference set specified by the data type enumeration.
+	 * Returns with the identifier concept ID of the concrete domain reference set specified by the data type enumeration.
 	 * <br>May return with {@code null}.
 	 * @param dataType the data type.
-	 * @return the identifier concept ID of the SNOMED&nbsp;CT concrete data type reference set.
-	 */
-	public static String getRefSetId(final com.b2international.snowowl.snomed.mrcm.DataType dataType) {
-		return TYPE_TO_REFSET_MAP.get(dataType);
-	}
-	
-	/**
-	 * Returns with the identifier concept ID of the concrete data type reference set specified by the data type enumeration.
-	 * <br>May return with {@code null}.
-	 * @param dataType the data type.
-	 * @return the identifier concept ID of the SNOMED&nbsp;CT concrete data type reference set.
+	 * @return the identifier concept ID of the SNOMED&nbsp;CT concrete domain reference set.
 	 */
 	public static String getRefSetId(final DataType dataType) {
-		return getRefSetId(DATA_TYPE_BIMAP.inverse().get(dataType));
+		return DATATYPE_TO_REFSET_MAP.get(dataType);
 	}
 	
 	/**
-	 * Returns with the data type enumeration associated with the SNOMED&nbsp;CT concrete data type reference set.
-	 * @param identifierConceptId the identifier concept ID of the concrete data type reference set.
-	 * @return the data type enumeration for the reference set.
+	 * Returns the proper {@link DataType} for the specified reference set id. The mapping is based on the IDs provided by the configuration.
+	 * @param refsetId the id of the concrete domain reference set
+	 * @return the proper datatype for the specified reference set id
 	 */
-	public static com.b2international.snowowl.snomed.mrcm.DataType getDataType(final String identifierConceptId) {
-		com.b2international.snowowl.snomed.mrcm.DataType dataType = TYPE_TO_REFSET_MAP.inverse().get(identifierConceptId);
-		
-		if (null == dataType) {
-			dataType = AU_REFSET_TO_TYPE_MAP.get(identifierConceptId);
+	public static DataType getDataType(String refsetId) {
+		if (DATATYPE_TO_REFSET_MAP.inverse().containsKey(refsetId)) {
+			return DATATYPE_TO_REFSET_MAP.inverse().get(refsetId);
+		} else {
+			return AMT_REFSET_TO_DATATYPE_MAP.get(refsetId);
 		}
-		
-		return dataType;
 	}
 	
-	/**
-	 * Returns with the unique terminology component ID as a short for the <i>special field</i> of a 
-	 * SNOMED&nbsp;CT reference set member given as a {@link Document}.
-	 * @param document the document representing a SNOMED&nbsp;CT reference set member.
-	 * @return the terminology component ID.
-	 */
-	public static short getSpecialFieldComponentTypeId(final Document document) {
-		SnomedRefSetType type = get(SnomedMappings.memberRefSetType().getValue(document));
-
-		switch (Preconditions.checkNotNull(type, "SNOMED CT reference set type was null for document: " + document)) {
-			
-			case LANGUAGE://$FALL-THROUGH$
-			case ASSOCIATION://$FALL-THROUGH$
-			case DESCRIPTION_TYPE://$FALL-THROUGH$
-			case ATTRIBUTE_VALUE:
-				return SnomedTerminologyComponentConstants.CONCEPT_NUMBER;
-			case QUERY://$FALL-THROUGH$
-			case SIMPLE://$FALL-THROUGH$
-			case CONCRETE_DATA_TYPE:
-				return CoreTerminologyBroker.UNSPECIFIED_NUMBER_SHORT;
-			case SIMPLE_MAP://$FALL-THROUGH$
-			case COMPLEX_MAP://$FALL-THROUGH$ 
-			case EXTENDED_MAP:
-				return SnomedMappings.memberMapTargetComponentType().getShortValue(document);
-			default:
-				throw new IllegalArgumentException("Unknown SNOMED CT reference set type: " + type);
-		}
-		
-	}
-	
-	/**
-	 * Returns with the unique terminology component ID as a short for the <i>special field</i> of a 
-	 * SNOMED&nbsp;CT reference set member given as a {@link Document}.
-	 * <p>
-	 * <b>NOTE:&nbsp;</b>Does not support neither simple map nor complex map reference set types.</p>  
-	 * @param document the document representing a SNOMED&nbsp;CT reference set member.
-	 * @return the terminology component ID.
-	 */
 	public static short getSpecialFieldComponentTypeId(final SnomedRefSetType type) {
 		
 		switch (Preconditions.checkNotNull(type, "SNOMED CT reference set type argument cannot be null")) {
@@ -302,64 +251,49 @@ public abstract class SnomedRefSetUtil {
 	 * @param type the reference set type.
 	 * @return the unique index field name for storing the <i>special field</>i ID.
 	 */
-	@Nullable public static String getSpecialComponentIdIndexField(final SnomedRefSetType type) {
-		Preconditions.checkNotNull(type, "SNOMED CT reference set type argument cannot be null.");
-		switch (type) {
-			case ASSOCIATION:
-				return SnomedMappings.memberTargetComponentId().fieldName();
-			case ATTRIBUTE_VALUE:
-				return SnomedMappings.memberValueId().fieldName();
-			case COMPLEX_MAP: //$FALL-THROUGH$
-			case EXTENDED_MAP:
-				return SnomedMappings.memberMapTargetComponentId().fieldName();
-			case CONCRETE_DATA_TYPE:
-				// FIXME: The previous value was memberDataTypeOrdinal, but this seems to fit better
-				return SnomedMappings.memberSerializedValue().fieldName(); 
-			case DESCRIPTION_TYPE:
-				return SnomedMappings.memberDescriptionFormatId().fieldName();
-			case LANGUAGE:
-				return SnomedMappings.memberAcceptabilityId().fieldName();
-			case QUERY:
-				return SnomedMappings.memberQuery().fieldName();
-			case SIMPLE:
-				return null; //intentionally null.
-			case SIMPLE_MAP:
-				return SnomedMappings.memberMapTargetComponentId().fieldName();
-			case MODULE_DEPENDENCY:
-				return null;
-			default: throw new IllegalArgumentException("Unknown SNOMED CT reference set type: " + type);
-		}
-	}
+//	@Nullable public static String getSpecialComponentIdIndexField(final SnomedRefSetType type) {
+//		Preconditions.checkNotNull(type, "SNOMED CT reference set type argument cannot be null.");
+//		switch (type) {
+//			case ASSOCIATION:
+//				return SnomedMappings.memberTargetComponentId().fieldName();
+//			case ATTRIBUTE_VALUE:
+//				return SnomedMappings.memberValueId().fieldName();
+//			case COMPLEX_MAP: //$FALL-THROUGH$
+//			case EXTENDED_MAP:
+//				return SnomedMappings.memberMapTargetComponentId().fieldName();
+//			case CONCRETE_DATA_TYPE:
+//				// FIXME: The previous value was memberDataTypeOrdinal, but this seems to fit better
+//				return SnomedMappings.memberSerializedValue().fieldName(); 
+//			case DESCRIPTION_TYPE:
+//				return SnomedMappings.memberDescriptionFormatId().fieldName();
+//			case LANGUAGE:
+//				return SnomedMappings.memberAcceptabilityId().fieldName();
+//			case QUERY:
+//				return SnomedMappings.memberQuery().fieldName();
+//			case SIMPLE:
+//				return null; //intentionally null.
+//			case SIMPLE_MAP:
+//				return SnomedMappings.memberMapTargetComponentId().fieldName();
+//			case MODULE_DEPENDENCY:
+//				return null;
+//			default: throw new IllegalArgumentException("Unknown SNOMED CT reference set type: " + type);
+//		}
+//	}
 	
-	// concrete data type reference set members should not be shown in the UI.
+	// concrete domain reference set members should not be shown in the UI.
 	public static SnomedRefSetType getByConceptId(String conceptId) {
-		
-		if (conceptId == null) {
-			return null;
-		}
-		
-		if (Concepts.REFSET_ATTRIBUTE_VALUE_TYPE.equals(conceptId)) {
-			return ATTRIBUTE_VALUE;
-		} else if (Concepts.REFSET_LANGUAGE_TYPE.equals(conceptId)) {
-			return LANGUAGE;
-		} else if (Concepts.REFSET_QUERY_SPECIFICATION_TYPE.equals(conceptId)) {
-			return QUERY;
-		} else if (Concepts.REFSET_SIMPLE_MAP_TYPE.equals(conceptId)) {
-			return SIMPLE_MAP;
-		} else if (Concepts.REFSET_SIMPLE_TYPE.equals(conceptId)) {
-			return SIMPLE;
-		} else if (Concepts.REFSET_COMPLEX_MAP_TYPE.equals(conceptId)) {
-			return COMPLEX_MAP;
-		} else if (Concepts.EXTENDED_MAP_TYPE.equals(conceptId)) {
-			return EXTENDED_MAP;
-		} else if (Concepts.REFSET_DESCRIPTION_TYPE.equals(conceptId)) {
-			return DESCRIPTION_TYPE;
-		} else if (Concepts.SDD_DRUG_REFERENCE_SET.equals(conceptId)) {
-			return SIMPLE_MAP; 
-		} else if (Concepts.SDD_SIMPLE_TYPE_REFERENCE_SET.equals(conceptId)) {
-			return SIMPLE; 
-		} else {
-			return null;
+		switch (conceptId) {
+		case Concepts.REFSET_ATTRIBUTE_VALUE_TYPE: return SnomedRefSetType.ATTRIBUTE_VALUE;
+		case Concepts.REFSET_LANGUAGE_TYPE: return SnomedRefSetType.LANGUAGE;
+		case Concepts.REFSET_QUERY_SPECIFICATION_TYPE: return SnomedRefSetType.QUERY;
+		case Concepts.SDD_DRUG_REFERENCE_SET:
+		case Concepts.REFSET_SIMPLE_MAP_TYPE: return SnomedRefSetType.SIMPLE_MAP;
+		case Concepts.SDD_SIMPLE_TYPE_REFERENCE_SET:
+		case Concepts.REFSET_SIMPLE_TYPE: return SnomedRefSetType.SIMPLE;
+		case Concepts.REFSET_COMPLEX_MAP_TYPE: return SnomedRefSetType.COMPLEX_MAP;
+		case Concepts.EXTENDED_MAP_TYPE: return SnomedRefSetType.EXTENDED_MAP;
+		case Concepts.REFSET_DESCRIPTION_TYPE: return SnomedRefSetType.DESCRIPTION_TYPE;
+		default: return null;
 		}
 	}
 
@@ -394,37 +328,31 @@ public abstract class SnomedRefSetUtil {
 	}
 
 	/**
-	 * Get the type dependent preference page tab item text
+	 * Get the type dependent label
 	 * 
 	 * @param type SnomedRefSetType
-	 * @return String tab item text
+	 * @return
 	 */
-	//concrete data type reference set members should not be shown in the UI.
-	public static String getPreferencePageTabItemText(SnomedRefSetType type) {
+	public static String getTypeLabel(SnomedRefSetType type) {
 		
 		switch (type) {
-			case ATTRIBUTE_VALUE:
-				return "Attribute value type reference set";
-			case LANGUAGE:
-				return "Language type reference set"; // not used at preferences
-			case QUERY:
-				return "Query type reference set";
-			case SIMPLE_MAP:
-				return "Simple map type reference set";
-			case SIMPLE:
-				return "Simple type reference set";
-			case COMPLEX_MAP:
-				return "Complex map type reference set";
-			case EXTENDED_MAP:
-				return "Extended map type reference set";
-			case DESCRIPTION_TYPE:
-				return "Description type reference set";
+			case ATTRIBUTE_VALUE: return "Attribute value type reference set";
+			case LANGUAGE: return "Language type reference set";
+			case QUERY: return "Query type reference set";
+			case SIMPLE_MAP: return "Simple map type reference set";
+			case SIMPLE: return "Simple type reference set";
+			case COMPLEX_MAP: return "Complex map type reference set";
+			case EXTENDED_MAP: return "Extended map type reference set";
+			case DESCRIPTION_TYPE: return "Description type reference set";
+			case ASSOCIATION: return "Association type reference set";
+			case CONCRETE_DATA_TYPE: return "Concrete domain type reference set";
+			case MODULE_DEPENDENCY: return "Module dependency type reference set";
 			default:
 				throw new IllegalArgumentException("Unexpected reference set type: " + type);
 		}
 	}
 
-	//concrete data type reference set members should not be shown in the UI.
+	//concrete domain reference set members should not be shown in the UI.
 	public static String getConceptId(SnomedRefSetType type) {
 		
 		switch (type) {
@@ -443,7 +371,7 @@ public abstract class SnomedRefSetUtil {
 			case DESCRIPTION_TYPE:
 				return Concepts.REFSET_DESCRIPTION_TYPE;
 			case CONCRETE_DATA_TYPE:
-				return Concepts.REFSET_CONCRETE_DOMAIN_TYPE_SG;
+				return getCoreConfiguration().getConcreteDomainTypeRefsetIdentifier();
 			case ASSOCIATION:
 				return Concepts.REFSET_ASSOCIATION_TYPE;
 			case MODULE_DEPENDENCY:
@@ -455,22 +383,28 @@ public abstract class SnomedRefSetUtil {
 		}
 	}
 	
+	/**
+	 * Returns concept IDs of the currently known and handled reference set types.
+	 * @return
+	 */
+	public static Collection<String> getUIRefSetTypeConceptIds() {
+		final Builder<String> ids = ImmutableSet.builder();
+		for (SnomedRefSetType type : getTypesForUI()) {
+			ids.add(getConceptId(type));
+		}
+		return ids.build();
+	}
 	
 	@SuppressWarnings("unchecked")
 	public static <T> T deserializeValue(final DataType dataType, final String serializedValue) {
-		if (null == dataType)
-			throw new IllegalArgumentException("Datatype argument cannot be null.");
-		if (null == serializedValue)
-			throw new IllegalArgumentException("Serialized value argument cannot be null.");
+		checkArgument(null != dataType, "Datatype argument cannot be null.");
+		checkArgument(null != serializedValue, "Serialized value argument cannot be null.");
+		
 		switch (dataType) {
 			case BOOLEAN: 
-				if ("0".equals(serializedValue)) {
-					return (T) Boolean.FALSE;
-				} else if ("1".equals(serializedValue)) {
-					return (T) Boolean.TRUE;
-				} else {
-					throw new IllegalArgumentException("Illegal serialized form of a boolean value. Expected either '0' or '1'. Was: '" + serializedValue + "'.");
-				}
+				Boolean booleanValue = BooleanUtils.valueOf(serializedValue);
+				checkArgument(booleanValue != null, String.format("Illegal serialized form of a boolean value. Expected either '0' or '1'. Was: '%s'", serializedValue));
+				return (T) booleanValue;
 			case DECIMAL: return (T) new BigDecimal(serializedValue);
 			case INTEGER: return (T) Integer.valueOf(serializedValue);
 			case DATE: return (T) new Date(Long.valueOf(serializedValue));
@@ -480,12 +414,11 @@ public abstract class SnomedRefSetUtil {
 	}
 	
 	public static <T> String serializeValue(final DataType dataType, final T value) {
-		if (null == dataType)
-			throw new IllegalArgumentException("Datatype argument cannot be null.");
-		if (null == value)
-			throw new IllegalArgumentException("Value argument cannot be null.");
+		checkArgument(null != dataType, "Datatype argument cannot be null.");
+		checkArgument(null != value, "Value argument cannot be null.");
+		
 		switch (dataType) {
-			case BOOLEAN: return ((Boolean) value).booleanValue() ? "1" : "0";
+			case BOOLEAN: return BooleanUtils.toString((Boolean) value);
 			case DECIMAL: return ((BigDecimal) value).toPlainString();
 			case INTEGER: return Integer.toString(((Integer) value).intValue());
 			case DATE: return Long.toString(((Date) value).getTime());
@@ -523,5 +456,27 @@ public abstract class SnomedRefSetUtil {
 
 	private SnomedRefSetUtil() {
 		// Suppress instantiation
+	}
+
+	/**
+	 * Computes whether a reference set is structural or not.
+	 * @param refSetId
+	 * @param type
+	 * @return
+	 */
+	public static boolean isStructural(final String refSetId, final SnomedRefSetType type) {
+		switch (type) {
+			case LANGUAGE: //$FALL-THROUGH$
+			case CONCRETE_DATA_TYPE: //$FALL-THROUGH$
+			case ASSOCIATION: //$FALL-THROUGH$
+			case MODULE_DEPENDENCY: //$FALL-THROUGH$
+				return true;
+			case ATTRIBUTE_VALUE:
+				return 
+						Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR.equals(refSetId) 
+						|| Concepts.REFSET_CONCEPT_INACTIVITY_INDICATOR.equals(refSetId) 
+						|| Concepts.REFSET_RELATIONSHIP_REFINABILITY.equals(refSetId);
+			default: return false;
+		}
 	}
 }

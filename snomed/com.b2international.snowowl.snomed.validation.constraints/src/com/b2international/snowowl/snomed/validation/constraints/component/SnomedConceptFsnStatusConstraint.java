@@ -15,21 +15,16 @@
  */
 package com.b2international.snowowl.snomed.validation.constraints.component;
 
-import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.FULLY_SPECIFIED_NAME;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.CONCEPT_NUMBER;
-import static com.google.common.base.Preconditions.checkNotNull;
 
-import org.apache.lucene.search.Query;
-
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.validation.ComponentValidationConstraint;
 import com.b2international.snowowl.core.validation.ComponentValidationDiagnostic;
 import com.b2international.snowowl.core.validation.ComponentValidationDiagnosticImpl;
-import com.b2international.snowowl.datastore.server.snomed.index.SnomedIndexServerService;
-import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
-import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 /**
  * All concepts should have a fully-specified name of appropriate status.
@@ -38,37 +33,27 @@ import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings
  * FSN if the concept is active. The multiple active FSN validation is an other constraint's business.
  * 
  */
-public class SnomedConceptFsnStatusConstraint extends ComponentValidationConstraint<SnomedConceptIndexEntry> {
+public class SnomedConceptFsnStatusConstraint extends ComponentValidationConstraint<SnomedConceptDocument> {
 
 	public static final String ID = "com.b2international.snowowl.snomed.validation.constraints.component.SnomedConceptFsnStatusConstraint";
 	
 	@Override
-	public ComponentValidationDiagnostic validate(final IBranchPath branchPath, final SnomedConceptIndexEntry concept) {
-		checkNotNull(branchPath, "branchPath");
-		checkNotNull(concept, "component");
-		
-		//The SNOMED CT concept can be marked as valid only and if only is active and has exactly one active FSN 
-		final String conceptId = concept.getId();
+	public ComponentValidationDiagnostic validate(final IBranchPath branchPath, final SnomedConceptDocument concept) {
 		if (concept.isActive()) {
-			final Query query = createQuery(conceptId);
-			if (getIndexService().getHitCount(branchPath, query, null) < 1) {
-				final String errorMessage = concept.getLabel() + " has no active fully specified name.";
-				return new ComponentValidationDiagnosticImpl(conceptId, errorMessage, ID, CONCEPT_NUMBER, error());
+			final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.setLimit(0)
+				.filterByActive(true)
+				.filterByConceptId(concept.getId())
+				.filterByType(Concepts.FULLY_SPECIFIED_NAME)
+				.build(branchPath.getPath())
+				.execute(getBus())
+				.getSync();
+			if (descriptions.getTotal() < 1) {
+				final String errorMessage = String.format("%s has no active fully specified name.", concept.getLabel());
+				return new ComponentValidationDiagnosticImpl(concept.getId(), errorMessage, ID, CONCEPT_NUMBER, error());
 			}
 		}
-		return createOk(conceptId, ID, CONCEPT_NUMBER);
-	}
-
-	private SnomedIndexServerService getIndexService() {
-		return (SnomedIndexServerService) ApplicationContext.getInstance().getService(SnomedIndexService.class);
-	}
-
-	private Query createQuery(final String conceptId) {
-		return SnomedMappings.newQuery()
-				.active()
-				.descriptionConcept(conceptId)
-				.descriptionType(FULLY_SPECIFIED_NAME)
-				.matchAll();
+		return createOk(concept.getId(), ID, CONCEPT_NUMBER);
 	}
 
 }

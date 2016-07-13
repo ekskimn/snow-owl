@@ -7,6 +7,8 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.RelationshipRefinability;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class ExpandableSnomedRelationship implements ISnomedRelationship {
 	
@@ -33,6 +35,17 @@ public class ExpandableSnomedRelationship implements ISnomedRelationship {
 				}
 			}
 		}
+	}
+	
+	@JsonIgnore
+	@Override
+	public long getStorageKey() {
+		return -1;
+	}
+	
+	@Override
+	public SnomedReferenceSetMembers getMembers() {
+		return null;
 	}
 	
 	@Override
@@ -134,6 +147,16 @@ public class ExpandableSnomedRelationship implements ISnomedRelationship {
 	@Override
 	public RelationshipModifier getModifier() {
 		return wrappedRelationship.getModifier();
+	}
+	
+	@Override
+	public String getIconId() {
+		return wrappedRelationship.getIconId();
+	}
+	
+	@Override
+	public Float getScore() {
+		return wrappedRelationship.getScore();
 	}
 
 }

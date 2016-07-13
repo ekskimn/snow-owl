@@ -15,18 +15,16 @@
  */
 package com.b2international.snowowl.snomed.datastore;
 
-import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.IS_A;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
 
-import org.eclipse.emf.cdo.CDOObject;
 import org.eclipse.emf.cdo.CDOState;
 import org.eclipse.emf.cdo.util.CommitException;
 import org.eclipse.emf.cdo.view.CDOView;
@@ -34,26 +32,34 @@ import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.spi.cdo.FSMUtil;
 
 import com.b2international.commons.StringUtils;
+import com.b2international.commons.options.OptionsBuilder;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ComponentIdentifierPair;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.IComponentNameProvider;
 import com.b2international.snowowl.core.api.ILookupService;
+import com.b2international.snowowl.core.domain.BranchContext;
+import com.b2international.snowowl.core.events.bulk.BulkRequest;
+import com.b2international.snowowl.core.events.bulk.BulkResponse;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CdoViewComponentTextProvider;
-import com.b2international.snowowl.datastore.cdo.CDOUtils;
 import com.b2international.snowowl.datastore.utils.ComponentUtils2;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.core.store.SnomedComponents;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
-import com.b2international.snowowl.snomed.datastore.services.IClientSnomedComponentService;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry.Fields;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberSearchRequestBuilder;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedConceptNameProvider;
 import com.b2international.snowowl.snomed.datastore.services.SnomedModuleDependencyRefSetService;
 import com.b2international.snowowl.snomed.snomedrefset.DataType;
@@ -73,11 +79,10 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRegularRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedSimpleMapRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedStructuralRefSet;
-import com.google.common.collect.ImmutableMap;
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-
-import bak.pcj.LongIterator;
-import bak.pcj.set.LongSet;
 
 /**
  * SNOMED CT reference set editing context. Delegates to {@link SnomedEditingContext} to persist the identifier concept when persisting a
@@ -93,24 +98,26 @@ import bak.pcj.set.LongSet;
  */
 public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 	
-	private static final Map<String, String> CMT_NAME_ID_PAIRS = ImmutableMap.<String, String>builder()
-			.put("Cardiology", Concepts.CARDIOLOGY_REFERENCE_SET)
-			.put("Endocrinology Urology Nephrology", Concepts.ENDOCRINOLOGY_UROLOGY_NEPHROLOGY_REFERENCE_SET)
-			.put("Hematology Oncology", Concepts.HEMATOLOGY_ONCOLOGY_REFERENCE_SET)
-			.put("Mental Health", Concepts.MENTAL_HEALTH_REFERENCE_SET)
-			.put("Musculoskeletal", Concepts.MUSCULOSKELETAL_REFERENCE_SET)
-			.put("Neurology", Concepts.NEUROLOGY_REFERENCE_SET)
-			.put("Ophthalmology", Concepts.OPHTHALMOLOGY_REFERENCE_SET)
-			.put("ENT Gastrointestinal Infectious Diseases", Concepts.ENT_GASTROINTESTINAL_INFECTIOUS_DISEASES_REFERENCE_SET)
-			.put("Hx of and FHx of", Concepts.HX_OF_AND_FHX_OF_REFERENCE_SET)
-			.put("Injuries [Part 1]", Concepts.INJURIES_PART_1_REFERENCE_SET)
-			.put("Obstetrics and Gynecology", Concepts.OBSTETRICS_AND_GYNECOLOGY_REFERENCE_SET)
-			.put("Orthopedics Extremity Fractures", Concepts.ORTHOPEDICS_EXTREMITY_FRACTURES_REFERENCE_SET)
-			.put("Orthopedics Non-Extremity Fractures", Concepts.ORTHOPEDICS_NON_EXTREMITY_FRACTURES_REFERENCE_SET)
-			.put("Primary Care", Concepts.PRIMARY_CARE_REFERENCE_SET)
-			.put("Skin Respiratory", Concepts.SKIN_RESPIRATORY_REFERENCE_SET)
-			.put("KP Problem List", Concepts.KP_PROBLEM_LIST_REFERENCE_SET)
-			.build();
+	private static final EnumSet<SnomedRefSetType> CONCEPT_REFERRING_MEMBER_TYPES = EnumSet.of(
+			SnomedRefSetType.ATTRIBUTE_VALUE,
+			SnomedRefSetType.ASSOCIATION, 
+			SnomedRefSetType.CONCRETE_DATA_TYPE, 
+			SnomedRefSetType.SIMPLE, 
+			SnomedRefSetType.SIMPLE_MAP,
+			SnomedRefSetType.COMPLEX_MAP, 
+			SnomedRefSetType.EXTENDED_MAP,
+			SnomedRefSetType.QUERY);
+	
+	private static final EnumSet<SnomedRefSetType> RELATIONSHIP_REFERRING_MEMBER_TYPES = EnumSet.of(
+			SnomedRefSetType.ATTRIBUTE_VALUE,
+			SnomedRefSetType.ASSOCIATION, 
+			SnomedRefSetType.CONCRETE_DATA_TYPE);
+	
+	private static final EnumSet<SnomedRefSetType> DESCRIPTION_REFERRING_MEMBER_TYPES = EnumSet.of(
+			SnomedRefSetType.ATTRIBUTE_VALUE,
+			SnomedRefSetType.ASSOCIATION,
+			SnomedRefSetType.LANGUAGE,
+			SnomedRefSetType.SIMPLE_MAP);
 	
 	protected final SnomedEditingContext snomedEditingContext;
 
@@ -263,28 +270,6 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 	}
 	
 	/**
-	 * 
-	 * @param label
-	 * @param terminologyComponentId - referenced component type (e.g. CONCEPT for example)
-	 * @param namespace
-	 * @param module
-	 * @param parent
-	 * @return
-	 * @deprecated - refactor it, only the subset importer uses it now
-	 */
-	public SnomedRegularRefSet createSnomedSimpleTypeRefSet(final String label, final short terminologyComponentId, final String namespace, final Concept module, final Concept parent) {
-		final SnomedRegularRefSet refSet = createSnomedRegularRefSet(terminologyComponentId, SnomedRefSetType.SIMPLE);
-		final Concept identifier = getSnomedEditingContext().buildDefaultConcept(label, namespace, module, parent);
-		final Relationship relationship = getSnomedEditingContext().buildDefaultRelationship(identifier, getSnomedEditingContext().findConceptById(IS_A), parent, 
-				getSnomedEditingContext().findConceptById(Concepts.INFERRED_RELATIONSHIP), module, namespace);
-		identifier.getOutboundRelationships().add(relationship);
-		updateIdIfCMTConcept(label, identifier);
-		refSet.setIdentifierId(identifier.getId());
-		add(refSet);
-		return refSet;
-	}
-	
-	/**
 	 * Creates a SNOMED CT concrete domain type reference set.
 	 * @param fullySpecifiedName the fully specified name reference set identifier concept.
 	 * @return the new SNOMED CT simple map type reference set.
@@ -420,10 +405,10 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 	 * @return the populated reference set member instance
 	 */
 	public SnomedSimpleMapRefSetMember createSimpleMapRefSetMember(final ComponentIdentifierPair<String> referencedComponentPair, 
-			@Nullable final ComponentIdentifierPair<String> mapTargetPair, 
+			final String mapTargetComponentId,
 			final String moduleId,
 			final SnomedMappingRefSet refSet) {
-		return createSimpleMapRefSetMember(referencedComponentPair, mapTargetPair, null, moduleId, refSet);
+		return createSimpleMapRefSetMember(referencedComponentPair, mapTargetComponentId, null, moduleId, refSet);
 	}
 
 	/**
@@ -441,7 +426,7 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 	 * @return the populated reference set member instance
 	 */
 	private SnomedSimpleMapRefSetMember createSimpleMapRefSetMember(final ComponentIdentifierPair<String> referencedComponentPair, 
-			@Nullable final ComponentIdentifierPair<String> mapTargetPair,
+			final String mapTargetComponentId,
 			@Nullable final String mapTargetDescription,
 			final String moduleId,
 			final SnomedMappingRefSet refSet) {
@@ -450,7 +435,7 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 		if (mapTargetDescription != null) {
 			member.setMapTargetComponentDescription(mapTargetDescription);
 		}
-		initializeMapTarget(member, mapTargetPair);
+		initializeMapTarget(member, mapTargetComponentId);
 		return member;
 	}
 
@@ -470,21 +455,20 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 	 * @return the populated reference set member instance
 	 */
 	public SnomedComplexMapRefSetMember createComplexMapRefSetMember(final ComponentIdentifierPair<String> referencedComponentPair, 
-			@Nullable final ComponentIdentifierPair<String> mapTargetPair, 
+			final String mapTargetComponentId, 
 			final String moduleId,
 			final SnomedMappingRefSet mappingRefSet) {
 		
 		final SnomedComplexMapRefSetMember member = SnomedRefSetFactory.eINSTANCE.createSnomedComplexMapRefSetMember();
 		initializeRefSetMember(member, referencedComponentPair, moduleId, mappingRefSet);
-		initializeMapTarget(member, mapTargetPair);
+		initializeMapTarget(member, mapTargetComponentId);
 		member.setCorrelationId(Concepts.REFSET_CORRELATION_NOT_SPECIFIED);
 		return member;
 	}
 
-	private void initializeMapTarget(final SnomedSimpleMapRefSetMember member, final ComponentIdentifierPair<String> mapTargetPair) {
-		
-		if (null != mapTargetPair) {
-			member.setMapTargetComponentId(mapTargetPair.getComponentId());
+	private void initializeMapTarget(final SnomedSimpleMapRefSetMember member, final String mapTargetComponentId) {
+		if (mapTargetComponentId != null) {
+			member.setMapTargetComponentId(mapTargetComponentId);
 		}
 	}
 	
@@ -495,7 +479,7 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 	 * added to the reference set's members list.
 	 * 
 	 * @param referencedComponentPair the component identifier - terminology identifier pair for the referenced component
-	 * @param type the concrete data type of the reference set member
+	 * @param type the concrete domain of the reference set member
 	 * @param value the value of the reference set member
 	 * @param label the label of the reference set member
 	 * @param moduleId the module ID for the reference set member
@@ -530,7 +514,7 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 	 * @param uomComponentId the unit of measurement component identifier
 	 * @param operatorComponentId the comparison operator component identifier
 	 * @param value the value of the reference set member
-	 * @param attrLabel the label of the concrete data type. Can be {@code null}. If {@code null}, the label is specified by the referenced component.
+	 * @param attrLabel the label of the concrete domain. Can be {@code null}. If {@code null}, the label is specified by the referenced component.
 	 * @param moduleId the module ID for the reference set member
 	 * @param concreteDataTypeRefSet the parent reference set
 	 * 
@@ -572,13 +556,16 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 		final String relationshipId = referencedComponentPair.getComponentId();
 		
 		// Try to retrieve from the lightweight store first
-		final SnomedRelationshipIndexEntry relationshipMini = ApplicationContext.getInstance().getService(SnomedClientStatementBrowser.class).getStatement(relationshipId);
+		final ISnomedRelationship relationshipMini = Iterables.getOnlyElement(SnomedRequests.prepareSearchRelationship()
+				.setLimit(1)
+				.setComponentIds(Collections.singleton(relationshipId))
+				.build(getBranch())
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.getSync(), null);
 		
 		if (null == relationshipMini) {
-			
 			// Retrieve from CDO if it does not exist in local lightweight store
-			final ILookupService<String, Relationship, CDOView> lookupService = CoreTerminologyBroker.getInstance().getLookupService(SnomedTerminologyComponentConstants.RELATIONSHIP);
-			Relationship relationship = lookupService.getComponent(relationshipId, transaction);
+			Relationship relationship = getSnomedEditingContext().lookup(relationshipId, Relationship.class);
 			
 			// If not persisted yet, try to get it from the transaction
 			if (null == relationship) {
@@ -593,7 +580,7 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 			return transactionTextProvider.getText(relationship.getType().getId());
 		}
 			
-		return transactionTextProvider.getText(relationshipMini.getAttributeId());
+		return transactionTextProvider.getText(relationshipMini.getTypeId());
 	}
 	
 	/**
@@ -795,73 +782,90 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 		return deletionPlan;
 	}
 
-	protected List<SnomedRefSetMember> getReferringMembers(final Component component, final SnomedRefSetType type, final SnomedRefSetType... others) {
+	protected List<SnomedRefSetMember> getReferringMembers(final Component component) {
 		
 		checkNotNull(component, "Component argument cannot be null.");
 		
-		//already detached. nothing to do
+		// already detached. nothing to do
 		if (FSMUtil.isTransient(component)) {
 			return Collections.emptyList();
 		}
 		
-		final List<SnomedRefSetMember> $ = Lists.newArrayList();
+		final List<SnomedRefSetMember> referringMembers = Lists.newArrayList();
 
 		final String id = checkNotNull(component.getId(), "Component ID was null for component. [" + component + "]");
 		
-		//process new referring members from the transaction.
+		// process new referring members from the transaction.
 		if (CDOState.NEW.equals(component.cdoState())) {
-			
-			
 			final Iterable<SnomedRefSetMember> newMembers = ComponentUtils2.getNewObjects(transaction, SnomedRefSetMember.class);
 			
 			for (final SnomedRefSetMember member : newMembers) {
-				
-				//member is referencing to the investigated component. mark for deletion.
+				// member is referencing to the investigated component. mark for deletion.
 				if (id.equals(member.getReferencedComponentId())) {
-					
-					$.add(member);
-					
+					referringMembers.add(member);
 				}
 				
 				final String specialFieldId = getSpecialFieldId(member);
-				
 				if (id.equals(specialFieldId)) {
-					
-					$.add(member);
-					
+					referringMembers.add(member);
 				}
-				
 			}
-			
-		//persistent component. check for referring members in index
+		// persistent component. check for referring members in index
 		} else {
-			
-			final IClientSnomedComponentService componentService = ApplicationContext.getInstance().getService(IClientSnomedComponentService.class);
-			
-			final int[] ordinals = new int[others.length];
-			for (int i = 0; i < others.length; i++) {
-				ordinals[i] = others[i].ordinal();
+			for (SnomedReferenceSetMember member : getAllReferringMembersStorageKey(id, getReferringMemberTypes(component))) {
+				referringMembers.add((SnomedRefSetMember) getSnomedEditingContext().lookupIfExists(member.getStorageKey()));
 			}
-			
-			final LongSet ids = componentService.getAllReferringMembersStorageKey(id, type.ordinal(), ordinals);
-			
-			for (final LongIterator itr = ids.iterator(); itr.hasNext(); /* */) {
-				
-				final CDOObject object = CDOUtils.getObjectIfExists(transaction, itr.next());
-				
-				if (object instanceof SnomedRefSetMember) {
-					
-					$.add((SnomedRefSetMember) object);
-					
-				}
-				
-			}
-			
 		}
 		
-		
-		return $;
-		
+		return referringMembers;
+	}
+	
+	private SnomedReferenceSetMembers getAllReferringMembersStorageKey(String id, EnumSet<SnomedRefSetType> types) {
+		// construct bulk requests with many sub queries to search for any member that references the given ID in any RF2 member component field
+		return SnomedRequests.prepareBulkRead()
+				.setBody(BulkRequest.<BranchContext>create()
+						.add(getReferringMembers(id, types))
+						.add(getReferringMembersByProps(id, types, Fields.ACCEPTABILITY_ID))
+						.add(getReferringMembersByProps(id, types, Fields.CHARACTERISTIC_TYPE_ID))
+						.add(getReferringMembersByProps(id, types, Fields.CORRELATION_ID))
+						.add(getReferringMembersByProps(id, types, Fields.DESCRIPTION_FORMAT))
+						.add(getReferringMembersByProps(id, types, Fields.MAP_CATEGORY_ID))
+						.add(getReferringMembersByProps(id, types, Fields.OPERATOR_ID))
+						.add(getReferringMembersByProps(id, types, Fields.TARGET_COMPONENT))
+						.add(getReferringMembersByProps(id, types, Fields.UNIT_ID))
+						.add(getReferringMembersByProps(id, types, Fields.VALUE_ID))
+						)
+				.build(getBranch())
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.then(new Function<BulkResponse, SnomedReferenceSetMembers>() {
+					@Override
+					public SnomedReferenceSetMembers apply(BulkResponse input) {
+						final List<SnomedReferenceSetMember> items = ImmutableList.copyOf(Iterables.concat(input.getResponses(SnomedReferenceSetMembers.class)));
+						return new SnomedReferenceSetMembers(items, 0, items.size(), items.size());
+					}
+				})
+				.getSync();
+	}
+
+	private SnomedRefSetMemberSearchRequestBuilder getReferringMembers(String id, EnumSet<SnomedRefSetType> types) {
+		return SnomedRequests.prepareSearchMember().all().filterByRefSetType(types).filterByReferencedComponent(id);
+	}
+	
+	private SnomedRefSetMemberSearchRequestBuilder getReferringMembersByProps(String id, EnumSet<SnomedRefSetType> types, final String propField) {
+		return SnomedRequests.prepareSearchMember().all().filterByRefSetType(types).filterByProps(OptionsBuilder.newBuilder()
+				.put(propField, id)
+				.build());
+	}
+
+	private EnumSet<SnomedRefSetType> getReferringMemberTypes(final Component component) {
+		if (component instanceof Concept) {
+			return CONCEPT_REFERRING_MEMBER_TYPES;
+		} else if (component instanceof Relationship) {
+			return RELATIONSHIP_REFERRING_MEMBER_TYPES;
+		} else if (component instanceof Description) {
+			return DESCRIPTION_REFERRING_MEMBER_TYPES;
+		}
+		throw new IllegalArgumentException("Invalid component type: " + component.getClass());
 	}
 	
 	/* (non-Javadoc)
@@ -989,11 +993,4 @@ public class SnomedRefSetEditingContext extends BaseSnomedEditingContext {
 		return CoreTerminologyBroker.getInstance().getNameProviderFactory(referencedComponentPair.getTerminologyComponentId()).getNameProvider();
 	}
 	
-	// update the concept Id to default constant id if the concept is CMT concept
-	private void updateIdIfCMTConcept(String label, Concept concept) {
-		String conceptId = CMT_NAME_ID_PAIRS.get(label.replaceAll(" reference set", ""));
-		if (null != conceptId) {
-			concept.setId(conceptId);
-		}
-	}
 }

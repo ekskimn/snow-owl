@@ -29,8 +29,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 
-import org.hamcrest.CoreMatchers;
-
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;

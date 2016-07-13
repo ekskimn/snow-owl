@@ -160,15 +160,27 @@ public class SnomedIdentifiers {
 		try {
 			final int checkDigit = Character.getNumericValue(componentId.charAt(componentId.length() - 1));
 			final int componentIdentifier = getComponentIdentifier(componentId);
-			final int partitionIdentifier = Character.getNumericValue(componentId.charAt(componentId.length() - 3));
-			final String namespace = partitionIdentifier == 0 ? null
-					: componentId.substring(componentId.length() - 10, componentId.length() - 3);
+			final int partitionIdentifier = getPartitionIdentifier(componentId);
+			final String namespace = getNamespace(componentId, partitionIdentifier);
 			final long itemId = partitionIdentifier == 0 ? Long.parseLong(componentId.substring(0, componentId.length() - 3))
 					: Long.parseLong(componentId.substring(0, componentId.length() - 10));
 			return new SnomedIdentifierImpl(itemId, namespace, partitionIdentifier, componentIdentifier, checkDigit);
 		} catch (NumberFormatException e) {
 			throw new IllegalArgumentException(String.format("Invalid SNOMED identifier: %s.", componentId));
 		}
+	}
+
+	public static String getNamespace(String componentId) {
+		return getNamespace(componentId, getPartitionIdentifier(componentId));
+	}
+	
+	public static String getNamespace(String componentId, final int partitionIdentifier) {
+		return partitionIdentifier == 0 ? null
+				: componentId.substring(componentId.length() - 10, componentId.length() - 3);
+	}
+
+	private static int getPartitionIdentifier(String componentId) {
+		return Character.getNumericValue(componentId.charAt(componentId.length() - 3));
 	}
 	
 	/**
@@ -238,8 +250,10 @@ public class SnomedIdentifiers {
 	 * Returns the component category for a SNOMED CT identifier, or <code>null</code> in case of invalid 
 	 * @param componentId
 	 * @return
+	 * @throws IllegalArgumentException - if the given component ID is not a valid SNOMED CT Component Identifier
 	 */
 	public static ComponentCategory getComponentCategory(String componentId) {
+		validate(componentId);
 		return ComponentCategory.getByOrdinal(getComponentIdentifier(componentId));
 	}
 	

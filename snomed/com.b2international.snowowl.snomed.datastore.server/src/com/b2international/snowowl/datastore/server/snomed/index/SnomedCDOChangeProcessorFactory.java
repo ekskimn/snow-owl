@@ -15,12 +15,15 @@
  */
 package com.b2international.snowowl.datastore.server.snomed.index;
 
+import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.datastore.ICDOChangeProcessor;
 import com.b2international.snowowl.datastore.server.CDOChangeProcessorFactory;
-import com.b2international.snowowl.datastore.server.snomed.index.init.ImportIndexServerService;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 
 /**
  * CDO change processor factory responsible to create {@link SnomedCDOChangeProcessor change processors} for SNOMED CT terminology.
@@ -31,14 +34,10 @@ public class SnomedCDOChangeProcessorFactory implements CDOChangeProcessorFactor
 
 	@Override
 	public ICDOChangeProcessor createChangeProcessor(final IBranchPath branchPath) throws SnowowlServiceException {
-		
-		//SNOMED CT import is in progress
-		if (ApplicationContext.getInstance().exists(ImportIndexServerService.class)) {
-			return new SnomedImportCDOChangeProcessor(ApplicationContext.getInstance().getService(ImportIndexServerService.class), branchPath); 
-		}
-		
-		final SnomedIndexUpdater indexService = ApplicationContext.getInstance().getService(SnomedIndexUpdater.class);
-		return new SnomedCDOChangeProcessor(indexService, branchPath);
+		final ApplicationContext context = ApplicationContext.getInstance();
+		final RevisionIndex index = context.getService(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
+		final ISnomedIdentifierService identifierService = context.getService(ISnomedIdentifierService.class);
+		return new SnomedCDOChangeProcessor(branchPath, index, identifierService);
 	}
 
 	@Override

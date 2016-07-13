@@ -23,11 +23,13 @@ import org.junit.runners.Suite.SuiteClasses;
 
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.api.japi.branches.SnomedBranchRequestTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedBranchingApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiTest;
+import com.b2international.snowowl.snomed.api.rest.classification.SnomedClassificationApiTest;
 import com.b2international.snowowl.snomed.api.rest.components.SnomedConceptApiTest;
 import com.b2international.snowowl.snomed.api.rest.components.SnomedDescriptionApiTest;
 import com.b2international.snowowl.snomed.api.rest.components.SnomedRefSetApiTest;
@@ -50,6 +52,7 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
  */
 @RunWith(Suite.class)
 @SuiteClasses({ 
+	// RESTful API test cases
 	SnomedBranchingApiTest.class,
 	SnomedMergeApiTest.class,
 	SnomedReviewApiTest.class,
@@ -65,7 +68,10 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	SnomedRefSetApiTest.class,
 	SnomedRefSetMemberApiTest.class,
 	SnomedRefSetBulkApiTest.class,
-	SnomedBrowserApiTest.class
+	SnomedBrowserApiTest.class,
+	SnomedClassificationApiTest.class,
+	// Java API test cases
+	SnomedBranchRequestTest.class
 })
 public class AllSnomedApiTests {
 

@@ -105,7 +105,6 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void createConceptWithGeneratedId() {
 		final String conceptId = generateComponentId(null, ComponentCategory.CONCEPT);
-
 		createConcept(conceptId);
 	}
 

@@ -61,7 +61,7 @@ import com.google.common.base.Preconditions;
  * <p>
  * It wraps a {@link ICDOBranchActionManager}, which contains the CDO related logic.
  * </p>
- * 
+ * @deprecated - refactor after 5.0 release
  */
 public class TaskManager {
 
@@ -245,9 +245,6 @@ public class TaskManager {
 		//singleton map for triggering index structure initialization on the server side.
 		final TaskBranchPathMap triggerMap = new TaskBranchPathMap(Collections.singletonMap(repositoryUuid, destinationPath));
 		getBranchManager().prepare(triggerMap, getUserId());
-
-		//notify views, editors, listeners whatever
-		getPostStoreUpdateManager().notifyListeners(null);
 	}
 	
 	public IBranchPathMap getBranchPathMap() {

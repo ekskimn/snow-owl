@@ -33,7 +33,8 @@ import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.inject.Provider;
 
 /**
@@ -104,7 +105,7 @@ public class ImportOnlySnomedTransactionContext implements TransactionContext {
 	}
 	
 	@Override
-	public void delete(EObject o, boolean force) {
+	public void delete(final EObject o, final boolean force) {
 		editingContext.delete(o, force);
 	}
 

@@ -15,8 +15,6 @@
  */
 package com.b2international.snowowl.datastore.review;
 
-import java.util.Set;
-
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 
@@ -60,17 +58,4 @@ public interface ReviewManager {
 	 * @throws NotFoundException if no change set exists currently for the review
 	 */
 	ConceptChanges getConceptChanges(String id);
-
-	MergeReview createMergeReview(Branch source, Branch target);
-
-	MergeReview getMergeReview(String mergeReviewId);
-	
-	/**
-	 * Retrieve the intersection of concepts modified in both source and target
-	 * @param string
-	 * @param mergeReviewId the merge review identifier to look for 
-	 * @return
-	 **/
-	Set<String> getMergeReviewIntersection(MergeReview mergeReview);
-
 }

@@ -15,47 +15,33 @@
  */
 package com.b2international.snowowl.snomed.datastore.serviceconfig;
 
-import com.b2international.snowowl.datastore.serviceconfig.ClientServiceConfigJob;
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.api.SnowowlServiceException;
+import com.b2international.snowowl.datastore.serviceconfig.ServiceConfigJob;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedClientTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 
 /**
  * Configuration job to initialize and register the concept hierarchy browser service for the SNOMED&nbsp;CT ontology on the client side.
  * <p>
- * <b>Note:</b> this class belongs to the {@link SnomedDatastoreActivator#PLUGIN_ID SNOMED&nbsp;CT data store plug-in identifier} job
- * family.
+ * <b>Note:</b> this class belongs to the {@link SnomedDatastoreActivator#PLUGIN_ID SNOMED&nbsp;CT data store plug-in identifier} job family.
  * 
  */
-public class SnomedTerminologyBrowserServiceConfigJob extends ClientServiceConfigJob<SnomedTerminologyBrowser, SnomedClientTerminologyBrowser> {
+public class SnomedTerminologyBrowserServiceConfigJob extends ServiceConfigJob {
 
 	private static final String JOB_NAME = "SNOMED CT terminology browser configuration...";
-	
+
 	public SnomedTerminologyBrowserServiceConfigJob() {
 		super(JOB_NAME, SnomedDatastoreActivator.PLUGIN_ID);
 	}
-	
-	/* (non-Javadoc)
-	 * @see com.b2international.snowowl.datastore.serviceconfig.ClientServiceConfigJob#getBranchAwareClass()
-	 */
+
 	@Override
-	protected Class<SnomedTerminologyBrowser> getServiceClass() {
-		return SnomedTerminologyBrowser.class;
+	protected boolean initService() throws SnowowlServiceException {
+		ApplicationContext.getInstance().registerService(SnomedClientTerminologyBrowser.class,
+				new SnomedClientTerminologyBrowser(getEnvironment().service(IEventBus.class), getEnvironment().provider(LanguageSetting.class)));
+		return true;
 	}
 
-	/* (non-Javadoc)
-	 * @see com.b2international.snowowl.datastore.serviceconfig.ClientServiceConfigJob#getTrackingClass()
-	 */
-	@Override
-	protected Class<SnomedClientTerminologyBrowser> getTrackingClass() {
-		return SnomedClientTerminologyBrowser.class;
-	}
-
-	/* (non-Javadoc)
-	 * @see com.b2international.snowowl.datastore.serviceconfig.ClientServiceConfigJob#createTrackingService(java.lang.Object)
-	 */
-	@Override
-	protected SnomedClientTerminologyBrowser createTrackingService(final SnomedTerminologyBrowser branchAwareService) {
-		return new SnomedClientTerminologyBrowser(branchAwareService);
-	}
 }

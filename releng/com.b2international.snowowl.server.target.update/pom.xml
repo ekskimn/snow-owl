@@ -7,7 +7,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>releng-parent</artifactId>
-		<version>4.5.63-SNAPSHOT</version>
+    <version>4.5.63-SNAPSHOT</version>
 	</parent>
 
 	<properties>
@@ -180,6 +180,22 @@
 						<goals>
 							<goal>eclipse-run</goal>
 						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>package-runnable-target</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<configuration>
+							<descriptor>${basedir}/assembly/runnable.xml</descriptor>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>

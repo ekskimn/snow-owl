@@ -27,11 +27,16 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchMergeException;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * @since 4.1
  */
 public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBranch {
+
+	private static final Runnable EMPTY_RUNNABLE = new Runnable() {
+		@Override public void run() { return; }
+	};
 
     protected BranchManagerImpl branchManager;
     
@@ -65,6 +70,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 		this.branchManager = checkNotNull(branchManager, "branchManager");
 	}
 	
+    @JsonIgnore
 	BranchManagerImpl getBranchManager() {
 		return this.branchManager;
 	}
@@ -106,15 +112,43 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 	public Branch delete() {
 		return branchManager.delete(this);
 	}
+
+	@Override
+	public Branch rebase(Branch onTopOf, String commitMessage) {
+		return rebase(onTopOf, commitMessage, EMPTY_RUNNABLE);
+	}
 	
 	@Override
-	public Branch merge(Branch source, String commitMessage) throws BranchMergeException {
-		if (path().equals(source.path())) {
+	public Branch rebase(Branch onTopOf, String commitMessage, Runnable postReopen) {
+		if (canRebase(onTopOf)) {
+			return branchManager.rebase(this, (BranchImpl) onTopOf, commitMessage, postReopen);
+		} else {
+			return this;
+		}
+	}
+
+	@Override
+	public boolean canRebase() {
+		return canRebase(state());
+	}
+	
+	@Override
+	public boolean canRebase(Branch onTopOf) {
+		return canRebase(state(onTopOf));
+	}
+
+	private boolean canRebase(final BranchState state) {
+		return state == BranchState.BEHIND || state == BranchState.DIVERGED || state == BranchState.STALE;
+	}
+	
+	@Override
+	public Branch merge(Branch changesFrom, String commitMessage) throws BranchMergeException {
+		if (path().equals(changesFrom.path())) {
 			throw new BadRequestException("Can't merge branch '%s' onto itself.", path());
 		}
 		
-		if (source.state() == BranchState.FORWARD) {
-			return branchManager.merge(this, (BranchImpl) source, commitMessage);
+		if (changesFrom.state() == BranchState.FORWARD) {
+			return branchManager.merge((BranchImpl) changesFrom, this, commitMessage);
 		} else {
 			throw new BranchMergeException("Only source in the FORWARD state can merged.");
 		}
@@ -122,7 +156,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 
 	@Override
 	public Branch applyChangeSet(Branch source, boolean dryRun, String commitMessage) {
-		return branchManager.applyChangeSet(this, (InternalBranch) source, dryRun, commitMessage);
+		return branchManager.applyChangeSet((InternalBranch) source, this, dryRun, commitMessage);
 	}
 	
 	@Override

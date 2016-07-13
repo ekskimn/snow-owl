@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.lucene.search.Query;
 import org.supercsv.cellprocessor.NullObjectPattern;
 import org.supercsv.cellprocessor.ParseBool;
 import org.supercsv.cellprocessor.ParseInt;
@@ -28,9 +27,11 @@ import org.supercsv.cellprocessor.ift.CellProcessor;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.snomed.Relationship;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedFactory;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
-import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.importer.rf2.csv.RelationshipRow;
 import com.b2international.snowowl.snomed.importer.rf2.model.ComponentImportType;
 import com.b2international.snowowl.snomed.importer.rf2.model.IndexConfiguration;
@@ -40,7 +41,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 public class SnomedRelationshipImporter extends AbstractSnomedTerminologyImporter<RelationshipRow, Relationship> {
-	
+
 	private static final Map<String, CellProcessor> CELLPROCESSOR_MAPPING = ImmutableMap.<String, CellProcessor>builder()
 				.put(RelationshipRow.PROP_ID, NullObjectPattern.INSTANCE)
 				.put(RelationshipRow.PROP_EFFECTIVE_TIME, createEffectiveTimeCellProcessor())
@@ -71,8 +72,17 @@ public class SnomedRelationshipImporter extends AbstractSnomedTerminologyImporte
 				INDEXES);
 	}
 
-	public SnomedRelationshipImporter(final SnomedImportContext importContext, final InputStream releaseFileStream, final String releaseFileIdentifier, final ComponentImportType type) {
+	public SnomedRelationshipImporter(final SnomedImportContext importContext, 
+			final InputStream releaseFileStream, 
+			final String releaseFileIdentifier, 
+			final ComponentImportType type) {
+		
 		super(createImportConfiguration(type), importContext, releaseFileStream, releaseFileIdentifier);
+	}
+	
+	@Override
+	protected Class<? extends SnomedDocument> getType() {
+		return SnomedRelationshipIndexEntry.class;
 	}
 
 	@Override
@@ -103,12 +113,15 @@ public class SnomedRelationshipImporter extends AbstractSnomedTerminologyImporte
 		editedRelationship.setModifier(getConceptSafe(currentRow.getModifierId(), SnomedRf2Headers.FIELD_MODIFIER_ID, currentRow.getId()));
 		editedRelationship.setGroup(currentRow.getRelationshipGroup());
 		
+		// Universal "has active ingredient" relationships should be put into a union group
+		if (Concepts.HAS_ACTIVE_INGREDIENT.equals(currentRow.getTypeId()) 
+				&& Concepts.UNIVERSAL_RESTRICTION_MODIFIER.equals(currentRow.getModifierId())
+				&& editedRelationship.getUnionGroup() != 1) {
+			
+			editedRelationship.setUnionGroup(1);
+		}
+		
 		getImportContext().conceptVisited(currentRow.getSourceId());
-	}
-	
-	@Override
-	protected Query getAvailableComponentsQuery() {
-		return SnomedMappings.newQuery().relationship().matchAll();
 	}
 	
 	@Override
