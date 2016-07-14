@@ -342,7 +342,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void rebaseNewConceptStale() {
-		givenBranchWithPath(testBranchPath);
 		IBranchPath branchPath = createNestedBranch(testBranchPath, "A", "B");
 
 		assertConceptCreated(branchPath, "CB1");
@@ -562,8 +561,6 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void rebaseOverReusedRelationshipId() {
-		givenBranchWithPath(testBranchPath);
-		
 		assertRelationshipCreated(testBranchPath.getParent(), "R1");
 		assertRelationshipExists(testBranchPath.getParent(), "R1");
 		final String relationshipId = symbolicNameMap.get("R1");
