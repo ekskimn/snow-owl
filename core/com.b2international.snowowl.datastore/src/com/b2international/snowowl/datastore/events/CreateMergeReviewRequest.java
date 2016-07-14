@@ -21,7 +21,7 @@ import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.BaseRequest;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.review.MergeReview;
-import com.b2international.snowowl.datastore.review.ReviewManager;
+import com.b2international.snowowl.datastore.review.MergeReviewManager;
 
 public class CreateMergeReviewRequest extends BaseRequest<RepositoryContext, MergeReview> {
 
@@ -37,12 +37,12 @@ public class CreateMergeReviewRequest extends BaseRequest<RepositoryContext, Mer
 	public MergeReview execute(RepositoryContext context) {
 		try {
 			final BranchManager branchManager = context.service(BranchManager.class);
-			final ReviewManager reviewManager = context.service(ReviewManager.class);
+			final MergeReviewManager mergeReviewManager = context.service(MergeReviewManager.class);
 			
 			final Branch source = branchManager.getBranch(sourcePath);
 			final Branch target = branchManager.getBranch(targetPath);
 			
-			return reviewManager.createMergeReview(source, target);
+			return mergeReviewManager.createMergeReview(source, target);
 		} catch (final NotFoundException e) {
 			// Non-existent branches are reported as Bad Requests for reviews
 			throw e.toBadRequestException();

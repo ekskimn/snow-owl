@@ -19,7 +19,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -63,6 +65,7 @@ import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.index.MappingProvider;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
+import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
@@ -77,8 +80,12 @@ import com.b2international.snowowl.datastore.server.internal.branch.InternalBran
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.server.internal.merge.MergeServiceImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
+import com.b2international.snowowl.datastore.store.IndexStore;
+import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.eventbus.EventBusUtil;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
@@ -111,7 +118,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
 		mapper.registerModule(new PrimitiveCollectionModule());
 		initIndex(mapper);
-		initializeBranchingSupport(mergeMaxResults);
+		initializeBranchingSupport(mapper, mergeMaxResults);
 		initializeRequestSupport(numberOfWorkers);
 	}
 
@@ -232,7 +239,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		return new DefaultRepositoryContext(context, repositoryId);
 	}
 
-	private void initializeBranchingSupport(int mergeMaxResults) {
+	private void initializeBranchingSupport(final ObjectMapper mapper, int mergeMaxResults) {
 		final CDOBranchManagerImpl branchManager = new CDOBranchManagerImpl(this);
 		registry.put(BranchManager.class, branchManager);
 		registry.put(BranchReplicator.class, branchManager);
@@ -240,6 +247,10 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		final ReviewConfiguration reviewConfiguration = env.service(SnowOwlConfiguration.class).getModuleConfig(ReviewConfiguration.class);
 		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(this, reviewConfiguration);
 		registry.put(ReviewManager.class, reviewManager);
+		
+		// TODO migrate merge-reviews to new index API
+		final Store<MergeReviewImpl> mergeReviews = createIndex("merge-reviews", mapper, MergeReviewImpl.class);
+		registry.put(MergeReviewManager.class, new MergeReviewManagerImpl(mergeReviews, reviewManager));
 
 		events().registerHandler(address("/branches/changes") , reviewManager.getStaleHandler());
 		
@@ -333,6 +344,18 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	@Override
 	public void close() throws IOException {
 		getIndex().admin().close();
+	}
+	
+	/**
+	 * @deprecated - as of 5.0, {@link Store} API is deprecated, use the new index API instead 
+	 */
+	private <T> IndexStore<T> createIndex(final String name, ObjectMapper mapper, Class<T> type) {
+		// TODO consider moving from index layout /feature/repositoryId to /repositoryId/feature
+		final File dir = env.getDataDirectory()
+				.toPath()
+				.resolve(Paths.get("indexes", name, repositoryId))
+				.toFile();
+		return new IndexStore<>(dir, mapper, type);
 	}
 	
 }

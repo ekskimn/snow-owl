@@ -34,6 +34,7 @@ public class MergeReviewImpl implements MergeReview {
 	private final String targetToSourceReviewId;
 	
 	private ReviewManagerImpl reviewManager;
+	private MergeReviewManagerImpl mergeReviewManager;
 	
 	public MergeReviewImpl(final String id, final String sourcePath, final String targetPath, 
 			final String sourceToTargetReviewId, final String targetToSourceReviewId) {
@@ -94,18 +95,22 @@ public class MergeReviewImpl implements MergeReview {
 		return sourcePath;
 	}
 	
-	public void setReviewManager(ReviewManagerImpl reviewManager) {
+	void setReviewManager(ReviewManagerImpl reviewManager) {
 		this.reviewManager = reviewManager;
+	}
+	
+	void setMergeReviewManager(MergeReviewManagerImpl mergeReviewManager) {
+		this.mergeReviewManager = mergeReviewManager;
 	}
 
 	@Override
 	public MergeReview delete() {
-		return reviewManager.deleteMergeReview(this);
+		return mergeReviewManager.deleteMergeReview(this);
 	}
 
 	@Override
 	public Set<String> mergeReviewIntersection() {
-		return reviewManager.getMergeReviewIntersection(this);
+		return mergeReviewManager.getMergeReviewIntersection(this);
 	}
 	
 }

@@ -17,7 +17,7 @@ package com.b2international.snowowl.datastore.events;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.datastore.review.MergeReview;
-import com.b2international.snowowl.datastore.review.ReviewManager;
+import com.b2international.snowowl.datastore.review.MergeReviewManager;
 
 /**
  * Sent when a user requests a review to be deleted.
@@ -30,7 +30,7 @@ public class DeleteMergeReviewRequest extends ReviewRequest<MergeReview> {
 	
 	@Override
 	public MergeReview execute(RepositoryContext context) {
-		return context.service(ReviewManager.class).getMergeReview(getReviewId()).delete();
+		return context.service(MergeReviewManager.class).getMergeReview(getReviewId()).delete();
 	}
 	
 	@Override

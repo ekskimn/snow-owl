@@ -33,6 +33,8 @@ import com.b2international.snowowl.datastore.server.internal.branch.MainBranchIm
 import com.b2international.snowowl.datastore.server.internal.review.BranchStateImpl;
 import com.b2international.snowowl.datastore.server.internal.review.BranchStateImplMixin;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImplMixin;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImplMixin;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,6 +60,7 @@ public class JsonSupport {
 		mapper.addMixInAnnotations(ReviewImpl.class, ReviewImplMixin.class);
 		mapper.addMixInAnnotations(BranchStateImpl.class, BranchStateImplMixin.class);
 		mapper.addMixInAnnotations(ConceptChangesImpl.class, ConceptChangesMixin.class);
+		mapper.addMixInAnnotations(MergeReviewImpl.class, MergeReviewImplMixin.class);
 		return mapper;
 	}
 	
