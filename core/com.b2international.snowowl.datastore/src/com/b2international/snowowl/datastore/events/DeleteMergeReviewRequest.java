@@ -30,8 +30,7 @@ public class DeleteMergeReviewRequest extends ReviewRequest<MergeReview> {
 	
 	@Override
 	public MergeReview execute(RepositoryContext context) {
-//		return context.service(ReviewManager.class).getMergeReview(getReviewId()).delete();
-		return null;
+		return context.service(ReviewManager.class).getMergeReview(getReviewId()).delete();
 	}
 	
 	@Override
