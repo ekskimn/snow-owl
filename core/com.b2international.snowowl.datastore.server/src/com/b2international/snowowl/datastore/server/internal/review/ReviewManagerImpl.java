@@ -305,7 +305,7 @@ public class ReviewManagerImpl implements ReviewManager {
 			for (Revision hit : hits) {
 				if (hit instanceof ContainerIdProvider) {
 					final ContainerIdProvider idProvider = (ContainerIdProvider) hit;
-					if (idProvider.isRoot()) {
+					if (idProvider.isRoot() && idProvider.getContainerId() != null) {
 						newConcepts.add(idProvider.getContainerId());
 					}
 				}
@@ -316,7 +316,7 @@ public class ReviewManagerImpl implements ReviewManager {
 					final ContainerIdProvider idProvider = (ContainerIdProvider) hit;
 					final String containerId = idProvider.getContainerId();
 					// if the container ID is registered as new, then skip adding it to the changed set, otherwise add it
-					if (!idProvider.isRoot() && !newConcepts.contains(containerId)) {
+					if (containerId != null && !idProvider.isRoot() && !newConcepts.contains(containerId)) {
 						changedConcepts.add(containerId);
 					}
 				}
@@ -327,7 +327,10 @@ public class ReviewManagerImpl implements ReviewManager {
 			final Hits<? extends Revision> hits = compare.searchChanged(Query.select(revisionType).where(Expressions.matchAll()).build());
 			for (Revision hit : hits) {
 				if (hit instanceof ContainerIdProvider) {
-					changedConcepts.add(((ContainerIdProvider) hit).getContainerId());
+					final String containerId = ((ContainerIdProvider) hit).getContainerId();
+					if (containerId != null) {
+						changedConcepts.add(containerId);
+					}
 				}
 			}
 		}
@@ -336,7 +339,10 @@ public class ReviewManagerImpl implements ReviewManager {
 			final Hits<? extends Revision> hits = compare.searchDeleted(Query.select(revisionType).where(Expressions.matchAll()).build());
 			for (Revision hit : hits) {
 				if (hit instanceof ContainerIdProvider) {
-					deletedConcepts.add(((ContainerIdProvider) hit).getContainerId());
+					final String containerId = ((ContainerIdProvider) hit).getContainerId();
+					if (containerId != null) {
+						deletedConcepts.add(containerId);
+					}
 				}
 			}
 		}
