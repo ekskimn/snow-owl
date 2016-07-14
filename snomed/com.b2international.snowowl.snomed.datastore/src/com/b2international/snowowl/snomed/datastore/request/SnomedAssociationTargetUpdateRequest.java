@@ -34,6 +34,7 @@ import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Inactivatable;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
+import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
@@ -244,12 +245,12 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 					.build(referenceBranch)
 					.executeSync(context.service(IEventBus.class));
 
-			final String targetComponentId = (String) referenceMember.getProperties().get(SnomedRf2Headers.FIELD_TARGET_COMPONENT_ID);
+			final SnomedCoreComponent targetComponent = (SnomedCoreComponent) referenceMember.getProperties().get(SnomedRf2Headers.FIELD_TARGET_COMPONENT);
 			
 			boolean restoreEffectiveTime = true;
 			restoreEffectiveTime = restoreEffectiveTime && existingMember.isActive() == referenceMember.isActive();
 			restoreEffectiveTime = restoreEffectiveTime && existingMember.getModuleId().equals(referenceMember.getModuleId());
-			restoreEffectiveTime = restoreEffectiveTime && existingMember.getTargetComponentId().equals(targetComponentId);
+			restoreEffectiveTime = restoreEffectiveTime && existingMember.getTargetComponentId().equals(targetComponent.getId());
 
 			if (restoreEffectiveTime) {
 
