@@ -298,7 +298,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		    	Object targetValue = targetMap.get(key);
 		        
 		    	// Skip multi-valued properties (but arrays are not checked)
-		    	if (sourceValue instanceof Iterable) {
+		    	if (sourceValue instanceof Iterable || sourceValue instanceof long[]) {
 		    		continue;
 		    	}
 		    	
