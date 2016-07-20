@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
@@ -163,6 +165,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	private final InputFactory inputFactory;
 	
 	private final Cache<String, SnomedBrowserBulkChangeRun> bulkChangeRuns = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS).build();
+	
+	private final ExecutorService executorService = Executors.newCachedThreadPool();
 
 	@Resource
 	private IEventBus bus;
@@ -296,29 +300,40 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 	
 	@Override
-	public SnomedBrowserBulkChangeRun beginBulkChange(final String branchPath, List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales) {
+	public SnomedBrowserBulkChangeRun beginBulkChange(final String branchPath, final List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts, final String userId, final List<ExtendedLocale> locales) {
 		final SnomedBrowserBulkChangeRun run = new SnomedBrowserBulkChangeRun();
-		createBulkCommit(branchPath, newVersionConcepts, userId, locales, 
-				userId + " Bulk update.")
-			.build()
-			.execute(bus)
-			.then(new Function<CommitInfo, Void>() {
-				@Override
-				public Void apply(CommitInfo input) {
-					run.end(SnomedBrowserBulkChangeStatus.COMPLETED);
-					LOGGER.info("Committed bulk concept changes on {}", branchPath);
-					return null;
-				}
-			})
-			.fail(new Procedure<Throwable>() {
-				@Override
-				protected void doApply(Throwable throwable) {
-					run.end(SnomedBrowserBulkChangeStatus.FAILED);
-					LOGGER.error("Bulk concept changes failed on {}", branchPath, throwable);
-				}
-			});
-		
 		run.start();
+
+		executorService.submit(new Runnable() {
+			@Override
+			public void run() {
+				try {
+				createBulkCommit(branchPath, newVersionConcepts, userId, locales, 
+						userId + " Bulk update.")
+					.build()
+					.execute(bus)
+					.then(new Function<CommitInfo, Void>() {
+						@Override
+						public Void apply(CommitInfo input) {
+							run.end(SnomedBrowserBulkChangeStatus.COMPLETED);
+							LOGGER.info("Committed bulk concept changes on {}", branchPath);
+							return null;
+						}
+					})
+					.fail(new Procedure<Throwable>() {
+						@Override
+						protected void doApply(Throwable throwable) {
+							run.end(SnomedBrowserBulkChangeStatus.FAILED);
+							LOGGER.error("Bulk concept changes failed during commit on {}", branchPath, throwable);
+						}
+					});
+				} catch(Exception e) {
+					run.end(SnomedBrowserBulkChangeStatus.FAILED);
+					LOGGER.error("Bulk concept changes failed while building commit on {}", branchPath, e);
+				}
+			}
+		});
+		
 		bulkChangeRuns.put(run.getId(), run);
 		
 		return run;
