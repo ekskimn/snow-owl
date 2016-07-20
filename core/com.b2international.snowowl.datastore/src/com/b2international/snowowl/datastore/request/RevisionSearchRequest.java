@@ -38,10 +38,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<BranchContext, B> {
 
-	enum OptionKey {
-		EXPAND
-	}
-	
 	@Min(0)
 	private int offset;
 	

@@ -21,16 +21,16 @@ import static com.google.common.base.Strings.nullToEmpty;
 
 import com.b2international.index.Doc;
 import com.b2international.index.query.Expression;
+import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
-import java.io.Serializable;
 
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import com.google.common.collect.Iterables;
 
 /**
  * CDO independent representation of a {@link CodeSystemVersion}.
@@ -76,7 +76,8 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 				.importDate(Dates.getTime(version.getImportDate()))
 				.latestUpdateDate(EffectiveTimes.getEffectiveTime(version.getLastUpdateDate()))
 				.repositoryUuid(version.getCodeSystem().getRepositoryUuid())
-				.codeSystemShortName(codeSystemShortName);
+				.codeSystemShortName(codeSystemShortName)
+				.parentBranchPath(version.getParentBranchPath());
 	}
 	
 	@JsonPOJOBuilder(withPrefix="")
@@ -91,6 +92,7 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 		private long storageKey;
 		private String repositoryUuid;
 		private String codeSystemShortName;
+		private String parentBranchPath = Branch.MAIN_PATH;
 		
 		public Builder description(String description) {
 			this.description = description;
@@ -137,8 +139,14 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 			return this;
 		}
 		
+		public Builder parentBranchPath(String parentBranchPath) {
+			this.parentBranchPath = parentBranchPath;
+			return this;
+		}
+		
 		public CodeSystemVersionEntry build() {
-			return new CodeSystemVersionEntry(importDate, effectiveDate, latestUpdateDate, description, versionId, patched, storageKey,
+			return new CodeSystemVersionEntry(importDate, effectiveDate, latestUpdateDate, description, versionId, parentBranchPath, 
+					patched, storageKey,
 					repositoryUuid, codeSystemShortName);
 		}
 		
@@ -173,19 +181,13 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 		this.importDate = importDate;
 		this.effectiveDate = effectiveDate;
 		this.latestUpdateDate = latestUpdateDate;
-		this.codeSystemShortName = codeSystemShortName;
-		this.repositoryUuid = checkNotNull(repositoryUuid, "repositoryUuid");
 		this.description = nullToEmpty(description);
 		this.versionId = checkNotNull(versionId, "versionId");
 		this.parentBranchPath = parentBranchPath;
 		this.patched = patched;
 		this.storageKey = storageKey;
+		this.repositoryUuid = checkNotNull(repositoryUuid, "repositoryUuid");
 		this.codeSystemShortName = codeSystemShortName;
-	}
-	
-	@Override
-	public String getCodeSystemShortName() {
-		return codeSystemShortName;
 	}
 	
 	/**
@@ -240,7 +242,8 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	public String getRepositoryUuid() {
 		return repositoryUuid;
 	}
-	
+
+	@JsonIgnore
 	@Override
 	public String getCodeSystemShortName() {
 		return codeSystemShortName;

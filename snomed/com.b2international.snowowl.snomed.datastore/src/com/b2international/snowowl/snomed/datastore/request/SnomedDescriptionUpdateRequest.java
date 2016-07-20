@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
@@ -92,8 +94,10 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 						.build(getLatestReleaseBranch(context))
 						.execute(bus)
 						.getSync();
-	
-					if (!isDifferentToPreviousRelease(description, releasedDescription)) {
+
+					if (releasedDescription == null) {
+						throw new ComponentNotFoundException(ComponentCategory.DESCRIPTION, getComponentId());
+					} else  if (!isDifferentToPreviousRelease(description, releasedDescription)) {
 						description.setEffectiveTime(releasedDescription.getEffectiveTime());
 					}
 					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);

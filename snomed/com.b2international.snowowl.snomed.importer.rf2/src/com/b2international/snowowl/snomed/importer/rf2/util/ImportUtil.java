@@ -53,7 +53,6 @@ import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongCollection;
 import com.b2international.collections.longs.LongSet;
-import com.b2international.commons.ConsoleProgressMonitor;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.platform.Extensions;
 import com.b2international.index.Hits;
@@ -89,7 +88,6 @@ import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
-import com.b2international.snowowl.snomed.datastore.ILanguageConfigurationProvider;
 import com.b2international.snowowl.snomed.datastore.ISnomedImportPostProcessor;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
@@ -102,6 +100,8 @@ import com.b2international.snowowl.snomed.datastore.SnomedRefSetLookupService;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedImportResult;
@@ -225,24 +225,6 @@ public final class ImportUtil {
 			config.addRefSetSource(refSetUrl);
 		}
 		
-		String languageRefsetId = ApplicationContext.getServiceForClass(ILanguageConfigurationProvider.class).getLanguageConfiguration().getLanguageRefSetId();
-		
-		if (!new SnomedRefSetLookupService().exists(branchPath, languageRefsetId)) {
-			final SnomedRefSetNameCollector provider = new SnomedRefSetNameCollector(config, new ConsoleProgressMonitor(), "Searching for language reference sets");
-	
-			try {
-				for (String relativeLanguageRefSetPath : archiveFileSet.getAllFileName(zipFiles, LANGUAGE_REFERENCE_SET, contentSubType)) {
-					provider.parse(config.toURL(new File(relativeLanguageRefSetPath)));
-				}
-			} catch (final IOException e) {
-				throw new ImportException(e);
-			}
-	
-			if (!provider.getAvailableLabels().containsKey(languageRefsetId)) {
-				throw new ImportException("No language reference set with identifier '" + languageRefsetId + "' could be found in release archive.");
-			}
-		}
-
 		config.setSourceKind(FILES);
 		
 		final File tempDir = Files.createTempDir();

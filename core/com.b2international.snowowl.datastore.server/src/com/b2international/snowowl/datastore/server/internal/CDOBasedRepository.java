@@ -35,7 +35,9 @@ import com.b2international.index.DefaultIndex;
 import com.b2international.index.Index;
 import com.b2international.index.IndexClient;
 import com.b2international.index.IndexClientFactory;
+import com.b2international.index.IndexWrite;
 import com.b2international.index.Indexes;
+import com.b2international.index.Writer;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.index.query.slowlog.SlowLogConfig;
 import com.b2international.index.revision.DefaultRevisionIndex;
@@ -96,8 +98,6 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
 import com.b2international.snowowl.terminologymetadata.CodeSystem;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
-import com.b2international.snowowl.terminologyregistry.core.index.CodeSystemIndexMappingStrategy;
-import com.b2international.snowowl.terminologyregistry.core.index.CodeSystemVersionIndexMappingStrategy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
@@ -362,21 +362,28 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	
 	// FIXME
 	private void reindexCodeSystems() {
-		final EditingContextFactoryProvider contextFactoryProvider = env.service(EditingContextFactoryProvider.class);
+		final EditingContextFactoryProvider contextFactoryProvider = getDelegate().service(EditingContextFactoryProvider.class);
 		final EditingContextFactory contextFactory = contextFactoryProvider.get(repositoryId);
 		
 		try (final CDOEditingContext editingContext = contextFactory.createEditingContext(BranchPathUtils.createMainPath())) {
 			final List<CodeSystem> codeSystems = editingContext.getCodeSystems();
 			
-			for (final CodeSystem codeSystem : codeSystems) {
-				getIndexUpdater().index(BranchPathUtils.createMainPath(), new CodeSystemIndexMappingStrategy(codeSystem));
-				
-				for (final CodeSystemVersion codeSystemVersion : codeSystem.getCodeSystemVersions()) {
-					getIndexUpdater().index(BranchPathUtils.createMainPath(), new CodeSystemVersionIndexMappingStrategy(codeSystemVersion));
+			getIndex().write(new IndexWrite<Void>() {
+				@Override
+				public Void execute(Writer index) throws IOException {
+					for (final CodeSystem codeSystem : codeSystems) {
+						final CodeSystemEntry entry = CodeSystemEntry.builder(codeSystem).build();
+						index.put(Long.toString(entry.getStorageKey()), entry);
+						
+						for (final CodeSystemVersion codeSystemVersion : codeSystem.getCodeSystemVersions()) {
+							final CodeSystemVersionEntry versionEntry = CodeSystemVersionEntry.builder(codeSystemVersion).build();
+							index.put(Long.toString(versionEntry.getStorageKey()), versionEntry);
+						}
+					}
+					index.commit();
+					return null;
 				}
-			}
-			
-			getIndexUpdater().commit(BranchPathUtils.createMainPath());
+			});
 		}
 	}
 	

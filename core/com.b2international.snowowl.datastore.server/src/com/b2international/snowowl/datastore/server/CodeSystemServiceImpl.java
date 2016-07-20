@@ -110,7 +110,8 @@ public class CodeSystemServiceImpl implements CodeSystemService {
 		}
 		
 		if (isTagged(repositoryUuid, branchPath)) {
-			final CDOBranch branch = checkNotNull(getConnection(repositoryUuid).getBranch(branchPath), "Branch " + branchPath + "does not exist in '" + repositoryUuid + "'");
+			final CDOBranch cdoBranch = getConnection(repositoryUuid).getBranch(branchPath);
+			final CDOBranch branch = checkNotNull(cdoBranch, "Branch " + branchPath + " does not exist in '" + repositoryUuid + "'");
 			final boolean patched = Long.MIN_VALUE != CDOServerUtils.getLastCommitTime(branch);
 			if (patched) {
 				patchedBranchesCache.add(repositoryUuidAndBranchPair);
