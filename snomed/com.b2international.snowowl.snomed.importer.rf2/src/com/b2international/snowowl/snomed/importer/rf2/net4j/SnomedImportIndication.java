@@ -30,7 +30,6 @@ import org.eclipse.net4j.util.om.monitor.OMMonitor.Async;
 
 import com.b2international.commons.ConsoleProgressMonitor;
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
-import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 <<<<<<< HEAD
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
@@ -57,10 +56,10 @@ public class SnomedImportIndication extends IndicationWithMonitoring {
 		public void setFile(File result);
 	}
 	
-	private final ImportConfiguration importConfiguration = new ImportConfiguration();
-	
 	private String userId;
 	private File receivedFilesDirectory;
+	
+	private ImportConfiguration configuration;
 	
 	public SnomedImportIndication(final SnomedImportServerProtocol protocol) {
 		super(protocol, SnomedImportProtocolConstants.SIGNAL_IMPORT_RF2);
@@ -77,11 +76,11 @@ public class SnomedImportIndication extends IndicationWithMonitoring {
 		monitor.begin(1 + 7 + 1);
 		OMMonitor refSetSubmonitor = null;
 		
+		final ImportConfiguration importConfiguration = new ImportConfiguration(in.readUTF());
+		
 		try {
 			// XXX: source kind is always FILES, since the server just receives a bunch of them
 			importConfiguration.setSourceKind(ImportSourceKind.FILES);
-			
-			importConfiguration.setBranchPath(BranchPathUtils.createPath(in.readUTF()).getPath());
 			userId = in.readString();
 			importConfiguration.setVersion(in.readEnum(ContentSubType.class));
 			importConfiguration.setCreateVersions(in.readBoolean());
@@ -113,13 +112,13 @@ public class SnomedImportIndication extends IndicationWithMonitoring {
 			receivedFilesDirectory = Files.createTempDir();
 			receivedFilesDirectory.deleteOnExit();
 			
-			readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setConceptsFile(f); }}, monitor.fork());
-			readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setDescriptionsFile(f); }}, monitor.fork());
-			readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setTextDefinitionFile(f); }}, monitor.fork());
-			readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setRelationshipsFile(f); }}, monitor.fork());
-			readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setStatedRelationshipsFile(f); }}, monitor.fork());
-			readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setDescriptionType(f); }}, monitor.fork());
-			readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setLanguageRefSetFile(f); }}, monitor.fork());
+			readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setConceptsFile(f); }}, monitor.fork());
+			readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setDescriptionsFile(f); }}, monitor.fork());
+			readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setTextDefinitionFile(f); }}, monitor.fork());
+			readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setRelationshipsFile(f); }}, monitor.fork());
+			readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setStatedRelationshipsFile(f); }}, monitor.fork());
+			readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setDescriptionType(f); }}, monitor.fork());
+			readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { importConfiguration.setLanguageRefSetFile(f); }}, monitor.fork());
 			
 			final int refSetUrlCount = in.readInt();
 			
@@ -128,8 +127,10 @@ public class SnomedImportIndication extends IndicationWithMonitoring {
 			
 			for (int i = 0; i < refSetUrlCount; i++) {
 				// XXX: assume that for the pre-determined number of additional refsets, a boolean value of "true" will always be sent 
-				readComponent(in, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { addRefSetUrl(f); }}, refSetSubmonitor.fork());
+				readComponent(in, importConfiguration, receivedFilesDirectory, new FileCallback() { @Override public void setFile(final File f) { addRefSetUrl(importConfiguration, f); }}, refSetSubmonitor.fork());
 			}
+			
+			this.configuration = importConfiguration;
 			
 		} finally {
 			
@@ -141,7 +142,7 @@ public class SnomedImportIndication extends IndicationWithMonitoring {
 		}
 	}
 
-	private void addRefSetUrl(final File f) {
+	private void addRefSetUrl(final ImportConfiguration importConfiguration, final File f) {
 		try {
 			importConfiguration.addRefSetSource(f.toURI().toURL());
 		} catch (final MalformedURLException e) {
@@ -149,13 +150,13 @@ public class SnomedImportIndication extends IndicationWithMonitoring {
 		}
 	}
 
-	private void readComponent(final ExtendedDataInputStream in, final File receivedFilesDirectory, final FileCallback fileCallback, final OMMonitor monitor) throws IOException {
+	private void readComponent(final ExtendedDataInputStream in, final ImportConfiguration importConfiguration, final File receivedFilesDirectory, final FileCallback fileCallback, final OMMonitor monitor) throws IOException {
 		if (in.readBoolean()) {
-			readFileContents(in, receivedFilesDirectory, fileCallback, monitor);
+			readFileContents(in, importConfiguration, receivedFilesDirectory, fileCallback, monitor);
 		}
 	}
 
-	private void readFileContents(final ExtendedDataInputStream in, final File receivedFilesDirectory, final FileCallback fileCallback, 
+	private void readFileContents(final ExtendedDataInputStream in, final ImportConfiguration importConfiguration, final File receivedFilesDirectory, final FileCallback fileCallback, 
 			final OMMonitor monitor) throws IOException {
 
 		monitor.begin();
@@ -198,7 +199,7 @@ public class SnomedImportIndication extends IndicationWithMonitoring {
 			
 			async = monitor.forkAsync();
 			
-			final SnomedImportResult importResult = new ImportUtil().doImport(userId, importConfiguration, new ConsoleProgressMonitor());
+			final SnomedImportResult importResult = new ImportUtil().doImport(userId, configuration, new ConsoleProgressMonitor());
 			
 			out.writeInt(importResult.getVisitedConcepts().size());
 			out.writeInt(importResult.getValidationDefects().size());
