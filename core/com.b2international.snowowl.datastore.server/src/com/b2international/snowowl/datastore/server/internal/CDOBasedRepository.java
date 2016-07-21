@@ -47,8 +47,6 @@ import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.ClassLoaderProvider;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.ServiceProvider;
-import com.b2international.snowowl.core.api.index.IIndexServerServiceManager;
-import com.b2international.snowowl.core.api.index.IIndexUpdater;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.domain.DelegatingServiceProvider;
@@ -169,11 +167,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	@Override
 	public CDOBranchManager getCdoBranchManager() {
 		return getCdoMainBranch().getBranchManager();
-	}
-	
-	@Override
-	public IIndexUpdater<?> getIndexUpdater() {
-		return getDelegate().service(IIndexServerServiceManager.class).getByUuid(repositoryId);
 	}
 	
 	@Override

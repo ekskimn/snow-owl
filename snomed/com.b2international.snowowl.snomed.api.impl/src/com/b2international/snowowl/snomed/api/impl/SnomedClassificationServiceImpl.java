@@ -122,14 +122,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
-import com.google.common.base.Function;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
+import com.google.common.io.Closeables;
 
 /**
  */
@@ -498,7 +491,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		
 		if (null != indexService) {
 			ApplicationContext.getInstance().getServiceChecked(SingleDirectoryIndexManager.class).unregisterIndex(indexService);
-			indexService.dispose();
+			Closeables.closeQuietly(indexService);
 			indexService = null;
 		}
 		
