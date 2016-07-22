@@ -167,7 +167,6 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	public List<IClassificationRun> getAllClassificationRuns(final StorageRef storageRef, final String userId) throws IOException {
 		final Query query = Mappings.newQuery()
 				.field(FIELD_CLASS, ClassificationRun.class.getSimpleName())
-				.field(FIELD_USER_ID, userId)
 				.field(FIELD_BRANCH_PATH, storageRef.getBranchPath())
 				.matchAll();
 		
