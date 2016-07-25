@@ -36,6 +36,11 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 	}
 
 	@Override
+	public String getLanguageCode() {
+		return browserDesciption.getLang();
+	}
+	
+	@Override
 	public String getConceptId() {
 		return conceptId;
 	}
