@@ -127,11 +127,6 @@ class IndexMigrationReplicationContext implements CDOReplicationContext {
 			}
 		}
 		
-		if (skippedBranches.contains(commitInfo.getBranch().getID())) {
-			skippedCommits++;
-			return;
-		}
-		
 		try {
 			if (isVersionCommit(commitInfo)) {
 				// optimize the index next time we create the version branch
