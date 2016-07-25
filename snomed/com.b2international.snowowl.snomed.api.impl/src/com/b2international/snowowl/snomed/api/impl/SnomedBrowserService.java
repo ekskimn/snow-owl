@@ -658,6 +658,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 					
 					if (concept.getPt() != null) {
 						convertedConcept.setPreferredSynonym(concept.getPt().getTerm());
+					} else if (SnomedBrowserDescriptionType.SYNONYM.equals(preferredDescriptionType)) {
+						convertedConcept.setPreferredSynonym(concept.getId());
 					}
 					
 					// XXX: The returned concept will not know about the leaf property that was *not* requested here
@@ -782,6 +784,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 									
 									if (concept.getPt() != null) {
 										details.setPreferredSynonym(concept.getPt().getTerm());
+									} else if (SnomedBrowserDescriptionType.SYNONYM.equals(preferredDescriptionType)) {
+										details.setPreferredSynonym(concept.getId());
 									}
 									
 								} else {
