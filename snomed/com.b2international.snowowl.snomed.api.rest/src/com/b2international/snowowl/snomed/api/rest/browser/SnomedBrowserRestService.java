@@ -17,12 +17,10 @@ import java.io.StringReader;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,7 +30,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
@@ -42,10 +39,10 @@ import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
+import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
@@ -320,7 +317,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Stated or inferred form", allowableValues="stated, inferred")
 			@RequestParam(value="form", defaultValue="inferred")
-			final String form) {
+			final String form,
+			
+			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
+			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
+			final SnomedBrowserDescriptionType preferredDescriptionType) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -334,7 +335,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		
 		if ("stated".equals(form) || "inferred".equals(form)) {
 			final IComponentRef ref = createComponentRef(branchPath, conceptId);
-			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form));
+			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form), preferredDescriptionType);
 		}
 		
 		throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
@@ -351,7 +352,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/descriptions",
 			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsFSN(
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -370,7 +371,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String languageSetting) {
+			final String languageSetting,
+			
+			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
+			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
+			final SnomedBrowserDescriptionType preferredDescriptionType) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -383,7 +388,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final StorageRef ref = new StorageRef(repositoryId, branchPath);
-		return browserService.getDescriptions(ref, query, extendedLocales, offset, limit);
+		return browserService.getDescriptions(ref, query, extendedLocales, offset, limit, preferredDescriptionType);
 	}
 
 	@ApiOperation(

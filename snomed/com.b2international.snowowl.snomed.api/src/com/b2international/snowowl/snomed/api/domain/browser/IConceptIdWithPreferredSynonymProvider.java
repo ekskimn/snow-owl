@@ -15,12 +15,21 @@
  */
 package com.b2international.snowowl.snomed.api.domain.browser;
 
-import com.b2international.snowowl.snomed.core.domain.DefinitionStatusProvider;
-
 /**
- * Holds information about a description's container concept.
+ * Holds a SNOMED CT concept's unique identifier along with its preferred synonym for the requested language and dialect.
+ * 
+ * @since 4.7.2
  */
-public interface ISnomedBrowserDescriptionResultDetails extends IConceptIdWithFsnProvider,
-		IConceptIdWithPreferredSynonymProvider, IStatusWithModuleIdProvider, DefinitionStatusProvider {
-	// Empty interface body
+public interface IConceptIdWithPreferredSynonymProvider {
+
+	/** 
+	 * @return The concept's unique component identifier 
+	 */
+	String getConceptId();
+
+	/**
+	 * @return The preferred synonym of this concept for the requested dialect 
+	 */
+	String getPreferredSynonym();
+
 }

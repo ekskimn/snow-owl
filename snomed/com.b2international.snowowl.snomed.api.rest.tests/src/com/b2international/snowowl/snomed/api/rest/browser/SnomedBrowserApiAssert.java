@@ -98,11 +98,18 @@ public class SnomedBrowserApiAssert {
 	}
 
 	
-	public static Map<String, Object> givenConceptRequestBody(final String conceptId, final boolean active, final String fsn, final String moduleId,
-			final ImmutableList<?> descriptions, final ImmutableList<?> relationships, final Date creationDate) {
+	public static Map<String, Object> givenConceptRequestBody(final String conceptId, final boolean active, final String fsn,  
+			final String moduleId, final ImmutableList<?> descriptions, final ImmutableList<?> relationships, final Date creationDate) {
+	
+		return givenConceptRequestBody(conceptId, active, fsn, fsn, moduleId, descriptions, relationships, creationDate);
+	}
+	
+	public static Map<String, Object> givenConceptRequestBody(final String conceptId, final boolean active, final String fsn, final String pt, 
+			final String moduleId, final ImmutableList<?> descriptions, final ImmutableList<?> relationships, final Date creationDate) {
+		
 		final ImmutableMap.Builder<String, Object> conceptBuilder = ImmutableMap.<String, Object>builder()
 				.put("fsn", fsn)
-				.put("preferredSynonym", fsn)
+				.put("preferredSynonym", pt)
 				.put("moduleId", moduleId)
 				.put("isLeafInferred", "")
 				.put("isLeafStated", "")
@@ -126,6 +133,13 @@ public class SnomedBrowserApiAssert {
 	
 	public static ImmutableList<?> createDescriptions(final String fsn, final String moduleId, final Map<?, ?> fsnAcceptabilityMap,
 			final Date creationDate) {
+		
+		return createDescriptions(fsn, "New PT at " + creationDate, moduleId, fsnAcceptabilityMap, creationDate);
+	}
+
+	public static ImmutableList<?> createDescriptions(final String fsn, String pt, final String moduleId, final Map<?, ?> fsnAcceptabilityMap, 
+			final Date creationDate) {
+		
 		final Map<?, ?> fsnDescription = ImmutableMap.<String, Object>builder()
 				.put("descriptionId", generateComponentId(null, ComponentCategory.DESCRIPTION))
 				.put("effectiveTime", creationDate)
@@ -144,7 +158,7 @@ public class SnomedBrowserApiAssert {
 				.put("effectiveTime", creationDate)
 				.put("conceptId", "")
 				.put("active", true)
-				.put("term", "New PT at " + creationDate)
+				.put("term", pt)
 				.put("type", SnomedBrowserDescriptionType.SYNONYM)
 				.put("lang", "en")
 				.put("moduleId", moduleId)
