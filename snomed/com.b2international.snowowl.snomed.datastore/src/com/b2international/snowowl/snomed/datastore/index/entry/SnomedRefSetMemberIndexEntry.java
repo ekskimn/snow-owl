@@ -791,6 +791,7 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 			// query
 			doc.query = query;
 			
+			doc.setScore(score);
 			// metadata
 			doc.setBranchPath(branchPath);
 			doc.setCommitTimestamp(commitTimestamp);
