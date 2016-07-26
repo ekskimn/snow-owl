@@ -200,7 +200,7 @@ public abstract class DescriptionRequestHelper {
 				.filterByType("<<" + Concepts.SYNONYM)
 				.filterByAcceptability(Acceptability.PREFERRED)
 				.filterByExtendedLocales(locales)
-				.setLimit(conceptIds.size());
+				.setLimit(conceptIds.size() * locales.size());
 	}
 	
 
