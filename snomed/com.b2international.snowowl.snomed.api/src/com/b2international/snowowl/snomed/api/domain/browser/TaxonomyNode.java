@@ -27,7 +27,13 @@ public interface TaxonomyNode {
 	 */
 	boolean getIsLeafInferred();
 
+	/**
+	 * @deprecated Property setters should not be part of this interface.
+	 */
 	void setIsLeafInferred(boolean isLeafInferred);
 
+	/**
+	 * @deprecated Property setters should not be part of this interface.
+	 */
 	void setIsLeafStated(boolean isLeafStated);
 }
