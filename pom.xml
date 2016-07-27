@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.b2international.snowowl</groupId>
 	<artifactId>snowowl-parent</artifactId>
-	<version>4.5.63</version>
+	<version>4.5.64</version>
 	<packaging>pom</packaging>
 
 	<properties>
@@ -557,7 +557,7 @@
 				<dependency>
 					<groupId>org.ihtsdo.drools</groupId>
 					<artifactId>snomed-drools</artifactId>
-					<version>1.0.5</version>
+					<version>1.0.6</version>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
@@ -630,7 +630,7 @@
 		<profile>
 			<id>tp_dependencies</id>
 			<properties>
-				<target.platform.version>4.5.61</target.platform.version>
+				<target.platform.version>4.5.64</target.platform.version>
 				<target.platform.url>${nexus.url}/content/unzip/releases.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
 			</properties>
 			<repositories>
