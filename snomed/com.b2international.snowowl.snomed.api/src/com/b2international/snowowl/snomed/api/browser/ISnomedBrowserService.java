@@ -62,6 +62,9 @@ public interface ISnomedBrowserService {
 	 */
 	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef conceptRef, List<ExtendedLocale> locales);
 	
+	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef conceptRef, List<ExtendedLocale> locales,
+			SnomedBrowserDescriptionType preferredDescriptionType);
+
 	/**
 	 * Retrieves a list of child concepts for a single identifier.
 	 * 

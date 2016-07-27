@@ -300,7 +300,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String languageSetting) {
+			final String languageSetting,
+			
+			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
+			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
+			final SnomedBrowserDescriptionType preferredDescriptionType) {
 		
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -313,7 +317,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptParents(ref, extendedLocales);
+		return browserService.getConceptParents(ref, extendedLocales, preferredDescriptionType);
 	}
 	
 	@ApiOperation(

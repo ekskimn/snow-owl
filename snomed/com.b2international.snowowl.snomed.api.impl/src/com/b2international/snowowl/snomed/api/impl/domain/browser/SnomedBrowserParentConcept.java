@@ -22,6 +22,7 @@ public class SnomedBrowserParentConcept implements ISnomedBrowserParentConcept {
 
 	private String conceptId;
 	private String fsn;
+	private String preferredSynonym;
 	private DefinitionStatus definitionStatus;
 
 	@Override
@@ -32,6 +33,11 @@ public class SnomedBrowserParentConcept implements ISnomedBrowserParentConcept {
 	@Override
 	public String getFsn() {
 		return fsn;
+	}
+	
+	@Override
+	public String getPreferredSynonym() {
+		return preferredSynonym;
 	}
 
 	@Override
@@ -47,6 +53,10 @@ public class SnomedBrowserParentConcept implements ISnomedBrowserParentConcept {
 		this.fsn = fsn;
 	}
 
+	public void setPreferredSynonym(String preferredSynonym) {
+		this.preferredSynonym = preferredSynonym;
+	}
+
 	public void setDefinitionStatus(final DefinitionStatus definitionStatus) {
 		this.definitionStatus = definitionStatus;
 	}
@@ -58,6 +68,8 @@ public class SnomedBrowserParentConcept implements ISnomedBrowserParentConcept {
 		builder.append(conceptId);
 		builder.append(", fsn=");
 		builder.append(fsn);
+		builder.append(", preferredSynonym=");
+		builder.append(preferredSynonym);
 		builder.append(", definitionStatus=");
 		builder.append(definitionStatus);
 		builder.append("]");
