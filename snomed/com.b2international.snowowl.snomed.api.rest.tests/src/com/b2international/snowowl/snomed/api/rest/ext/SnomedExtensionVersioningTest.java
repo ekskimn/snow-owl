@@ -79,7 +79,8 @@ public class SnomedExtensionVersioningTest extends ExtensionTest {
 		
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 			.when().get("{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
-			.then().body("released", equalTo(true));
+			.then().body("released", equalTo(true))
+			.and().body("effectiveTime", equalTo(versionDate));
 	}
 
 }

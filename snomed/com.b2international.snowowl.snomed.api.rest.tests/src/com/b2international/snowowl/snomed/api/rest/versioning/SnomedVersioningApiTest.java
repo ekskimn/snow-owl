@@ -66,7 +66,7 @@ public class SnomedVersioningApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void createVersion() {
-		assertVersionPostStatus("sct-v2", dateFormat.format(new Date()), 201);
+		assertVersionPostStatus("sct-v2", "20150102", 201);
 		assertVersionGetStatus("sct-v2", 200);
 	}
 
