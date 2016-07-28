@@ -211,7 +211,7 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	
 	@Override
 	public void configureMessageConverters(final List<HttpMessageConverter<?>> converters) {
-		final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
+		final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter(Charsets.UTF_8);
 		stringConverter.setWriteAcceptCharset(false);
 		converters.add(stringConverter);
 

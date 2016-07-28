@@ -48,6 +48,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.module.scala.DefaultScalaModule;
+import com.google.common.base.Charsets;
 import com.mangofactory.swagger.configuration.SpringSwaggerConfig;
 import com.mangofactory.swagger.models.alternates.AlternateTypeRule;
 import com.mangofactory.swagger.paths.RelativeSwaggerPathProvider;
@@ -166,7 +167,7 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 
 	@Override
 	public void configureMessageConverters(final List<HttpMessageConverter<?>> converters) {
-		final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
+		final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter(Charsets.UTF_8);
 		stringConverter.setWriteAcceptCharset(false);
 		converters.add(stringConverter);
 
