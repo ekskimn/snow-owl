@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.terminologyregistry.core.request;
 
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.CodeSystemVersions;
 import com.b2international.snowowl.datastore.request.SearchRequest;
 import com.b2international.snowowl.datastore.request.SearchRequestBuilder;
@@ -27,6 +28,7 @@ public final class CodeSystemVersionSearchRequestBuilder
 
 	private String codeSystemShortName;
 	private String versionId;
+	private IBranchPath parentPath;
 
 	CodeSystemVersionSearchRequestBuilder(final String repositoryId) {
 		super(repositoryId);
@@ -42,13 +44,17 @@ public final class CodeSystemVersionSearchRequestBuilder
 		return getSelf();
 	}
 
+	public CodeSystemVersionSearchRequestBuilder setParentPath(IBranchPath parentPath) {
+		this.parentPath = parentPath;
+		return getSelf();
+	}
+
 	@Override
 	protected SearchRequest<CodeSystemVersions> createSearch() {
 		final CodeSystemVersionSearchRequest req = new CodeSystemVersionSearchRequest();
 		req.setCodeSystemShortName(codeSystemShortName);
 		req.setVersionId(versionId);
-
+		req.setParentPath(parentPath);
 		return req;
 	}
-
 }

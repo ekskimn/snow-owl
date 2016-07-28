@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.terminologyregistry.core.request;
 
+import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.VERSION_PARENT_BRANCH_PATH;
 import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.VERSION_SYSTEM_SHORT_NAME;
 import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.VERSION_VERSION_ID;
 
@@ -34,6 +35,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 
 import com.b2international.commons.StringUtils;
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.CodeSystemVersions;
@@ -51,6 +53,7 @@ final class CodeSystemVersionSearchRequest extends SearchRequest<CodeSystemVersi
 
 	private String codeSystemShortName;
 	private String versionId;
+	private IBranchPath parentPath;
 	
 	CodeSystemVersionSearchRequest() {
 	}
@@ -62,6 +65,11 @@ final class CodeSystemVersionSearchRequest extends SearchRequest<CodeSystemVersi
 	void setVersionId(String versionId) {
 		this.versionId = versionId;
 	}
+
+	void setParentPath(IBranchPath parentPath) {
+		this.parentPath = parentPath;
+	}
+
 
 	@Override
 	protected CodeSystemVersions doExecute(final BranchContext context) throws IOException {
@@ -100,6 +108,11 @@ final class CodeSystemVersionSearchRequest extends SearchRequest<CodeSystemVersi
 			query.add(versionIdQuery, Occur.MUST);
 		}
 		
+		if (parentPath != null) {
+			final TermQuery versionIdQuery = new TermQuery(new Term(VERSION_PARENT_BRANCH_PATH, parentPath.getPath()));
+			query.add(versionIdQuery, Occur.MUST);
+		}
+		
 		if (!query.clauses().isEmpty()) {
 			return query;
 		} else {
@@ -111,5 +124,4 @@ final class CodeSystemVersionSearchRequest extends SearchRequest<CodeSystemVersi
 	protected Class<CodeSystemVersions> getReturnType() {
 		return CodeSystemVersions.class;
 	}
-
 }

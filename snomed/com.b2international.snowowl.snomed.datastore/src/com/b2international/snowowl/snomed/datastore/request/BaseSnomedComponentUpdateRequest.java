@@ -15,21 +15,28 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
-import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.api.NullBranchPath;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.datastore.CodeSystemVersions;
 import com.b2international.snowowl.datastore.ICodeSystemVersion;
-import com.b2international.snowowl.datastore.TerminologyRegistryService;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
+import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 
 /** 
  * @since 4.5
  * @param <B>
  */
 public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<TransactionContext, Void> {
+	
+	private static final Logger LOG = LoggerFactory.getLogger(BaseSnomedComponentUpdateRequest.class);
 
 	private final String componentId;
 	
@@ -70,11 +77,35 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 	}
 	
 	protected IBranchPath getLatestReleaseBranch(TransactionContext context) {
-		final TerminologyRegistryService registryService = context.service(TerminologyRegistryService.class);
-		final List<ICodeSystemVersion> allVersions = registryService.getAllVersion(context.id());
-		final ICodeSystemVersion systemVersion = allVersions.get(0);
-		final IBranchPath branchPath = ICodeSystemVersion.TO_BRANCH_PATH_FUNC.apply(systemVersion);
-		return branchPath;
+		
+		IBranchPath latestReleaseParentPath = context.branch().branchPath();
+		
+		while (!NullBranchPath.INSTANCE.equals(latestReleaseParentPath)) {
+
+			final CodeSystemVersions versions = new CodeSystemRequests(context.id())
+					.prepareSearchCodeSystemVersion()
+					.setParentPath(latestReleaseParentPath)
+					.build(IBranchPath.MAIN_BRANCH)
+					.execute(context.service(IEventBus.class))
+					.getSync();
+
+			ICodeSystemVersion latestReleaseVersion = null;
+			
+			for (ICodeSystemVersion version : versions) {
+				if (latestReleaseVersion == null || version.getEffectiveDate() > latestReleaseVersion.getEffectiveDate()) {
+					latestReleaseVersion = version;
+				}
+			}
+			
+			if (latestReleaseVersion != null) {
+				return BranchPathUtils.createPath(latestReleaseVersion.getPath());
+			}
+			
+			latestReleaseParentPath = latestReleaseParentPath.getParent();
+		}
+		
+		LOG.warn("Couldn't find latest release branch for path {}, using MAIN as the reference point.", context.branch().path());
+		return BranchPathUtils.createMainPath();
 	}
 		
 	protected boolean updateModule(final TransactionContext context, final Component component) {
