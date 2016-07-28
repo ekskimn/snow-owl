@@ -25,7 +25,9 @@ import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.ComponentStatusConflictException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -92,10 +94,14 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 					long start = new Date().getTime();
 					final IBranchPath branchPath = getLatestReleaseBranch(context);
 					final SnomedTerminologyBrowser terminologyBrowser = context.service(SnomedTerminologyBrowser.class);
-					final SnomedConceptIndexEntry releasedConcept = terminologyBrowser.getConcept(branchPath, getComponentId());	
-					if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
+					final SnomedConceptIndexEntry releasedConcept = terminologyBrowser.getConcept(branchPath, getComponentId());
+					
+					if (releasedConcept == null) {
+						throw new ComponentNotFoundException(ComponentCategory.CONCEPT, getComponentId());
+					} else if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
 						concept.setEffectiveTime(EffectiveTimes.parse(releasedConcept.getEffectiveTime()));
 					}
+					
 					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
 			}

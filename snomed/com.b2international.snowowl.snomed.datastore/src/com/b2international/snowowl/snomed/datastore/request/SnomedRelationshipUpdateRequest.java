@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
+import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
@@ -93,9 +95,12 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 					final SnomedStatementBrowser statementBrowser = context.service(SnomedStatementBrowser.class);
 					final SnomedRelationshipIndexEntry releasedRelationship = statementBrowser.getStatement(branchPath, getComponentId());
 	
-					if (!isDifferentToPreviousRelease(relationship, releasedRelationship)) {
+					if (releasedRelationship == null) {
+						throw new ComponentNotFoundException(ComponentCategory.RELATIONSHIP, getComponentId());
+					} else if (!isDifferentToPreviousRelease(relationship, releasedRelationship)) {
 						relationship.setEffectiveTime(EffectiveTimes.parse(releasedRelationship.getEffectiveTime()));
 					}
+					
 					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
 			}
