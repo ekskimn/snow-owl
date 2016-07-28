@@ -76,7 +76,7 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 		return Void.class;
 	}
 	
-	protected IBranchPath getLatestReleaseBranch(TransactionContext context) {
+	public static IBranchPath getLatestReleaseBranch(TransactionContext context) {
 		
 		IBranchPath latestReleaseParentPath = context.branch().branchPath();
 		
