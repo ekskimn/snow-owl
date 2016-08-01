@@ -174,6 +174,7 @@ final class SnomedConceptConverter extends BaseSnomedComponentConverter<SnomedCo
 					.prepareSearchRelationship()
 					.all()
 					.setExpand(expandOptions.get("expand", Options.class))
+					.setLocales(locales())
 					.filterBySource(conceptIds)
 					.build()
 					.execute(context());
