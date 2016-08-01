@@ -40,7 +40,6 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserMergeReviewDetail;
@@ -341,11 +340,11 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 
 		@Override
 		protected ISnomedBrowserMergeReviewDetail onSuccess() throws IOException {
-			final ISnomedBrowserConcept sourceConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(parameters.getSourcePath(), conceptId), parameters.getExtendedLocales());
-			final ISnomedBrowserConcept targetConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(parameters.getTargetPath(), conceptId), parameters.getExtendedLocales());
+			final ISnomedBrowserConcept sourceConcept = browserService.getConceptDetails(parameters.getSourcePath(), conceptId, parameters.getExtendedLocales());
+			final ISnomedBrowserConcept targetConcept = browserService.getConceptDetails(parameters.getTargetPath(), conceptId, parameters.getExtendedLocales());
 
 			final ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, parameters.getExtendedLocales());
-			final ISnomedBrowserConceptUpdate manuallyMergedConcept = manualConceptMergeService.exists(parameters.getTargetPath(), parameters.getMergeReviewId(), conceptId) 
+			final ISnomedBrowserConcept manuallyMergedConcept = manualConceptMergeService.exists(parameters.getTargetPath(), parameters.getMergeReviewId(), conceptId) 
 					? manualConceptMergeService.retrieve(parameters.getTargetPath(), parameters.getMergeReviewId(), conceptId) 
 					: null;
 
@@ -371,6 +370,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			mergedConcept.setModuleId(winner.getModuleId());
 			mergedConcept.setIsLeafInferred(winner.getIsLeafInferred());
 			mergedConcept.setIsLeafStated(winner.getIsLeafStated());
+			
+			mergedConcept.setInactivationIndicator(winner.getInactivationIndicator());
+			mergedConcept.setAssociationTargets(winner.getAssociationTargets());
 			
 			// Merge Descriptions - take all the descriptions from source, and add in from target
 			// if they're unpublished, which will cause an overwrite in the Set if the Description Id matches
@@ -487,7 +489,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			@Override public boolean apply(final String input) { return SKIP_ID != input; }
 		}));
 
-		final List<ISnomedBrowserConceptUpdate> conceptUpdates = new ArrayList<ISnomedBrowserConceptUpdate>();
+		final List<ISnomedBrowserConcept> conceptUpdates = new ArrayList<ISnomedBrowserConcept>();
 		for (final String conceptId : relevantIntersection) {
 			if (!manualConceptMergeService.exists(targetPath, mergeReviewId, conceptId)) {
 				throw new InvalidStateException("Manually merged concept " + conceptId + " does not exist for merge review " + mergeReviewId);
@@ -516,7 +518,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	}
 
 	@Override
-	public void persistManualConceptMerge(final MergeReview mergeReview, final ISnomedBrowserConceptUpdate concept) {
+	public void persistManualConceptMerge(final MergeReview mergeReview, final ISnomedBrowserConcept concept) {
 		manualConceptMergeService.storeConceptChanges(mergeReview.targetPath(), mergeReview.id(), concept);
 	}
 	

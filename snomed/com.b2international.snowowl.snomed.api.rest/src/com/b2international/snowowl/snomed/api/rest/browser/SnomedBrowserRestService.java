@@ -50,7 +50,6 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescr
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
@@ -105,9 +104,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String acceptLanguage) {
 
 		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
-		
-		final IComponentRef conceptRef = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptDetails(conceptRef, extendedLocales);
+		return browserService.getConceptDetails(branchPath, conceptId, extendedLocales);
 	}
 
 	@ApiOperation(
@@ -195,7 +192,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String languageSetting,
 
 			@RequestBody
-			final SnomedBrowserConceptUpdate concept,
+			final SnomedBrowserConcept concept,
 
 			final Principal principal) {
 
@@ -240,7 +237,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String languageSetting,
 
 			@RequestBody
-			final List<SnomedBrowserConceptUpdate> concepts,
+			final List<SnomedBrowserConcept> concepts,
 
 			final Principal principal) throws URISyntaxException {
 

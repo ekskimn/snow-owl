@@ -47,7 +47,7 @@ import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserMergeReviewDetail;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.rest.domain.CreateReviewRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
@@ -147,7 +147,7 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 	@RequestMapping(value="/{id}/{conceptId}", method=RequestMethod.POST)
 	public void storeMergeReviewConcept(@PathVariable("id") final String mergeReviewId, 
 			@PathVariable("conceptId") final String conceptId,
-			@RequestBody final SnomedBrowserConceptUpdate concept) throws Exception {
+			@RequestBody final SnomedBrowserConcept concept) throws Exception {
 
 		if (!conceptId.equals(concept.getConceptId())) {
 			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");

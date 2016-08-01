@@ -27,7 +27,6 @@ import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserBulkChangeRun;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserChildConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
@@ -41,14 +40,15 @@ public interface ISnomedBrowserService {
 	/**
 	 * Retrieves information strongly connected to a concept in a single request.
 	 * 
-	 * @param conceptRef the component reference pointing to the concept to retrieve (may not be {@code null})
-	 * @param locales the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
+	 * @param branch the path of the branch to use when retrieving the concept (may not be {@code null})
+	 * @param conceptId the identifier of the concept to retrieve (may not be {@code null})
+	 * @param extendedLocales the {@link ExtendedLocale}s to inspect when determining FSN and preferred synonym, in decreasing order of preference
 	 * @return the aggregated content for the requested concept
 	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
-	ISnomedBrowserConcept getConceptDetails(IComponentRef conceptRef, List<ExtendedLocale> locales);
+	ISnomedBrowserConcept getConceptDetails(String branch, String conceptId, List<ExtendedLocale> extendedLocales);
 
 	/**
 	 * Retrieves a list of parent concepts for a single identifier.
@@ -110,13 +110,13 @@ public interface ISnomedBrowserService {
 	 */
 	Map<String, ISnomedBrowserConstant> getConstants(String branch, List<ExtendedLocale> locales);
 
-	ISnomedBrowserConcept create(String branchPath, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> locales);
+	ISnomedBrowserConcept create(String branch, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales);
 
-	ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate concept, String userId, List<ExtendedLocale> locales);
+	ISnomedBrowserConcept update(String branch, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales);
 
-	void update(String branchPath, List<? extends ISnomedBrowserConceptUpdate> concept, String userId, List<ExtendedLocale> locales);
+	void update(String branchPath, List<? extends ISnomedBrowserConcept> concept, String userId, List<ExtendedLocale> extendedLocales);
 
-	ISnomedBrowserBulkChangeRun beginBulkChange(String branchPath, List<? extends ISnomedBrowserConceptUpdate> newVersionConcepts, String userId, List<ExtendedLocale> locales);
+	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, String userId, List<ExtendedLocale> locales);
 
 	ISnomedBrowserBulkChangeRun getBulkChangeRun(String bulkChangeId);
 

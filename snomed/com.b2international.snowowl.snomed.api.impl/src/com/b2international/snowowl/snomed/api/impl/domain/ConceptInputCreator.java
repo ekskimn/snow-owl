@@ -2,7 +2,6 @@ package com.b2international.snowowl.snomed.api.impl.domain;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
@@ -55,14 +54,11 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 			snomedConceptUpdate.setDefinitionStatus(newVersion.getDefinitionStatus());
 		}
 		
-		if (newVersion instanceof SnomedBrowserConceptUpdate) {
-			SnomedBrowserConceptUpdate update = (SnomedBrowserConceptUpdate) newVersion;
-			if (!newVersion.isActive()) {
-				InactivationIndicator inactivationIndicator = update.getInactivationIndicator();
-				if (inactivationIndicator != null) {
-					snomedConceptUpdate.setInactivationIndicator(inactivationIndicator);
-					anyDifference = true;
-				}
+		if (!newVersion.isActive()) {
+			InactivationIndicator inactivationIndicator = newVersion.getInactivationIndicator();
+			if (inactivationIndicator != null) {
+				snomedConceptUpdate.setInactivationIndicator(inactivationIndicator);
+				anyDifference = true;
 			}
 		}
 
