@@ -65,6 +65,8 @@ import com.b2international.snowowl.snomed.api.domain.classification.IRelationshi
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChangeList;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.ClassificationRun;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConcept;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
@@ -80,6 +82,9 @@ import com.b2international.snowowl.snomed.reasoner.classification.PersistChanges
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
 import com.google.common.base.Function;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -423,6 +428,20 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			@Override public String apply(ISnomedConcept input) { return input.getId(); }
 		});
 		
+		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipType> types = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipType>() {
+			@Override
+			public SnomedBrowserRelationshipType load(ISnomedConcept key) throws Exception {
+				return browserService.convertBrowserRelationshipType(key);
+			}
+		});
+		
+		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipTarget> targets = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipTarget>() {
+			@Override
+			public SnomedBrowserRelationshipTarget load(ISnomedConcept key) throws Exception {
+				return browserService.convertBrowserRelationshipTarget(key);
+			}
+		});
+		
 		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
 			switch (relationshipChange.getChangeNature()) {
 				case INFERRED:
@@ -441,8 +460,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				
 					ISnomedConcept destinationConcept = relatedConceptsById.get(relationshipChange.getDestinationId());
 					ISnomedConcept typeConcept = relatedConceptsById.get(relationshipChange.getTypeId());
-					inferred.setTarget(browserService.convertBrowserRelationshipTarget(destinationConcept));
-					inferred.setType(browserService.convertBrowserRelationshipType(typeConcept));
+					inferred.setTarget(targets.getUnchecked(destinationConcept));
+					inferred.setType(types.getUnchecked(typeConcept));
 
 					relationships.add(inferred);
 					break;
