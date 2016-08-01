@@ -20,7 +20,10 @@ import java.util.Map;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
+import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
+import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
+import com.google.common.collect.Multimap;
 
 public class SnomedBrowserDescription extends SnomedBrowserComponent implements ISnomedBrowserDescription {
 
@@ -31,7 +34,9 @@ public class SnomedBrowserDescription extends SnomedBrowserComponent implements 
 	private String term;
 	private CaseSignificance caseSignificance;
 	private Map<String, Acceptability> acceptabilityMap;
-
+	private DescriptionInactivationIndicator inactivationIndicator;
+	private Multimap<AssociationType, String> associationTargets;
+	
 	@Override
 	public String getId() {
 		return descriptionId;
@@ -99,6 +104,24 @@ public class SnomedBrowserDescription extends SnomedBrowserComponent implements 
 	public void setAcceptabilityMap(Map<String, Acceptability> acceptabilityMap) {
 		this.acceptabilityMap = acceptabilityMap;
 	}
+	
+	@Override
+	public DescriptionInactivationIndicator getInactivationIndicator() {
+		return inactivationIndicator;
+	}
+	
+	public void setInactivationIndicator(DescriptionInactivationIndicator inactivationIndicator) {
+		this.inactivationIndicator = inactivationIndicator;
+	}
+	
+	@Override
+	public Multimap<AssociationType, String> getAssociationTargets() {
+		return associationTargets;
+	}
+
+	public void setAssociationTargets(Multimap<AssociationType, String> associationTargets) {
+		this.associationTargets = associationTargets;
+	}
 
 	@Override
 	public String toString() {
@@ -117,6 +140,10 @@ public class SnomedBrowserDescription extends SnomedBrowserComponent implements 
 		builder.append(caseSignificance);
 		builder.append(", acceptabilityMap=");
 		builder.append(acceptabilityMap);
+		builder.append(", inactivationIndicator()=");
+		builder.append(inactivationIndicator);
+		builder.append(", associationTargets()=");
+		builder.append(associationTargets);
 		builder.append(", getEffectiveTime()=");
 		builder.append(getEffectiveTime());
 		builder.append(", getModuleId()=");

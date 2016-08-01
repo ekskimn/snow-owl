@@ -20,9 +20,12 @@ import java.util.List;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
+import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Multimap;
 
 public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISnomedBrowserConcept {
 
@@ -32,7 +35,9 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 	private String preferredSynonym;
 	private boolean leafInferred;
 	private boolean leafStated;
-
+	private InactivationIndicator inactivationIndicator;
+	private Multimap<AssociationType, String> associationTargets;
+	
 	@JsonDeserialize(contentAs=SnomedBrowserDescription.class)
 	private List<ISnomedBrowserDescription> descriptions = ImmutableList.of();
 
@@ -117,6 +122,24 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 	public void setRelationships(final List<ISnomedBrowserRelationship> relationships) {
 		this.relationships = relationships;
 	}
+	
+	@Override
+	public InactivationIndicator getInactivationIndicator() {
+		return inactivationIndicator;
+	}
+	
+	public void setInactivationIndicator(InactivationIndicator inactivationIndicator) {
+		this.inactivationIndicator = inactivationIndicator;
+	}
+	
+	@Override
+	public Multimap<AssociationType, String> getAssociationTargets() {
+		return associationTargets;
+	}
+
+	public void setAssociationTargets(Multimap<AssociationType, String> associationTargets) {
+		this.associationTargets = associationTargets;
+	}
 
 	@Override
 	public String toString() {
@@ -137,6 +160,10 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		builder.append(descriptions);
 		builder.append(", relationships=");
 		builder.append(relationships);
+		builder.append(", inactivationIndicator()=");
+		builder.append(inactivationIndicator);
+		builder.append(", associationTargets()=");
+		builder.append(associationTargets);
 		builder.append(", getEffectiveTime()=");
 		builder.append(getEffectiveTime());
 		builder.append(", getModuleId()=");
