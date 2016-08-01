@@ -140,9 +140,9 @@ public class SnomedBrowserDescription extends SnomedBrowserComponent implements 
 		builder.append(caseSignificance);
 		builder.append(", acceptabilityMap=");
 		builder.append(acceptabilityMap);
-		builder.append(", inactivationIndicator()=");
+		builder.append(", inactivationIndicator=");
 		builder.append(inactivationIndicator);
-		builder.append(", associationTargets()=");
+		builder.append(", associationTargets=");
 		builder.append(associationTargets);
 		builder.append(", getEffectiveTime()=");
 		builder.append(getEffectiveTime());

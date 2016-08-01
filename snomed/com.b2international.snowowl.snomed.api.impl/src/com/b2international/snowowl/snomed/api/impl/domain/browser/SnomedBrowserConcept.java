@@ -160,9 +160,9 @@ public class SnomedBrowserConcept extends SnomedBrowserComponent implements ISno
 		builder.append(descriptions);
 		builder.append(", relationships=");
 		builder.append(relationships);
-		builder.append(", inactivationIndicator()=");
+		builder.append(", inactivationIndicator=");
 		builder.append(inactivationIndicator);
-		builder.append(", associationTargets()=");
+		builder.append(", associationTargets=");
 		builder.append(associationTargets);
 		builder.append(", getEffectiveTime()=");
 		builder.append(getEffectiveTime());
