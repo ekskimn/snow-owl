@@ -48,10 +48,13 @@ import org.junit.Test;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
+import com.b2international.snowowl.snomed.core.domain.AssociationType;
+import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMultimap;
 import com.jayway.restassured.response.ExtractableResponse;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.response.ValidatableResponse;
@@ -80,7 +83,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
 		final Map<?, ?> requestBody = givenConceptRequestBody(null, true, fsn, MODULE_SCT_CORE, descriptions, null, creationDate);
 		assertComponentCreatedWithStatus(createMainPath(), requestBody, 400).and().body("message",
-				equalTo("At least one isA relationship is required."));
+				equalTo("At least one IS A relationship is required."));
 	}
 
 	@Test
@@ -145,6 +148,8 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 
 		final Map<String, Object> concept = response.and().extract().jsonPath().get();
 		concept.put("active", false);
+		concept.put("inactivationIndicator", InactivationReason.DUPLICATE.name());
+		concept.put("associationTargets", ImmutableMultimap.<String, Object>of(AssociationType.REPLACED_BY.name(), MODULE_SCT_CORE).asMap());
 
 		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 200);
 	}
