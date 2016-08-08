@@ -35,6 +35,7 @@ import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserA
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.generateComponentId;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.givenConceptRequestBody;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -146,12 +147,77 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 				creationDate);
 		final ValidatableResponse response = assertComponentCreatedWithStatus(createMainPath(), createRequestBody, 200);
 
+		final String conceptId = response.extract().jsonPath().getString("conceptId");
 		final Map<String, Object> concept = response.and().extract().jsonPath().get();
 		concept.put("active", false);
 		concept.put("inactivationIndicator", InactivationReason.DUPLICATE.name());
 		concept.put("associationTargets", ImmutableMultimap.<String, Object>of(AssociationType.REPLACED_BY.name(), MODULE_SCT_CORE).asMap());
 
-		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 200);
+		assertComponentUpdatedWithStatus(createMainPath(), conceptId, concept, 200);
+	}
+	
+	@Test
+	public void changeInactivationReason() throws Exception {
+		final Date creationDate = new Date();
+		final String fsn = "New FSN at " + creationDate;
+		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
+		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate);
+		final Map<String, Object> createRequestBody = givenConceptRequestBody(null, true, fsn, MODULE_SCT_CORE, descriptions, relationships,
+				creationDate);
+		final ValidatableResponse response = assertComponentCreatedWithStatus(createMainPath(), createRequestBody, 200);
+		
+		final String conceptId = response.extract().jsonPath().getString("conceptId");
+		final Map<String, Object> responseBody = response.extract().jsonPath().get();
+		
+		responseBody.put("active", false);
+		responseBody.put("inactivationIndicator", InactivationReason.DUPLICATE.name());
+		responseBody.put("associationTargets", ImmutableMultimap.<String, Object>of(AssociationType.REPLACED_BY.name(), MODULE_SCT_CORE).asMap());
+		
+		final Map<String, Object> responseBody2 = assertComponentUpdatedWithStatus(createMainPath(), conceptId, responseBody, 200)
+			.and().body("inactivationIndicator", equalTo(InactivationReason.DUPLICATE.name()))
+			.and().extract().jsonPath().get();
+		
+		responseBody2.put("inactivationIndicator", InactivationReason.AMBIGUOUS.name());
+		
+		assertComponentUpdatedWithStatus(createMainPath(), conceptId, responseBody2, 200)
+			.and().body("inactivationIndicator", equalTo(InactivationReason.AMBIGUOUS.name()));
+	}
+	
+	@Test
+	public void reactivateConcept() throws Exception {
+		final Date creationDate = new Date();
+		final String fsn = "New FSN at " + creationDate;
+		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
+		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate);
+		final Map<String, Object> createRequestBody = givenConceptRequestBody(null, true, fsn, MODULE_SCT_CORE, descriptions, relationships,
+				creationDate);
+		final ValidatableResponse response = assertComponentCreatedWithStatus(createMainPath(), createRequestBody, 200);
+		
+		final String conceptId = response.extract().jsonPath().getString("conceptId");
+		final Map<String, Object> responseBody = response.extract().jsonPath().get();
+		
+		responseBody.put("active", false);
+		responseBody.put("inactivationIndicator", InactivationReason.DUPLICATE.name());
+		responseBody.put("associationTargets", ImmutableMultimap.<String, Object>of(AssociationType.REPLACED_BY.name(), MODULE_SCT_CORE).asMap());
+		
+		final Map<String, Object> responseBody2 = assertComponentUpdatedWithStatus(createMainPath(), conceptId, responseBody, 200)
+				.and().body("inactivationIndicator", equalTo(InactivationReason.DUPLICATE.name()))
+				.and().extract().jsonPath().get();
+		
+		responseBody2.put("active", true);
+		
+		final List<Map<String, Object>> relationshipsResponse = (List<Map<String, Object>>) responseBody2.get("relationships");
+		relationshipsResponse.get(0).put("active", true);
+		
+		assertComponentUpdatedWithStatus(createMainPath(), conceptId, responseBody2, 200)
+				.and().body("inactivationIndicator", nullValue())
+				.and().body("associationTargets", nullValue())
+				.and().body("active", equalTo(true))
+				.and().body("descriptions[0].active", equalTo(true))
+				.and().body("descriptions[0].inactivationIndicator", nullValue())
+				.and().body("descriptions[1].active", equalTo(true))
+				.and().body("descriptions[1].inactivationIndicator", nullValue())
+				.and().body("relationships[0].active", equalTo(true));
 	}
 
 	@Test

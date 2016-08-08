@@ -533,7 +533,12 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		// Concept update
 		final SnomedConceptUpdateRequest conceptUpdateRequest = inputFactory.createComponentUpdate(existingConcept, updatedConcept, SnomedConceptUpdateRequest.class);
-
+		final boolean conceptInactivation = conceptUpdateRequest != null && Boolean.FALSE.equals(conceptUpdateRequest.isActive());
+		
+		if (conceptUpdateRequest != null && !conceptInactivation) {
+			bulkRequest.add(conceptUpdateRequest);
+		}
+		
 		for (final SnomedDescriptionUpdateRequest descriptionUpdateRequest : descriptionUpdateRequests.values()) {
 			bulkRequest.add(descriptionUpdateRequest);
 		}
@@ -560,7 +565,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			bulkRequest.add(SnomedRequests.prepareDeleteRelationship().setComponentId(deletedRelationshipId).build());
 		}
 
-		if (conceptUpdateRequest != null) {
+		if (conceptInactivation) {
 			bulkRequest.add(conceptUpdateRequest);
 		}
 
