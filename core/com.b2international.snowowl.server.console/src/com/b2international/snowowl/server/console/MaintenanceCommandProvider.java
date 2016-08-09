@@ -114,6 +114,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	private static final String LISTBRANCHES_COMMAND = "listbranches";
 	private static final String LISTREPOSITORIES_COMMAND = "listrepositories";
 	private static final String DBCREATEINDEX_COMMAND = "dbcreateindex";
+<<<<<<< HEAD
 	private static final String CHECKSERVICES_COMMAND = "checkservices";
 	private static final String RECREATEINDEX = "recreateindex";
 
@@ -133,14 +134,22 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			return "Artefact [branchPath=" + branchPath + ", storageKey=" + storageKey + ", snomedId=" + snomedId + "]";
 		}
 	}
+=======
+>>>>>>> SO-2004: remove checkservices command
 
 	@Override
 	public String getHelp() {
 		StringBuffer buffer = new StringBuffer();
 		buffer.append("---Snow Owl commands---\n");
+<<<<<<< HEAD
 		buffer.append("\tsnowowl checkservices - Checks the core services presence\n");
 <<<<<<< HEAD
 		buffer.append("\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namspace URI\n");
+=======
+		buffer.append("\tsnowowl dbcreateindex [nsUri] - creates the CDO_CREATED index on the proper DB tables for all classes contained by a package identified by its unique namespace URI.\n");
+		buffer.append("\tsnowowl listrepositories - prints all the repositories in the system.\n");
+		buffer.append("\tsnowowl listbranches [repository] - prints all the branches in the system for a repository.\n");
+>>>>>>> SO-2004: remove checkservices command
 		buffer.append("\tsnowowl reindex [repositoryId] [failedCommitTimestamp]- reindexes the content for the given repository ID from the given failed commit timestamp (optional, default timestamp is 1 which means no failed commit).\n");
 		buffer.append("\tsnowowl optimize [repositoryId] [maxSegments] - optimizes the underlying index for the repository to have the supplied maximum number of segments (default number is 1)\n");
 		buffer.append("\tsnowowl purge [repositoryId] [branchPath] [ALL|LATEST|HISTORY] - optimizes the underlying index by deleting unnecessary documents from the given branch using the given purge strategy (default strategy is LATEST)\n");
@@ -165,10 +174,16 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	 */
 	public void _snowowl(CommandInterpreter interpreter) throws InterruptedException {
 		String cmd = interpreter.nextArgument();
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 			if ("dbcreateindex".equals(cmd)) {
 				executeCreateDbIndex(interpreter);
+=======
+		try {
+			if (DBCREATEINDEX_COMMAND.equals(cmd)) {
+				createDbIndex(interpreter);
+>>>>>>> SO-2004: remove checkservices command
 				return;
 			}
 =======
@@ -747,6 +762,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		return indent;
 	}
 
+<<<<<<< HEAD
 	public synchronized void checkServices(CommandInterpreter interpreter) {
 
 		interpreter.println("Checking core services...");
@@ -764,6 +780,8 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		}
 	}
 
+=======
+>>>>>>> SO-2004: remove checkservices command
 	private boolean isValidRepositoryName(String repositoryName, CommandInterpreter interpreter) {
 		
 		if (Strings.isNullOrEmpty(repositoryName)) {
