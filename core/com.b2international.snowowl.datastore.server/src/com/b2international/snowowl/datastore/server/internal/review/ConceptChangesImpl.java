@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.datastore.server.internal.review;
 
+import java.util.Map;
 import java.util.Set;
 
 import com.b2international.snowowl.datastore.review.ConceptChanges;
@@ -28,16 +29,19 @@ public class ConceptChangesImpl implements ConceptChanges {
 	private final Set<String> newConcepts;
 	private final Set<String> changedConcepts;
 	private final Set<String> deletedConcepts;
+	private final Map<Long, String> affectedConcepts;
 
 	public ConceptChangesImpl(final String id,
 			final Set<String> newConcepts, 
 			final Set<String> changedConcepts, 
-			final Set<String> deletedConcepts) {
+			final Set<String> deletedConcepts, 
+			final Map<Long, String> affectedConcepts) {
 
 		this.id = id;
 		this.newConcepts = newConcepts;
 		this.changedConcepts = changedConcepts;
 		this.deletedConcepts = deletedConcepts;
+		this.affectedConcepts = affectedConcepts;
 	}
 
 	@Override
@@ -58,5 +62,10 @@ public class ConceptChangesImpl implements ConceptChanges {
 	@Override
 	public Set<String> deletedConcepts() {
 		return deletedConcepts;
+	}
+	
+	@Override
+	public Map<Long, String> affectedConcepts() {
+		return affectedConcepts;
 	}
 }
