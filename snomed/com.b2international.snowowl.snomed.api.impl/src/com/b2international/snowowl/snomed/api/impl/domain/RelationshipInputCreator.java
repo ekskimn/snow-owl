@@ -1,7 +1,7 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
-import com.b2international.commons.ClassUtils;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequest;
@@ -10,55 +10,66 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUp
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class RelationshipInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedRelationshipCreateRequest, SnomedRelationshipUpdateRequest, SnomedBrowserRelationship> {
+	
 	@Override
-	public SnomedRelationshipCreateRequest createInput(String branchPath, SnomedBrowserRelationship relationship, InputFactory inputFactory) {
-		return (SnomedRelationshipCreateRequest) SnomedRequests
-				.prepareNewRelationship()
-				.setActive(relationship.isActive())
-				.setModuleId(getModuleOrDefault(relationship))
-				.setTypeId(relationship.getType().getConceptId())
-				.setCharacteristicType(relationship.getCharacteristicType())
-				.setSourceId(relationship.getSourceId())
-				.setDestinationId(relationship.getTarget().getConceptId())
-				.setGroup(relationship.getGroupId())
-				.setModifier(relationship.getModifier())
+	public SnomedRelationshipCreateRequest createInput(SnomedBrowserRelationship newRelationship, InputFactory inputFactory) {
+		return (SnomedRelationshipCreateRequest) SnomedRequests.prepareNewRelationship()
+				.setActive(newRelationship.isActive())
+				.setModuleId(getModuleOrDefault(newRelationship))
+				.setTypeId(newRelationship.getType().getConceptId())
+				.setCharacteristicType(newRelationship.getCharacteristicType())
+				.setSourceId(newRelationship.getSourceId()) // XXX: for a new concept, this value might not be known
+				.setDestinationId(newRelationship.getTarget().getConceptId())
+				.setGroup(newRelationship.getGroupId())
+				.setModifier(newRelationship.getModifier())
 				.build();
 	}
 
 	@Override
-	public SnomedRelationshipUpdateRequest createUpdate(SnomedBrowserRelationship existingVersion, SnomedBrowserRelationship newVersion) {
-		final SnomedRelationshipUpdateRequestBuilder update = SnomedRequests.prepareUpdateRelationship(existingVersion.getRelationshipId());
-		boolean change = false;
-		if (!existingVersion.getModuleId().equals(newVersion.getModuleId())) {
-			change = true;
-			update.setModuleId(newVersion.getModuleId());
+	public SnomedRelationshipUpdateRequest createUpdate(SnomedBrowserRelationship existingRelationship, SnomedBrowserRelationship updatedRelationship) {
+		final SnomedRelationshipUpdateRequestBuilder builder = SnomedRequests.prepareUpdateRelationship(existingRelationship.getRelationshipId());
+		boolean anyDifference = false;
+		
+		if (existingRelationship.isActive() != updatedRelationship.isActive()) {
+			anyDifference = true;
+			builder.setActive(updatedRelationship.isActive());
 		}
-		if (existingVersion.isActive() != newVersion.isActive()) {
-			change = true;
-			update.setActive(newVersion.isActive());
+		
+		if (!existingRelationship.getModuleId().equals(updatedRelationship.getModuleId())) {
+			anyDifference = true;
+			builder.setModuleId(updatedRelationship.getModuleId());
 		}
-		if (existingVersion.getGroupId() != newVersion.getGroupId()) {
-			change = true;
-			update.setGroup(newVersion.getGroupId());
+		
+		if (existingRelationship.getGroupId() != updatedRelationship.getGroupId()) {
+			anyDifference = true;
+			builder.setGroup(updatedRelationship.getGroupId());
 		}
-		if (existingVersion.getCharacteristicType() != newVersion.getCharacteristicType()) {
-			change = true;
-			update.setCharacteristicType(newVersion.getCharacteristicType());
+		
+		if (!existingRelationship.getCharacteristicType().equals(updatedRelationship.getCharacteristicType())) {
+			anyDifference = true;
+			builder.setCharacteristicType(updatedRelationship.getCharacteristicType());
 		}
-		if (existingVersion.getModifier() != newVersion.getModifier()) {
-			change = true;
-			update.setModifier(newVersion.getModifier());
+		
+		if (!existingRelationship.getModifier().equals(updatedRelationship.getModifier())) {
+			anyDifference = true;
+			builder.setModifier(updatedRelationship.getModifier());
 		}
-		return change ? (SnomedRelationshipUpdateRequest) update.build() : null;
+		
+		if (anyDifference) {
+			// TODO remove cast, use only Request interfaces with proper types
+			return (SnomedRelationshipUpdateRequest) builder.build();
+		} else {
+			return null;
+		}
 	}
 
 	@Override
-	public boolean canCreateInput(Class<? extends SnomedComponentCreateRequest> inputType) {
-		return ClassUtils.isClassAssignableFrom(SnomedRelationshipCreateRequest.class, inputType.getName());
+	public boolean canCreateInput(Class<? extends BaseSnomedComponentCreateRequest> inputType) {
+		return SnomedRelationshipCreateRequest.class.isAssignableFrom(inputType);
 	}
-
+	
 	@Override
 	public boolean canCreateUpdate(Class<? extends BaseSnomedComponentUpdateRequest> updateType) {
-		return ClassUtils.isClassAssignableFrom(SnomedRelationshipUpdateRequest.class, updateType.getName());
+		return SnomedRelationshipUpdateRequest.class.isAssignableFrom(updateType);
 	}
 }

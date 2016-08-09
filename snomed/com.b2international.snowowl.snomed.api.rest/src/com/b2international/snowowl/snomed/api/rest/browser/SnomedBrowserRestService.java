@@ -272,7 +272,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@PathVariable(value="bulkChangeId")
 			final String bulkChangeId
 			) {
-		return browserService.getBulkChangeRun(bulkChangeId);
+		return browserService.getBulkChange(bulkChangeId);
 	}
 
 	@ApiOperation(
