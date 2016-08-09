@@ -960,7 +960,7 @@ If omitted, then default strategy will be used.
 
 |strategy
 |INDEX
-|`MEMORY`, `INDEX`, `CIS` - The source of the ID generation.
+|`EMBEDDED`, `CIS` - The source of the ID generation.
 
 |cisBaseUrl
 |
