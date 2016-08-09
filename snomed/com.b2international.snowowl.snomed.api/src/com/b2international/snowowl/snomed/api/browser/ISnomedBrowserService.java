@@ -104,10 +104,10 @@ public interface ISnomedBrowserService {
 
 	ISnomedBrowserConcept update(String branch, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> extendedLocales);
 
-	void update(String branchPath, List<? extends ISnomedBrowserConcept> concept, String userId, List<ExtendedLocale> extendedLocales);
+	void update(String branch, List<? extends ISnomedBrowserConcept> concept, String userId, List<ExtendedLocale> extendedLocales);
 
 	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, String userId, List<ExtendedLocale> locales);
 
-	ISnomedBrowserBulkChangeRun getBulkChangeRun(String bulkChangeId);
+	ISnomedBrowserBulkChangeRun getBulkChange(String bulkChangeId);
 
 }
