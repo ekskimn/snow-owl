@@ -168,6 +168,10 @@ public class DefaultCDOMerger implements CDOMerger
     else if (targetData instanceof CDORevision && sourceData instanceof CDORevisionDelta) 
     {
       data = changedInSourceAndAddedInTarget((CDORevision) targetData, (CDORevisionDelta) sourceData);
+    } 
+    else if (targetData instanceof CDORevision && sourceData instanceof CDOID) 
+    {
+      data = detachedInSourceAndAddedInTarget((CDORevision) targetData, (CDOID) sourceData);
     }
 
     return take(data);
@@ -175,6 +179,12 @@ public class DefaultCDOMerger implements CDOMerger
 
   // select the feature delta if something is new on target and changed on source by default
   protected Object changedInSourceAndAddedInTarget(CDORevision targetData, CDORevisionDelta sourceData) 
+  {
+    return sourceData;
+  }
+  
+  // choose the deletion of the object if something is new on target and removed on source by default
+  protected Object detachedInSourceAndAddedInTarget(CDORevision targetData, CDOID sourceData) 
   {
 	return sourceData;
   }
