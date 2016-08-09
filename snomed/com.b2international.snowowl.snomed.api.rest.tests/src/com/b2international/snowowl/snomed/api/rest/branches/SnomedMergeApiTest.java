@@ -663,6 +663,8 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void rebaseStaleBranchWithChangesOnDeletedContent() throws Exception {
+		givenBranchWithPath(testBranchPath);
+		
 		// create changes on test branch
 		assertRelationshipCreated(testBranchPath, "R1");
 		assertDescriptionCreated(testBranchPath, "D1", SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP);
@@ -705,6 +707,8 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void rebaseStaleBranchWithChangesOnNewContent() throws Exception {
+		givenBranchWithPath(testBranchPath);
+		
 		// create changes on test branch
 		assertRelationshipCreated(testBranchPath, "R1");
 		assertDescriptionCreated(testBranchPath, "D1", SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP);
@@ -745,6 +749,8 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void rebaseStaleBranchWithDeleteOnChangedContent() throws Exception {
+		givenBranchWithPath(testBranchPath);
+		
 		// create changes on test branch
 		assertRelationshipCreated(testBranchPath, "R1");
 		assertDescriptionCreated(testBranchPath, "D1", SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP);
