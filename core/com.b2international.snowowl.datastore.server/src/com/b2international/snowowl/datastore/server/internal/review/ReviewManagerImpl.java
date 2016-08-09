@@ -16,11 +16,12 @@
 package com.b2international.snowowl.datastore.server.internal.review;
 
 import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
+import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.text.MessageFormat;
 import java.util.Date;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -287,27 +288,33 @@ public class ReviewManagerImpl implements ReviewManager {
 		final Set<String> newConcepts = newHashSet();
 		final Set<String> changedConcepts = newHashSet();
 		final Set<String> deletedConcepts = newHashSet();
+		
+		final Map<Long, String> affectedConcepts = newHashMap();
 
 		for (final NodeDiff diff : compare) {
 			switch (diff.getChange()) {
 				case ADDED:
 					newConcepts.add(diff.getId());
+					affectedConcepts.put(diff.getStorageKey(), diff.getId());
 					break;
 				case DELETED:
 					deletedConcepts.add(diff.getId());
+					// XXX: Deleted concepts can not be presented on a review screen, don't add
+					// affectedConcepts.put(diff.getStorageKey(), diff.getId()); 
 					break;
 				case UNCHANGED:
 					// Nothing to do
 					break;
 				case UPDATED:
 					changedConcepts.add(diff.getId());
+					affectedConcepts.put(diff.getStorageKey(), diff.getId());
 					break;
 				default:
 					throw new IllegalStateException(MessageFormat.format("Unexpected change kind ''{0}''.", diff.getChange()));
 			}
 		}
 
-		final ConceptChangesImpl convertedChanges = new ConceptChangesImpl(id, newConcepts, changedConcepts, deletedConcepts);
+		final ConceptChangesImpl convertedChanges = new ConceptChangesImpl(id, newConcepts, changedConcepts, deletedConcepts, affectedConcepts);
 
 		synchronized (reviewStore) {
 			if (reviewStore.containsKey(id)) {
@@ -389,12 +396,15 @@ public class ReviewManagerImpl implements ReviewManager {
 		
 		ConceptChanges sourceChanges = getConceptChanges(mergeReview.sourceToTargetReviewId());
 		ConceptChanges targetChanges = getConceptChanges(mergeReview.targetToSourceReviewId());
-		Set<String>commonChanges = new HashSet<String>(sourceChanges.changedConcepts());
-		// If concepts are new then they won't intersect.  Also if they're deleted, they won't
-		// conflict, so we're only interested in the change set.
-		commonChanges.retainAll(targetChanges.changedConcepts());
-		
-		return commonChanges;
+
+		/* 
+		 * Compute intersection on the storage key level (keys of the map), but return the concept IDs 
+		 * (values of the map) in the response. The SCTID should be the same for the entire lifetime 
+		 * of a CDO object, so it shouldn't matter which map we are converting.
+		 */
+		Map<Long, String> commonChanges = newHashMap(sourceChanges.affectedConcepts());
+		commonChanges.keySet().retainAll(targetChanges.affectedConcepts().keySet());
+		return newHashSet(commonChanges.values());
 	}
 
 	
