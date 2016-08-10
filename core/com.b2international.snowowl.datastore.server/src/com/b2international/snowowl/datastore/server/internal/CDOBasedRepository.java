@@ -16,7 +16,6 @@
 package com.b2international.snowowl.datastore.server.internal;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.File;
@@ -49,6 +48,7 @@ import com.b2international.snowowl.core.api.index.IIndexServerServiceManager;
 import com.b2international.snowowl.core.api.index.IIndexUpdater;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
+import com.b2international.snowowl.core.domain.DelegatingServiceProvider;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.events.util.ApiRequestHandler;
@@ -91,28 +91,24 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Ordering;
 import com.google.inject.Provider;
 
 /**
  * @since 4.1
  */
-public final class CDOBasedRepository implements InternalRepository, RepositoryContextProvider, ServiceProvider {
+public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, RepositoryContextProvider {
 
 	private final String toolingId;
 	private final String repositoryId;
-	private final Environment env;
 	private final IEventBus handlers;
 	
-	private final Map<Class<?>, Object> registry = newHashMap();
-
 	CDOBasedRepository(String repositoryId, String toolingId, int numberOfWorkers, int mergeMaxResults, Environment env) {
+		super(env);
 		checkArgument(numberOfWorkers > 0, "At least one worker thread must be specified");
 		
 		this.toolingId = toolingId;
 		this.repositoryId = repositoryId;
-		this.env = env;
 		this.handlers = EventBusUtil.getWorkerBus(repositoryId, numberOfWorkers);
 
 		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
@@ -120,6 +116,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		initIndex(mapper);
 		initializeBranchingSupport(mapper, mergeMaxResults);
 		initializeRequestSupport(numberOfWorkers);
+		bind(Repository.class, this);
 	}
 
 	@Override
@@ -129,7 +126,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	@Override
 	public IEventBus events() {
-		return env.service(IEventBus.class);
+		return getDelegate().service(IEventBus.class);
 	}
 	
 	@Override
@@ -147,7 +144,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	@Override
 	public ICDOConnection getConnection() {
-		return env.service(ICDOConnectionManager.class).getByUuid(repositoryId);
+		return getDelegate().service(ICDOConnectionManager.class).getByUuid(repositoryId);
 	}
 	
 	@Override
@@ -162,22 +159,22 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	@Override
 	public IIndexUpdater<?> getIndexUpdater() {
-		return env.service(IIndexServerServiceManager.class).getByUuid(repositoryId);
+		return getDelegate().service(IIndexServerServiceManager.class).getByUuid(repositoryId);
 	}
 	
 	@Override
 	public Index getIndex() {
-		return (Index) registry.get(Index.class);
+		return service(Index.class);
 	}
 	
 	@Override
 	public RevisionIndex getRevisionIndex() {
-		return (RevisionIndex) registry.get(RevisionIndex.class);
+		return service(RevisionIndex.class);
 	}
 	
 	@Override
 	public ICDORepository getCdoRepository() {
-		return env.service(ICDORepositoryManager.class).getByUuid(repositoryId);
+		return getDelegate().service(ICDORepositoryManager.class).getByUuid(repositoryId);
 	}
 	
 	@Override
@@ -206,32 +203,11 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 			events().registerHandler(address(), new Pipe(handlers(), address()));
 		}
 		// register RepositoryContextProvider
-		registry.put(RepositoryContextProvider.class, this);
+		bind(RepositoryContextProvider.class, this);
 	}
 
 	private ClassLoaderProvider getClassLoaderProvider() {
-		return env.service(RepositoryClassLoaderProviderRegistry.class).get(repositoryId);
-	}
-	
-	@Override
-	public <T> T service(Class<T> type) {
-		if (Repository.class.isAssignableFrom(type)) {
-			return type.cast(this);
-		}
-		if (registry.containsKey(type)) {
-			return (T) registry.get(type);
-		}
-		return env.service(type);
-	}
-
-	@Override
-	public <T> Provider<T> provider(final Class<T> type) {
-		return new Provider<T>() {
-			@Override
-			public T get() {
-				return service(type);
-			}
-		};
+		return getDelegate().service(RepositoryClassLoaderProviderRegistry.class).get(repositoryId);
 	}
 	
 	@Override
@@ -241,21 +217,21 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 
 	private void initializeBranchingSupport(final ObjectMapper mapper, int mergeMaxResults) {
 		final CDOBranchManagerImpl branchManager = new CDOBranchManagerImpl(this);
-		registry.put(BranchManager.class, branchManager);
-		registry.put(BranchReplicator.class, branchManager);
+		bind(BranchManager.class, branchManager);
+		bind(BranchReplicator.class, branchManager);
 		
-		final ReviewConfiguration reviewConfiguration = env.service(SnowOwlConfiguration.class).getModuleConfig(ReviewConfiguration.class);
+		final ReviewConfiguration reviewConfiguration = getDelegate().service(SnowOwlConfiguration.class).getModuleConfig(ReviewConfiguration.class);
 		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(this, reviewConfiguration);
-		registry.put(ReviewManager.class, reviewManager);
+		bind(ReviewManager.class, reviewManager);
 		
 		// TODO migrate merge-reviews to new index API
 		final Store<MergeReviewImpl> mergeReviews = createIndex("merge-reviews", mapper, MergeReviewImpl.class);
-		registry.put(MergeReviewManager.class, new MergeReviewManagerImpl(mergeReviews, reviewManager));
+		bind(MergeReviewManager.class, new MergeReviewManagerImpl(mergeReviews, reviewManager));
 
 		events().registerHandler(address("/branches/changes") , reviewManager.getStaleHandler());
 		
 		final MergeServiceImpl mergeService = new MergeServiceImpl(this, mergeMaxResults);
-		registry.put(MergeService.class, mergeService);
+		bind(MergeService.class, mergeService);
 	}
 
 	private void initIndex(final ObjectMapper mapper) {
@@ -293,16 +269,16 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 
 		});
 		// register index and revision index access, the underlying index is the same
-		registry.put(Index.class, index);
-		registry.put(RevisionIndex.class, revisionIndex);
+		bind(Index.class, index);
+		bind(RevisionIndex.class, revisionIndex);
 		// initialize the index
 		index.admin().create();
 		
 	}
 
 	private Map<String, Object> initIndexSettings() {
-		final Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
-		builder.put(IndexClientFactory.DIRECTORY, env.getDataDirectory() + "/indexes");
+		final ImmutableMap.Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
+		builder.put(IndexClientFactory.DIRECTORY, getDelegate().getDataDirectory() + "/indexes");
 		
 		final IndexConfiguration config = service(SnowOwlConfiguration.class)
 				.getModuleConfig(RepositoryConfiguration.class).getIndexConfiguration();
@@ -317,7 +293,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	}
 
 	private SlowLogConfig createSlowLogConfig(final IndexConfiguration config) {
-		final Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
+		final ImmutableMap.Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
 		builder.put(SlowLogConfig.FETCH_DEBUG_THRESHOLD, config.getFetchDebugThreshold());
 		builder.put(SlowLogConfig.FETCH_INFO_THRESHOLD, config.getFetchInfoThreshold());
 		builder.put(SlowLogConfig.FETCH_TRACE_THRESHOLD, config.getFetchTraceThreshold());
@@ -351,11 +327,16 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	 */
 	private <T> IndexStore<T> createIndex(final String name, ObjectMapper mapper, Class<T> type) {
 		// TODO consider moving from index layout /feature/repositoryId to /repositoryId/feature
-		final File dir = env.getDataDirectory()
+		final File dir = getDelegate().getDataDirectory()
 				.toPath()
 				.resolve(Paths.get("indexes", name, repositoryId))
 				.toFile();
 		return new IndexStore<>(dir, mapper, type);
+	}
+	
+	@Override
+	protected Environment getDelegate() {
+		return (Environment) super.getDelegate();
 	}
 	
 }
