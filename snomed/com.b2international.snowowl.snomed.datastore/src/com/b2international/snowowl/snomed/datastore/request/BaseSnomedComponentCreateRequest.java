@@ -112,7 +112,6 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 				} catch (ComponentNotFoundException e) {
 					return;
 				}
-
 			}
 			
 		} finally {

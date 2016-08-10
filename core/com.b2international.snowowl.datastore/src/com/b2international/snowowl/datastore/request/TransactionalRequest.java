@@ -74,11 +74,8 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 	}
 
 	private CommitInfo commit(final TransactionContext context, final Object body) {
-		final Metrics metrics = context.service(Metrics.class);
-		final Timer commitTimer = metrics.timer("commit");
-		MetricsThreadLocal.set(metrics);
+		MetricsThreadLocal.set(context.service(Metrics.class));
 		try {
-			commitTimer.start();
 			// TODO consider moving preCommit into commit(userId, commitComment)
 			context.preCommit();
 			
@@ -89,7 +86,6 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 			final long commitTimestamp = context.commit(userId, commitComment, parentLockContextDescription);
 			return new CommitInfo(commitTimestamp, body);
 		} finally {
-			commitTimer.stop();
 			MetricsThreadLocal.release();
 		}
 	}
