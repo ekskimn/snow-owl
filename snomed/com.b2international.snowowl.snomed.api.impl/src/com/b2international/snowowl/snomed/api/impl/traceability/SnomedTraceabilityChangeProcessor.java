@@ -280,6 +280,9 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	@Override
 	public void afterCommit() {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> [request] measure SNOMED CT indexing and traceability exec. times
 		final Timer traceabilityTimer = MetricsThreadLocal.get().timer("traceability");
 		try {
 			traceabilityTimer.start();
@@ -287,6 +290,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
 				final String branch = commitChangeSet.getView().getBranch().getPathName();
 				final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
+<<<<<<< HEAD
 				
 				final Request<ServiceProvider, SnomedConcepts> conceptSearchRequest = SnomedRequests.prepareSearchConcept()
 					.setComponentIds(conceptIds)
@@ -333,6 +337,20 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				final Set<String> hasChildrenStated = collectNonLeafs(conceptIds, branch, bus, Concepts.STATED_RELATIONSHIP);
 				final Set<String> hasChildrenInferred = collectNonLeafs(conceptIds, branch, bus, Concepts.INFERRED_RELATIONSHIP);
 				
+=======
+				
+				final Request<ServiceProvider, SnomedConcepts> conceptSearchRequest = SnomedRequests.prepareSearchConcept()
+					.setComponentIds(conceptIds)
+					.setOffset(0)
+					.setLimit(entry.getChanges().size())
+					.setExpand("descriptions(),relationships(expand(destination()))")
+					.build(branch);
+				
+				final SnomedConcepts concepts = conceptSearchRequest.executeSync(bus);
+				final Set<String> hasChildrenStated = collectNonLeafs(conceptIds, branch, bus, Concepts.STATED_RELATIONSHIP);
+				final Set<String> hasChildrenInferred = collectNonLeafs(conceptIds, branch, bus, Concepts.INFERRED_RELATIONSHIP);
+				
+>>>>>>> [request] measure SNOMED CT indexing and traceability exec. times
 				for (ISnomedConcept concept : concepts) {
 					SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
 					
@@ -346,13 +364,17 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					convertedConcept.setIsLeafStated(!hasChildrenStated.contains(concept.getId()));
 					convertedConcept.setIsLeafInferred(!hasChildrenInferred.contains(concept.getId()));
 					convertedConcept.setFsn(concept.getId());
+<<<<<<< HEAD
 					convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
 					convertedConcept.setAssociationTargets(concept.getAssociationTargets());
+=======
+>>>>>>> [request] measure SNOMED CT indexing and traceability exec. times
 					
 					// PT and SYN labels are not populated
 					entry.setConcept(convertedConcept.getId(), convertedConcept);
 				}
 			}
+<<<<<<< HEAD
 
 			try {
 				LOGGER.info(WRITER.writeValueAsString(entry));
@@ -360,6 +382,12 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				throw SnowowlRuntimeException.wrap(e);
 			}
 
+=======
+		
+			LOGGER.info(WRITER.writeValueAsString(entry));
+		} catch (IOException e) {
+			throw SnowowlRuntimeException.wrap(e);
+>>>>>>> [request] measure SNOMED CT indexing and traceability exec. times
 		} finally {
 			traceabilityTimer.stop();
 		}

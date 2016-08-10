@@ -137,7 +137,9 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 			}
 			
 			for (final CDOObject dirtyObject : commitChangeSet.getDirtyComponents()) {
-				if (TerminologymetadataPackage.eINSTANCE.getCodeSystemVersion().isSuperTypeOf(dirtyObject.eClass())) {
+				if (TerminologymetadataPackage.eINSTANCE.getCodeSystem().isSuperTypeOf(dirtyObject.eClass())) {
+					dirtyCodeSystems.add((CodeSystem) dirtyObject);
+				} else if (TerminologymetadataPackage.eINSTANCE.getCodeSystemVersion().isSuperTypeOf(dirtyObject.eClass())) {
 					checkAndSetCodeSystemLastUpdateTime(dirtyObject);
 				}
 			}
