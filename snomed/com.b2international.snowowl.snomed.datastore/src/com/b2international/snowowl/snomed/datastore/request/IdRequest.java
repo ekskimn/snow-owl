@@ -85,7 +85,6 @@ final class IdRequest extends DelegatingRequest<BranchContext, BranchContext, Co
 		final SnomedIdentifiers snomedIdentifiers = new SnomedIdentifiers(identifierService);
 
 		try {
-			
 
 			final Multimap<ComponentCategory, BaseSnomedComponentCreateRequest> bulkCreateRequests = extractBulkCreateRequests(next());
 

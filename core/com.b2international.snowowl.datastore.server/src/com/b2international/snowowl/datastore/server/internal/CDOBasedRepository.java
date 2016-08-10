@@ -105,7 +105,7 @@ import com.google.inject.Provider;
  * @since 4.1
  */
 public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, RepositoryContextProvider {
-	
+
 	private static final String REINDEX_KEY = "snowowl.reindex";
 
 	private final String toolingId;
@@ -129,6 +129,7 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		bind(ObjectMapper.class, mapper);
 
 		reindex();
+		bind(Repository.class, this);
 	}
 
 	@Override
@@ -378,6 +379,11 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 				}
 			});
 		}
+	}
+	
+	@Override
+	protected Environment getDelegate() {
+		return (Environment) super.getDelegate();
 	}
 	
 }
