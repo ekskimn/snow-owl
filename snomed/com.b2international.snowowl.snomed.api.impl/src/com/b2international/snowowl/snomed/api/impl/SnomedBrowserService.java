@@ -26,8 +26,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+<<<<<<< HEAD
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+=======
+>>>>>>> [api] measure update preparation time in IHTSDO concept update API
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
@@ -235,9 +238,67 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		result.setAssociationTargets(concept.getAssociationTargets());
 	}
 
+<<<<<<< HEAD
 	private void populatePreferredSynonym(final ISnomedDescription preferredSynonym, final SnomedBrowserConcept result) {
 		if (preferredSynonym != null) {
 			result.setPreferredSynonym(preferredSynonym.getTerm());
+=======
+	@Override
+	public ISnomedBrowserConcept update(String branchPath, ISnomedBrowserConceptUpdate newVersionConcept, String userId, List<ExtendedLocale> locales) {
+		final Stopwatch watch = Stopwatch.createStarted();
+		
+		LOGGER.info("Update concept start {}", newVersionConcept.getFsn());
+		final IComponentRef componentRef = SnomedServiceHelper.createComponentRef(branchPath, newVersionConcept.getConceptId());
+
+		final ISnomedBrowserConcept existingVersionConcept = getConceptDetails(componentRef, locales);
+
+		// Concept update
+		final SnomedConceptUpdateRequest conceptUpdate = inputFactory.createComponentUpdate(existingVersionConcept, newVersionConcept, SnomedConceptUpdateRequest.class);
+		
+		// Description updates
+		final List<ISnomedBrowserDescription> existingVersionDescriptions = existingVersionConcept.getDescriptions();
+		final List<ISnomedBrowserDescription> newVersionDescriptions = newVersionConcept.getDescriptions();
+		Set<String> descriptionDeletionIds = inputFactory.getComponentDeletions(existingVersionDescriptions, newVersionDescriptions);
+		Map<String, SnomedDescriptionUpdateRequest> descriptionUpdates = inputFactory.createComponentUpdates(existingVersionDescriptions, newVersionDescriptions, SnomedDescriptionUpdateRequest.class);
+		List<SnomedDescriptionCreateRequest> descriptionInputs = inputFactory.createComponentInputs(branchPath, newVersionDescriptions, SnomedDescriptionCreateRequest.class);
+		LOGGER.info("Got description changes +{} -{} m{}, {}", descriptionInputs.size(), descriptionDeletionIds.size(), descriptionUpdates.size(), newVersionConcept.getFsn());
+
+		// Relationship updates
+		final List<ISnomedBrowserRelationship> existingVersionRelationships = existingVersionConcept.getRelationships();
+		final List<ISnomedBrowserRelationship> newVersionRelationships = newVersionConcept.getRelationships();
+		Set<String> relationshipDeletionIds = inputFactory.getComponentDeletions(existingVersionRelationships, newVersionRelationships);
+		Map<String, SnomedRelationshipUpdateRequest> relationshipUpdates = inputFactory.createComponentUpdates(existingVersionRelationships, newVersionRelationships, SnomedRelationshipUpdateRequest.class);
+		List<SnomedRelationshipCreateRequest> relationshipInputs = inputFactory.createComponentInputs(branchPath, newVersionRelationships, SnomedRelationshipCreateRequest.class);
+		LOGGER.info("Got relationship changes +{} -{} m{}, {}", relationshipInputs.size(), relationshipDeletionIds.size(), relationshipUpdates.size(), newVersionConcept.getFsn());
+
+		// In the case of inactivation, other updates seem to go more smoothly if this is done later
+		final BulkRequestBuilder<TransactionContext> commitReq = BulkRequest.create();
+		
+		boolean conceptInactivation = conceptUpdate != null && conceptUpdate.isActive() != null && Boolean.FALSE.equals(conceptUpdate.isActive());
+		if (conceptUpdate != null && !conceptInactivation) {
+			commitReq.add(conceptUpdate);
+		}
+		
+		for (String descriptionId : descriptionUpdates.keySet()) {
+			commitReq.add(descriptionUpdates.get(descriptionId));
+		}
+		for (SnomedDescriptionCreateRequest descriptionReq : descriptionInputs) {
+			descriptionReq.setConceptId(existingVersionConcept.getConceptId());
+			commitReq.add(descriptionReq);
+		}
+		for (String descriptionDeletionId : descriptionDeletionIds) {
+			commitReq.add(SnomedRequests.prepareDeleteDescription().setComponentId(descriptionDeletionId).build());
+		}
+
+		for (String relationshipId : relationshipUpdates.keySet()) {
+			commitReq.add(relationshipUpdates.get(relationshipId));
+		}
+		for (SnomedRelationshipCreateRequest relationshipReq : relationshipInputs) {
+			commitReq.add(relationshipReq);
+		}
+		for (String relationshipDeletionId : relationshipDeletionIds) {
+			commitReq.add(SnomedRequests.prepareDeleteRelationship().setComponentId(relationshipDeletionId).build());
+>>>>>>> [api] measure update preparation time in IHTSDO concept update API
 		}
 	}
 
@@ -247,6 +308,31 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		} else {
 			result.setFsn(result.getConceptId());
 		}
+<<<<<<< HEAD
+=======
+
+		// TODO - Add MRCM checks here
+
+		// Commit
+		final String commitComment = getCommitComment(userId, newVersionConcept, "updating");
+		SnomedRequests
+			.prepareCommit()
+			.setUserId(userId)
+			.setBranch(branchPath)
+			.setCommitComment(commitComment)
+			.setBody(commitReq)
+			.setPreparationTime(watch.elapsed(TimeUnit.MILLISECONDS))
+			.build()
+			.executeSync(bus);
+		LOGGER.info("Committed changes for concept {}", newVersionConcept.getFsn());
+
+		return getConceptDetails(componentRef, locales);
+	}
+	
+	private String getCommitComment(String userId, ISnomedBrowserConcept snomedConceptInput, String action) {
+		String fsn = getFsn(snomedConceptInput);
+		return userId + " " + action + " concept " + fsn;
+>>>>>>> [api] measure update preparation time in IHTSDO concept update API
 	}
 
 	private List<ISnomedBrowserDescription> convertDescriptions(final Iterable<ISnomedDescription> descriptions) {
