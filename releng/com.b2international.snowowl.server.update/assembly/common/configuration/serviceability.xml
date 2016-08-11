@@ -201,6 +201,7 @@
 		<ProviderURL>${orchestration.jms.url}</ProviderURL>
 		<UserName>${orchestration.jms.username}</UserName>
 		<Password>${orchestration.jms.password}</Password>
+		<QueuePrefix>${orchestration.name}</QueuePrefix>
 	</appender>
 
 	<appender name="EVENT_LOG_STDOUT" class="org.eclipse.virgo.medic.log.logback.ReroutingAwareConsoleAppender">
