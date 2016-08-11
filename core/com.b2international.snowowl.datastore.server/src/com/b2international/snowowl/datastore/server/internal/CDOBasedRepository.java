@@ -117,6 +117,7 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		initializeBranchingSupport(mapper, mergeMaxResults);
 		initializeRequestSupport(numberOfWorkers);
 		bind(Repository.class, this);
+		bind(ObjectMapper.class, mapper);
 	}
 
 	@Override
