@@ -92,6 +92,7 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUp
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.base.Stopwatch;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -354,19 +355,20 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	@Override
 	public ISnomedBrowserConcept update(String branch, ISnomedBrowserConcept updatedConcept, String userId, List<ExtendedLocale> locales) {
+		final Stopwatch watch = Stopwatch.createStarted();
 		final BulkRequestBuilder<TransactionContext> conceptUpdateBulkRequest = BulkRequest.create();
 		update(branch, updatedConcept, userId, locales, conceptUpdateBulkRequest);
 		final String commitComment = getCommitComment(userId, updatedConcept, "updating");
-		
+			
 		SnomedRequests
 			.prepareCommit()
 			.setUserId(userId)
 			.setBranch(branch)
 			.setCommitComment(commitComment)
 			.setBody(conceptUpdateBulkRequest)
+			.setPreparationTime(watch.elapsed(TimeUnit.MILLISECONDS))
 			.build()
 			.executeSync(bus);
-		
 		LOGGER.info("Committed changes for concept {}", getFsn(updatedConcept));
 		return getConceptDetails(branch, updatedConcept.getConceptId(), locales);
 	}
@@ -429,6 +431,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	private RepositoryCommitRequestBuilder createBulkCommit(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales, final String commitComment) {
+		final Stopwatch watch = Stopwatch.createStarted();
+		
 		final BulkRequestBuilder<TransactionContext> bulkRequest = BulkRequest.create();
 		
 		for (ISnomedBrowserConcept concept : updatedConcepts) {
@@ -440,6 +444,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.setUserId(userId)
 			.setBranch(branch)
 			.setCommitComment(commitComment)
+			.setPreparationTime(watch.elapsed(TimeUnit.MILLISECONDS))
 			.setBody(bulkRequest);
 
 		return commit;
