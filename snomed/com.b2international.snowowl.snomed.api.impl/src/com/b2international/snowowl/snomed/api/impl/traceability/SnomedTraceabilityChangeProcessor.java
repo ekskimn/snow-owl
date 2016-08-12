@@ -276,7 +276,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				.setComponentIds(conceptIds)
 				.setOffset(0)
 				.setLimit(entry.getChanges().size())
-				.setExpand("descriptions(),relationships(expand(destination()))")
+				.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
 				.build(branch);
 			
 			final SnomedConcepts concepts = conceptSearchRequest.executeSync(bus);
@@ -296,6 +296,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				convertedConcept.setIsLeafStated(!hasChildrenStated.contains(concept.getId()));
 				convertedConcept.setIsLeafInferred(!hasChildrenInferred.contains(concept.getId()));
 				convertedConcept.setFsn(concept.getId());
+				convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
+				convertedConcept.setAssociationTargets(concept.getAssociationTargets());
 				
 				// PT and SYN labels are not populated
 				entry.setConcept(convertedConcept.getId(), convertedConcept);
@@ -358,6 +360,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				convertedDescription.setModuleId(input.getModuleId());
 				convertedDescription.setTerm(input.getTerm());
 				convertedDescription.setType(SnomedBrowserDescriptionType.getByConceptId(input.getTypeId()));
+				convertedDescription.setInactivationIndicator(input.getInactivationIndicator());
+				convertedDescription.setAssociationTargets(input.getAssociationTargets());
 				
 				return convertedDescription;
 			}

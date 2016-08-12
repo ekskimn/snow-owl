@@ -20,7 +20,6 @@ import static com.google.common.collect.Sets.newHashSet;
 import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +72,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Equival
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
@@ -81,6 +81,13 @@ import com.b2international.snowowl.snomed.reasoner.classification.GetResultRespo
 import com.b2international.snowowl.snomed.reasoner.classification.PersistChangesResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
+import com.google.common.base.Function;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 
 /**
@@ -386,40 +393,94 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales, String userId) {
-		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), locales);
+		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(branchPath, conceptId, locales);
 
-		// Replace ImmutableCollection of relationships
-		final List<ISnomedBrowserRelationship> relationships = new ArrayList<ISnomedBrowserRelationship>(conceptDetails.getRelationships());
-		conceptDetails.setRelationships(relationships);
-
+		final List<ISnomedBrowserRelationship> relationships = Lists.newArrayList(conceptDetails.getRelationships());
 		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, userId, 0, 10000);
+
+		/* 
+		 * XXX: We don't want to match anything that is part of the inferred set below, so we remove relationships from the existing list, 
+		 * all in advance. (Revisit should this assumption prove to be incorrect.)
+		 */
 		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
 			switch (relationshipChange.getChangeNature()) {
 				case REDUNDANT:
 					relationships.remove(findRelationship(relationships, relationshipChange));
 					break;
-				case INFERRED:
-					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();
-					inferred.setType(new SnomedBrowserRelationshipType(relationshipChange.getTypeId()));
-					inferred.setSourceId(relationshipChange.getSourceId());
-
-					final ISnomedConcept targetConcept = SnomedRequests.prepareGetConcept()
-							.setComponentId(relationshipChange.getDestinationId())
-							.build(branchPath)
-							.execute(bus)
-							.getSync();
-					final SnomedBrowserRelationshipTarget relationshipTarget = browserService.getSnomedBrowserRelationshipTarget(targetConcept, branchPath, locales);
-					inferred.setTarget(relationshipTarget);
-
-					inferred.setGroupId(relationshipChange.getGroup());
-					inferred.setModifier(relationshipChange.getModifier());
-					inferred.setActive(true);
-					inferred.setCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP);
-
-					relationships.add(inferred);
+				default:
 					break;
 			}
 		}
+		
+		// Collect all concept representations that will be required for the conversion
+		final Set<String> relatedIds = Sets.newHashSet();
+		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+			switch (relationshipChange.getChangeNature()) {
+				case INFERRED:
+					relatedIds.add(relationshipChange.getDestinationId());
+					relatedIds.add(relationshipChange.getTypeId());
+					break;
+				default:
+					break;
+			}
+		}
+		
+		final SnomedConcepts relatedConcepts = SnomedRequests.prepareSearchConcept()
+				.setLimit(relatedIds.size())
+				.setComponentIds(relatedIds)
+				.setLocales(locales)
+				.setExpand("fsn()")
+				.build(branchPath)
+				.executeSync(getEventBus());
+		
+		final Map<String, ISnomedConcept> relatedConceptsById = Maps.uniqueIndex(relatedConcepts, new Function<ISnomedConcept, String>() {
+			@Override public String apply(ISnomedConcept input) { return input.getId(); }
+		});
+		
+		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipType> types = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipType>() {
+			@Override
+			public SnomedBrowserRelationshipType load(ISnomedConcept key) throws Exception {
+				return browserService.convertBrowserRelationshipType(key);
+			}
+		});
+		
+		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipTarget> targets = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipTarget>() {
+			@Override
+			public SnomedBrowserRelationshipTarget load(ISnomedConcept key) throws Exception {
+				return browserService.convertBrowserRelationshipTarget(key);
+			}
+		});
+		
+		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+			switch (relationshipChange.getChangeNature()) {
+				case INFERRED:
+					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();
+					
+					// XXX: Default and/or not populated values are shown as commented lines below
+					inferred.setActive(true);
+					inferred.setCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP);
+					// inferred.setEffectiveTime(null);
+					inferred.setGroupId(relationshipChange.getGroup());
+					inferred.setModifier(relationshipChange.getModifier());
+					// inferred.setModuleId(null);
+					// inferred.setRelationshipId(null);
+					// inferred.setReleased(false);
+					inferred.setSourceId(relationshipChange.getSourceId());
+				
+					ISnomedConcept destinationConcept = relatedConceptsById.get(relationshipChange.getDestinationId());
+					ISnomedConcept typeConcept = relatedConceptsById.get(relationshipChange.getTypeId());
+					inferred.setTarget(targets.getUnchecked(destinationConcept));
+					inferred.setType(types.getUnchecked(typeConcept));
+
+					relationships.add(inferred);
+					break;
+				default:
+					break;
+			}
+		}
+		
+		// Replace immutable relationship list with preview
+		conceptDetails.setRelationships(relationships);
 		return conceptDetails;
 	}
 

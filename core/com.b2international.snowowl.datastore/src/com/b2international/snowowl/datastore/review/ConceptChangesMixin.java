@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.datastore.review;
 
+import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -29,10 +30,11 @@ public abstract class ConceptChangesMixin {
 	private ConceptChangesMixin(@JsonProperty("id") final String id,
 			@JsonProperty("newConcepts") final Set<String> newConcepts, 
 			@JsonProperty("changedConcepts") final Set<String> changedConcepts, 
-			@JsonProperty("deletedConcepts") final Set<String> deletedConcepts) {
+			@JsonProperty("deletedConcepts") final Set<String> deletedConcepts,
+			@JsonProperty("affectedConcepts") final Map<Long, String> affectedConcepts) {
 		// Empty mixin constructor
 	}
-
+	
 	@JsonProperty("id") 
 	public abstract String id();
 
@@ -44,4 +46,7 @@ public abstract class ConceptChangesMixin {
 
 	@JsonProperty("deletedConcepts") 
 	public abstract Set<String> deletedConcepts();
+	
+	@JsonProperty("affectedConcepts") 
+	public abstract Map<Long, String> affectedConcepts();
 }

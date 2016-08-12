@@ -268,7 +268,6 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 		if (headTimestamp != other.headTimestamp) { return false; }
 		if (!name.equals(other.name)) { return false; }
 		if (!parentPath.equals(other.parentPath)) { return false; }
-		if (!metadata().equals(other.metadata())) { return false; }
 		
 		return true;
 	}

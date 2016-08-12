@@ -7,7 +7,7 @@ import java.util.concurrent.ExecutionException;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.datastore.review.MergeReview;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserMergeReviewDetail;
 
 public interface ISnomedMergeReviewService {
@@ -16,6 +16,6 @@ public interface ISnomedMergeReviewService {
 
 	void mergeAndReplayConceptUpdates(String mergeReviewId, String userId, List<ExtendedLocale> extendedLocales) throws IOException, InterruptedException, ExecutionException;
 
-	void persistManualConceptMerge(MergeReview mergeReview, ISnomedBrowserConceptUpdate concept);
+	void persistManualConceptMerge(MergeReview mergeReview, ISnomedBrowserConcept concept);
 
 }

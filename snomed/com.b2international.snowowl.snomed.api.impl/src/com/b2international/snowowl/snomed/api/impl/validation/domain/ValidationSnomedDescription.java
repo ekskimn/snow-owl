@@ -36,6 +36,11 @@ public class ValidationSnomedDescription implements org.ihtsdo.drools.domain.Des
 	}
 
 	@Override
+	public String getLanguageCode() {
+		return description.getLanguageCode();
+	}
+
+	@Override
 	public String getConceptId() {
 		return conceptId;
 	}

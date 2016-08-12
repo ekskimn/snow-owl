@@ -1,11 +1,12 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
-import com.b2international.snowowl.core.exceptions.BadRequestException;
+import java.util.Map;
+
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponent;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipType;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Multimap;
 
 public abstract class AbstractInputCreator {
 
@@ -14,20 +15,11 @@ public abstract class AbstractInputCreator {
 		return moduleId != null ? moduleId : SnomedConstants.Concepts.MODULE_SCT_CORE;
 	}
 	
-	String getParentId(ISnomedBrowserConcept concept) {
-		ISnomedBrowserRelationship parentRelationship = null;
-		for (ISnomedBrowserRelationship relationship : concept.getRelationships()) {
-			final ISnomedBrowserRelationshipType type = relationship.getType();
-			final String conceptId = type.getConceptId();
-			if (SnomedConstants.Concepts.IS_A.equals(conceptId)) {
-				parentRelationship = relationship;
-			}
-		}
-		if (parentRelationship != null) {
-			return parentRelationship.getTarget().getConceptId();
-		} else {
-			throw new BadRequestException("At least one isA relationship is required.");
-		}
+	protected <K, V> Map<K, V> nullToEmptyMap(final Map<K, V> map) {
+		return map != null ? map : ImmutableMap.<K, V>of();
 	}
-
+	
+	protected <K, V> Multimap<K, V> nullToEmptyMultimap(final Multimap<K, V> multimap) {
+		return multimap != null ? multimap : ImmutableMultimap.<K, V>of();
+	}
 }
