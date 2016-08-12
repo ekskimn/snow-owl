@@ -87,7 +87,6 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 					return;
 				}
 				
-				LOGGER.warn("SCTID generation returned component id already in use: %s.  Requesting another...", componentId);
 			}
 			
 			if (getIdGenerationStrategy() instanceof ReservingIdStrategy) {
@@ -102,6 +101,8 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 						setIdGenerationStrategy(new RegisteringIdStrategy(componentId));
 						return;
 					}
+					
+					LOGGER.warn("SCTID generation returned component id already in use: %s.  Requesting another...", componentId);
 				}
 				
 				throw new BadRequestException("Couldn't generate unique identifier for %s after %d attempts.", type, ID_GENERATION_ATTEMPTS); 
