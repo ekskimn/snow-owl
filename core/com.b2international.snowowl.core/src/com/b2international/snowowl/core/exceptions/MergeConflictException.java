@@ -16,11 +16,11 @@
 package com.b2international.snowowl.core.exceptions;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 
 import com.b2international.snowowl.core.merge.MergeConflict;
 import com.google.common.base.Objects;
+import com.google.common.collect.ImmutableMap;
 
 /**
  * @since 4.7
@@ -33,7 +33,7 @@ public class MergeConflictException extends ConflictException {
 	private final Collection<MergeConflict> conflicts;
 
 	public MergeConflictException(final Collection<MergeConflict> conflicts, final String message, final Object... args) {
-		this(conflicts, Collections.<String, Object>emptyMap(), message, args);
+		this(conflicts, ImmutableMap.<String, Object>of("conflicts", conflicts), message, args);
 	}
 	
 	public MergeConflictException(final Collection<MergeConflict> conflicts, final Map<String, Object> details, final String message, final Object... args) {
