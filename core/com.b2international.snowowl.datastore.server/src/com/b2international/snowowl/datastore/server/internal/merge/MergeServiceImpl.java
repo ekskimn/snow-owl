@@ -20,6 +20,8 @@ import java.util.UUID;
 
 import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
 import com.b2international.snowowl.core.Repository;
+import com.b2international.snowowl.core.exceptions.InvalidStateException;
+import com.b2international.snowowl.core.exceptions.MergeConflictException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.merge.MergeCollection;
@@ -62,7 +64,16 @@ public class MergeServiceImpl implements MergeService {
 	public Merge executeBlocking(String source, String target, String commitMessage, String reviewId) {
 		AbstractBranchChangeRemoteJob job = registerJob(source, target, commitMessage, reviewId);
 		ForkJoinUtils.runJobsInParallel(job);
-		return job.getMerge();
+		Merge result = job.getMerge();
+		
+		switch (result.getStatus()) {
+			case FAILED:
+				throw new InvalidStateException(result.getApiError().getMessage());
+			case CONFLICTS:
+				throw new MergeConflictException(result.getConflicts(), result.getApiError().getMessage()); 
+			default:
+				return result;
+		}
 	}
 
 	@Override
