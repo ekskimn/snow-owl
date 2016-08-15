@@ -29,8 +29,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 
-import org.hamcrest.CoreMatchers;
-
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
@@ -373,9 +371,10 @@ public abstract class SnomedComponentApiAssert {
 	 * 
 	 * @param branchPath the branch path to check
 	 * @param relationshipId the relationship identifier to check
+	 * @return 
 	 */
-	public static void assertRelationshipExists(final IBranchPath branchPath, final String relationshipId) {
-		assertComponentExists(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId);
+	public static ValidatableResponse assertRelationshipExists(final IBranchPath branchPath, final String relationshipId) {
+		return assertComponentExists(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId);
 	}
 
 	/**
