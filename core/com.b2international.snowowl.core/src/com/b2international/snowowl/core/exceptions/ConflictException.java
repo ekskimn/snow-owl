@@ -22,8 +22,10 @@ package com.b2international.snowowl.core.exceptions;
  * @since 4.0
  */
 public class ConflictException extends ApiException {
-
-	private static final long serialVersionUID = -2887608541911973086L;
+	
+	public static final int CODE = 409;
+	
+	private static final long serialVersionUID = 2801055442875605745L;
 
 	/**
 	 * Creates a new exception instance with the specified message.
@@ -33,5 +35,10 @@ public class ConflictException extends ApiException {
 	 */
 	public ConflictException(String message, Object... args) {
 		super(message, args);
+	}
+	
+	@Override
+	protected Integer getCode() {
+		return CODE;
 	}
 }
