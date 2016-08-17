@@ -28,12 +28,8 @@ import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
 
 import com.b2international.commons.StringUtils;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.core.users.IAuthorizationService;
-import com.b2international.snowowl.core.users.Permission;
-import com.b2international.snowowl.core.users.PermissionIdConstant;
 import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.server.console.CommandLineAuthenticator;
 
@@ -77,6 +73,7 @@ public class MrcmCommandProvider implements CommandProvider {
 		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
 		
 		if (!authenticator.authenticate(interpreter)) {
+			interpreter.println("Authentication failed.");
 			return;
 		}
 		
@@ -99,9 +96,8 @@ public class MrcmCommandProvider implements CommandProvider {
 		}
 		
 		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
-		final IAuthorizationService authorizationService = ApplicationContext.getInstance().getService(IAuthorizationService.class);
-		if (authenticator.authenticate(interpreter) && !authorizationService.isAuthorized(authenticator.getUsername(), new Permission(PermissionIdConstant.MRCM_EXPORT))) {
-			interpreter.print("User is unauthorized to export MRCM rules.");
+		if (authenticator.authenticate(interpreter)) {
+			interpreter.println("Authentication failed.");
 			return;
 		}
 		
