@@ -96,7 +96,7 @@ public class MrcmCommandProvider implements CommandProvider {
 		}
 		
 		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
-		if (authenticator.authenticate(interpreter)) {
+		if (!authenticator.authenticate(interpreter)) {
 			interpreter.println("Authentication failed.");
 			return;
 		}
