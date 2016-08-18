@@ -15,7 +15,6 @@
  */
 package com.b2international.snowowl.datastore.review;
 
-import java.util.Map;
 import java.util.Set;
 
 import com.b2international.index.Doc;
@@ -47,10 +46,4 @@ public interface ConceptChanges {
 	 * Returns a set of SNOMED CT concept identifiers which were marked as deleted in the comparison.
 	 */
 	Set<String> deletedConcepts();
-
-	/**
-	 * Returns a map associating repository storage keys with their corresponding SNOMED CT identifiers 
-	 * for concepts that are a part of this comparison, due to an addition or change.
-	 */
-	Map<Long, String> affectedConcepts();
 }

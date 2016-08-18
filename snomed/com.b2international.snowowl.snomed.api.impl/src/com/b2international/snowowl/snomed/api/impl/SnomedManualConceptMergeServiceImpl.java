@@ -3,6 +3,9 @@ package com.b2international.snowowl.snomed.api.impl;
 import java.io.File;
 import java.io.IOException;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
 import com.b2international.commons.FileUtils;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
@@ -13,15 +16,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class SnomedManualConceptMergeServiceImpl {
 
-	final private ObjectMapper objectMapper;
-	final private String storeRoot;
+	@Resource
+	private ObjectMapper objectMapper;
+	
+	private String storeRoot;
 	
 	private static String MERGE_REVIEW_STORE = "merge-review-store";
 	private static final String SLASH = "/";
 	private static final String FILE_TYPE = ".json";
 	
-	public SnomedManualConceptMergeServiceImpl() {
-		objectMapper = new ObjectMapper();
+	@PostConstruct
+	protected void init() {
 		storeRoot = SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory().getPath();
 	}
 
@@ -52,9 +57,7 @@ public class SnomedManualConceptMergeServiceImpl {
 	}
 
 	public void deleteAll(String branchPath, String mergeReviewId) {
-		
 		final File parentFile = getConceptStorePath(branchPath, mergeReviewId, "1").getParentFile();
 		FileUtils.deleteDirectory(parentFile);
 	}
-
 }

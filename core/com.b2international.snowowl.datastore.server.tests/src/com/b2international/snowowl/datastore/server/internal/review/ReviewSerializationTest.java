@@ -26,7 +26,6 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -51,11 +50,7 @@ public class ReviewSerializationTest {
 		when(target.headTimestamp()).thenReturn(8L);
 		
 		this.review = ReviewImpl.builder("id", source, target).status(ReviewStatus.CURRENT).lastUpdated("2015-07-14T00:00:00Z").build();
-		this.conceptChanges = new ConceptChangesImpl("id", 
-				ImmutableSet.of("new1", "new2"), 
-				ImmutableSet.of("changed1"), 
-				ImmutableSet.of("deleted1", "deleted2", "deleted3"), 
-				ImmutableMap.of(1L, "new1", 2L, "new2", 3L, "changed1"));
+		this.conceptChanges = new ConceptChangesImpl("id", ImmutableSet.of("new1", "new2"), ImmutableSet.of("changed1"), ImmutableSet.of("deleted1", "deleted2", "deleted3"));
 	}
 	
 	@Test
@@ -91,8 +86,7 @@ public class ReviewSerializationTest {
 		assertEquals("{\"id\":\"id\","
 				+ "\"newConcepts\":[\"new1\",\"new2\"],"
 				+ "\"changedConcepts\":[\"changed1\"],"
-				+ "\"deletedConcepts\":[\"deleted1\",\"deleted2\",\"deleted3\"],"
-				+ "\"affectedConcepts\":{\"1\":\"new1\",\"2\":\"new2\",\"3\":\"changed1\"}}", json);
+				+ "\"deletedConcepts\":[\"deleted1\",\"deleted2\",\"deleted3\"]}", json);
 	}
 	
 	@Test
@@ -104,6 +98,5 @@ public class ReviewSerializationTest {
 		assertEquals(ImmutableSet.of("new1", "new2"), value.newConcepts());
 		assertEquals(ImmutableSet.of("changed1"), value.changedConcepts());
 		assertEquals(ImmutableSet.of("deleted1", "deleted2", "deleted3"), value.deletedConcepts());
-		assertEquals(ImmutableMap.of(1L, "new1", 2L, "new2", 3L, "changed1"), value.affectedConcepts());
 	}
 }

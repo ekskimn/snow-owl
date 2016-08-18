@@ -15,14 +15,12 @@
  */
 package com.b2international.snowowl.datastore.server.internal.review;
 
-import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -300,7 +298,6 @@ public class ReviewManagerImpl implements ReviewManager {
 		final Set<String> newConcepts = newHashSet();
 		final Set<String> changedConcepts = newHashSet();
 		final Set<String> deletedConcepts = newHashSet();
-		final Map<Long, String> affectedConcepts = newHashMap();
 		
 		// collect new container IDs
 		for (final Class<? extends Revision> revisionType : compare.getNewRevisionTypes()) {
@@ -311,7 +308,6 @@ public class ReviewManagerImpl implements ReviewManager {
 					final String containerId = idProvider.getContainerId();
 					if (idProvider.isRoot() && containerId != null) {
 						newConcepts.add(containerId);
-						affectedConcepts.put(hit.getStorageKey(), containerId);
 					}
 				}
 			}
@@ -323,7 +319,6 @@ public class ReviewManagerImpl implements ReviewManager {
 					// if the container ID is registered as new, then skip adding it to the changed set, otherwise add it
 					if (containerId != null && !idProvider.isRoot() && !newConcepts.contains(containerId)) {
 						changedConcepts.add(containerId);
-						affectedConcepts.put(hit.getStorageKey(), containerId);
 					}
 				}
 			}
@@ -336,7 +331,6 @@ public class ReviewManagerImpl implements ReviewManager {
 					final String containerId = ((ContainerIdProvider) hit).getContainerId();
 					if (containerId != null) {
 						changedConcepts.add(containerId);
-						affectedConcepts.put(hit.getStorageKey(), containerId);
 					}
 				}
 			}
@@ -350,8 +344,6 @@ public class ReviewManagerImpl implements ReviewManager {
 					final String containerId = idProvider.getContainerId();
 					if (idProvider.isRoot() && containerId != null) {
 						deletedConcepts.add(containerId);
-						// XXX: Can't handle deleted components on the merge review screen
-						// affectedConcepts.put(hit.getStorageKey(), containerId);
 					}
 				}
 			}
@@ -363,13 +355,12 @@ public class ReviewManagerImpl implements ReviewManager {
 					// if the container ID is registered as new, then skip adding it to the changed set, otherwise add it
 					if (containerId != null && !idProvider.isRoot() && !deletedConcepts.contains(containerId)) {
 						changedConcepts.add(containerId);
-						affectedConcepts.put(hit.getStorageKey(), containerId);
 					}
 				}
 			}
 		}
 		
-		final ConceptChangesImpl convertedChanges = new ConceptChangesImpl(id, newConcepts, changedConcepts, deletedConcepts, affectedConcepts);
+		final ConceptChangesImpl convertedChanges = new ConceptChangesImpl(id, newConcepts, changedConcepts, deletedConcepts);
 
 		try {
 			getReview(id);

@@ -15,10 +15,9 @@
  */
 package com.b2international.snowowl.datastore.server.internal.review;
 
-import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 
-import java.util.Map;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -89,14 +88,12 @@ public class MergeReviewManagerImpl implements MergeReviewManager {
 		ConceptChanges sourceChanges = reviews.getConceptChanges(mergeReview.sourceToTargetReviewId());
 		ConceptChanges targetChanges = reviews.getConceptChanges(mergeReview.targetToSourceReviewId());
 		
-		/* 
-		 * Compute intersection on the storage key level (keys of the map), but return the concept IDs 
-		 * (values of the map) in the response. The SCTID should be the same for the entire lifetime 
-		 * of a CDO object, so it shouldn't matter which map we are converting.
-		 */
-		Map<Long, String> commonChanges = newHashMap(sourceChanges.affectedConcepts());
-		commonChanges.keySet().retainAll(targetChanges.affectedConcepts().keySet());
-		return newHashSet(commonChanges.values());
+		Set<String>commonChanges = newHashSet(sourceChanges.changedConcepts());
+		// If concepts are new then they won't intersect.  Also if they're deleted, they won't
+		// conflict, so we're only interested in the change set.
+		commonChanges.retainAll(targetChanges.changedConcepts());
+		
+		return commonChanges;
 	}
 	
 	public MergeReview deleteMergeReview(MergeReviewImpl mergeReview) {
