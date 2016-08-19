@@ -21,6 +21,7 @@ import java.util.Collections;
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 
 import com.b2international.commons.collections.Collections3;
+import com.b2international.snowowl.core.Metadata;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
 
@@ -33,8 +34,8 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 	private final int segmentId;
 	private final Collection<Integer> segments;
 	
-	CDOMainBranchImpl(long baseTimestamp, long headTimestamp, int segmentId, Collection<Integer> segments) {
-		super(baseTimestamp, headTimestamp);
+	CDOMainBranchImpl(long baseTimestamp, long headTimestamp, Metadata metadata, int segmentId, Collection<Integer> segments) {
+		super(baseTimestamp, headTimestamp, metadata);
 		this.segmentId = segmentId;
 		this.segments = Collections3.toImmutableSet(segments);
 	}
@@ -60,8 +61,8 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 	}
 	
 	@Override
-	protected BranchImpl doCreateBranch(String name, String parentPath, long baseTimestamp, long headTimestamp, boolean deleted) {
-		return new CDOMainBranchImpl(baseTimestamp, headTimestamp, segmentId, segments);
+	protected BranchImpl doCreateBranch(String name, String parentPath, long baseTimestamp, long headTimestamp, boolean deleted, Metadata metadata) {
+		return new CDOMainBranchImpl(baseTimestamp, headTimestamp, metadata, segmentId, segments);
 	}
 	
 	@Override
@@ -71,9 +72,8 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 		// MAIN branch uses all his previous segments because he never gets reopened
 		builder.addAll(segments());
 		
-		final CDOMainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), newSegmentId, builder.build());
+		final CDOMainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), metadata(), segmentId, builder.build());
 		main.setBranchManager(getBranchManager());
-		main.metadata(metadata());
 		return main;
 	}
 }
