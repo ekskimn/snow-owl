@@ -228,7 +228,8 @@ public class SnomedRf2ImportService implements ISnomedRf2ImportService {
 					.prepareGetCodeSystem()
 					.setUniqueId(shortName)
 					.build(IBranchPath.MAIN_BRANCH)
-					.executeSync(getEventBus());
+					.execute(getEventBus())
+					.getSync();
 		} catch (CodeSystemNotFoundException e) {
 			return null;
 		}

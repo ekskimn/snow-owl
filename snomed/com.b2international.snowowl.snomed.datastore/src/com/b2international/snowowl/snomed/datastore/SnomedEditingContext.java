@@ -586,7 +586,8 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			new SnomedIdentifierBulkReleaseRequestBuilder()
 				.setComponentIds(newComponentIds)
 				.build(branch)
-				.executeSync(bus);
+				.execute(bus)
+				.getSync();
 			
 			newComponentIds.clear();
 		}
@@ -1629,7 +1630,8 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				.setCategory(componentNature)
 				.setNamespace(namespace)
 				.build(branch)
-				.executeSync(bus);
+				.execute(bus)
+				.getSync();
 		newComponentIds.add(generatedId);
 		return generatedId;
 	}

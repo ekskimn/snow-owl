@@ -23,6 +23,7 @@ import java.net.URI;
 import java.security.Principal;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -317,7 +318,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		final String createdConceptId = change
 			.toRequestBuilder()
 			.build(userId, branchPath, commitComment)
-			.executeSync(bus, 120L * 1000L)
+			.execute(bus)
+			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS)
 			.getResultAs(String.class);
 		
 		
@@ -375,7 +377,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			.setInactivationIndicator(update.getInactivationIndicator())
 			.setSubclassDefinitionStatus(update.getSubclassDefinitionStatus())
 			.build(userId, branchPath, commitComment)
-			.executeSync(bus, 120L * 1000L);
+			.execute(bus)
+			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS);
 	}
 
 	@ApiOperation(
@@ -412,7 +415,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			.setComponentId(conceptId)
 			.force(force)
 			.build(principal.getName(), branchPath, String.format("Deleted Concept '%s' from store.", conceptId))
-			.executeSync(bus, 120L * 1000L);
+			.execute(bus)
+			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS);
 	}
 
 	private URI getConceptLocationURI(String branchPath, String conceptId) {

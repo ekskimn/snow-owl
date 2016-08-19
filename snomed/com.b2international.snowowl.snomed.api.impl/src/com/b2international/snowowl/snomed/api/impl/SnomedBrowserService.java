@@ -233,9 +233,28 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return result;
 	}
 
+<<<<<<< HEAD
 	private void populateInactivationFields(ISnomedConcept concept, SnomedBrowserConcept result) {
 		result.setInactivationIndicator(concept.getInactivationIndicator());
 		result.setAssociationTargets(concept.getAssociationTargets());
+=======
+	@Override
+	public ISnomedBrowserConcept create(String branchPath, ISnomedBrowserConcept concept, String userId, List<ExtendedLocale> locales) {
+		final SnomedConceptCreateRequest req = inputFactory.createComponentInput(branchPath, concept, SnomedConceptCreateRequest.class);
+		String commitComment = getCommitComment(userId, concept, "creating");
+		final String createdConceptId = SnomedRequests
+				.prepareCommit()
+				.setCommitComment(commitComment)
+				.setBody(req)
+				.setUserId(userId)
+				.setBranch(branchPath)
+				.build()
+				.execute(bus)
+				.getSync()
+				.getResultAs(String.class);
+		final IComponentRef componentRef = SnomedServiceHelper.createComponentRef(branchPath, createdConceptId);
+		return getConceptDetails(componentRef, locales);
+>>>>>>> [request] remove executeSync from Request interface
 	}
 
 <<<<<<< HEAD
@@ -323,7 +342,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.setBody(commitReq)
 			.setPreparationTime(watch.elapsed(TimeUnit.MILLISECONDS))
 			.build()
-			.executeSync(bus);
+			.execute(bus)
+			.getSync();
 		LOGGER.info("Committed changes for concept {}", newVersionConcept.getFsn());
 
 		return getConceptDetails(componentRef, locales);
@@ -1148,6 +1168,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final InternalStorageRef internalStorageRef = ClassUtils.checkAndCast(storageRef, InternalStorageRef.class);
 		final String path = internalStorageRef.getBranchPath();
 		
+<<<<<<< HEAD
 		final OptionsBuilder conceptExpandBuilder = OptionsBuilder.newBuilder();
 		switch (preferredDescriptionType) {
 			case FSN:
@@ -1161,6 +1182,24 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			default:
 				break;
 		}
+=======
+		final Collection<ISnomedDescription> descriptions = SnomedRequests.prepareSearchDescription()
+			.setOffset(offset)
+			.setLimit(limit)
+			.filterByTerm(query)
+			.build(branchPath.getPath())
+			.execute(bus)
+			.getSync()
+			.getItems();
+
+		final Set<String> conceptIds = FluentIterable.from(descriptions)
+			.transform(new Function<ISnomedDescription, String>() {
+				@Override public String apply(ISnomedDescription input) {
+					return input.getConceptId();
+				}
+			})
+			.toSet();
+>>>>>>> [request] remove executeSync from Request interface
 		
 		final Options conceptExpandOptions = OptionsBuilder.newBuilder()
 				.put("expand", conceptExpandBuilder.build())
@@ -1272,7 +1311,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				SnomedRequests.prepareGetConcept()
 						.setComponentId(conceptId)
 						.build(branch)
-						.executeSync(bus);
+						.execute(bus)
+						.getSync();
 				
 				final SnomedBrowserConstant constant = new SnomedBrowserConstant();
 				constant.setConceptId(conceptId);

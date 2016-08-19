@@ -147,7 +147,8 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 			.prepareSearchCodeSystemVersion()
 			.filterByCodeSystemShortName(releaseEntry.getShortName())
 			.build(IBranchPath.MAIN_BRANCH)
-			.executeSync(getEventBus())
+			.execute(getEventBus())
+			.getSync()
 			.getItems()).transform(new Function<ICodeSystemVersion, String>() {
 				@Override public String apply(ICodeSystemVersion input) {
 					return EffectiveTimes.format(input.getEffectiveDate(), DateFormats.SHORT);
@@ -162,14 +163,16 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 				.prepareGetCodeSystem()
 				.setUniqueId(oid)
 				.build(IBranchPath.MAIN_BRANCH)
-				.executeSync(getEventBus());
+				.execute(getEventBus())
+				.getSync();
 		} catch (CodeSystemNotFoundException e) {
 			try {
 				entry = new CodeSystemRequests(SnomedDatastoreActivator.REPOSITORY_UUID)
 					.prepareGetCodeSystem()
 					.setUniqueId(shortName)
 					.build(IBranchPath.MAIN_BRANCH)
-					.executeSync(getEventBus());
+					.execute(getEventBus())
+					.getSync();
 			} catch (CodeSystemNotFoundException e2) {
 				throw new ImportException(String.format(
 						"Unable to find the specified SNOMED CT release among the registered terminologies. Short name: %s, OID: %s",
