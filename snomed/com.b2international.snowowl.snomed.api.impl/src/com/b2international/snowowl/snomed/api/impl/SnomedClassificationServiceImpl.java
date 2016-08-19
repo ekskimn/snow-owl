@@ -74,7 +74,7 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationRequest;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
@@ -95,6 +95,8 @@ import com.google.common.collect.Sets;
 public class SnomedClassificationServiceImpl implements ISnomedClassificationService {
 
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedClassificationServiceImpl.class);
+	
+	private static final int MAX_INDEXED_RESULTS = 1000;
 	
 	private final class PersistenceCompletionHandler implements IHandler<IMessage> {
 
@@ -230,9 +232,16 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		final File dir = new File(new File(SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory(), "indexes"), "classification_runs");
 		indexService = new ClassificationRunIndex(dir);
 		ApplicationContext.getInstance().getServiceChecked(SingleDirectoryIndexManager.class).registerIndex(indexService);
-
+		
 		try {
 			indexService.trimIndex(maxReasonerRuns);
+			indexService.invalidateClassificationRuns();
+		} catch (final IOException e) {
+			LOG.error("Failed to run housekeeping tasks for the classification index.", e);
+		}
+
+		try {
+			indexService.trimIndex(MAX_INDEXED_RESULTS);
 			indexService.invalidateClassificationRuns();
 		} catch (final IOException e) {
 			LOG.error("Failed to run housekeeping tasks for the classification index.", e);

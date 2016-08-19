@@ -6,8 +6,8 @@ import java.util.Set;
 
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponentWithId;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.datastore.server.request.BaseSnomedComponentUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.BaseSnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;

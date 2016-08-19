@@ -1,0 +1,31 @@
+= Data migration guide
+
+== Introduction
+
+This document lists the required data migration steps for each release.
+
+== 5.0.0
+
+Follow these intructions to migrate datasets created prior to 5.0.0:
+
+WARNING: Make sure you execute the data migration process on a backup first before you try to migrate your production servers!
+
+=== Steps
+
+. Stop the currently running snow-owl and deploy a new v5.0.0 version
+. Backup the <SO_DATADIR>/indexes directory for recovery in case of migration failure
+. Change the following configuration values in *snowowl_config.yml* file:
+.. Set _commitInterval_ from default _15 seconds_ to _15 minutes_ (value _900000_)
+.. Set _translogSyncInterval_ from default _5 seconds_ to _5 minutes_ (value _300000_)
+.. Set _revisionCache_ to _false_
+.. You can find an example configuration in the *configuration/migration/5.0* subdirectory
+. Change memory settings to fixed *12g* in the _<SO_HOME>/bin/dmk.sh_ file with JVM configuration _-Xms12g -Xmx12g_
+. Start snow-owl v5.0.0
+. Connect to the OSGi console via _telnet localhost 2501_
+. Start the migration process with the command _snowowl reindex <repositoryId>_. For SNOMED CT, the repository identifier is _snomedStore_.
+
+=== Troubleshooting
+
+If the migration process fails, it prints out relevant messages in the console and the logs. The printed message contains information about the failed commit, with its commit timestamp. You can (re)start the migration process from the failed commit timestamp, if you specify the commit time at the end of the command as follows, _snowowl reindex snomedStore <failedCommitTimestamp>_.
+
+NOTE: It is recommended to stop and restart the server before continuing a failed migration process.

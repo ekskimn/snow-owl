@@ -15,16 +15,18 @@
  */
 package com.b2international.commons.http;
 
+import java.io.Serializable;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.base.Strings;
 
 /**
  * @since 4.5
  */
-public class ExtendedLocale {
+public class ExtendedLocale implements Serializable {
 
 	private static final Pattern EXTENDED_LOCALE_PATTERN = Pattern.compile("([a-zA-Z]{2})(-([a-zA-Z]{2}))?(-x-([1-9][0-9]{5,17}))?");
 
@@ -68,6 +70,7 @@ public class ExtendedLocale {
 	}
 	
 	@Override
+	@JsonValue
 	public String toString() {
 		if (languageRefSetId.isEmpty()) {
 			return getLanguageTag();

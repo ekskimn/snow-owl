@@ -24,14 +24,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.util.Collection;
+import java.util.UUID;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.b2international.index.Index;
+import com.b2international.index.Indexes;
+import com.b2international.index.mapping.Mappings;
 import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataImpl;
 import com.b2international.snowowl.core.ServiceProvider;
@@ -45,10 +49,8 @@ import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
-import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.review.ReviewManager;
-import com.b2international.snowowl.datastore.store.MemStore;
-import com.b2international.snowowl.datastore.store.Store;
+import com.b2international.snowowl.datastore.server.internal.JsonSupport;
 
 /**
  * @since 4.1
@@ -57,14 +59,18 @@ public class BranchManagerTest {
 
 	private class BranchManagerImplTest extends BranchManagerImpl {
 
-		private BranchManagerImplTest(Store<InternalBranch> branchStore, long mainBranchTimestamp) {
+		private BranchManagerImplTest(Index branchStore, long mainBranchTimestamp) {
 			super(branchStore);
 			initBranchStore(new MainBranchImpl(mainBranchTimestamp));
 		}
 
 		@Override
-		InternalBranch applyChangeSet(InternalBranch target, InternalBranch source, boolean dryRun, String commitMessage) {
-			return handleCommit(target, clock.getTimestamp());
+		InternalBranch applyChangeSet(InternalBranch from, InternalBranch to, boolean dryRun, String commitMessage) {
+			if (!dryRun && from.headTimestamp() > from.baseTimestamp()) {
+				return handleCommit(to, clock.getTimestamp());
+			} else {
+				return to;
+			}
 		}
 
 		@Override
@@ -80,13 +86,14 @@ public class BranchManagerTest {
 	private BranchManagerImpl manager;
 	private InternalBranch main;
 	private InternalBranch a;
-	private MemStore<InternalBranch> store;
+	private Index store;
 	private ServiceProvider context;
 
 	@Before
 	public void givenBranchManager() {
 		clock = new AtomicLongTimestampAuthority();
-		store = spy(new MemStore<InternalBranch>());
+		store = Indexes.createIndex(UUID.randomUUID().toString(), JsonSupport.getDefaultObjectMapper(), new Mappings(MainBranchImpl.class, BranchImpl.class, InternalBranch.class));
+		store.admin().create();
 		manager = new BranchManagerImplTest(store, clock.getTimestamp());
 		
 		main = (InternalBranch) manager.getMainBranch();
@@ -107,6 +114,11 @@ public class BranchManagerTest {
 		when(context.service(RepositoryContextProvider.class)).thenReturn(repositoryContextProvider);
 	}
 	
+	@After
+	public void after() {
+		store.admin().delete();
+	}
+	
 	@Test
 	public void whenGettingMainBranch_ThenItShouldBeReturned() throws Exception {
 		assertNotNull(main);
@@ -119,12 +131,11 @@ public class BranchManagerTest {
 	
 	@Test
 	public void whenCreatingBranch_ThenItShouldBeReturnedViaGet() throws Exception {
-		assertEquals(a, (InternalBranch) manager.getBranch("MAIN/a"));
+		assertEquals(a, manager.getBranch("MAIN/a"));
 	}
 	
 	@Test
 	public void whenGettingBranch_ThenBranchManagerShouldBeSet() throws Exception {
-		when(store.get("MAIN/a")).thenReturn(new BranchImpl("a", "MAIN", 0L, 1L, false));
 		final BranchImpl branch = (BranchImpl) manager.getBranch("MAIN/a");
 		assertNotNull(branch.getBranchManager());
 	}
@@ -205,7 +216,6 @@ public class BranchManagerTest {
 		a.delete();
 		assertTrue(manager.getBranch("MAIN/a/1").isDeleted());
 		assertTrue(manager.getBranch("MAIN/a/1/2").isDeleted());
-		
 	}
 	
 	@Test
@@ -367,13 +377,7 @@ public class BranchManagerTest {
 		return rebase(branch, branch.parent());
 	}
 	
-	private Branch rebase(Branch branch, Branch onto) {
-		return RepositoryRequests.branching("")
-			.prepareMerge()
-			.setSource(onto.path())
-			.setTarget(branch.path())
-			.setCommitComment("Message")
-			.build()
-			.execute(context);
+	private Branch rebase(Branch branch, Branch onTopOf) {
+		return branch.rebase(onTopOf, "Message");
 	}
 }

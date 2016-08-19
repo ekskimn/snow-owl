@@ -6,12 +6,12 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserD
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
-import com.b2international.snowowl.snomed.datastore.server.request.BaseSnomedComponentCreateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.BaseSnomedComponentUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionCreateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionUpdateRequestBuilder;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequestBuilder;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 

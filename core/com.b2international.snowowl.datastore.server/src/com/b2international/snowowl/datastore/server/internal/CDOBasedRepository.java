@@ -16,72 +16,108 @@
 package com.b2international.snowowl.datastore.server.internal;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.Maps.newHashMap;
+import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchManager;
 
+import com.b2international.collections.PrimitiveCollectionModule;
+import com.b2international.commons.platform.Extensions;
+import com.b2international.index.DefaultIndex;
+import com.b2international.index.Index;
+import com.b2international.index.IndexClient;
+import com.b2international.index.IndexClientFactory;
+import com.b2international.index.Indexes;
+import com.b2international.index.mapping.Mappings;
+import com.b2international.index.query.slowlog.SlowLogConfig;
+import com.b2international.index.revision.DefaultRevisionIndex;
+import com.b2international.index.revision.RevisionBranch;
+import com.b2international.index.revision.RevisionBranchProvider;
+import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.ClassLoaderProvider;
+import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.index.IIndexServerServiceManager;
 import com.b2international.snowowl.core.api.index.IIndexUpdater;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
+import com.b2international.snowowl.core.domain.DelegatingServiceProvider;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.events.util.ApiRequestHandler;
+import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.core.setup.Environment;
+import com.b2international.snowowl.datastore.CodeSystemEntry;
+import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
-import com.b2international.snowowl.datastore.index.IndexTransactionProvider;
+import com.b2international.snowowl.datastore.config.IndexConfiguration;
+import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
+import com.b2international.snowowl.datastore.index.MappingProvider;
+import com.b2international.snowowl.datastore.replicate.BranchReplicator;
+import com.b2international.snowowl.datastore.review.ConceptChanges;
+import com.b2international.snowowl.datastore.review.MergeReviewManager;
+import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.RepositoryClassLoaderProviderRegistry;
 import com.b2international.snowowl.datastore.server.ReviewConfiguration;
 import com.b2international.snowowl.datastore.server.cdo.CDOConflictProcessorBroker;
 import com.b2international.snowowl.datastore.server.cdo.ICDOConflictProcessor;
-import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
-import com.b2international.snowowl.datastore.server.internal.branch.BranchSerializer;
+import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchManagerImpl;
+import com.b2international.snowowl.datastore.server.internal.branch.CDOMainBranchImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
+import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
+import com.b2international.snowowl.datastore.server.internal.merge.MergeServiceImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
+import com.b2international.snowowl.datastore.server.internal.review.MergeReviewManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
-import com.b2international.snowowl.datastore.server.internal.review.ReviewSerializer;
 import com.b2international.snowowl.datastore.store.IndexStore;
+import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.eventbus.EventBusUtil;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Ordering;
 import com.google.inject.Provider;
 
 /**
  * @since 4.1
  */
-public final class CDOBasedRepository implements InternalRepository, RepositoryContextProvider {
+public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, RepositoryContextProvider {
 
+	private final String toolingId;
 	private final String repositoryId;
-	private final Environment env;
 	private final IEventBus handlers;
 	
-	private final Map<Class<?>, Object> registry = newHashMap();
-
-	CDOBasedRepository(String repositoryId, int numberOfWorkers, Environment env) {
+	CDOBasedRepository(String repositoryId, String toolingId, int numberOfWorkers, int mergeMaxResults, Environment env) {
+		super(env);
 		checkArgument(numberOfWorkers > 0, "At least one worker thread must be specified");
 		
+		this.toolingId = toolingId;
 		this.repositoryId = repositoryId;
-		this.env = env;
 		this.handlers = EventBusUtil.getWorkerBus(repositoryId, numberOfWorkers);
-		
+
+		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
+		mapper.registerModule(new PrimitiveCollectionModule());
+		initIndex(mapper);
+		initializeBranchingSupport(mapper, mergeMaxResults);
 		initializeRequestSupport(numberOfWorkers);
-		initializeBranchingSupport();
+		bind(Repository.class, this);
+		bind(ObjectMapper.class, mapper);
 	}
 
 	@Override
@@ -91,7 +127,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	@Override
 	public IEventBus events() {
-		return env.service(IEventBus.class);
+		return getDelegate().service(IEventBus.class);
 	}
 	
 	@Override
@@ -109,7 +145,7 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	@Override
 	public ICDOConnection getConnection() {
-		return env.service(ICDOConnectionManager.class).getByUuid(repositoryId);
+		return getDelegate().service(ICDOConnectionManager.class).getByUuid(repositoryId);
 	}
 	
 	@Override
@@ -124,12 +160,22 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	
 	@Override
 	public IIndexUpdater<?> getIndexUpdater() {
-		return env.service(IIndexServerServiceManager.class).getByUuid(repositoryId);
+		return getDelegate().service(IIndexServerServiceManager.class).getByUuid(repositoryId);
+	}
+	
+	@Override
+	public Index getIndex() {
+		return service(Index.class);
+	}
+	
+	@Override
+	public RevisionIndex getRevisionIndex() {
+		return service(RevisionIndex.class);
 	}
 	
 	@Override
 	public ICDORepository getCdoRepository() {
-		return env.service(ICDORepositoryManager.class).getByUuid(repositoryId);
+		return getDelegate().service(ICDORepositoryManager.class).getByUuid(repositoryId);
 	}
 	
 	@Override
@@ -148,9 +194,9 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 	}
 	
 	private void initializeRequestSupport(int numberOfWorkers) {
-		final ClassLoaderProvider classLoaderProvider = env.service(RepositoryClassLoaderProviderRegistry.class).get(repositoryId);
+		final ClassLoaderProvider classLoaderProvider = getClassLoaderProvider();
 		for (int i = 0; i < numberOfWorkers; i++) {
-			handlers().registerHandler(address(), new ApiRequestHandler(services(), classLoaderProvider));
+			handlers().registerHandler(address(), new ApiRequestHandler(this, classLoaderProvider));
 		}
 		
 		// register number of cores event bridge/pipe between events and handlers
@@ -158,25 +204,11 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 			events().registerHandler(address(), new Pipe(handlers(), address()));
 		}
 		// register RepositoryContextProvider
-		registry.put(RepositoryContextProvider.class, this);
-		registry.put(IndexTransactionProvider.class, getIndexUpdater());
+		bind(RepositoryContextProvider.class, this);
 	}
-	
-	private ServiceProvider services() {
-		return new ServiceProvider() {
-			@Override
-			public <T> T service(Class<T> type) {
-				if (registry.containsKey(type)) {
-					return (T) registry.get(type);
-				}
-				return env.service(type);
-			}
-			
-			@Override
-			public <T> Provider<T> provider(Class<T> type) {
-				return env.provider(type);
-			}
-		};
+
+	private ClassLoaderProvider getClassLoaderProvider() {
+		return getDelegate().service(RepositoryClassLoaderProviderRegistry.class).get(repositoryId);
 	}
 	
 	@Override
@@ -184,36 +216,128 @@ public final class CDOBasedRepository implements InternalRepository, RepositoryC
 		return new DefaultRepositoryContext(context, repositoryId);
 	}
 
-	private void initializeBranchingSupport() {
-		final BranchSerializer branchSerializer = env.service(BranchSerializer.class);
-		final IndexStore<InternalBranch> branchStore = createIndex("branches", branchSerializer, InternalBranch.class);
-		registry.put(BranchManager.class, new CDOBranchManagerImpl(this, branchStore));
+	private void initializeBranchingSupport(final ObjectMapper mapper, int mergeMaxResults) {
+		final CDOBranchManagerImpl branchManager = new CDOBranchManagerImpl(this);
+		bind(BranchManager.class, branchManager);
+		bind(BranchReplicator.class, branchManager);
 		
-		final ReviewSerializer reviewSerializer = env.service(ReviewSerializer.class);
-		final IndexStore<ReviewImpl> reviewStore = createIndex("reviews", reviewSerializer, ReviewImpl.class);
-		final IndexStore<MergeReviewImpl> mergeReviewStore = createIndex("merge-reviews", reviewSerializer, MergeReviewImpl.class);
-		final IndexStore<ConceptChangesImpl> conceptChangesStore = createIndex("concept_changes", reviewSerializer, ConceptChangesImpl.class);
-		final ReviewConfiguration reviewConfiguration = env.service(SnowOwlConfiguration.class).getModuleConfig(ReviewConfiguration.class);
-		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(this, reviewStore, mergeReviewStore, conceptChangesStore, reviewConfiguration);
-		registry.put(ReviewManager.class, reviewManager);
+		final ReviewConfiguration reviewConfiguration = getDelegate().service(SnowOwlConfiguration.class).getModuleConfig(ReviewConfiguration.class);
+		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(this, reviewConfiguration);
+		bind(ReviewManager.class, reviewManager);
+		
+		// TODO migrate merge-reviews to new index API
+		final Store<MergeReviewImpl> mergeReviews = createIndex("merge-reviews", mapper, MergeReviewImpl.class);
+		bind(MergeReviewManager.class, new MergeReviewManagerImpl(mergeReviews, reviewManager));
 
 		events().registerHandler(address("/branches/changes") , reviewManager.getStaleHandler());
 		
-		// register stores to index manager
-		final SingleDirectoryIndexManager indexManager = env.service(SingleDirectoryIndexManager.class);
-		indexManager.registerIndex(branchStore);
-		indexManager.registerIndex(reviewStore);
-		indexManager.registerIndex(mergeReviewStore);
-		indexManager.registerIndex(conceptChangesStore);
+		final MergeServiceImpl mergeService = new MergeServiceImpl(this, mergeMaxResults);
+		bind(MergeService.class, mergeService);
+	}
+
+	private void initIndex(final ObjectMapper mapper) {
+		final Collection<Class<?>> types = newHashSet();
+		types.add(CDOMainBranchImpl.class);
+		types.add(CDOBranchImpl.class);
+		types.add(InternalBranch.class);
+		types.add(Review.class);
+		types.add(ReviewImpl.class);
+		types.add(ConceptChanges.class);
+		types.add(ConceptChangesImpl.class);
+		types.add(CodeSystemEntry.class);
+		types.add(CodeSystemVersionEntry.class);
+		types.addAll(getToolingTypes(toolingId));
+		
+		final Map<String, Object> settings = initIndexSettings();
+		final IndexClient indexClient = Indexes.createIndexClient(repositoryId, mapper, new Mappings(types), settings);
+		final Index index = new DefaultIndex(indexClient);
+		final Provider<BranchManager> branchManager = provider(BranchManager.class);
+		final RevisionIndex revisionIndex = new DefaultRevisionIndex(index, new RevisionBranchProvider() {
+			@Override
+			public RevisionBranch getBranch(String branchPath) {
+				final InternalCDOBasedBranch branch = (InternalCDOBasedBranch) branchManager.get().getBranch(branchPath);
+				final Set<Integer> segments = newHashSet();
+				segments.addAll(branch.segments());
+				segments.addAll(branch.parentSegments());
+				return new RevisionBranch(branchPath, branch.segmentId(), segments);
+			}
+			
+			@Override
+			public RevisionBranch getParentBranch(String branchPath) {
+				final InternalCDOBasedBranch branch = (InternalCDOBasedBranch) branchManager.get().getBranch(branchPath);
+				return new RevisionBranch(branch.parent().path(), Ordering.natural().max(branch.parentSegments()), branch.parentSegments());
+			}
+
+		});
+		// register index and revision index access, the underlying index is the same
+		bind(Index.class, index);
+		bind(RevisionIndex.class, revisionIndex);
+		// initialize the index
+		index.admin().create();
+		
+	}
+
+	private Map<String, Object> initIndexSettings() {
+		final ImmutableMap.Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
+		builder.put(IndexClientFactory.DIRECTORY, getDelegate().getDataDirectory() + "/indexes");
+		
+		final IndexConfiguration config = service(SnowOwlConfiguration.class)
+				.getModuleConfig(RepositoryConfiguration.class).getIndexConfiguration();
+		
+		builder.put(IndexClientFactory.COMMIT_INTERVAL_KEY, config.getCommitInterval());
+		builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, config.getTranslogSyncInterval());
+		
+		final SlowLogConfig slowLog = createSlowLogConfig(config);
+		builder.put(IndexClientFactory.SLOW_LOG_KEY, slowLog);
+		
+		return builder.build();
+	}
+
+	private SlowLogConfig createSlowLogConfig(final IndexConfiguration config) {
+		final ImmutableMap.Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
+		builder.put(SlowLogConfig.FETCH_DEBUG_THRESHOLD, config.getFetchDebugThreshold());
+		builder.put(SlowLogConfig.FETCH_INFO_THRESHOLD, config.getFetchInfoThreshold());
+		builder.put(SlowLogConfig.FETCH_TRACE_THRESHOLD, config.getFetchTraceThreshold());
+		builder.put(SlowLogConfig.FETCH_WARN_THRESHOLD, config.getFetchWarnThreshold());
+		builder.put(SlowLogConfig.QUERY_DEBUG_THRESHOLD, config.getQueryDebugThreshold());
+		builder.put(SlowLogConfig.QUERY_INFO_THRESHOLD, config.getQueryInfoThreshold());
+		builder.put(SlowLogConfig.QUERY_TRACE_THRESHOLD, config.getQueryTraceThreshold());
+		builder.put(SlowLogConfig.QUERY_WARN_THRESHOLD, config.getQueryWarnThreshold());
+		
+		return new SlowLogConfig(builder.build());
+	}
+
+	private Collection<Class<?>> getToolingTypes(String toolingId) {
+		final Collection<Class<?>> types = newHashSet();
+		final Collection<MappingProvider> providers = Extensions.getExtensions("com.b2international.snowowl.datastore.mappingProvider", MappingProvider.class);
+		for (MappingProvider provider : providers) {
+			if (provider.getToolingId().equals(toolingId)) {
+				types.addAll(provider.getMappings());
+			}
+		}
+		return types;
+	}
+
+	@Override
+	public void close() throws IOException {
+		getIndex().admin().close();
 	}
 	
+	/**
+	 * @deprecated - as of 5.0, {@link Store} API is deprecated, use the new index API instead 
+	 */
 	private <T> IndexStore<T> createIndex(final String name, ObjectMapper mapper, Class<T> type) {
 		// TODO consider moving from index layout /feature/repositoryId to /repositoryId/feature
-		final File dir = env.getDataDirectory()
+		final File dir = getDelegate().getDataDirectory()
 				.toPath()
 				.resolve(Paths.get("indexes", name, repositoryId))
 				.toFile();
 		return new IndexStore<>(dir, mapper, type);
+	}
+	
+	@Override
+	protected Environment getDelegate() {
+		return (Environment) super.getDelegate();
 	}
 	
 }

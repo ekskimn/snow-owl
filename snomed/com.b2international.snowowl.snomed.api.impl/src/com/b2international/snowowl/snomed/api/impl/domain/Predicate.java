@@ -1,6 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
-import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry.PredicateType;
+import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.PredicateType;
 
 public class Predicate {
 

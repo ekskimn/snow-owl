@@ -17,7 +17,7 @@ package com.b2international.snowowl.datastore.events;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.datastore.review.MergeReview;
-import com.b2international.snowowl.datastore.review.ReviewManager;
+import com.b2international.snowowl.datastore.review.MergeReviewManager;
 
 /**
  * Sent when a user requests to read the details of a terminology review with the specified identifier.
@@ -30,7 +30,7 @@ public class ReadMergeReviewRequest extends ReviewRequest<MergeReview> {
 	
 	@Override
 	public MergeReview execute(RepositoryContext context) {
-		return context.service(ReviewManager.class).getMergeReview(getReviewId());
+		return context.service(MergeReviewManager.class).getMergeReview(getReviewId());
 	}
 	
 	@Override

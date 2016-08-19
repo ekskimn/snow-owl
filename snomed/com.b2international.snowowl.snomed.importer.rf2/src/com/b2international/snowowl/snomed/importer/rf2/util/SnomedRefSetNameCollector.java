@@ -36,11 +36,13 @@ import com.b2international.commons.csv.CsvParser;
 import com.b2international.commons.csv.CsvSettings;
 import com.b2international.commons.csv.RecordParserCallback;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.datastore.SnomedClientTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.rf2.refset.ErroneousAustralianReleaseFileNames;
 import com.google.common.base.Optional;
@@ -89,6 +91,8 @@ public class SnomedRefSetNameCollector {
 	private static final int STATUS_COLUMN = 2;
 	private static final int DESCRIPTION_TYPE_COLUMN = 6;
 	
+	private static final String CONCRETE_DOMAIN_TYPE_REFSET_ID = SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getConcreteDomainTypeRefsetIdentifier();
+	
 	private ImportConfiguration configuration;
 	private SubMonitor convertedMonitor;
 	private Map<String, String> availableLabels = Maps.newHashMap();
@@ -136,7 +140,7 @@ public class SnomedRefSetNameCollector {
 		}
 
 		// Step 3: Mine the terminology browser for more labels (if registered)
-		fillLabelsFromTeminologyBrowser(unlabeledRefSetIds);
+//		fillLabelsFromTeminologyBrowser(unlabeledRefSetIds);
 		
 		// Step 4: There may be some reference sets for which we couldn't get a label; initialize these with boilerplate text
 		fillGeneralLabels(unlabeledRefSetIds);
@@ -290,7 +294,7 @@ public class SnomedRefSetNameCollector {
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH)) {
 			return Concepts.REFSET_DESCRIPTION_TYPE;
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID)) {
-			return Concepts.REFSET_CONCRETE_DOMAIN_TYPE_SG;
+			return CONCRETE_DOMAIN_TYPE_REFSET_ID;
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_VALUE)) {
 			return Concepts.REFSET_CONCRETE_DOMAIN_TYPE_AU;
 		} else if (lastColumnName.equalsIgnoreCase(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME)) {
@@ -304,27 +308,21 @@ public class SnomedRefSetNameCollector {
 		return null;
 	}
 
-	private void fillLabelsFromTeminologyBrowser(Set<String> unlabeledRefSetIds) {
-		
-		final SnomedClientTerminologyBrowser terminologyBrowser = ApplicationContext.getInstance().getService(SnomedClientTerminologyBrowser.class);
-		
-		if (terminologyBrowser != null) {
-			
-			Iterator<String> unlabeledRefSetIdIterator = unlabeledRefSetIds.iterator();
-			
-			while (unlabeledRefSetIdIterator.hasNext()) {
-				
-				String refSetId = unlabeledRefSetIdIterator.next();
-				SnomedConceptIndexEntry refsetConcept = terminologyBrowser.getConcept(refSetId);
-				
-				if (refsetConcept != null) {
-					String refSetLabel = refsetConcept.getLabel();
-					availableLabels.put(refSetId, refSetLabel);
-					unlabeledRefSetIdIterator.remove();
-				}
-			}
-		}
-	}
+//	private void fillLabelsFromTeminologyBrowser(Set<String> unlabeledRefSetIds) {
+//		Iterator<String> unlabeledRefSetIdIterator = unlabeledRefSetIds.iterator();
+//		
+//		while (unlabeledRefSetIdIterator.hasNext()) {
+//			
+//			String refSetId = unlabeledRefSetIdIterator.next();
+//			SnomedConceptDocument refsetConcept = terminologyBrowser.getConcept(refSetId);
+//			
+//			if (refsetConcept != null) {
+//				String refSetLabel = refsetConcept.getLabel();
+//				availableLabels.put(refSetId, refSetLabel);
+//				unlabeledRefSetIdIterator.remove();
+//			}
+//		}
+//	}
 
 	private void fillGeneralLabels(Set<String> unlabeledRefSetIds) {
 		
@@ -376,7 +374,7 @@ public class SnomedRefSetNameCollector {
 		}
 
 		// Step 2: Mine the terminology browser for more labels (if registered)
-		fillLabelsFromTeminologyBrowser(unlabeledRefSetIds);
+//		fillLabelsFromTeminologyBrowser(unlabeledRefSetIds);
 		
 		// Step 3: There may be some reference sets for which we couldn't get a label; initialize these with boilerplate text
 		fillGeneralLabels(unlabeledRefSetIds);
