@@ -181,6 +181,7 @@ public class SnomedImportRestService extends AbstractSnomedRestService {
 		details.setStatus(getImportStatus(configuration.getStatus()));
 		details.setType(configuration.getRf2ReleaseType());
 		details.setBranchPath(configuration.getBranchPath());
+		details.setCodeSystemShortName(configuration.getCodeSystemShortName());
 		return details;
 	}
 	

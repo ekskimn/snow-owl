@@ -18,6 +18,10 @@ public interface SnomedStandardImportRestConfiguration {
 	void setType(Rf2ReleaseType type);
 
 	void setCreateVersions(Boolean createVersions);
+	
+	String getCodeSystemShortName();
+	
+	void setCodeSystemShortName(String codeSystemShortName);
 
 	public ISnomedImportConfiguration toConfig();
 

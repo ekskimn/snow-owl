@@ -63,10 +63,12 @@ public class SnomedImportRestConfiguration implements SnomedStandardImportRestCo
 		this.createVersions = createVersions;
 	}
 
+	@Override
 	public String getCodeSystemShortName() {
 		return codeSystemShortName;
 	}
 	
+	@Override
 	public void setCodeSystemShortName(String codeSystemShortName) {
 		this.codeSystemShortName = codeSystemShortName;
 	}
