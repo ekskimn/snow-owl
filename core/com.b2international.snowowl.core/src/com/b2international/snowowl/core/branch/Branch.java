@@ -59,7 +59,7 @@ public interface Branch extends Deletable, MetadataHolder {
 	interface BranchNameValidator {
 
 		BranchNameValidator DEFAULT = new BranchNameValidatorImpl();
-		
+
 		/**
 		 * Validate a branch name and throw an {@link IllegalArgumentException} if it's invalid.
 		 * 
@@ -71,15 +71,15 @@ public interface Branch extends Deletable, MetadataHolder {
 		 * @since 4.2
 		 */
 		class BranchNameValidatorImpl implements BranchNameValidator {
-			
+
 			private Pattern pattern;
 			private String allowedCharacterSet;
 			private int maximumLength;
-			
+
 			public BranchNameValidatorImpl() {
 				this(DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET, DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH);
 			}
-			
+
 			public BranchNameValidatorImpl(String allowedCharacterSet, int maximumLength) {
 				this.allowedCharacterSet = allowedCharacterSet;
 				this.maximumLength = maximumLength;
@@ -92,12 +92,14 @@ public interface Branch extends Deletable, MetadataHolder {
 					throw new BadRequestException("Name cannot be empty");
 				}
 				if (!pattern.matcher(name).matches()) {
-					throw new BadRequestException("'%s' is either too long (max %s characters) or it contains invalid characters (only '%s' characters are allowed).", name, maximumLength, allowedCharacterSet);
+					throw new BadRequestException(
+							"'%s' is either too long (max %s characters) or it contains invalid characters (only '%s' characters are allowed).", name,
+							maximumLength, allowedCharacterSet);
 				}
 			}
-			
+
 		}
-		
+
 	}
 
 	/**
@@ -178,9 +180,9 @@ public interface Branch extends Deletable, MetadataHolder {
 	BranchState state(Branch target);
 
 	boolean canRebase();
-	
+
 	boolean canRebase(Branch onTopOf);
-	
+
 	/**
 	 * Rebases this branch {@link Branch} on top of the specified {@link Branch}.
 	 * <p>
@@ -195,9 +197,9 @@ public interface Branch extends Deletable, MetadataHolder {
 	 * @return
 	 */
 	Branch rebase(Branch onTopOf, String commitMessage);
-	
+
 	Branch rebase(Branch onTopOf, String commitMessage, Runnable postReopen);
-	
+
 	/**
 	 * Merges changes to this {@link Branch} by squashing the change set of the specified {@link Branch} into a single commit.
 	 * 
@@ -260,9 +262,17 @@ public interface Branch extends Deletable, MetadataHolder {
 
 	/**
 	 * Returns a new version of this branch with updated {@link Metadata}.
+	 * 
 	 * @param metadata
 	 * @return
 	 */
 	@Override
 	Branch withMetadata(Metadata metadata);
+
+	/**
+	 * Updates the branch with the specified properties. Currently {@link Metadata} supported only.
+	 * 
+	 * @param metadata
+	 */
+	void update(Metadata metadata);
 }

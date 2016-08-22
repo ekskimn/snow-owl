@@ -16,37 +16,39 @@
 package com.b2international.snowowl.datastore.request;
 
 import com.b2international.snowowl.core.Metadata;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.core.events.Request;
+import com.b2international.snowowl.datastore.events.BranchRequest;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @since 5.0
  */
-public final class BranchUpdateRequestBuilder extends BaseRepositoryRequestBuilder<BranchUpdateRequestBuilder, Boolean> {
+public final class BranchUpdateRequest extends BranchRequest<Boolean> {
 
-	private final String branchPath;
+	@JsonProperty
 	private Metadata metadata;
-
-	BranchUpdateRequestBuilder(String repositoryId, String branchPath) {
-		super(repositoryId);
-		this.branchPath = branchPath;
+	
+	BranchUpdateRequest(String branchPath) {
+		super(branchPath);
 	}
 	
-	/**
-	 * Update (override) the current {@link Metadata} with the specified {@link Metadata}.  
-	 * @param metadata
-	 * @return
-	 */
-	public BranchUpdateRequestBuilder setMetadata(Metadata metadata) {
+	void setMetadata(Metadata metadata) {
 		this.metadata = metadata;
-		return getSelf();
 	}
 	
 	@Override
-	protected Request<RepositoryContext, Boolean> doBuild() {
-		final BranchUpdateRequest req = new BranchUpdateRequest(branchPath);
-		req.setMetadata(metadata);
-		return req;
+	public Boolean execute(RepositoryContext context) {
+		if (metadata != null) {
+			final Branch branch = RepositoryRequests.branching(context.id()).prepareGet(getBranchPath()).execute(context);
+			branch.update(metadata);
+		}
+		return Boolean.TRUE;
+	}
+
+	@Override
+	protected Class<Boolean> getReturnType() {
+		return Boolean.class;
 	}
 
 }

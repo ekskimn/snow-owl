@@ -70,5 +70,4 @@ public class Branching {
 	public Request<ServiceProvider, Branch> prepareReopen(String branchPath) {
 		return RepositoryRequests.wrap(repositoryId, new ReopenBranchRequest(branchPath));
 	}
-	
 }
