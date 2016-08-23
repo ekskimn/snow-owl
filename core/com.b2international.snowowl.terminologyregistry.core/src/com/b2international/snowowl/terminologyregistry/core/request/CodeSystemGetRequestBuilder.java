@@ -30,8 +30,8 @@ public final class CodeSystemGetRequestBuilder extends BaseResourceRequestBuilde
 
 	private String uniqueId;
 
-	CodeSystemGetRequestBuilder(final String repositoryId) {
-		super(repositoryId);
+	CodeSystemGetRequestBuilder() {
+		super();
 	}
 	
 	public CodeSystemGetRequestBuilder setUniqueId(String uniqueId) {

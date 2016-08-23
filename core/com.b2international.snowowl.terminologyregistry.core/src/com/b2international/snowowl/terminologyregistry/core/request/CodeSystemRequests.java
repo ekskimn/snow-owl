@@ -15,8 +15,6 @@
  */
 package com.b2international.snowowl.terminologyregistry.core.request;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * @since 4.7
  */
@@ -32,20 +30,20 @@ public class CodeSystemRequests {
 		return new CodeSystemCreateRequestBuilder(repositoryId);
 	}
 
-	public CodeSystemUpdateRequestBuilder prepareUpdateCodeSystem(final String uniqueId) {
-		return new CodeSystemUpdateRequestBuilder(repositoryId, uniqueId);
+	public static CodeSystemUpdateRequestBuilder prepareUpdateCodeSystem(final String uniqueId) {
+		return new CodeSystemUpdateRequestBuilder(uniqueId);
 	}
 
-	public CodeSystemGetRequestBuilder prepareGetCodeSystem() {
-		return new CodeSystemGetRequestBuilder(repositoryId);
+	public static CodeSystemGetRequestBuilder prepareGetCodeSystem() {
+		return new CodeSystemGetRequestBuilder();
 	}
 
-	public CodeSystemSearchRequestBuilder prepareSearchCodeSystem() {
-		return new CodeSystemSearchRequestBuilder(repositoryId);
+	public static CodeSystemSearchRequestBuilder prepareSearchCodeSystem() {
+		return new CodeSystemSearchRequestBuilder();
 	}
 
-	public CodeSystemVersionSearchRequestBuilder prepareSearchCodeSystemVersion() {
-		return new CodeSystemVersionSearchRequestBuilder(repositoryId);
+	public static CodeSystemVersionSearchRequestBuilder prepareSearchCodeSystemVersion() {
+		return new CodeSystemVersionSearchRequestBuilder();
 	}
 	
 	public String getRepositoryId() {
