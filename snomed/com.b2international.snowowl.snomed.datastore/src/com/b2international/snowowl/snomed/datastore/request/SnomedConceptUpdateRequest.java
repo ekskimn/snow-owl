@@ -23,17 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.ComponentStatusConflictException;
-<<<<<<< ms-flat-develop
-<<<<<<< HEAD
-import com.b2international.snowowl.eventbus.IEventBus;
-=======
-import com.b2international.snowowl.core.terminology.ComponentCategory;
->>>>>>> origin/ms-develop
-=======
-import com.b2international.snowowl.eventbus.IEventBus;
->>>>>>> 8043b75 Compile error fixes after merging flat index changes to develop
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -46,17 +36,6 @@ import com.b2international.snowowl.snomed.core.domain.SubclassDefinitionStatus;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
-<<<<<<< ms-flat-develop
-<<<<<<< HEAD
-import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedAttributeValueRefSetMember;
-import com.google.common.collect.ImmutableList;
-=======
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
->>>>>>> origin/ms-develop
-=======
->>>>>>> 8043b75 Compile error fixes after merging flat index changes to develop
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 
