@@ -15,58 +15,51 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import com.b2international.snowowl.core.ServiceProvider;
+import javax.annotation.OverridingMethodsMustInvokeSuper;
+
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.TransactionContext;
-import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.RequestBuilder;
 import com.b2international.snowowl.core.events.metrics.Metrics;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 
 /**
+ * Repository Commit Request builder. Repository commit requests should always be executed in async mode.
+ * 
  * @since 4.5
  */
-public class RepositoryCommitRequestBuilder extends BaseRequestBuilder<RepositoryCommitRequestBuilder, ServiceProvider, CommitInfo> {
-	
+public class RepositoryCommitRequestBuilder extends BaseBranchRequestBuilder<RepositoryCommitRequestBuilder, CommitInfo> {
+
 	private String userId;
-	private String repositoryId;
-	private String branch;
 	private String commitComment = "";
 	private Request<TransactionContext, ?> body;
 	private long preparationTime = Metrics.SKIP;
 	private String parentLockContextDescription = DatastoreLockContextDescriptions.ROOT;
 
-	protected RepositoryCommitRequestBuilder(String repositoryId) {
-		this.repositoryId = repositoryId;
-	}
-
-	public final RepositoryCommitRequestBuilder setBranch(String branch) {
-		this.branch = branch;
-		return getSelf();
-	}
-	
 	public final RepositoryCommitRequestBuilder setUserId(String userId) {
 		this.userId = userId;
 		return getSelf();
 	}
-	
+
 	public final RepositoryCommitRequestBuilder setBody(RequestBuilder<TransactionContext, ?> req) {
 		return setBody(req.build());
 	}
-	
+
 	public final RepositoryCommitRequestBuilder setBody(Request<TransactionContext, ?> req) {
 		this.body = req;
 		return getSelf();
 	}
-	
+
 	public final RepositoryCommitRequestBuilder setCommitComment(String commitComment) {
 		this.commitComment = commitComment;
 		return getSelf();
 	}
-	
+
 	/**
-	 * Set additional preparation time for this commit. The caller is responsible for measuring the time properly before setting it in this builder and sending the request.  
+	 * Set additional preparation time for this commit. The caller is responsible for measuring the time properly before setting it in this builder
+	 * and sending the request.
+	 * 
 	 * @param preparationTime
 	 * @return
 	 */
@@ -89,6 +82,7 @@ public class RepositoryCommitRequestBuilder extends BaseRequestBuilder<Repositor
 				));
 	}
 	
+	@OverridingMethodsMustInvokeSuper
 	protected Request<BranchContext, CommitInfo> extend(Request<BranchContext, CommitInfo> req) {
 		return new RevisionIndexReadRequest<>(req);
 	}
