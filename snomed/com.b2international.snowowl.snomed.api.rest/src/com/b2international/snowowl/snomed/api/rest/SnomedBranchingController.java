@@ -78,7 +78,7 @@ public class SnomedBranchingController extends AbstractRestService {
 					.setParent(request.getParent())
 					.setName(request.getName())
 					.setMetadata(request.metadata())
-					.buildFor()
+					.build(repositoryId)
 					.execute(bus), 
 				Responses.created(getBranchLocationHeader(request.path())).build());
 	}
@@ -95,7 +95,7 @@ public class SnomedBranchingController extends AbstractRestService {
 				SnomedRequests
 					.branching()
 					.prepareSearch()
-					.buildFor()
+					.build(repositoryId)
 					.execute(bus));
 	}
 	
@@ -112,6 +112,7 @@ public class SnomedBranchingController extends AbstractRestService {
 				SnomedRequests
 					.branching()
 					.prepareGetChildren(branchPath)
+					.build(repositoryId)
 					.execute(bus));
 	}
 	
@@ -128,6 +129,7 @@ public class SnomedBranchingController extends AbstractRestService {
 				SnomedRequests
 					.branching()
 					.prepareGetWithLocks(branchPath)
+					.build()
 					.execute(bus));
 	}
 
@@ -170,6 +172,7 @@ public class SnomedBranchingController extends AbstractRestService {
 				SnomedRequests
 					.branching()
 					.prepareDelete(branchPath)
+					.build(repositoryId)
 					.execute(bus), 
 				Responses.noContent().build());
 	}
@@ -194,7 +197,7 @@ public class SnomedBranchingController extends AbstractRestService {
 					.branching()
 					.prepareUpdate(branchPath)
 					.setMetadata(request.getMetadata())
-					.buildFor()
+					.build(repositoryId)
 					.execute(bus),
 				Responses.noContent().build());
 	}
