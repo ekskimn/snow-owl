@@ -15,8 +15,6 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import javax.annotation.OverridingMethodsMustInvokeSuper;
-
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
@@ -82,9 +80,9 @@ public class RepositoryCommitRequestBuilder extends BaseBranchRequestBuilder<Rep
 				));
 	}
 	
-	@OverridingMethodsMustInvokeSuper
+	@Override
 	protected Request<BranchContext, CommitInfo> extend(Request<BranchContext, CommitInfo> req) {
-		return new RevisionIndexReadRequest<>(req);
+		return super.extend(new RevisionIndexReadRequest<>(req));
 	}
 
 }
