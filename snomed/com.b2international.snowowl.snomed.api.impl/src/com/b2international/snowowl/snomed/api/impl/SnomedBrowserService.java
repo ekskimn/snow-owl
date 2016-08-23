@@ -99,10 +99,14 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+=======
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+>>>>>>> [snomed] use new request builder methods in SNOMED CT REST API
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
@@ -198,9 +202,18 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final ISnomedConcept concept = SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
 				.setLocales(locales)
+<<<<<<< HEAD
 				.setExpand("fsn(),pt(),descriptions(expand(inactivationProperties())),relationships(expand(type(expand(fsn())),destination(expand(fsn()))))")
 				.build(branch)
 				.executeSync(bus);
+=======
+				.setExpand("pt(),fsn(),descriptions(limit:"+Integer.MAX_VALUE+"),relationships(limit:"+Integer.MAX_VALUE+")")
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+				.execute(bus)
+				.getSync();
+		
+		final DescriptionService descriptionService = new DescriptionService(bus, conceptRef.getBranchPath());
+>>>>>>> [snomed] use new request builder methods in SNOMED CT REST API
 		
 		final ISnomedDescription fullySpecifiedName = concept.getFsn();
 		final ISnomedDescription preferredSynonym = concept.getPt();
@@ -247,8 +260,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.setCommitComment(commitComment)
 				.setBody(req)
 				.setUserId(userId)
-				.setBranch(branchPath)
-				.build()
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync()
 				.getResultAs(String.class);
@@ -337,11 +349,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		SnomedRequests
 			.prepareCommit()
 			.setUserId(userId)
-			.setBranch(branchPath)
 			.setCommitComment(commitComment)
 			.setBody(commitReq)
 			.setPreparationTime(watch.elapsed(TimeUnit.MILLISECONDS))
-			.build()
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 			.execute(bus)
 			.getSync();
 		LOGGER.info("Committed changes for concept {}", newVersionConcept.getFsn());
@@ -902,7 +913,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return SnomedRequests.prepareSearchConcept()
 				.all()
 				.setComponentIds(destinationConceptIds)
-				.build(branchPath.getPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(bus)
 				.getSync();
 	}
@@ -957,7 +968,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 						.setComponentId(conceptId)
 						.setExpand("ancestors(form:\"inferred\",direct:true)")
 						.setLocales(locales)
-						.build(branchPath.getPath())
+						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 						.execute(bus)
 						.getSync().getAncestors();
 			}
@@ -1061,9 +1072,22 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				expandBuilder.put("fsn", ImmutableMap.of());
 				break;
 			
+<<<<<<< HEAD
 			case SYNONYM:
 				expandBuilder.put("pt", ImmutableMap.of());
 				break;
+=======
+			@Override
+			protected Iterable<ISnomedConcept> getConceptEntries(String conceptId) {
+				return SnomedRequests.prepareSearchConcept()
+						.all()
+						.filterByActive(true)
+						.filterByParent(stated ? null : conceptId)
+						.filterByStatedParent(stated ? conceptId : null)
+						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
+						.execute(bus)
+						.getSync();
+>>>>>>> [snomed] use new request builder methods in SNOMED CT REST API
 				
 			default:
 				break;
@@ -1141,7 +1165,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.filterByDestination(conceptId)
 				.filterByType(Concepts.IS_A)
 				.setLimit(0)
-				.build(branch)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 				.execute(bus)
 				.getSync().getTotal() > 0;
 	}
@@ -1187,7 +1211,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.setOffset(offset)
 			.setLimit(limit)
 			.filterByTerm(query)
-			.build(branchPath.getPath())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 			.execute(bus)
 			.getSync()
 			.getItems();
@@ -1310,7 +1334,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				// Check if the corresponding concept exists
 				SnomedRequests.prepareGetConcept()
 						.setComponentId(conceptId)
-						.build(branch)
+						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 						.execute(bus)
 						.getSync();
 				
