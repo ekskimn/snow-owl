@@ -38,6 +38,7 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedDeletionPlan;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan;
@@ -95,7 +96,7 @@ public class EquivalentConceptMerger {
 							.all()
 							.filterByActive(true)
 							.filterByDestination(input.getId())
-							.build(editingContext.getBranch())
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, editingContext.getBranch())
 							.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 							.getSync();
 						return SnomedRelationshipIndexEntry.fromRelationships(relationships);
@@ -351,7 +352,7 @@ public class EquivalentConceptMerger {
 				.filterByActive(true)
 				.filterByRefSet(refSetIdentifierId)
 				.filterByReferencedComponent(referencedComponentId)
-				.build(branchPath.getPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.getSync().getTotal() > 0;
 	}
@@ -363,7 +364,7 @@ public class EquivalentConceptMerger {
 				.filterByRefSet(refSetIdentifierId)
 				.filterByReferencedComponent(referencedComponentId)
 				.filterByProps(OptionsBuilder.newBuilder().put(SnomedRefSetMemberIndexEntry.Fields.MAP_TARGET, mapTargetComponentId).build())
-				.build(branchPath.getPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.getSync().getTotal() > 0;
 	}

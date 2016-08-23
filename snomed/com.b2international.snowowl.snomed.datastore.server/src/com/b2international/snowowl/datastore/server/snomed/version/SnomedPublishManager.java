@@ -34,47 +34,33 @@ import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
-<<<<<<< HEAD
-import com.b2international.snowowl.core.date.EffectiveTimes;
-import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.core.domain.CollectionResource;
-import com.b2international.snowowl.core.events.bulk.BulkRequest;
-import com.b2international.snowowl.core.events.bulk.BulkResponse;
-=======
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.core.domain.CollectionResource;
+import com.b2international.snowowl.core.events.bulk.BulkResponse;
 import com.b2international.snowowl.datastore.BranchPathUtils;
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.datastore.CDOEditingContext;
 import com.b2international.snowowl.datastore.ICodeSystemVersion;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.snomed.SnomedModuleDependencyCollectorService;
 import com.b2international.snowowl.datastore.server.version.PublishManager;
-<<<<<<< HEAD
-import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.SnomedFactory;
-=======
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.SnomedPackage;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedModuleDependencyRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRegularRefSet;
 import com.b2international.snowowl.terminologymetadata.CodeSystem;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
-<<<<<<< HEAD
-import com.google.common.base.Function;
-=======
 import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
+import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 >>>>>>> origin/ms-develop
 
 /**
@@ -189,8 +175,6 @@ public class SnomedPublishManager extends PublishManager {
 		LOGGER.info("Collecting module dependency changes successfully finished.");
 	}
 
-<<<<<<< HEAD
-=======
 	private void collectComponentIdsToPublish(final LongSet storageKeys) {
 		LOGGER.info("Collecting component IDs for ID publication...");
 		final Collection<IdStorageKeyPair> idStorageKeyPairs = getIdStorageKeyPairs(storageKeys);
@@ -251,7 +235,6 @@ public class SnomedPublishManager extends PublishManager {
 		}
 	}
 	
->>>>>>> origin/ms-develop
 	@Override
 	protected void postProcess() {
 		LOGGER.info("Adjusting effective time changes on module dependency...");
@@ -322,9 +305,6 @@ public class SnomedPublishManager extends PublishManager {
 		}
 	}
 
-<<<<<<< HEAD
-}
-=======
 	/**Processes the new module dependency reference set member by adding it to the underlying transaction.*/
 	private void processNewModuleDependencyMember(final SnomedModuleDependencyRefSetMember member) {
 		getModuleDependencyRefSet().getMembers().add(member);
@@ -350,4 +330,3 @@ public class SnomedPublishManager extends PublishManager {
 	}
 	
 }
->>>>>>> origin/ms-develop

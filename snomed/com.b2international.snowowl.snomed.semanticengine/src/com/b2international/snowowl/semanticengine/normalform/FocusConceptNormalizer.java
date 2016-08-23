@@ -33,6 +33,12 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.semanticengine.subsumption.SubsumptionTester;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+<<<<<<< HEAD
+=======
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+>>>>>>> [snomed] update clients of SNOMED CT request API
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.cache.CacheBuilder;
@@ -139,7 +145,23 @@ public class FocusConceptNormalizer {
 			return proximatePrimitiveSuperTypes;
 		}
 		
+<<<<<<< HEAD
 		LoadingCache<String, ISnomedConcept> parentCache = CacheBuilder.newBuilder().build(new ParentCacheLoader());
+=======
+		Collection<SnomedConceptDocument> focusConcepts = SnomedRequests.prepareSearchConcept()
+				.setComponentIds(focusConceptIds)
+				.setLimit(focusConceptIds.size())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.then(new Function<SnomedConcepts, Collection<SnomedConceptDocument>>() {
+					@Override
+					public Collection<SnomedConceptDocument> apply(SnomedConcepts input) {
+						return SnomedConceptDocument.fromConcepts(input);
+					}
+				})
+				.getSync();
+				
+>>>>>>> [snomed] update clients of SNOMED CT request API
 		
 		try {
 			
@@ -188,9 +210,29 @@ public class FocusConceptNormalizer {
 			return proximatePrimitiveSuperTypes;
 		}
 		
+<<<<<<< HEAD
 		for (ISnomedConcept parent : focusConceptWithParents.getAncestors()) {
 			if (parent.getDefinitionStatus().isPrimitive()) {
 				proximatePrimitiveSuperTypes.put(parent.getId(), parent);
+=======
+		final SnomedRelationships outboundRelationships = SnomedRequests.prepareSearchRelationship()
+				.all()
+				.filterByActive(true)
+				.filterByType(Concepts.IS_A)
+				.filterByCharacteristicType(Concepts.INFERRED_RELATIONSHIP)
+				.filterBySource(focusConcept.getId())
+				.setExpand("destination()")
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.getSync();
+		//for (int i = 0; i < outgoingRelationships.length; i++) {
+		for (ISnomedRelationship relationship : outboundRelationships) {
+			ISnomedConcept destinationConcept = relationship.getDestinationConcept();
+			SnomedConceptDocument destinationConceptDocument = SnomedConceptDocument.builder(destinationConcept).build();
+			
+			if (destinationConcept.getDefinitionStatus().isPrimitive()) {
+				proximatePrimitiveSuperTypes.add(destinationConceptDocument);
+>>>>>>> [snomed] update clients of SNOMED CT request API
 			} else {
 				final ISnomedConcept parentWithParents = parentCache.getUnchecked(parent.getId());
 				proximatePrimitiveSuperTypes.putAll(getProximatePrimitiveSuperTypes(parentWithParents, parentCache));

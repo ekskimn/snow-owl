@@ -498,7 +498,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 				.setComponentIds(conceptIdFilter)
 				.setExpand("pt()")
 				.setLocales(ApplicationContext.getInstance().getService(LanguageSetting.class).getLanguagePreference())
-				.build(branchPath.getPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(ApplicationContext.getInstance().getService(IEventBus.class))
 				.getSync();
 		final Map<String, ISnomedConcept> existingConcepts = FluentIterable.from(concepts).uniqueIndex(IComponent.ID_FUNCTION);

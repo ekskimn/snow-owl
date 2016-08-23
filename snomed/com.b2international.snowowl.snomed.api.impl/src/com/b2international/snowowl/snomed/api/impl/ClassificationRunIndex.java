@@ -63,6 +63,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Relatio
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
 import com.b2international.snowowl.snomed.reasoner.classification.EquivalenceSet;
@@ -257,7 +258,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 				.filterByDestination(relationshipChange.getDestination().getId().toString())
 				.filterByType(relationshipChange.getType().getId().toString())
 				.filterByGroup(relationshipChange.getGroup())
-				.build(branchPath.getPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.getSync(), null);
 	}
