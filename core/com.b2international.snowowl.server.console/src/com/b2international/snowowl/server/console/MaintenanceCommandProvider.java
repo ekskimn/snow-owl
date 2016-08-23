@@ -558,10 +558,10 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			return;
 		}
 		
-		PurgeRequest.builder(repositoryId)
+		PurgeRequest.builder()
 			.setBranchPath(branchPath)
 			.setPurge(purge)
-			.buildFor()
+			.build(repositoryId)
 			.execute(getBus())
 			.getSync();
 	}
@@ -574,7 +574,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			return;
 		}
 		
-		final ReindexRequestBuilder req = ReindexRequest.builder(repositoryId);
+		final ReindexRequestBuilder req = ReindexRequest.builder();
 		
 		final String failedCommitTimestamp = interpreter.nextArgument();
 		if (!StringUtils.isEmpty(failedCommitTimestamp)) {
@@ -582,7 +582,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		}
 		
 		final ReindexResult result = req
-				.buildFor()
+				.build(repositoryId)
 				.execute(getBus())
 				.getSync();
 		
@@ -625,11 +625,10 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	private void checkDuplicateIds(CommandInterpreter interpreter) {
 >>>>>>> origin/ms-develop
 
-		// TODO convert this to a request
 		interpreter.println("Optimizing index to max. " + maxSegments + " number of segments...");
-		OptimizeRequest.builder(repositoryId)
+		OptimizeRequest.builder()
 			.setMaxSegments(maxSegments)
-			.buildFor()
+			.build(repositoryId)
 			.execute(getBus())
 			.getSync();
 		interpreter.println("Index optimization completed.");
