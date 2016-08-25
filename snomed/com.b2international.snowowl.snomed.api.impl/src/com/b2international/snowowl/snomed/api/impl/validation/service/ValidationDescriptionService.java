@@ -6,19 +6,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.ihtsdo.drools.domain.Description;
+
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
-import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationConcept;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
@@ -42,7 +38,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			String languageCode = LanguageCodeReferenceSetIdentifierMapping.getLanguageCode(languageRefsetId);
 			locales.add(new ExtendedLocale(languageCode, null, languageRefsetId));
 		}
-		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
+		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds,
+				locales);
 		for (ISnomedDescription description : fullySpecifiedNames.values()) {
 			fsns.add(description.getTerm());
 		}
@@ -51,11 +48,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(true)
-				.filterByTerm(exactTerm)
-				.build(branchPath)
-				.executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
+				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -65,14 +59,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 		return matches;
 	}
-	
+
 	@Override
 	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(false)
-				.filterByTerm(exactTerm)
-				.build(branchPath)
-				.executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(false)
+				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -82,7 +73,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 		return matches;
 	}
-
 
 	@Override
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag, ) {
@@ -123,6 +113,16 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return true;
 		
 		
+	}
+
+	@Override
+	public String getLanguageSpecificErrorMessage(Description description) {
+		return null;
+	}
+
+	@Override
+	public boolean hasCaseSignificantWord(String term) {
+		return false;
 	}
 
 }
