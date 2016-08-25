@@ -22,6 +22,8 @@ import java.io.Reader;
 import java.text.MessageFormat;
 import java.util.List;
 
+import com.b2international.collections.PrimitiveMaps;
+import com.b2international.collections.longs.LongKeyMap;
 import com.b2international.commons.arrays.Arrays2;
 import com.b2international.commons.arrays.LongBidiMapWithInternalId;
 import com.b2international.commons.csv.CsvLexer.EOL;
@@ -30,12 +32,8 @@ import com.b2international.commons.csv.CsvSettings;
 import com.b2international.commons.csv.RecordParserCallback;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.datastore.IsAStatementWithId;
-import com.b2international.snowowl.snomed.datastore.index.StatementMap;
 import com.b2international.snowowl.snomed.datastore.taxonomy.AbstractSnomedTaxonomyBuilder;
 import com.google.common.base.Preconditions;
-
-import bak.pcj.map.LongKeyMap;
 
 /**
  * Taxonomy builder backed by RF2 release files.
@@ -52,7 +50,7 @@ public class Rf2BasedSnomedTaxonomyBuilder extends AbstractSnomedTaxonomyBuilder
 		
 		final Rf2BasedSnomedTaxonomyBuilder $ = new Rf2BasedSnomedTaxonomyBuilder(characteristicTypeId);
 		$.nodes = new LongBidiMapWithInternalId(builder.getNodes());
-		$.edges = (StatementMap) ((StatementMap) builder.getEdges()).clone();
+		$.edges = PrimitiveMaps.newLongKeyOpenHashMap(builder.getEdges());
 		$.setDirty(builder.isDirty());
 		$.descendants = Arrays2.copy(builder.getDescendants());
 		$.ancestors = Arrays2.copy(builder.getAncestors());
@@ -67,24 +65,23 @@ public class Rf2BasedSnomedTaxonomyBuilder extends AbstractSnomedTaxonomyBuilder
 
 	/**
 	 * Map for storing active IS_A type SNOMED CT relationship representations. Keys are the unique relationship identifiers.
-	 * <br>For values see: {@link IsAStatementWithId}.
 	 */
-	private LongKeyMap edges;
+	private LongKeyMap<long[]> edges;
 	private String characteristicTypeId;
 	
 	private Rf2BasedSnomedTaxonomyBuilder(final String characteristicTypeId) {
 		this.characteristicTypeId = characteristicTypeId;
 		this.nodes = new LongBidiMapWithInternalId(EXPECTED_SIZE);
-		this.edges = new StatementMap();
+		this.edges = PrimitiveMaps.newLongKeyOpenHashMap();
 	}
-	
+
 	@Override
 	public LongBidiMapWithInternalId getNodes() {
 		return nodes;
 	}
 
 	@Override
-	public LongKeyMap getEdges() {
+	public LongKeyMap<long[]> getEdges() {
 		return edges;
 	}
 	

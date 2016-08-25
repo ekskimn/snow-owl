@@ -15,23 +15,17 @@
  */
 package com.b2international.snowowl.snomed.importer.rf2.refset;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.text.MessageFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
-import org.apache.lucene.document.Document;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
 import org.eclipse.core.runtime.SubMonitor;
 
+import com.b2international.index.query.Expression;
 import com.b2international.snowowl.core.ComponentIdentifierPair;
-import com.b2international.snowowl.datastore.index.DocIdCollector;
-import com.b2international.snowowl.datastore.index.DocIdCollector.DocIds;
-import com.b2international.snowowl.datastore.index.DocIdCollector.DocIdsIterator;
 import com.b2international.snowowl.importer.ImportAction;
 import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.snomed.Concept;
@@ -41,7 +35,8 @@ import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConst
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetLookupService;
-import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.importer.rf2.csv.AbstractRefSetRow;
 import com.b2international.snowowl.snomed.importer.rf2.model.AbstractSnomedImporter;
 import com.b2international.snowowl.snomed.importer.rf2.model.SnomedImportConfiguration;
@@ -53,9 +48,6 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRegularRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedStructuralRefSet;
 import com.google.common.collect.Maps;
-
-import bak.pcj.map.ObjectKeyLongMap;
-import bak.pcj.map.ObjectKeyLongOpenHashMap;
 
 public abstract class AbstractSnomedRefSetImporter<T extends AbstractRefSetRow, M extends SnomedRefSetMember> extends AbstractSnomedImporter<T, M> {
 
@@ -72,28 +64,15 @@ public abstract class AbstractSnomedRefSetImporter<T extends AbstractRefSetRow, 
 	}
 	
 	@Override
-	protected ObjectKeyLongMap getAvailableComponents(IndexSearcher index) throws IOException {
-		final Query query = SnomedMappings.newQuery().memberRefSetType(getRefSetType()).matchAll();
-		final DocIdCollector docIdCollector = new DocIdCollector(index.getIndexReader().maxDoc());
-		index.search(query, docIdCollector);
-		final DocIds docIDs = docIdCollector.getDocIDs();
-		if (docIDs.size() <= 0) {
-			return new ObjectKeyLongOpenHashMap();
-		} else {
-			final ObjectKeyLongMap result = new ObjectKeyLongOpenHashMap(docIDs.size());
-			final DocIdsIterator it = docIDs.iterator();
-			final Set<String> fields = SnomedMappings.fieldsToLoad().memberUuid().effectiveTime().build();
-			while (it.next()) {
-				final int docID = it.getDocID();
-				final Document doc = index.doc(docID, fields);
-				final String memberUuid = SnomedMappings.memberUuid().getValue(doc);
-				final long effectiveTime = SnomedMappings.effectiveTime().getValue(doc);
-				result.put(memberUuid, effectiveTime);
-			}
-			return result;
-		}
+	protected Expression getAvailableComponentQuery() {
+		return SnomedRefSetMemberIndexEntry.Expressions.refSetTypes(Collections.singleton(getRefSetType()));
 	}
-
+	
+	@Override
+	protected final Class<? extends SnomedDocument> getType() {
+		return SnomedRefSetMemberIndexEntry.class;
+	}
+	
 	@Override
 	protected void importRow(final T currentRow) {
 		
@@ -149,7 +128,10 @@ public abstract class AbstractSnomedRefSetImporter<T extends AbstractRefSetRow, 
 			}
 
 			final SnomedEditingContext editingContext = getImportContext().getEditingContext();
+			
+			// Create identifier concept with explicit ID
 			identifierConcept = editingContext.buildDefaultConcept(
+					identifierId,
 					getUnindentifiedRefSetFSN(identifierId), 
 					identiferParentConcept);
 			
@@ -157,8 +139,6 @@ public abstract class AbstractSnomedRefSetImporter<T extends AbstractRefSetRow, 
 					editingContext.buildDefaultDescription(
 							getUnindentifiedRefSetPT(identifierId), //PT 
 							Concepts.SYNONYM)); //synonym description type
-			
-			identifierConcept.setId(identifierId); //explicitly set ID as it is generated on the concept
 			
 			//attempt to create proper language type reference set members for the concept
 			final String languageRefSetId = getImportContext().getLanguageRefSetId();

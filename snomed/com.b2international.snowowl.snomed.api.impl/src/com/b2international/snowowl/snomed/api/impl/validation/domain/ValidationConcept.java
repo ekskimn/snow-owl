@@ -44,6 +44,11 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 	public boolean isPublished() {
 		return browserConcept.getEffectiveTime() != null;
 	}
+	
+	@Override
+	public String getModuleId() {
+		return browserConcept.getModuleId();
+	}
 
 	@Override
 	public String getDefinitionStatusId() {

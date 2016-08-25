@@ -34,7 +34,17 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 	public boolean isPublished() {
 		return browserDesciption.getEffectiveTime() != null;
 	}
+	
+	@Override
+	public String getModuleId() {
+		return browserDesciption.getModuleId();
+	}
 
+	@Override
+	public String getLanguageCode() {
+		return browserDesciption.getLang();
+	}
+	
 	@Override
 	public String getConceptId() {
 		return conceptId;

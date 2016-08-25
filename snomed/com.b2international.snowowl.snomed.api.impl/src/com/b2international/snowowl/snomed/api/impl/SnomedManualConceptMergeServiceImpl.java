@@ -3,29 +3,34 @@ package com.b2international.snowowl.snomed.api.impl;
 import java.io.File;
 import java.io.IOException;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
 import com.b2international.commons.FileUtils;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
+import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.exception.SnomedPersistanceException;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class SnomedManualConceptMergeServiceImpl {
 
-	final private ObjectMapper objectMapper;
-	final private String storeRoot;
+	@Resource
+	private ObjectMapper objectMapper;
+	
+	private String storeRoot;
 	
 	private static String MERGE_REVIEW_STORE = "merge-review-store";
 	private static final String SLASH = "/";
 	private static final String FILE_TYPE = ".json";
 	
-	public SnomedManualConceptMergeServiceImpl() {
-		objectMapper = new ObjectMapper();
+	@PostConstruct
+	protected void init() {
 		storeRoot = SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory().getPath();
 	}
 
-	public void storeConceptChanges(String branchPath, String mergeReviewId, ISnomedBrowserConceptUpdate conceptUpdate) throws SnomedPersistanceException {
+	public void storeConceptChanges(String branchPath, String mergeReviewId, ISnomedBrowserConcept conceptUpdate) throws SnomedPersistanceException {
 		try {
 			File conceptFile = getConceptStorePath(branchPath, mergeReviewId, conceptUpdate.getConceptId());
 			conceptFile.getParentFile().mkdirs();
@@ -39,12 +44,12 @@ public class SnomedManualConceptMergeServiceImpl {
 		return getConceptStorePath(branchPath, mergeReviewId, conceptId).isFile();
 	}
 	
-	public ISnomedBrowserConceptUpdate retrieve(String branchPath, String mergeReviewId, String conceptId) throws IOException {
+	public ISnomedBrowserConcept retrieve(String branchPath, String mergeReviewId, String conceptId) throws IOException {
 		File conceptFile = getConceptStorePath(branchPath, mergeReviewId, conceptId);
 		if (!conceptFile.isFile()) {
 			throw new NotFoundException("manual concept merge", conceptId);
 		}
-		return objectMapper.readValue(conceptFile, SnomedBrowserConceptUpdate.class);
+		return objectMapper.readValue(conceptFile, SnomedBrowserConcept.class);
 	}
 	
 	private File getConceptStorePath(String branchPath, String mergeReviewId, String conceptId) {
@@ -52,9 +57,7 @@ public class SnomedManualConceptMergeServiceImpl {
 	}
 
 	public void deleteAll(String branchPath, String mergeReviewId) {
-		
 		final File parentFile = getConceptStorePath(branchPath, mergeReviewId, "1").getParentFile();
 		FileUtils.deleteDirectory(parentFile);
 	}
-
 }

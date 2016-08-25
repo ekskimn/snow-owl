@@ -26,8 +26,11 @@ import javax.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -46,6 +49,7 @@ import com.b2international.snowowl.core.MetadataHolderMixin;
 import com.b2international.snowowl.core.MetadataMixin;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
+import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.datastore.review.BranchState;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.ConceptChangesMixin;
@@ -55,6 +59,7 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponent;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchStateMixin;
+import com.b2international.snowowl.snomed.api.rest.domain.CollectionResourceMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.ISnomedComponentMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.MergeReviewMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.ReviewMixin;
@@ -181,6 +186,7 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 		df.setTimeZone(TimeZone.getTimeZone("UTC"));
 		objectMapper.setDateFormat(df);
 		objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+		objectMapper.addMixInAnnotations(CollectionResource.class, CollectionResourceMixin.class);
 		objectMapper.addMixInAnnotations(SnomedComponent.class, ISnomedComponentMixin.class);
 		objectMapper.addMixInAnnotations(ISnomedBrowserComponent.class, ISnomedComponentMixin.class);
 		objectMapper.addMixInAnnotations(Branch.class, BranchMixin.class);
@@ -194,6 +200,7 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	}
 	
 	@Bean
+	@Scope(value=ConfigurableBeanFactory.SCOPE_PROTOTYPE, proxyMode=ScopedProxyMode.TARGET_CLASS)
 	public IEventBus eventBus() {
 		return com.b2international.snowowl.core.ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
 	}
@@ -208,7 +215,7 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	
 	@Override
 	public void configureMessageConverters(final List<HttpMessageConverter<?>> converters) {
-		final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter();
+		final StringHttpMessageConverter stringConverter = new StringHttpMessageConverter(Charsets.UTF_8);
 		stringConverter.setWriteAcceptCharset(false);
 		converters.add(stringConverter);
 

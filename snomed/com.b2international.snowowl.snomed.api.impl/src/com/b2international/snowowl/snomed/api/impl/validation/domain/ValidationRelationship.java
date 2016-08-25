@@ -28,6 +28,11 @@ public class ValidationRelationship implements Relationship {
 	public boolean isPublished() {
 		return browserRelationship.getEffectiveTime() != null;
 	}
+	
+	@Override
+	public String getModuleId() {
+		return browserRelationship.getModuleId();
+	}
 
 	@Override
 	public String getDestinationId() {

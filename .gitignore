@@ -24,3 +24,6 @@ target
 *.project
 
 *.sh
+
+# Allow setting up new gitignore files
+!.gitignore

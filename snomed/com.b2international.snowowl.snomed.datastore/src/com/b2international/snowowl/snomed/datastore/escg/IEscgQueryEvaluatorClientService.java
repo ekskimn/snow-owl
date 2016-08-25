@@ -15,13 +15,7 @@
  */
 package com.b2international.snowowl.snomed.datastore.escg;
 
-import java.util.Collection;
-
-import org.apache.lucene.search.BooleanQuery;
-
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
-
-import bak.pcj.LongCollection;
+import com.b2international.collections.longs.LongCollection;
 
 /**
  * Service for evaluating ESCG query expressions.
@@ -31,24 +25,10 @@ import bak.pcj.LongCollection;
 public interface IEscgQueryEvaluatorClientService {
 	
 	/**
-	 * Evaluates the ESCG expression specified as a string and returns with a set of SNOMED&nbsp;CT concept as the matching results. 
-	 * @param queryExpression the ESCG query expression.
-	 * @return a set of SNOMED&nbsp;CT concepts.
-	 */
-	Collection<SnomedConceptIndexEntry> evaluate(final String queryExpression);
-	
-	/**
 	 * Evaluates the specified ESCG expression specified as a string and returns with a bunch of SNOMED&nbsp;CT concept IDs.
 	 * @param queryExpression the ESCG query expression.
 	 * @return the unique IDs of the SNOMED&nbsp;CT concepts.
 	 */
 	LongCollection evaluateConceptIds(final String queryExpression);
-	
-	/**
-	 * Evaluates the specified ESCG expression and returns with a {@link BooleanQuery boolean query} representing a subset of SNOMED&nbsp;CT concepts.
-	 * @param queryExpression the ESCG query expression.
-	 * @return boolean query representing a subset of SNOMED&nbsp;CT concepts.
-	 */
-	BooleanQuery evaluateBooleanQuery(final String queryExpression);
 	
 } 

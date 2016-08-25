@@ -21,21 +21,30 @@ import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.BaseRequest;
 import com.b2international.snowowl.core.exceptions.ConflictException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.datastore.review.BranchState;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewManager;
-import com.google.common.base.Strings;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @since 4.6
  */
-public abstract class AbstractBranchChangeRequest extends BaseRequest<RepositoryContext, Branch> {
+public abstract class AbstractBranchChangeRequest<R> extends BaseRequest<RepositoryContext, R> {
 
+	private final Class<R> responseClass;
+	
+	@JsonProperty
 	protected final String sourcePath;
+	@JsonProperty
 	protected final String targetPath;
+	@JsonProperty
 	protected final String commitMessage;
+	@JsonProperty
 	protected final String reviewId;
 
-	protected AbstractBranchChangeRequest(String sourcePath, String targetPath, String commitMessage, String reviewId) {
+	protected AbstractBranchChangeRequest(Class<R> responseClass, String sourcePath, String targetPath, String commitMessage, String reviewId) {
+		this.responseClass = responseClass;
+		
 		this.sourcePath = sourcePath;
 		this.targetPath = targetPath;
 		this.commitMessage = commitMessage;
@@ -43,18 +52,18 @@ public abstract class AbstractBranchChangeRequest extends BaseRequest<Repository
 	}
 
 	@Override
-	public Branch execute(RepositoryContext context) {
+	public R execute(RepositoryContext context) {
+		
 		try {
 			final BranchManager branchManager = context.service(BranchManager.class);
-			final ReviewManager reviewManager = context.service(ReviewManager.class);
-			
 			final Branch source = branchManager.getBranch(sourcePath);
 			final Branch target = branchManager.getBranch(targetPath);
 			
 			if (reviewId != null) {
-				Review review = reviewManager.getReview(reviewId);
-				com.b2international.snowowl.datastore.review.BranchState sourceState = review.source();
-				com.b2international.snowowl.datastore.review.BranchState targetState = review.target();
+				final ReviewManager reviewManager = context.service(ReviewManager.class);
+				final Review review = reviewManager.getReview(reviewId);
+				final BranchState sourceState = review.source();
+				final BranchState targetState = review.target();
 				
 				if (!sourceState.matches(source)) {
 					throw new ConflictException("Source branch '%s' did not match with stored state on review identifier '%s'.", source.path(), reviewId);
@@ -65,27 +74,18 @@ public abstract class AbstractBranchChangeRequest extends BaseRequest<Repository
 				}
 			}
 			
-			return executeChange(context, source, target);
+			return execute(context, source, target);
 						
 		} catch (NotFoundException e) {
 			throw e.toBadRequestException();
 		}
 	}
 
-	protected abstract Branch executeChange(RepositoryContext context, Branch source, Branch target);
+	protected abstract R execute(RepositoryContext context, Branch source, Branch target);
 
 	@Override
-	protected Class<Branch> getReturnType() {
-		return Branch.class;
+	protected Class<R> getReturnType() {
+		return responseClass;
 	}
 
-	@Override
-	public String toString() {
-		return String.format("{type:%s, source:%s, target:%s, commitMessage:%s, reviewId:%s}", 
-				getClass().getSimpleName(),
-				sourcePath,
-				targetPath,
-				commitMessage,
-				reviewId);
-	}
 }

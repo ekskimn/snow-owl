@@ -19,16 +19,16 @@ import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpre
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionAttribute;
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionGroup;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 
 public class SnomedExpresssionConverter {
 
-	private BranchSpecificClientTerminologyBrowser<SnomedConceptIndexEntry, String> browser;
+	private BranchSpecificClientTerminologyBrowser<SnomedConceptDocument, String> browser;
 	private List<ExtendedLocale> extendedLocales;
 	private DescriptionService descriptionService;
 	private final List<ISnomedConceptMin> allConcepts;
 
-	public SnomedExpresssionConverter(BranchSpecificClientTerminologyBrowser<SnomedConceptIndexEntry, String> browser, 
+	public SnomedExpresssionConverter(BranchSpecificClientTerminologyBrowser<SnomedConceptDocument, String> browser, 
 			List<ExtendedLocale> extendedLocales, DescriptionService descriptionService) {
 		this.browser = browser;
 		this.extendedLocales = extendedLocales;

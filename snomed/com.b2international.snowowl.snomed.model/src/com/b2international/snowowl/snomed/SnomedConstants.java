@@ -17,10 +17,12 @@ package com.b2international.snowowl.snomed;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.ImmutableBiMap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 /**
@@ -122,7 +124,7 @@ public abstract class SnomedConstants {
 		public static final String FOUNDATION_METADATA_CONCEPTS = "900000000000454005";
 		public static final String CASE_SIGNIFICANCE_ROOT_CONCEPT = "900000000000447004";
 		
-		//TODO: These are substitutes for concrete data type operational concepts that WILL be 
+		//TODO: These are substitutes for concrete domain operational concepts that WILL be 
 		//under the metadata hierarchy.  These need to be replaced once available.  bbanfai - 2012.09.11
 		public static final String CD_EQUAL = "276136004";  // =
 		public static final String CD_LESS = "276139006";  // <
@@ -168,6 +170,7 @@ public abstract class SnomedConstants {
 		public static final String REFSET_KP_CONVERGENT_MEDICAL_TERMINOLOGY = "494287621000154107"; //for more details see: https://github.com/b2ihealthcare/snowowl/issues/368
 		public static final String REFSET_CORE_PROBLEM_LIST_REFERENCE_SETS = "344562521000154101";
 		public static final String REFSET_INFOWAY_PRIMARY_HEALTH_CARE_REFERENCE_SETS = "372749141000154103";
+		
 		public static final String CARDIOLOGY_REFERENCE_SET = "152725851000154106";
 		public static final String ENDOCRINOLOGY_UROLOGY_NEPHROLOGY_REFERENCE_SET = "674330851000154100";
 		public static final String HEMATOLOGY_ONCOLOGY_REFERENCE_SET = "291212201000154102";
@@ -176,27 +179,46 @@ public abstract class SnomedConstants {
 		public static final String NEUROLOGY_REFERENCE_SET = "501847791000154106";
 		public static final String OPHTHALMOLOGY_REFERENCE_SET = "735316271000154103";
 		public static final String PRIMARY_CARE_REFERENCE_SET = "723916301000154101";
-		public static final String ORTHOPEDICS_NON_EXTREMITY_FRACTURES_REFERENCE_SET = "411115801000154106";
-		public static final String HX_OF_AND_FHX_OF_REFERENCE_SET = "470288881000154105";
-		public static final String INJURIES_PART_1_REFERENCE_SET = "111719501000154107";
-		public static final String ORTHOPEDICS_EXTREMITY_FRACTURES_REFERENCE_SET = "461251521000154104";
+		public static final String HISTORY_AND_FAMILY_HISTORY_REFERENCE_SET = "470288881000154105";
+		public static final String INJURIES_REFERENCE_SET = "111719501000154107";
+		public static final String ORTHOPEDICS_REFERENCE_SET = "461251521000154104";
 		public static final String OBSTETRICS_AND_GYNECOLOGY_REFERENCE_SET = "358903761000154109";
 		public static final String SKIN_RESPIRATORY_REFERENCE_SET = "832566231000154105";
 		public static final String ENT_GASTROINTESTINAL_INFECTIOUS_DISEASES_REFERENCE_SET = "149994661000154106";
 		public static final String KP_PROBLEM_LIST_REFERENCE_SET = "376537701000154105";
 
+		public static final Map<String, String> CMT_REFSET_NAME_ID_MAP = ImmutableMap.<String, String>builder()
+				.put("Cardiology", CARDIOLOGY_REFERENCE_SET)
+				.put("Endocrine, Nephrology, and Urology", ENDOCRINOLOGY_UROLOGY_NEPHROLOGY_REFERENCE_SET)
+				.put("ENT, Gastrointestinal, Infectious Diseases", ENT_GASTROINTESTINAL_INFECTIOUS_DISEASES_REFERENCE_SET)
+				.put("Hematology and Oncology", HEMATOLOGY_ONCOLOGY_REFERENCE_SET)
+				.put("History and Family History", HISTORY_AND_FAMILY_HISTORY_REFERENCE_SET)
+				.put("Injuries", INJURIES_REFERENCE_SET)
+				.put("KP Problem List", KP_PROBLEM_LIST_REFERENCE_SET)
+				.put("Mental Health", MENTAL_HEALTH_REFERENCE_SET)
+				.put("Musculoskeletal", MUSCULOSKELETAL_REFERENCE_SET)
+				.put("Neurology", NEUROLOGY_REFERENCE_SET)
+				.put("Obstetrics and Gynecology", OBSTETRICS_AND_GYNECOLOGY_REFERENCE_SET)
+				.put("Ophthalmology", OPHTHALMOLOGY_REFERENCE_SET)
+				.put("Orthopedics", ORTHOPEDICS_REFERENCE_SET)
+				.put("Primary Care", PRIMARY_CARE_REFERENCE_SET)
+				.put("Skin/Dermatology and Respiratory", SKIN_RESPIRATORY_REFERENCE_SET)
+				.build();
+		
 		public static final String SINGAPORE_UNIT_OF_MEASURE_REFERENCE_SET = "492227111000132107";
 		public static final String SINGAPORE_EXTENSION_REFERENCE_SET = "843239231000132105";
 		public static final String SDD_UNIT_OF_MEASURE_REFERENCE_SET = "62111000133108";
 		public static final String SDD_SIMPLE_TYPE_REFERENCE_SET = "69511000133108";
 
-		//concrete data type
-		public static final String REFSET_BOOLEAN_TYPE = "20001000132106";
-		public static final String REFSET_DATETIME_TYPE = "20011000132108";
-		public static final String REFSET_INTEGER_TYPE = "20031000132101";
-		public static final String REFSET_FLOAT_TYPE = "20041000132109";
-		public static final String REFSET_STRING_TYPE = "20021000132103";
-		public static final String REFSET_CONCRETE_DOMAIN_TYPE_SG = "20051000132107";
+		//concrete domain
+		public static final String REFSET_BOOLEAN_DATATYPE = "759160691000154109";
+		public static final String REFSET_DATETIME_DATATYPE = "492980241000154105";
+		public static final String REFSET_INTEGER_DATATYPE = "373998411000154109";
+		public static final String REFSET_FLOAT_DATATYPE = "744104701000154109";
+		public static final String REFSET_STRING_DATATYPE = "513945551000154100";
+		public static final String REFSET_CONCRETE_DOMAIN_TYPE = "289191171000154104";
+		public static final String REFSET_DEFINING_TYPE = "384696201000154108";
+		public static final String REFSET_MEASUREMENT_TYPE = "945726341000154109";
 
 		public static final String REFSET_DRUG_TO_SOURCE_DRUG_SIMPLE_MAP = "776245861000133102";
 		public static final String REFSET_DRUG_TO_GROUPER_SIMPLE_MAP = "499896751000133109";
@@ -284,6 +306,7 @@ public abstract class SnomedConstants {
 		public static final String MODULE_ROOT = "900000000000443000";
 		public static final String MODULE_SCT_CORE = "900000000000207008";
 		public static final String MODULE_B2I_EXTENSION = "636635721000154103";
+		public static final String B2I_NAMESPACE = "1000154";
 
 		// SG specific concepts
 		public static final String GENERATED_SINGAPORE_MEDICINAL_PRODUCT = "551000991000133100";
@@ -308,9 +331,6 @@ public abstract class SnomedConstants {
 		public static final String DEFAULT_UNIT = "258666001";
 		
 		public static final String NAMESPACE_ROOT = "370136006";
-		public static final String SINGAPORE_NATIONAL_EXTENSION = "443855003";
-		public static final String SINGAPORE_DRUG_DICTIONARY_EXTENSION = "443856002";
-		public static final String B2I_NAMESPACE = "583597791000154100";
 		
 		public static final String ACCEPTABILITY = "900000000000511003";
 		public static final String REFINABILITY_VALUE = "900000000000226000";

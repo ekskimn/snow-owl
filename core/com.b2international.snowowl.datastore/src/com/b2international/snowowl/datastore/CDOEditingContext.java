@@ -22,6 +22,7 @@ import static com.b2international.snowowl.core.ApplicationContext.getServiceForC
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.collect.Maps.newHashMap;
 import static java.text.MessageFormat.format;
 
 import java.io.File;
@@ -31,6 +32,7 @@ import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -50,6 +52,8 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.net4j.util.lifecycle.LifecycleUtil;
+import org.eclipse.xtext.util.Pair;
+import org.eclipse.xtext.util.Tuples;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +72,7 @@ import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.exception.RepositoryLockException;
 import com.b2international.snowowl.datastore.tasks.TaskManager;
+import com.b2international.snowowl.datastore.utils.ComponentUtils2;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersionGroup;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -94,6 +99,8 @@ public abstract class CDOEditingContext implements AutoCloseable {
 	 * Underlying CDO transaction.
 	 */
 	protected final CDOTransaction transaction;
+	
+	private final Map<Pair<String, Class<?>>, EObject> resolvedObjectsById = newHashMap();
 
 	/**
 	 * @param ePackage - the primary ePackage of this editing context
@@ -114,29 +121,41 @@ public abstract class CDOEditingContext implements AutoCloseable {
 		return BranchPathUtils.createPath(getTransaction()).getPath();
 	}
 	
+	public final <T extends CDOObject> Iterable<T> getNewObjects(Class<T> type) {
+		return ComponentUtils2.getNewObjects(getTransaction(), type);
+	}
+	
+	public final <T extends CDOObject> Iterable<T> getDetachedObjects(Class<T> type) {
+		return ComponentUtils2.getDetachedObjects(getTransaction(), type);
+	}
+	
+	public final <T extends CDOObject> Iterable<T> getChangedObjects(Class<T> type) {
+		return ComponentUtils2.getDirtyObjects(getTransaction(), type);
+	}
+	
 	/*
 	 * get the index from the database for an EObject on the given table.
 	 * If the object is not in the database, a RTE will be thrown.
 	 */
-	public int getIndexFromDatabase(final EObject object, final String tableName)  {
-			
+	public int getIndexFromDatabase(final CDOObject cdoObject, final CDOObject container, final String tableName)  {
 		// the object must be a cdoObject, otherwise the database cannot contain it
-		if (!(object instanceof CDOObject)) {
-			throw new RuntimeException("The removable object is not a CDOObject.");
-		}
 		if (tableName == null) {
 			throw new RuntimeException("Argument tableName must not be null.");
 		}
-		final CDOObject cdoObject = (CDOObject) object;
-		 		
-		// query the resources table, to get the index directly
-		final CDOObject container = object.eContainer()== null ? cdoObject.cdoResource() : (CDOObject) object.eContainer();
+		
+		// params
+		final long cdoId = CDOIDUtil.getLong(cdoObject.cdoID());
+		final long containerId = CDOIDUtil.getLong(container.cdoID());
 		final int version = container.cdoRevision().getVersion();
+		
+		// query the resources table, to get the index directly
 		final String sqlGetIndexFormatted = DatastoreQueries.SQL_GET_INDEX_AND_BRANCH_FOR_VALUE.getQuery(tableName);
 		final CDOQuery query = transaction.createQuery("sql", sqlGetIndexFormatted);
 		query.setParameter(CDOQueryUtils.CDO_OBJECT_QUERY, false);
-		query.setParameter("cdoId", CDOIDUtil.getLong(cdoObject.cdoID()));
+		query.setParameter("cdoId", cdoId);
+		query.setParameter("containerId", containerId);
 		query.setParameter("versionMaxAdded", version);
+		// exec query
 		final List<Object[]> result = query.getResult(Object[].class);
 		// neither 0 nor more than 1 results are acceptable
 		if (result.size() <= 0) {			
@@ -179,10 +198,15 @@ public abstract class CDOEditingContext implements AutoCloseable {
 		if (Strings.isNullOrEmpty(componentId)) {
 			throw new ComponentNotFoundException(type.getSimpleName(), componentId);
 		}
+		final Pair<String, Class<?>> key = Tuples.<String, Class<?>>pair(componentId, type);
+		if (resolvedObjectsById.containsKey(key)) {
+			return type.cast(resolvedObjectsById.get(key));
+		}
 		final T component = getComponentLookupService(type).getComponent(componentId, getTransaction());
 		if (null == component) {
 			throw new ComponentNotFoundException(type.getSimpleName(), componentId);
 		}
+		resolvedObjectsById.put(key, component);
 		return component;
 	}
 	
@@ -283,6 +307,7 @@ public abstract class CDOEditingContext implements AutoCloseable {
 	 */
 	@Override
 	public void close() {
+		resolvedObjectsById.clear();
 		transaction.close();
 	}
 	

@@ -32,14 +32,16 @@ import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 import org.eclipse.emf.cdo.CDOObject;
 import org.eclipse.emf.cdo.view.CDOView;
 
-import com.b2international.commons.Pair;
 import com.b2international.commons.StringUtils;
 import com.b2international.commons.collections.SetDifference;
+import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.CoreTerminologyBroker.ICoreTerminologyComponentInformation;
 import com.b2international.snowowl.core.api.IBranchPath;
@@ -50,17 +52,51 @@ import com.b2international.snowowl.datastore.index.diff.NodeDiff;
 import com.b2international.snowowl.datastore.index.diff.NodeDiffImpl;
 import com.b2international.snowowl.datastore.server.version.NodeTransformerImpl;
 import com.b2international.snowowl.emf.compare.DiffCollector;
-import com.b2international.snowowl.snomed.datastore.SnomedRefSetBrowser;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
+import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetMemberFragment;
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentService;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMappingRefSet;
+import com.google.common.base.Function;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 
 /**
  * Node transformer for SNOMED&nbsp;CT.
  *
  */
 public class SnomedNodeTransformer extends NodeTransformerImpl {
+	
+	private final Function<SnomedReferenceSetMember, String> conceptToLabelFunction = new Function<SnomedReferenceSetMember, String>() {
+		@Override
+		public String apply(SnomedReferenceSetMember input) {
+			return ((ISnomedConcept) input.getReferencedComponent()).getPt().getTerm();
+		}
+	};
+
+	private final Function<SnomedReferenceSetMember, String> descriptionToLabelFunction = new Function<SnomedReferenceSetMember, String>() {
+		@Override
+		public String apply(SnomedReferenceSetMember input) {
+			return ((ISnomedDescription) input.getReferencedComponent()).getTerm();
+		}
+	};
+
+	private final Function<SnomedReferenceSetMember, String> relationshipToLabelFunction = new Function<SnomedReferenceSetMember, String>() {
+		@Override
+		public String apply(SnomedReferenceSetMember input) {
+			final ISnomedRelationship relationship = (ISnomedRelationship) input.getReferencedComponent();
+			return String.format("%s %s %s", relationship.getSourceConcept().getPt().getTerm(),
+					relationship.getTypeConcept().getPt().getTerm(), relationship.getDestinationConcept().getPt().getTerm());
+		}
+	};
 
 	/* (non-Javadoc)
 	 * @see com.b2international.snowowl.datastore.server.version.NodeTransformerImpl#doTransform(org.eclipse.emf.cdo.view.CDOView, org.eclipse.emf.cdo.view.CDOView, com.b2international.snowowl.datastore.index.diff.NodeDiff)
@@ -72,11 +108,11 @@ public class SnomedNodeTransformer extends NodeTransformerImpl {
 	}
 
 	private long getConceptStorageKey(final CDOView sourceView, final CDOView targetView, final NodeDiff diff) {
-		return getTerminologyBrowser().getStorageKey(getBranchPath(sourceView, targetView, diff), diff.getId());
+		throw new UnsupportedOperationException("Not implemented yet, should not be called");
 	}
 
 	private long getRefSetStorageKey(final CDOView sourceView, final CDOView targetView, final NodeDiff diff) {
-		return getRefSetBrowser().getStorageKey(getBranchPath(sourceView, targetView, diff), diff.getId());
+		throw new UnsupportedOperationException("Not implemented yet, should not be called");
 	}
 
 	private NodeDiffImpl createConceptDiff(final NodeDiff diff, final long refSetStorageKey) {
@@ -131,29 +167,29 @@ public class SnomedNodeTransformer extends NodeTransformerImpl {
 	}
 
 	private Collection<NodeDelta> compareRefSetByMembers(final IBranchPath sourcePath, final IBranchPath targetPath, final NodeDiff diff) {
-		
-		final Set<SnomedRefSetMemberFragment> sourceMembers = toSet(getRefSetMembers(sourcePath, diff.getId()));
-		final Set<SnomedRefSetMemberFragment> targetMembers = toSet(getRefSetMembers(targetPath, diff.getId()));
-		
-		final SetDifference<SnomedRefSetMemberFragment> difference = compare(sourceMembers, targetMembers, SnomedRefSetMemberFragment.EQUIVALENCE);
-		
-		final Set<SnomedRefSetMemberFragment> newOrChangedMembers = newHashSet(difference.entriesOnlyOnRight());
-		final Collection<NodeDelta> memberChanges = newArrayList();
-		
-		for (final SnomedRefSetMemberFragment member : difference.entriesOnlyOnLeft()) {
-			if (newOrChangedMembers.contains(member)) {
-				memberChanges.add(createMemberStatusChangeDelta(member, targetPath));
-				newOrChangedMembers.remove(member);
-			} else {
-				memberChanges.add(createMemberDeletedChangeDelta(member, diff, sourcePath));
-			}
-		}
-		
-		for (final SnomedRefSetMemberFragment newMember : newOrChangedMembers) {
-			memberChanges.add(createMemberAddedChangeDelta(newMember, diff, targetPath));
-		}
-		
-		return memberChanges;
+		throw new UnsupportedOperationException("Not implemented yet, should not be called");
+//		final Set<SnomedRefSetMemberIndexEntry> sourceMembers = toSet(getRefSetMembers(sourcePath, diff.getId()));
+//		final Set<SnomedRefSetMemberIndexEntry> targetMembers = toSet(getRefSetMembers(targetPath, diff.getId()));
+//		
+//		final SetDifference<SnomedRefSetMemberFragment> difference = compare(sourceMembers, targetMembers, SnomedRefSetMemberIndexEntry.EQUIVALENCE);
+//		
+//		final Set<SnomedRefSetMemberFragment> newOrChangedMembers = newHashSet(difference.entriesOnlyOnRight());
+//		final Collection<NodeDelta> memberChanges = newArrayList();
+//		
+//		for (final SnomedRefSetMemberFragment member : difference.entriesOnlyOnLeft()) {
+//			if (newOrChangedMembers.contains(member)) {
+//				memberChanges.add(createMemberStatusChangeDelta(member, targetPath));
+//				newOrChangedMembers.remove(member);
+//			} else {
+//				memberChanges.add(createMemberDeletedChangeDelta(member, diff, sourcePath));
+//			}
+//		}
+//		
+//		for (final SnomedRefSetMemberFragment newMember : newOrChangedMembers) {
+//			memberChanges.add(createMemberAddedChangeDelta(newMember, diff, targetPath));
+//		}
+//		
+//		return memberChanges;
 	}
 
 	private NodeDelta createMemberAddedChangeDelta(final SnomedRefSetMemberFragment member, final NodeDiff refSetDiff, final IBranchPath targetPath) {
@@ -172,17 +208,29 @@ public class SnomedNodeTransformer extends NodeTransformerImpl {
 		return createDeltaForUpdate(memberLabel, featureChange, REFSET_MEMBER_NUMBER);
 	}
 	
-	private Collection<SnomedRefSetMemberFragment> getRefSetMembers(final IBranchPath sourcePath, final String refSetId) {
-		return getComponentService().getRefSetMemberFragments(sourcePath, refSetId);
+	private Collection<SnomedRefSetMemberIndexEntry> getRefSetMembers(final IBranchPath branch, final String refSetId) {
+		return SnomedRequests.prepareSearchMember()
+				.all()
+				.filterByRefSet(refSetId)
+				.build(refSetId)
+				.execute(getBus())
+				.then(new Function<SnomedReferenceSetMembers, Collection<SnomedRefSetMemberIndexEntry>>() {
+					@Override
+					public Collection<SnomedRefSetMemberIndexEntry> apply(SnomedReferenceSetMembers input) {
+						return SnomedRefSetMemberIndexEntry.from(input);
+					}
+				})
+				.getSync();
 	}
 
 	private Collection<NodeDelta> createDeltaForDeletedComponent(final CDOView sourceView, final CDOView targetView, final NodeDiff diff) {
 		if (isRefSet(diff)) {
 			final Collection<NodeDelta> deltas = newArrayList();
 			deltas.add(createDeltaForDeletion(diff.getLabel(), createEmptyFeatureChange(), REFSET_NUMBER));
-			for (final Pair<String, String> labelPair : getComponentService().getReferenceSetMemberLabels(getBranchPath(sourceView, targetView, diff), diff.getId())) {
-				final String memberLabel = getMemberLabel(labelPair);
-				deltas.add(createDeltaForDeletion(memberLabel, createEmptyFeatureChange(), REFSET_MEMBER_NUMBER));
+			final ImmutableList<String> refSetMemberLabels = getRefSetMemberLabels(diff.getId(),
+					getBranchPath(sourceView, targetView, diff));
+			for (final String label : refSetMemberLabels) {
+				deltas.add(createDeltaForDeletion(label, createEmptyFeatureChange(), REFSET_MEMBER_NUMBER));
 			}
 			return deltas;
 		} else {
@@ -195,15 +243,70 @@ public class SnomedNodeTransformer extends NodeTransformerImpl {
 		if (isRefSet(diff)) {
 			final Collection<NodeDelta> deltas = newArrayList();
 			deltas.add(createDeltaForAddition(diff.getLabel(), createEmptyFeatureChange(), REFSET_NUMBER));
-			for (final Pair<String, String> labelPair : getComponentService().getReferenceSetMemberLabels(getBranchPath(sourceView, targetView, diff), diff.getId())) {
-				final String memberLabel = getMemberLabel(labelPair);
-				deltas.add(createDeltaForAddition(memberLabel, createEmptyFeatureChange(), REFSET_MEMBER_NUMBER));
+			final ImmutableList<String> refSetMemberLabels = getRefSetMemberLabels(diff.getId(),
+					getBranchPath(sourceView, targetView, diff));
+			for (final String label : refSetMemberLabels) {
+				deltas.add(createDeltaForAddition(label, createEmptyFeatureChange(), REFSET_MEMBER_NUMBER));
 			}
 			return deltas;
 		} else {
 			final FeatureChange featureChange = createEmptyFeatureChange();
 			return toCollection(createDeltaForAddition(diff.getLabel(), featureChange, CONCEPT_NUMBER));
 		}
+	}
+	
+	private ImmutableList<String> getRefSetMemberLabels(final String refSetId, final IBranchPath branchPath) {
+		final SnomedReferenceSet refSet = SnomedRequests.prepareGetReferenceSet()
+				.setLocales(getLocales())
+				.setComponentId(refSetId)
+				.build(branchPath.getPath())
+				.executeSync(getBus());
+		
+		switch (refSet.getReferencedComponentType()) {
+		case SnomedTerminologyComponentConstants.REFSET:
+		case SnomedTerminologyComponentConstants.CONCEPT:
+			return getConceptLabels(refSetId, branchPath);
+		case SnomedTerminologyComponentConstants.DESCRIPTION:
+			return getDescriptionLabels(refSetId, branchPath);
+		case SnomedTerminologyComponentConstants.RELATIONSHIP:
+			return getRelationshipLabels(refSetId, branchPath);
+		default:
+			throw new IllegalArgumentException(String.format("Unknown referenced component type %s.", refSet.getReferencedComponentType()));
+		}
+	}
+	
+	private ImmutableList<String> getConceptLabels(final String refSetId, final IBranchPath branchPath) {
+		final SnomedReferenceSetMembers members = getRefSetMembers(refSetId, "referencedComponent(expand(pt()))", branchPath);
+		return FluentIterable.from(members).transform(conceptToLabelFunction).toList();
+	}
+	
+	private ImmutableList<String> getDescriptionLabels(final String refSetId, final IBranchPath branchPath) {
+		final SnomedReferenceSetMembers members = getRefSetMembers(refSetId, "referencedComponent()", branchPath);
+		return FluentIterable.from(members).transform(descriptionToLabelFunction).toList();
+	}
+	
+	
+	private ImmutableList<String> getRelationshipLabels(final String refSetId, final IBranchPath branchPath) {
+		final SnomedReferenceSetMembers members = getRefSetMembers(refSetId, "referencedComponent(expand(source(expand(pt())),type(expand(pt())),destination(expand(pt()))))", branchPath);
+		return FluentIterable.from(members).transform(relationshipToLabelFunction).toList();
+	}
+	
+	private SnomedReferenceSetMembers getRefSetMembers(final String refSetId, final String expansion, final IBranchPath branchPath) {
+		return SnomedRequests.prepareSearchMember()
+				.all()
+				.filterByRefSet(refSetId)
+				.setLocales(getLocales())
+				.setExpand(expansion)
+				.build(branchPath.getPath())
+				.executeSync(getBus());
+	}
+
+	private IEventBus getBus() {
+		return ApplicationContext.getInstance().getService(IEventBus.class);
+	}
+
+	private List<ExtendedLocale> getLocales() {
+		return ApplicationContext.getInstance().getService(LanguageSetting.class).getLanguagePreference();
 	}
 
 	private Collection<NodeDelta> compareRefSetByMapTarget(final CDOView sourceView, final CDOView targetView, final NodeDiff diff) {
@@ -247,16 +350,6 @@ public class SnomedNodeTransformer extends NodeTransformerImpl {
 		return isDeletion(diff) ? createPath(sourceView) : createPath(targetView);
 	}
 
-	private String getMemberLabel(final Pair<String, String> labelPair) {
-		final StringBuffer sb = new StringBuffer();
-		sb.append(labelPair.getA());
-		if (!isEmpty(labelPair.getB())) {
-			sb.append(" - ");
-			sb.append(labelPair.getB());
-		}
-		return sb.toString();
-	}
-	
 	private Collection<NodeDiff> getAllRelatedDiffs(final CDOView sourceView, final CDOView targetView, final NodeDiff diff) {
 		
 		final Collection<NodeDiff> diffs = newArrayList();
@@ -289,18 +382,12 @@ public class SnomedNodeTransformer extends NodeTransformerImpl {
 	}
 
 	private String getMemberLabel(final SnomedRefSetMemberFragment member, final IBranchPath branchPath) {
-		final Pair<String, String> labelPair = getComponentService().getMemberLabel(branchPath, member.getUuid());
-		final StringBuffer sb = new StringBuffer();
-		sb.append(labelPair.getA());
-		if (!isEmpty(labelPair.getB())) {
-			sb.append(" - ");
-			sb.append(labelPair.getB());
-		}
-		return sb.toString();
+		return SnomedDiffProcessor.getMemberLabel(member.getSourceId(), member.getTargetId());
 	}
 	
 	private boolean isRegularRefSet(final IBranchPath branchPath, final long refSetStorageKey) {
-		return getRefSetBrowser().isRegularRefSet(branchPath, refSetStorageKey);
+		throw new UnsupportedOperationException("Not implemented yet, should not be called");
+//		return getRefSetBrowser().isRegularRefSet(branchPath, refSetStorageKey);
 	}
 	
 	private boolean exists(final long conceptStorageKey) {
@@ -311,16 +398,4 @@ public class SnomedNodeTransformer extends NodeTransformerImpl {
 		return REFSET_NUMBER == diff.getTerminologyComponentId();
 	}
 
-	private ISnomedComponentService getComponentService() {
-		return getServiceForClass(ISnomedComponentService.class);
-	}
-	
-	private SnomedRefSetBrowser getRefSetBrowser() {
-		return getServiceForClass(SnomedRefSetBrowser.class);
-	}
-
-	private SnomedTerminologyBrowser getTerminologyBrowser() {
-		return getServiceForClass(SnomedTerminologyBrowser.class);
-	}
-	
 }

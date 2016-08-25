@@ -4,7 +4,7 @@ import org.ihtsdo.drools.service.RelationshipService;
 
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationRelationshipService implements RelationshipService {
 

@@ -20,7 +20,6 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 
-import java.security.acl.LastOwnerException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;

@@ -25,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Collection;
 
 import org.junit.Test;
 
@@ -34,9 +33,11 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
 import com.b2international.snowowl.snomed.datastore.MrcmEditingContext;
-import com.b2international.snowowl.snomed.datastore.SnomedPredicateBrowser;
-import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.mrcm.core.io.MrcmExportFormat;
 import com.b2international.snowowl.snomed.mrcm.core.io.MrcmExporter;
 import com.b2international.snowowl.snomed.mrcm.core.io.MrcmImporter;
 import com.b2international.snowowl.test.commons.Services;
@@ -62,22 +63,36 @@ public class MrcmImportExportTest {
 			assertEquals(58, context.getOrCreateConceptModel().getConstraints().size());
 		}
 		// verify index
-		final Collection<PredicateIndexEntry> allPredicates = ApplicationContext.getServiceForClass(SnomedPredicateBrowser.class).getAllPredicates(branch);
-		assertEquals(58, allPredicates.size());
+		final SnomedConstraints allPredicates = SnomedRequests.prepareSearchConstraint()
+				.all()
+				.build(branch.getPath())
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.getSync();
+		assertEquals(58, allPredicates.getTotal());
 	}
 	
 	@Test
 	public void exportTest() throws Exception {
 		importTest();
 		
-		final Path target = Paths.get("target");
+		Path target = Paths.get("target");
 		target.toFile().mkdirs();
-		final Path exportedFile = target.resolve("mrcm_" + Dates.now() + ".xmi");
+		Path exportedFile = target.resolve("mrcm_" + Dates.now() + ".xmi");
 		assertFalse(exportedFile.toFile().exists());
 		try (final OutputStream stream = Files.newOutputStream(exportedFile, StandardOpenOption.CREATE_NEW)) {
-			Services.service(MrcmExporter.class).doExport("test", stream);
+			Services.service(MrcmExporter.class).doExport("test", stream, MrcmExportFormat.XMI);
 		}
 		assertTrue(exportedFile.toFile().exists());
+		
+		target = Paths.get("target");
+		target.toFile().mkdirs();
+		exportedFile = target.resolve("mrcm_" + Dates.now() + ".csv");
+		assertFalse(exportedFile.toFile().exists());
+		try (final OutputStream stream = Files.newOutputStream(exportedFile, StandardOpenOption.CREATE_NEW)) {
+			Services.service(MrcmExporter.class).doExport("test", stream, MrcmExportFormat.CSV);
+		}
+		assertTrue(exportedFile.toFile().exists());
+		
 	}
 	
 }

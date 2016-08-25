@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.api.IBranchPath;
@@ -123,7 +124,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		whenRetrievingMergeReview(reviewId)
 		.then()
 			.statusCode(200)
-			.body("status", equalTo(ReviewStatus.PENDING.toString()));
+			.body("status", CoreMatchers.anyOf(equalTo(ReviewStatus.CURRENT.toString()), equalTo(ReviewStatus.PENDING.toString())));
 		
 		assertReviewCurrent(reviewId);
 	}

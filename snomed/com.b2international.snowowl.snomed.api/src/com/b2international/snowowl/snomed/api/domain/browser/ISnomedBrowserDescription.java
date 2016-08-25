@@ -18,7 +18,10 @@ package com.b2international.snowowl.snomed.api.domain.browser;
 import java.util.Map;
 
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
+import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
+import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
+import com.google.common.collect.Multimap;
 
 /**
  * Represents a specific SNOMED CT description, carrying information for use in the IHTSDO SNOMED CT Browser.
@@ -45,4 +48,10 @@ public interface ISnomedBrowserDescription extends ISnomedBrowserComponentWithId
 
 	/** @return language reference set member acceptability values for this description, keyed by language reference set identifier. */
 	Map<String, Acceptability> getAcceptabilityMap();
+	
+	/** @return the inactivation reason for this description; not set if the description is still active, or no reason was given */
+	DescriptionInactivationIndicator getInactivationIndicator();
+	
+	/** @return related association targets, not set if the description is still active, or no targets were specified */
+	Multimap<AssociationType, String> getAssociationTargets();
 }

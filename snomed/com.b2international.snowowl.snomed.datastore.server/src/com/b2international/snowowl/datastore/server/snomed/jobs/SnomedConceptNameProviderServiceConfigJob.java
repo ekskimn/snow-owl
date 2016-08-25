@@ -15,22 +15,22 @@
  */
 package com.b2international.snowowl.datastore.server.snomed.jobs;
 
-import java.util.List;
+import org.eclipse.net4j.util.container.IPluginContainer;
 
-import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.datastore.server.snomed.SnomedDatastoreServerActivator;
-import com.b2international.snowowl.datastore.serviceconfig.IndexServiceTrackingConfigJob;
+import com.b2international.snowowl.datastore.serviceconfig.ServiceConfigJob;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
+import com.b2international.snowowl.rpc.RpcUtil;
+import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.server.SnomedConceptNameProvider;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedConceptNameProvider;
-import com.google.common.collect.ImmutableList;
 
 /**
  * Job for initializing and configuring the SNOMED CT concept name provider.
  */
-public class SnomedConceptNameProviderServiceConfigJob extends IndexServiceTrackingConfigJob<ISnomedConceptNameProvider, SnomedIndexService> {
+public class SnomedConceptNameProviderServiceConfigJob extends ServiceConfigJob {
 
 	/**
 	 * Creates a new job for SNOMED CT concept name provider service initialization.
@@ -38,24 +38,18 @@ public class SnomedConceptNameProviderServiceConfigJob extends IndexServiceTrack
 	public SnomedConceptNameProviderServiceConfigJob() {
 		super("SNOMED CT concept name provider configuration...", SnomedDatastoreServerActivator.PLUGIN_ID);
 	}
-
+	
 	@Override
-	protected Class<SnomedIndexService> getIndexServiceClass() {
-		return SnomedIndexService.class;
+	protected boolean initService() throws SnowowlServiceException {
+		if (!isRunningInEmbeddedMode()) {
+			return false;
+		}
+
+		final SnomedConceptNameProvider service = new SnomedConceptNameProvider(getEnvironment().provider(IEventBus.class), getEnvironment().provider(LanguageSetting.class));
+		ApplicationContext.getInstance().registerService(ISnomedConceptNameProvider.class, service);
+		RpcUtil.getInitialServerSession(IPluginContainer.INSTANCE).registerClassLoader(SnomedConceptNameProvider.class, service.getClass().getClassLoader());
+		
+		return true;
 	}
 
-	@Override
-	protected Class<ISnomedConceptNameProvider> getTargetServiceClass() {
-		return ISnomedConceptNameProvider.class;
-	}
-
-	@Override
-	protected ISnomedConceptNameProvider createServiceImplementation(final SnomedIndexService indexService) {
-		return new SnomedConceptNameProvider(indexService, getEnvironment().provider(IEventBus.class), getExtendedLocales());
-	}
-
-	private List<ExtendedLocale> getExtendedLocales() {
-		SnomedCoreConfiguration coreConfiguration = getSnowOwlConfiguration().getModuleConfig(SnomedCoreConfiguration.class);
-		return ImmutableList.of(ExtendedLocale.valueOf(coreConfiguration.getLanguage()));
-	}
 }

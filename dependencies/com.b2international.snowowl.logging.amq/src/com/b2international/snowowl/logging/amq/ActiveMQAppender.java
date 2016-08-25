@@ -36,10 +36,20 @@ import ch.qos.logback.core.net.JMSAppenderBase;
  */
 public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 
-	private static final String QUEUE_NAME = "traceability";
+	private static final String QUEUE_SUFFIX = "traceability";
 
 	static int SUCCESSIVE_FAILURE_LIMIT = 3;
 
+	protected String queuePrefix = "default";
+	
+	public void setQueuePrefix(String queuePrefix) {
+		this.queuePrefix = queuePrefix;
+	}
+	
+	public String getQueuePrefix() {
+		return queuePrefix;
+	}
+	
 	QueueConnection queueConnection;
 	QueueSession queueSession;
 	QueueSender queueSender;
@@ -60,7 +70,7 @@ public class ActiveMQAppender extends JMSAppenderBase<ILoggingEvent> {
 			}
 
 			queueSession = queueConnection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
-			Queue queue = queueSession.createQueue(QUEUE_NAME); 
+			Queue queue = queueSession.createQueue(String.format("%s.%s", queuePrefix, QUEUE_SUFFIX)); 
 			queueSender = queueSession.createSender(queue);
 
 			queueConnection.start();

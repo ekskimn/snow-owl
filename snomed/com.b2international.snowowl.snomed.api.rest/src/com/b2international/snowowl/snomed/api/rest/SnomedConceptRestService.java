@@ -24,8 +24,6 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Set;
 
-import javax.ws.rs.DefaultValue;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -56,7 +54,7 @@ import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -186,9 +184,9 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.prepareSearchConcept()
 					.setLimit(limit)
 					.setOffset(offset)
+					.setComponentIds(conceptIds)
 					.filterByTerm(termFilter)
 					.filterByEscg(escgFilter)
-					.filterByComponentIds(conceptIds)
 					.filterByModule(moduleFilter)
 					.filterByActive(activeFilter)
 					.setExpand(expand)
