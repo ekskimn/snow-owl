@@ -87,7 +87,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 
 	@Override
-	public boolean isTermUniqueWithinHierarchy(String exactTerm, String semanticTag, boolean isActive) {
+	public boolean isTermUniqueWithinHierarchy(Description description, String semanticTag, ) {
 		Set<Concept> matches = new HashSet<>();
 		// TODO This doesn't work due to lack of constructor for ValidationConcept(
 		 // 1 - findActiveDescriptionsByExactTerm -- or use descriptionService
@@ -103,7 +103,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		Set<String> conceptIds = new HashSet<>();
 		
 		for (ISnomedDescription iSnomedDescription : descriptions) {
-			if (iSnomedDescription.getTerm().equals(exactTerm)) {
+			if (iSnomedDescription.getTerm().equals(description.getTerm()) && iSnomedDescription.getLanguageCode().equals(description.getLanguageCode())) {
 				conceptIds.add(iSnomedDescription.getConceptId());
 			}
 		}
