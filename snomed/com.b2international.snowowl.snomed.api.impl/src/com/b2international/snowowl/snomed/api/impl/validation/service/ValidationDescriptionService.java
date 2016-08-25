@@ -61,10 +61,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		for (ISnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(exactTerm)) {
 				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
-				iSnomedDescription.getConceptId()
 			}
 		}
-
 		return matches;
 	}
 	
@@ -76,7 +74,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				.build(branchPath)
 				.executeSync(bus);
 
-		Set<Concept> matches = new HashSet<>();
+		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(exactTerm)) {
 				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
