@@ -49,7 +49,7 @@ public class MainBranchImpl extends BranchImpl {
 		main.setBranchManager(getBranchManager());
 		return main;
 	}
-
+	
 	@Override
 	public String path() {
 		return name();
