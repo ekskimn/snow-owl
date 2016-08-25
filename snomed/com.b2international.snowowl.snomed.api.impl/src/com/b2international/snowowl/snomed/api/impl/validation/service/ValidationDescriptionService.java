@@ -14,7 +14,9 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
@@ -60,6 +62,85 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 		}
 		return matches;
+	}
+	
+	@Override
+	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(exactTerm)
+				.build(branchPath)
+				.executeSync(bus);
+
+		Set<Description> matches = new HashSet<>();
+		for (ISnomedDescription iSnomedDescription : descriptions) {
+			if (iSnomedDescription.getTerm().equals(exactTerm)) {
+				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
+			}
+		}
+		return matches;
+	}
+
+
+
+	@Override
+	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(false)
+				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
+
+		Set<Description> matches = new HashSet<>();
+		for (ISnomedDescription iSnomedDescription : descriptions) {
+			if (iSnomedDescription.getTerm().equals(exactTerm)) {
+				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
+			}
+		}
+		return matches;
+	}
+
+	@Override
+	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
+	
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(description.getTerm())
+				.build(branchPath)
+				.executeSync(bus);
+
+		Set<String> conceptIds = new HashSet<>();
+		
+		for (ISnomedDescription iSnomedDescription : descriptions) {
+			if (iSnomedDescription.getTerm().equals(description.getTerm()) && iSnomedDescription.getLanguageCode().equals(description.getLanguageCode())) {
+				conceptIds.add(iSnomedDescription.getConceptId());
+			}
+		}
+		
+		SnomedConcepts concepts = SnomedRequests
+			     .prepareSearchConcept()
+			     .setComponentIds(conceptIds)
+			     .setExpand("fsn()")
+			     .build(branchPath)
+			     .executeSync(bus);
+		
+		for (ISnomedConcept concept : concepts) {
+			if (concept.getFsn().getTerm().endsWith(semanticTag)) {
+				return false;
+			}
+		}
+		
+		
+		return true;
+		
+		
+	}
+
+	@Override
+	public String getLanguageSpecificErrorMessage(Description description) {
+		return null;
+	}
+
+	@Override
+	public boolean hasCaseSignificantWord(String term) {
+		return false;
 	}
 
 }
