@@ -63,23 +63,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 		return matches;
 	}
-	
-	@Override
-	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(true)
-				.filterByTerm(exactTerm)
-				.build(branchPath)
-				.executeSync(bus);
-
-		Set<Description> matches = new HashSet<>();
-		for (ISnomedDescription iSnomedDescription : descriptions) {
-			if (iSnomedDescription.getTerm().equals(exactTerm)) {
-				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
-			}
-		}
-		return matches;
-	}
 
 
 
