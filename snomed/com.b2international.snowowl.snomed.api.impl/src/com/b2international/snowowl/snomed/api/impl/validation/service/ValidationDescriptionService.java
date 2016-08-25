@@ -9,17 +9,13 @@ import java.util.Set;
 import org.ihtsdo.drools.domain.Description;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.Concept;
-
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
-
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
@@ -44,14 +40,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			String languageCode = LanguageCodeReferenceSetIdentifierMapping.getLanguageCode(languageRefsetId);
 			locales.add(new ExtendedLocale(languageCode, null, languageRefsetId));
 		}
-		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds,
-				locales);
+		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
 		for (ISnomedDescription description : fullySpecifiedNames.values()) {
 			fsns.add(description.getTerm());
 		}
 		return fsns;
 	}
-
 
 	@Override
 	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
@@ -69,6 +63,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 		return matches;
 	}
+
+
 
 	@Override
 	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
