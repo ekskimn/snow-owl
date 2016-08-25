@@ -10,11 +10,17 @@ import org.ihtsdo.drools.domain.Description;
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.Description;
+import com.b2international.snowowl.snomed.Concept;
+
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 
@@ -46,10 +52,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return fsns;
 	}
 
+
 	@Override
 	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
-				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(exactTerm)
+				.build(branchPath)
+				.executeSync(bus);
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -75,16 +85,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	}
 
 	@Override
-	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag, ) {
-		Set<Concept> matches = new HashSet<>();
-		// TODO This doesn't work due to lack of constructor for ValidationConcept(
-		 // 1 - findActiveDescriptionsByExactTerm -- or use descriptionService
-		//  2 - retrieve concepts
-		//  3 - return true/false based on fsn tag
-		
+	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
+	
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(isActive)
-				.filterByTerm(exactTerm)
+				.filterByActive(true)
+				.filterByTerm(description.getTerm())
 				.build(branchPath)
 				.executeSync(bus);
 
