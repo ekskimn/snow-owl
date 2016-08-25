@@ -67,7 +67,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	}
 
 
-
 	@Override
 	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(false)
@@ -85,7 +84,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	@Override
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
 	
-		/*final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
 				.filterByActive(true)
 				.filterByTerm(description.getTerm())
 				.build(branchPath)
@@ -99,15 +98,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 		}
 		
-		ApplicationContext applicationContext = ApplicationContext.getInstance();
-		List<ExtendedLocale> languagePreference = applicationContext.getService(LanguageSetting.class).getLanguagePreference();
-		
-		
 		SnomedConcepts concepts = SnomedRequests
 			     .prepareSearchConcept()
 			     .setComponentIds(conceptIds)
 			     .setExpand("fsn()")
-			     .setLocales(languagePreference)
 			     .build(branchPath)
 			     .executeSync(bus);
 		
@@ -117,7 +111,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 		}
 		
-		*/
+		
 		return true;
 		
 		
