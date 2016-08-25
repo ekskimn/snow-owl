@@ -39,6 +39,7 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.events.Request;
@@ -312,6 +313,13 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					entry.setConcept(convertedConcept.getId(), convertedConcept);
 				}
 			}
+
+			try {
+				LOGGER.info(WRITER.writeValueAsString(entry));
+			} catch (IOException e) {
+				throw SnowowlRuntimeException.wrap(e);
+			}
+
 		} finally {
 			traceabilityTimer.stop();
 		}
