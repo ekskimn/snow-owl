@@ -85,7 +85,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	@Override
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
 	
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+		/*final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
 				.filterByActive(true)
 				.filterByTerm(description.getTerm())
 				.build(branchPath)
@@ -117,7 +117,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 		}
 		
-		
+		*/
 		return true;
 		
 		
