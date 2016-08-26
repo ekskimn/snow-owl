@@ -9,6 +9,7 @@ import java.util.Set;
 import org.ihtsdo.drools.domain.Description;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
@@ -18,6 +19,7 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationDescriptionService implements org.ihtsdo.drools.service.DescriptionService {
@@ -97,10 +99,15 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 		}
 		
+		ApplicationContext applicationContext = ApplicationContext.getInstance();
+		List<ExtendedLocale> languagePreference = applicationContext.getService(LanguageSetting.class).getLanguagePreference();
+		
+		
 		SnomedConcepts concepts = SnomedRequests
 			     .prepareSearchConcept()
 			     .setComponentIds(conceptIds)
 			     .setExpand("fsn()")
+			     .setLocales(languagePreference)
 			     .build(branchPath)
 			     .executeSync(bus);
 		
