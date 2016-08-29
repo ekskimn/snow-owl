@@ -255,10 +255,7 @@ public abstract class SnomedRequests {
 					}
 					
 					return SnomedRequests.prepareBulkRead()
-						.setBody(BulkRequest.<BranchContext>create()
-								.add(SnomedRequests.prepareSearchConstraint().filterBySelfIds(selfIds))
-								.add(SnomedRequests.prepareSearchConstraint().filterByDescendantIds(descendantDomainIds))
-								.add(SnomedRequests.prepareSearchConstraint().filterByRefSetIds(refSetIds)))
+						.setBody(constraintBulkRequestBuilder)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 						.execute(bus)
 						.then(new Function<BulkResponse, Collection<SnomedConstraintDocument>>() {
