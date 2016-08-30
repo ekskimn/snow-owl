@@ -79,7 +79,11 @@ public class CDOBranchImpl extends BranchImpl implements InternalCDOBasedBranch 
 		builder.add(segmentId);
 		// use previous segments here, the branch got a new segment because a new child branch got opened
 		builder.addAll(segments());
-		return new CDOBranchImpl(name(), parentPath(), baseTimestamp(), headTimestamp(), isDeleted(), cdoBranchId(), segmentId, builder.build(), parentSegments);
+		
+		CDOBranchImpl branch = new CDOBranchImpl(name(), parentPath(), baseTimestamp(), headTimestamp(), isDeleted(), cdoBranchId(), segmentId, builder.build(), parentSegments);
+		branch.metadata(metadata());
+		branch.setBranchManager(getBranchManager());
+		return branch;
 	}
 	
 	@Override
