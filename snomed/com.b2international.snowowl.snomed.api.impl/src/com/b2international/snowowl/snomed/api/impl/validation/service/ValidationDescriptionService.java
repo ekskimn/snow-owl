@@ -233,15 +233,16 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	// existence
 	// Probably want a second rule to check the actual case significance of the
 	// word
-	public boolean hasCaseSignificantWord(String term) {
+	public String getCaseSensitiveWordsFromTerm(String term) {
 		String[] words = term.split("\\s+");
+		String result = "";
 		for (String word : words) {
 			// if lower case match and not original word match
 			if (caseSignificantWordsLowerCase.contains(word.toLowerCase())) {
-				return true;
+				result += word + " ";
 			}
 		}
-		return false;
+		return result;
 	}
 
 }
