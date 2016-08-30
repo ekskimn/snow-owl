@@ -19,7 +19,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -277,7 +276,7 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
     }
     
     @Override
-    void sendChangeEvent(final Branch branch) {
-    	new BranchChangedEvent(repository.id(), branch).publish(repository.events());
+    void sendChangeEvent(final String branchPath) {
+    	new BranchChangedEvent(repository.id(), branchPath).publish(repository.events());
     }
 }

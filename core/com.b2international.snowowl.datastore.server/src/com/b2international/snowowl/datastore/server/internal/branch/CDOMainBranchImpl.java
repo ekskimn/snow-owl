@@ -72,7 +72,7 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 		// MAIN branch uses all his previous segments because he never gets reopened
 		builder.addAll(segments());
 		
-		final CDOMainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), metadata(), segmentId, builder.build());
+		final CDOMainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), metadata(), newSegmentId, builder.build());
 		main.setBranchManager(getBranchManager());
 		return main;
 	}

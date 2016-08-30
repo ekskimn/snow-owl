@@ -42,7 +42,7 @@ public final class BranchChangedEvent extends BaseRepositoryEvent {
 
 	@Override
 	public String toString() {
-		return "BranchChangedEvent " + branch.path(); 
+		return "BranchChangedEvent " + branch; 
 	}
 
 }
