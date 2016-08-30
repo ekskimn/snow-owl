@@ -127,7 +127,7 @@ public class SynchronizeBranchAction extends AbstractCDOBranchAction {
 			transactions.add(syncTransaction);
 		} else {
 			// Explicit notification, let listeners know the new state
-			final BranchChangedEvent changeEvent = new BranchChangedEvent(repositoryId, reopenedBranch);
+			final BranchChangedEvent changeEvent = new BranchChangedEvent(repositoryId, reopenedBranch.path());
 			changeEvent.publish(eventBus);
 			syncTransaction.close();
 		}

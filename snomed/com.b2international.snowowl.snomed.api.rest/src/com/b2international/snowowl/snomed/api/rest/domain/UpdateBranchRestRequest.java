@@ -15,11 +15,18 @@
  */
 package com.b2international.snowowl.snomed.api.rest.domain;
 
+import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataHolderImpl;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @since 4.1
  */
 public class UpdateBranchRestRequest extends MetadataHolderImpl {
 
+	@JsonCreator
+	public UpdateBranchRestRequest(@JsonProperty("metadata") Metadata metadata) {
+		super(metadata);
+	}
 }

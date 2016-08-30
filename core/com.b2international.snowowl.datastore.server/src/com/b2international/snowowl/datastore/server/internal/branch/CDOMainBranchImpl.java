@@ -21,6 +21,7 @@ import java.util.Collections;
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 
 import com.b2international.commons.collections.Collections3;
+import com.b2international.snowowl.core.Metadata;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableSet.Builder;
 
@@ -33,8 +34,8 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 	private final int segmentId;
 	private final Collection<Integer> segments;
 	
-	CDOMainBranchImpl(long baseTimestamp, long headTimestamp, int segmentId, Collection<Integer> segments) {
-		super(baseTimestamp, headTimestamp);
+	CDOMainBranchImpl(long baseTimestamp, long headTimestamp, Metadata metadata, int segmentId, Collection<Integer> segments) {
+		super(baseTimestamp, headTimestamp, metadata);
 		this.segmentId = segmentId;
 		this.segments = Collections3.toImmutableSet(segments);
 	}
@@ -60,20 +61,19 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 	}
 	
 	@Override
-	public InternalBranch withHeadTimestamp(long newHeadTimestamp) {
-		final MainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), newHeadTimestamp, segmentId, segments);
-		main.setBranchManager(branchManager);
-		main.metadata(metadata());
-		return main;
+	protected BranchImpl doCreateBranch(String name, String parentPath, long baseTimestamp, long headTimestamp, boolean deleted, Metadata metadata) {
+		return new CDOMainBranchImpl(baseTimestamp, headTimestamp, metadata, segmentId, segments);
 	}
 	
 	@Override
-	public InternalCDOBasedBranch withSegmentId(int segmentId) {
+	public InternalCDOBasedBranch withSegmentId(int newSegmentId) {
 		final Builder<Integer> builder = ImmutableSet.builder();
-		builder.add(segmentId);
+		builder.add(newSegmentId);
 		// MAIN branch uses all his previous segments because he never gets reopened
 		builder.addAll(segments());
-		return new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), segmentId, builder.build());
+		
+		final CDOMainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), metadata(), newSegmentId, builder.build());
+		main.setBranchManager(getBranchManager());
+		return main;
 	}
-
 }
