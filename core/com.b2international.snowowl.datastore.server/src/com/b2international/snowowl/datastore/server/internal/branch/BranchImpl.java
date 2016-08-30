@@ -38,7 +38,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 		@Override public void run() { return; }
 	};
 
-    protected BranchManagerImpl branchManager;
+    private BranchManagerImpl branchManager;
     
     private final String name;
     private final String parentPath;

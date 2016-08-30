@@ -42,11 +42,8 @@ public class MainBranchImpl extends BranchImpl {
 	}
 	
 	@Override
-	public InternalBranch withHeadTimestamp(long newHeadTimestamp) {
-		final MainBranchImpl main = new MainBranchImpl(baseTimestamp(), newHeadTimestamp);
-		main.setBranchManager(branchManager);
-		main.metadata(metadata());
-		return main;
+	protected BranchImpl doCreateBranch(String name, String parentPath, long baseTimestamp, long headTimestamp, boolean deleted) {
+		return new MainBranchImpl(baseTimestamp, headTimestamp);
 	}
 
 	@Override
