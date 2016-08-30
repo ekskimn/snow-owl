@@ -51,7 +51,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		File fileTest = new File(".");
 		logger.info("Validation Description Service root directory " + fileTest.getAbsolutePath());
 
-		File file = new File("src/test/resources/data/CSWordsSample.txt");
+		File file = new File("/opt/termserver/resources/test-resources/cs_words.txt");
 		FileReader fileReader;
 		BufferedReader bufferedReader;
 		try {
@@ -70,7 +70,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			fileReader.close();
 			logger.info("Loaded " + caseSignificantWordsOriginal.size() + " case sensitive words into cache");
 		} catch (IOException e) {
-			logger.debug("Failed to retrieve case significant words file -- tests will be skipped");
+			logger.info("Failed to retrieve case significant words file -- test will be skipped");
 
 		}
 
@@ -106,7 +106,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId);
 
 		} catch (IOException e) {
-			logger.debug("Failed to retrieve language-specific terms for refset " + refsetId + " in file " + fileName);
+			logger.info("Failed to retrieve language-specific terms for refset " + refsetId + " in file " + fileName);
 		}
 	}
 
@@ -195,11 +195,28 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public String getLanguageSpecificErrorMessage(Description description) {
+		String[] words = description.getTerm().split("\\s+");
+		for (String refsetId : description.getAcceptabilityMap().keySet()) {
+			for (String word : words) {
+				if (refsetToLanguageSpecificWordsMap.get(refsetId).contains(word)) {
+					return "Synonym is prefered in the GB Language refset but refers to a word has en-us spelling: "
+							+ word;
+				}
+			}
+		}
 		return null;
 	}
 
 	@Override
 	public boolean hasCaseSignificantWord(String term) {
+		String[] words = term.split("\\s+");
+		for (String word : words) {
+			// if lower case match and not original word match
+			if (caseSignificantWordsLowerCase.contains(word.toLowerCase())
+					&& !caseSignificantWordsOriginal.contains(word)) {
+				return true;
+			}
+		}
 		return false;
 	}
 
