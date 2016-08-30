@@ -39,7 +39,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		this.branchPath = branchPath;
 		this.bus = bus;
 	}
-	
+
 	final static Logger logger = LoggerFactory.getLogger(ValidationDescriptionService.class);
 
 	// Static block of sample case significant words
@@ -47,7 +47,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	public static final Set<String> caseSignificantWordsOriginal = new HashSet<>();
 	public static final Set<String> caseSignificantWordsLowerCase = new HashSet<>();
 	static {
-		
+
 		File fileTest = new File(".");
 		logger.info("Validation Description Service root directory " + fileTest.getAbsolutePath());
 
@@ -80,11 +80,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	// In non-dev environments, this should initialize on startup
 	public static final Map<String, Set<String>> refsetToLanguageSpecificWordsMap = new HashMap<>();
 	static {
-		loadRefsetSpecificWords(Constants.GB_EN_LANG_REFSET, "src/test/resources/data/gbTerms.txt");
-		loadRefsetSpecificWords(Constants.US_EN_LANG_REFSET, "src/test/resources/data/usTerms.txt");
+		loadRefsetSpecificWords(Constants.GB_EN_LANG_REFSET, "/opt/termserver/resources/test-resources/gbTerms.txt");
+		loadRefsetSpecificWords(Constants.US_EN_LANG_REFSET, "/opt/termserver/resources/test-resources/usTerms.txt");
 
 	}
-	
+
 	private static void loadRefsetSpecificWords(String refsetId, String fileName) {
 
 		Set<String> words = new HashSet<>();
@@ -99,7 +99,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			// skip header line
 			bufferedReader.readLine();
 			while ((line = bufferedReader.readLine()) != null) {
-				words.add(line); // assumed to be single-word lines
+				words.add(line.toLowerCase()); // assumed to be single-word
+												// lines
 			}
 			fileReader.close();
 			refsetToLanguageSpecificWordsMap.put(refsetId, words);
@@ -118,7 +119,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			String languageCode = LanguageCodeReferenceSetIdentifierMapping.getLanguageCode(languageRefsetId);
 			locales.add(new ExtendedLocale(languageCode, null, languageRefsetId));
 		}
-		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
+		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds,
+				locales);
 		for (ISnomedDescription description : fullySpecifiedNames.values()) {
 			fsns.add(description.getTerm());
 		}
@@ -127,11 +129,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(true)
-				.filterByTerm(exactTerm)
-				.build(branchPath)
-				.executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
+				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -141,7 +140,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 		return matches;
 	}
-
 
 	@Override
 	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
@@ -159,61 +157,87 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
-	
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(true)
-				.filterByTerm(description.getTerm())
-				.build(branchPath)
-				.executeSync(bus);
+
+		/*
+		 * TODO Need to figure out the locale setting
+		 * final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
+				.filterByTerm(description.getTerm()).build(branchPath).executeSync(bus);
 
 		Set<String> conceptIds = new HashSet<>();
-		
+
 		for (ISnomedDescription iSnomedDescription : descriptions) {
-			if (iSnomedDescription.getTerm().equals(description.getTerm()) && iSnomedDescription.getLanguageCode().equals(description.getLanguageCode())) {
+			if (iSnomedDescription.getTerm().equals(description.getTerm())
+					&& iSnomedDescription.getLanguageCode().equals(description.getLanguageCode())) {
 				conceptIds.add(iSnomedDescription.getConceptId());
 			}
 		}
-		
-		SnomedConcepts concepts = SnomedRequests
-			     .prepareSearchConcept()
-			     .setComponentIds(conceptIds)
-			     .setExpand("fsn()")
-			     .build(branchPath)
-			     .executeSync(bus);
-		
+
+		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept().setComponentIds(conceptIds).setExpand("fsn()")
+				.build(branchPath).executeSync(bus);
+
 		for (ISnomedConcept concept : concepts) {
 			if (concept.getFsn().getTerm().endsWith(semanticTag)) {
 				return false;
 			}
-		}
-		
-		
+		}*/
+
 		return true;
-		
-		
+
 	}
 
 	@Override
 	public String getLanguageSpecificErrorMessage(Description description) {
+
+		String errorMessage = "";
+
+		// null checks
+		if (description == null || description.getAcceptabilityMap() == null || description.getTerm() == null) {
+			return errorMessage;
+		}
+
 		String[] words = description.getTerm().split("\\s+");
-		for (String refsetId : description.getAcceptabilityMap().keySet()) {
+
+		// convenience variables
+		String usAcc = description.getAcceptabilityMap().get(Constants.US_EN_LANG_REFSET);
+		String gbAcc = description.getAcceptabilityMap().get(Constants.GB_EN_LANG_REFSET);
+
+	
+		
+		// NOTE: Supports international only at this point
+		// Only check active synonyms
+		if (description.isActive() && Constants.SYNONYM.equals(description.getTypeId())) {
 			for (String word : words) {
-				if (refsetToLanguageSpecificWordsMap.get(refsetId).contains(word)) {
-					return "Synonym is prefered in the GB Language refset but refers to a word has en-us spelling: "
-							+ word;
+				
+				// Step 1: Check en-us preferred synonyms for en-gb spellings
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc) && refsetToLanguageSpecificWordsMap
+						.get(Constants.GB_EN_LANG_REFSET).contains(word.toLowerCase())) {
+					errorMessage += "Synonym is preferred in the en-us refset but refers to a word that has en-gb spelling: "
+							+ word + "\n";
+				}
+
+				// Step 2: Check en-gb preferred synonyms for en-en spellings
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(gbAcc) && refsetToLanguageSpecificWordsMap
+						.get(Constants.US_EN_LANG_REFSET).contains(word.toLowerCase())) {
+					errorMessage += "Synonym is preferred in the en-gb refset but refers to a word that has en-us spelling: "
+							+ word + "\n";
 				}
 			}
 		}
-		return null;
+		
+		return errorMessage;
+	
 	}
 
 	@Override
+	// TODO Need to rethink exactly how this will work -- for now just check
+	// existence
+	// Probably want a second rule to check the actual case significance of the
+	// word
 	public boolean hasCaseSignificantWord(String term) {
 		String[] words = term.split("\\s+");
 		for (String word : words) {
 			// if lower case match and not original word match
-			if (caseSignificantWordsLowerCase.contains(word.toLowerCase())
-					&& !caseSignificantWordsOriginal.contains(word)) {
+			if (caseSignificantWordsLowerCase.contains(word.toLowerCase())) {
 				return true;
 			}
 		}
