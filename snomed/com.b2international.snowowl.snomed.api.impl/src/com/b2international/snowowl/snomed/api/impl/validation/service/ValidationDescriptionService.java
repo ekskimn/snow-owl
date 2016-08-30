@@ -1,16 +1,23 @@
 package com.b2international.snowowl.snomed.api.impl.validation.service;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.ihtsdo.drools.domain.Concept;
+import org.ihtsdo.drools.domain.Constants;
 import org.ihtsdo.drools.domain.Description;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.http.ExtendedLocale;
-import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
@@ -19,7 +26,6 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
-import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationDescriptionService implements org.ihtsdo.drools.service.DescriptionService {
@@ -32,6 +38,76 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		this.descriptionService = descriptionService;
 		this.branchPath = branchPath;
 		this.bus = bus;
+	}
+	
+	final static Logger logger = LoggerFactory.getLogger(ValidationDescriptionService.class);
+
+	// Static block of sample case significant words
+	// In non-dev environments, this should initialize on startup
+	public static final Set<String> caseSignificantWordsOriginal = new HashSet<>();
+	public static final Set<String> caseSignificantWordsLowerCase = new HashSet<>();
+	static {
+		
+		File fileTest = new File(".");
+		logger.info("Validation Description Service root directory " + fileTest.getAbsolutePath());
+
+		File file = new File("src/test/resources/data/CSWordsSample.txt");
+		FileReader fileReader;
+		BufferedReader bufferedReader;
+		try {
+			fileReader = new FileReader(file);
+			bufferedReader = new BufferedReader(fileReader);
+			String line;
+			// skip header line
+			bufferedReader.readLine();
+			while ((line = bufferedReader.readLine()) != null) {
+				String[] words = line.split("\\s+");
+
+				// format: 0: word, 1: type (unused)
+				caseSignificantWordsOriginal.add(words[0]);
+				caseSignificantWordsLowerCase.add(words[0].toLowerCase());
+			}
+			fileReader.close();
+			logger.info("Loaded " + caseSignificantWordsOriginal.size() + " case sensitive words into cache");
+		} catch (IOException e) {
+			logger.debug("Failed to retrieve case significant words file -- tests will be skipped");
+
+		}
+
+	}
+
+	// Static block of sample case significant words
+	// In non-dev environments, this should initialize on startup
+	public static final Map<String, Set<String>> refsetToLanguageSpecificWordsMap = new HashMap<>();
+	static {
+		loadRefsetSpecificWords(Constants.GB_EN_LANG_REFSET, "src/test/resources/data/gbTerms.txt");
+		loadRefsetSpecificWords(Constants.US_EN_LANG_REFSET, "src/test/resources/data/usTerms.txt");
+
+	}
+	
+	private static void loadRefsetSpecificWords(String refsetId, String fileName) {
+
+		Set<String> words = new HashSet<>();
+
+		File file = new File(fileName);
+		FileReader fileReader;
+		BufferedReader bufferedReader;
+		try {
+			fileReader = new FileReader(file);
+			bufferedReader = new BufferedReader(fileReader);
+			String line;
+			// skip header line
+			bufferedReader.readLine();
+			while ((line = bufferedReader.readLine()) != null) {
+				words.add(line); // assumed to be single-word lines
+			}
+			fileReader.close();
+			refsetToLanguageSpecificWordsMap.put(refsetId, words);
+			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId);
+
+		} catch (IOException e) {
+			logger.debug("Failed to retrieve language-specific terms for refset " + refsetId + " in file " + fileName);
+		}
 	}
 
 	@Override
