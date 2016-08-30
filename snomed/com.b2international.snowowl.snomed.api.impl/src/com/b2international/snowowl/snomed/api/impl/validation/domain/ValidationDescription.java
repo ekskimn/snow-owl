@@ -74,8 +74,10 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 	public Map<String, String> getAcceptabilityMap() {
 		Map<String, String> langRefsetIdToAcceptabliltyIdMap = new HashMap<>();
 		Map<String, Acceptability> acceptabilityMap = browserDesciption.getAcceptabilityMap();
-		for (String langRefsetId : acceptabilityMap.keySet()) {
-			langRefsetIdToAcceptabliltyIdMap.put(langRefsetId, acceptabilityMap.get(langRefsetId).getConceptId());
+		if (acceptabilityMap != null) {
+			for (String langRefsetId : acceptabilityMap.keySet()) {
+				langRefsetIdToAcceptabliltyIdMap.put(langRefsetId, acceptabilityMap.get(langRefsetId).getConceptId());
+			}
 		}
 		return langRefsetIdToAcceptabliltyIdMap;
 	}
