@@ -89,7 +89,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 	
     @Override
     public InternalBranch withHeadTimestamp(long newHeadTimestamp) {
-		checkArgument(newHeadTimestamp > headTimestamp, "New head timestamp may not be smaller or equal than old head timestamp.");
+		checkArgument(newHeadTimestamp > headTimestamp(), "New head timestamp may not be smaller or equal than old head timestamp.");
 		return createBranch(name(), parentPath(), baseTimestamp(), newHeadTimestamp, isDeleted(), metadata());
 	}
     

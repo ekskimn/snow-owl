@@ -267,7 +267,6 @@ public abstract class BranchManagerImpl implements BranchManager {
 	/**
 	 * Subclasses should override this method if they want to broadcast notifications of changed branches.
 	 * @param branchPath the subject of the notification (may not be {@code null})
-	 * @return {@code branch} (for convenience)
 	 */
 	void sendChangeEvent(final String branchPath) {
 	}
