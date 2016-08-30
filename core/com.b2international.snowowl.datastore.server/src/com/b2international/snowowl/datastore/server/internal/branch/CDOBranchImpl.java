@@ -47,7 +47,7 @@ public class CDOBranchImpl extends BranchImpl implements InternalCDOBasedBranch 
 	
 	@Override
 	protected CDOBranchImpl doCreateBranch(String name, String parentPath, long baseTimestamp, long headTimestamp, boolean deleted, Metadata metadata) {
-		return new CDOBranchImpl(name, parentPath, baseTimestamp, headTimestamp, deleted, metadata, cdoBranchId, segmentId, segments, parentSegments);
+		return new CDOBranchImpl(name, parentPath, baseTimestamp, headTimestamp, deleted, metadata, cdoBranchId(), segmentId(), segments(), parentSegments());
 	}
 	
 	@Override
@@ -77,7 +77,7 @@ public class CDOBranchImpl extends BranchImpl implements InternalCDOBasedBranch 
 		// use previous segments here, the branch got a new segment because a new child branch got opened
 		builder.addAll(segments());
 		
-		CDOBranchImpl branch = new CDOBranchImpl(name(), parentPath(), baseTimestamp(), headTimestamp(), isDeleted(), metadata(), cdoBranchId(), newSegmentId, builder.build(), parentSegments);
+		CDOBranchImpl branch = new CDOBranchImpl(name(), parentPath(), baseTimestamp(), headTimestamp(), isDeleted(), metadata(), cdoBranchId(), newSegmentId, builder.build(), parentSegments());
 		branch.setBranchManager(getBranchManager());
 		return branch;
 	}
