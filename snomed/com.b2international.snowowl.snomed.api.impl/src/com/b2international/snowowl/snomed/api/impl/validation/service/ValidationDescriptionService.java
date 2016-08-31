@@ -238,7 +238,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		String result = "";
 		for (String word : words) {
 			// if lower case match and not original word match
-			if (caseSignificantWordsLowerCase.contains(word.toLowerCase())) {
+			if (caseSignificantWordsLowerCase.contains(word.toLowerCase())
+					&& !caseSignificantWordsOriginal.contains(word)) {
 				result += word + " ";
 			}
 		}
