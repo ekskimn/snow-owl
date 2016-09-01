@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +23,10 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 
@@ -39,8 +44,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	final static Logger logger = LoggerFactory.getLogger(ValidationDescriptionService.class);
 
-	// Static block of sample case significant words - lower case word -> exact word as supplied
-	// NOTE: This will not handle cases where the same word exists with different capitalizations
+	// Static block of sample case significant words - lower case word -> exact
+	// word as supplied
+	// NOTE: This will not handle cases where the same word exists with
+	// different capitalizations
 	// However, at this time no further precision is required
 	public static final Map<String, String> caseSignificantWordsMap = new HashMap<>();
 	static {
@@ -61,10 +68,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 				// format: 0: word, 1: type (unused)
 				caseSignificantWordsMap.put(words[0].toLowerCase(), words[0]);
-				
-				if (words[0].toLowerCase().equals("nebraska")) {
-					System.out.println("FOUND nebraska: " + caseSignificantWordsMap.get("nebraska"));
-				}
 			}
 			fileReader.close();
 			logger.info(
@@ -112,6 +115,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 	}
 
+	// On initial load, retrieve the top-level hierarchy roots for hierarchy
+	// detection
+	private static Set<String> hierarchyRootIds = null;
+
 	@Override
 	public Set<String> getFSNs(Set<String> conceptIds, String... languageRefsetIds) {
 		Set<String> fsns = new HashSet<>();
@@ -156,32 +163,68 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return matches;
 	}
 
+	private void cacheHierarchyRootIds() {
+
+		System.out.println("Caching hierarchy root ids");
+		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
+				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(direct:true)").build(branchPath)
+				.executeSync(bus);
+		System.out.println(" Retrieved SNOMEDCT root concept");
+		for (ISnomedConcept rootConcept : rootConcepts) {
+			for (ISnomedConcept childConcept : rootConcept.getDescendants()) {
+				System.out.println(" Adding hierarchy root id " + childConcept.getId());
+				hierarchyRootIds.add(childConcept.getId());
+			}
+		}
+		
+		System.out.println( "hierarchyRootIds: " + hierarchyRootIds);
+
+	}
+
 	@Override
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
 
-		/*
-		 * TODO Need to figure out the locale setting final SnomedDescriptions
-		 * descriptions =
-		 * SnomedRequests.prepareSearchDescription().filterByActive(true)
-		 * .filterByTerm(description.getTerm()).build(branchPath).executeSync(
-		 * bus);
-		 * 
-		 * Set<String> conceptIds = new HashSet<>();
-		 * 
-		 * for (ISnomedDescription iSnomedDescription : descriptions) { if
-		 * (iSnomedDescription.getTerm().equals(description.getTerm()) &&
-		 * iSnomedDescription.getLanguageCode().equals(description.
-		 * getLanguageCode())) {
-		 * conceptIds.add(iSnomedDescription.getConceptId()); } }
-		 * 
-		 * SnomedConcepts concepts =
-		 * SnomedRequests.prepareSearchConcept().setComponentIds(conceptIds).
-		 * setExpand("fsn()") .build(branchPath).executeSync(bus);
-		 * 
-		 * for (ISnomedConcept concept : concepts) { if
-		 * (concept.getFsn().getTerm().endsWith(semanticTag)) { return false; }
-		 * }
-		 */
+		System.out.println("Checking unique within hierarchy for " + description.getId() + "/" + description.getConceptId() + "/" + description.getTerm() + "/" + description.getLanguageCode());
+		
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
+				.filterByTerm(description.getTerm()).build(branchPath).executeSync(bus);
+
+		Set<String> conceptIds = new HashSet<>();
+
+		// check against id, exact term, and language code
+		for (ISnomedDescription iSnomedDescription : descriptions) {
+			System.out.println("Checking against description " + iSnomedDescription.getId() + "/" + iSnomedDescription.getConceptId() + "/" + iSnomedDescription.getTerm() + "/" + iSnomedDescription.getLanguageCode());
+			if (!iSnomedDescription.getId().equals(description.getId())
+					&& iSnomedDescription.getTerm().equals(description.getTerm())
+					&& iSnomedDescription.getLanguageCode().equals(description.getLanguageCode())) {
+				System.out.println("  Match found!");
+				conceptIds.add(iSnomedDescription.getConceptId());
+			}
+		}
+
+		// if matches found
+		if (conceptIds.size() > 0) {
+			
+			System.out.println("Matches found " + conceptIds);
+
+			// get the concepts from the matched ids
+			SnomedConcepts concepts = SnomedRequests.prepareSearchConcept().setComponentIds(conceptIds)
+					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
+
+			// if hierarchy root ids not already cached, get them
+			if (hierarchyRootIds == null) {
+				cacheHierarchyRootIds();
+			}
+
+			// check concept ancestors against hierarchy roots
+			for (ISnomedConcept concept : concepts) {
+				for (ISnomedConcept ancestor : concept.getAncestors()) {
+					if (hierarchyRootIds.contains(ancestor.getId())) {
+						return false;
+					}
+				}
+			}
+		}
 
 		return true;
 
@@ -237,49 +280,16 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			return result;
 		}
 
-		System.out
-				.println("Checking description " + description.getTerm() + ", " + description.getCaseSignificanceId());
-
 		String[] words = description.getTerm().split("\\s+");
 
 		for (String word : words) {
-
-			System.out.println("  Checking word " + word);
 
 			if (caseSignificantWordsMap.containsKey(word.toLowerCase())
 					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
 				result += "Description contains case-sensitive words but is not marked case sensitive: "
 						+ caseSignificantWordsMap.get(word.toLowerCase()) + ".\n";
 
-				/*
-				 * TODO Extra functionality beyond requirements, left in for possible use later
-				 * // Check 1: term containing case-sensitive words should not
-				 * be // entire-term-case-insensitive if
-				 * (Constants.ENTIRE_TERM_CASE_INSENSITIVE.equals(description.
-				 * getCaseSignificanceId())) { result +=
-				 * "Description marked case insensitive should not contain case-sensitive word: "
-				 * + caseSignificantWordsMap.get(word.toLowerCase()) + ".\n"; }
-				 * 
-				 * // Check 2: term marked
-				 * ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE // should not start
-				 * with case sensitive word // TODO Confirm this else if
-				 * (Constants.ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE.equals(
-				 * description.getCaseSignificanceId()) &&
-				 * description.getTerm().startsWith(word)) { result +=
-				 * "Description marked only initial character case insensitive should not start with a case-sensitive word: "
-				 * + word + ".\n"; } // Check 3: term containing case-sensitive
-				 * word with invalid // case else if
-				 * (caseSignificantWordsMap.containsKey(word.toLowerCase()) &&
-				 * !caseSignificantWordsMap.get(word.toLowerCase()).equals(word)
-				 * ) { result +=
-				 * "Description contains case-sensitive word with improper case: "
-				 * + word + " should be " +
-				 * caseSignificantWordsMap.get(word.toLowerCase()) + ".\n"; }
-				 */
 			}
-		}
-		if (result.length() > 0) {
-			System.out.println(result);
 		}
 		return result;
 	}
