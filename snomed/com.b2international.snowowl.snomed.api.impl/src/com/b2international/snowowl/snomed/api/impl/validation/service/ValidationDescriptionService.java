@@ -162,6 +162,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	}
 
 	private void cacheHierarchyRootIds() {
+		
+		hierarchyRootIds = new HashSet<>();
 
 		System.out.println("Caching hierarchy root ids");
 		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
@@ -175,7 +177,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 		}
 
-		System.out.println("hierarchyRootIds: " + hierarchyRootIds);
+		System.out.println("hierarchyRootIds (" + hierarchyRootIds.size() + "): " + hierarchyRootIds);
 
 	}
 
@@ -189,7 +191,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	}
 
 	@Override
-	// TODO Remove the semantic tag argument
+	// TODO Remove the semantic tag argument (requires engine change)
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
 
 		System.out.println("Checking unique within hierarchy for " + description.getId() + "/"
@@ -229,7 +231,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					.setExpand("ancestors(direct:false)")
 					.build(branchPath)
 					.executeSync(bus);
-	
+			
+			System.out.println("  Concept hierarchy id:  " + getHierarchyId(concept));
 			// retrieve matching concepts (with ancestors) and compare
 			for (String conceptId : conceptIds) {
 				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
@@ -237,6 +240,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 						.setExpand("ancestors(direct:false)")
 						.build(branchPath)
 						.executeSync(bus);
+				System.out.println("  Matching hierarchy id: " + getHierarchyId(matchingConcept));
+				
 				if (getHierarchyId(concept).equals(getHierarchyId(matchingConcept))) {
 					return false;
 				}
