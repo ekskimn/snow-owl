@@ -43,8 +43,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		// In non-dev environments, this should initialize on startup
 		public static final Map<String, String> caseSignificantWordsMap = new HashMap<>();
 		static {
+			
+			String fileName = "/opt/termserver/resources/test-resources/cs_words.txt";
 
-			File file = new File("src/test/resources/data/CSWordsSample.txt");
+			File file = new File(fileName);
 			FileReader fileReader;
 			BufferedReader bufferedReader;
 			try {
@@ -60,9 +62,9 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					caseSignificantWordsMap.put(words[0].toLowerCase(), words[0]);
 				}
 				fileReader.close();
-				logger.info("Loaded " + caseSignificantWordsMap.size() + " case sensitive words into cache");
+				logger.info("Loaded " + caseSignificantWordsMap.size() + " case sensitive words into cache from: " + fileName);
 			} catch (IOException e) {
-				logger.debug("Failed to retrieve case significant words file -- tests will be skipped");
+				logger.debug("Failed to retrieve case significant words file: " + fileName);
 
 			}
 
@@ -96,7 +98,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 			fileReader.close();
 			refsetToLanguageSpecificWordsMap.put(refsetId, words);
-			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId);
+			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId + " from: " + fileName);
 
 		} catch (IOException e) {
 			logger.info("Failed to retrieve language-specific terms for refset " + refsetId + " in file " + fileName);
