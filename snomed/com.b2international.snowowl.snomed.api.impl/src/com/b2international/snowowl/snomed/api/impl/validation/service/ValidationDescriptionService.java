@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,7 +24,6 @@ import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
@@ -176,16 +174,27 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				hierarchyRootIds.add(childConcept.getId());
 			}
 		}
-		
-		System.out.println( "hierarchyRootIds: " + hierarchyRootIds);
+
+		System.out.println("hierarchyRootIds: " + hierarchyRootIds);
 
 	}
 
+	private String getHierarchyId(ISnomedConcept concept) {
+		for (ISnomedConcept ancestor : concept.getAncestors()) {
+			if (hierarchyRootIds.contains(ancestor.getId())) {
+				return ancestor.getId();
+			}
+		}
+		return null;
+	}
+
 	@Override
+	// TODO Remove the semantic tag argument
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
 
-		System.out.println("Checking unique within hierarchy for " + description.getId() + "/" + description.getConceptId() + "/" + description.getTerm() + "/" + description.getLanguageCode());
-		
+		System.out.println("Checking unique within hierarchy for " + description.getId() + "/"
+				+ description.getConceptId() + "/" + description.getTerm() + "/" + description.getLanguageCode());
+
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
 				.filterByTerm(description.getTerm()).build(branchPath).executeSync(bus);
 
@@ -193,7 +202,9 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		// check against id, exact term, and language code
 		for (ISnomedDescription iSnomedDescription : descriptions) {
-			System.out.println("Checking against description " + iSnomedDescription.getId() + "/" + iSnomedDescription.getConceptId() + "/" + iSnomedDescription.getTerm() + "/" + iSnomedDescription.getLanguageCode());
+			System.out.println("Checking against description " + iSnomedDescription.getId() + "/"
+					+ iSnomedDescription.getConceptId() + "/" + iSnomedDescription.getTerm() + "/"
+					+ iSnomedDescription.getLanguageCode());
 			if (!iSnomedDescription.getId().equals(description.getId())
 					&& iSnomedDescription.getTerm().equals(description.getTerm())
 					&& iSnomedDescription.getLanguageCode().equals(description.getLanguageCode())) {
@@ -204,24 +215,30 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		// if matches found
 		if (conceptIds.size() > 0) {
-			
-			System.out.println("Matches found " + conceptIds);
 
-			// get the concepts from the matched ids
-			SnomedConcepts concepts = SnomedRequests.prepareSearchConcept().setComponentIds(conceptIds)
-					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
+			System.out.println("Matches found " + conceptIds);
 
 			// if hierarchy root ids not already cached, get them
 			if (hierarchyRootIds == null) {
 				cacheHierarchyRootIds();
 			}
 
-			// check concept ancestors against hierarchy roots
-			for (ISnomedConcept concept : concepts) {
-				for (ISnomedConcept ancestor : concept.getAncestors()) {
-					if (hierarchyRootIds.contains(ancestor.getId())) {
-						return false;
-					}
+			// get the concept (with ancestors)
+			ISnomedConcept concept = SnomedRequests.prepareGetConcept()
+					.setComponentId(description.getConceptId())
+					.setExpand("ancestors(direct:false)")
+					.build(branchPath)
+					.executeSync(bus);
+	
+			// retrieve matching concepts (with ancestors) and compare
+			for (String conceptId : conceptIds) {
+				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
+						.setComponentId(conceptId)
+						.setExpand("ancestors(direct:false)")
+						.build(branchPath)
+						.executeSync(bus);
+				if (getHierarchyId(concept).equals(getHierarchyId(matchingConcept))) {
+					return false;
 				}
 			}
 		}
