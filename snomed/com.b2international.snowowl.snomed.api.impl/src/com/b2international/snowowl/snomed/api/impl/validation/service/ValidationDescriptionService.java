@@ -39,36 +39,42 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	final static Logger logger = LoggerFactory.getLogger(ValidationDescriptionService.class);
 
-	// Static block of sample case significant words
-		// In non-dev environments, this should initialize on startup
-		public static final Map<String, String> caseSignificantWordsMap = new HashMap<>();
-		static {
-			
-			String fileName = "/opt/termserver/resources/test-resources/cs_words.txt";
+	// Static block of sample case significant words - lower case word -> exact word as supplied
+	// NOTE: This will not handle cases where the same word exists with different capitalizations
+	// However, at this time no further precision is required
+	public static final Map<String, String> caseSignificantWordsMap = new HashMap<>();
+	static {
 
-			File file = new File(fileName);
-			FileReader fileReader;
-			BufferedReader bufferedReader;
-			try {
-				fileReader = new FileReader(file);
-				bufferedReader = new BufferedReader(fileReader);
-				String line;
-				// skip header line
-				bufferedReader.readLine();
-				while ((line = bufferedReader.readLine()) != null) {
-					String[] words = line.split("\\s+");
+		String fileName = "/opt/termserver/resources/test-resources/cs_words.txt";
 
-					// format: 0: word, 1: type (unused)
-					caseSignificantWordsMap.put(words[0].toLowerCase(), words[0]);
+		File file = new File(fileName);
+		FileReader fileReader;
+		BufferedReader bufferedReader;
+		try {
+			fileReader = new FileReader(file);
+			bufferedReader = new BufferedReader(fileReader);
+			String line;
+			// skip header line
+			bufferedReader.readLine();
+			while ((line = bufferedReader.readLine()) != null) {
+				String[] words = line.split("\\s+");
+
+				// format: 0: word, 1: type (unused)
+				caseSignificantWordsMap.put(words[0].toLowerCase(), words[0]);
+				
+				if (words[0].toLowerCase().equals("nebraska")) {
+					System.out.println("FOUND nebraska: " + caseSignificantWordsMap.get("nebraska"));
 				}
-				fileReader.close();
-				logger.info("Loaded " + caseSignificantWordsMap.size() + " case sensitive words into cache from: " + fileName);
-			} catch (IOException e) {
-				logger.debug("Failed to retrieve case significant words file: " + fileName);
-
 			}
+			fileReader.close();
+			logger.info(
+					"Loaded " + caseSignificantWordsMap.size() + " case sensitive words into cache from: " + fileName);
+		} catch (IOException e) {
+			logger.debug("Failed to retrieve case sensitive words file: " + fileName);
 
 		}
+
+	}
 
 	// Static block of sample case significant words
 	// In non-dev environments, this should initialize on startup
@@ -98,7 +104,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 			fileReader.close();
 			refsetToLanguageSpecificWordsMap.put(refsetId, words);
-			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId + " from: " + fileName);
+			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId
+					+ " from: " + fileName);
 
 		} catch (IOException e) {
 			logger.info("Failed to retrieve language-specific terms for refset " + refsetId + " in file " + fileName);
@@ -153,27 +160,28 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	public boolean isActiveDescriptionUniqueWithinHierarchy(Description description, String semanticTag) {
 
 		/*
-		 * TODO Need to figure out the locale setting
-		 * final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
-				.filterByTerm(description.getTerm()).build(branchPath).executeSync(bus);
-
-		Set<String> conceptIds = new HashSet<>();
-
-		for (ISnomedDescription iSnomedDescription : descriptions) {
-			if (iSnomedDescription.getTerm().equals(description.getTerm())
-					&& iSnomedDescription.getLanguageCode().equals(description.getLanguageCode())) {
-				conceptIds.add(iSnomedDescription.getConceptId());
-			}
-		}
-
-		SnomedConcepts concepts = SnomedRequests.prepareSearchConcept().setComponentIds(conceptIds).setExpand("fsn()")
-				.build(branchPath).executeSync(bus);
-
-		for (ISnomedConcept concept : concepts) {
-			if (concept.getFsn().getTerm().endsWith(semanticTag)) {
-				return false;
-			}
-		}*/
+		 * TODO Need to figure out the locale setting final SnomedDescriptions
+		 * descriptions =
+		 * SnomedRequests.prepareSearchDescription().filterByActive(true)
+		 * .filterByTerm(description.getTerm()).build(branchPath).executeSync(
+		 * bus);
+		 * 
+		 * Set<String> conceptIds = new HashSet<>();
+		 * 
+		 * for (ISnomedDescription iSnomedDescription : descriptions) { if
+		 * (iSnomedDescription.getTerm().equals(description.getTerm()) &&
+		 * iSnomedDescription.getLanguageCode().equals(description.
+		 * getLanguageCode())) {
+		 * conceptIds.add(iSnomedDescription.getConceptId()); } }
+		 * 
+		 * SnomedConcepts concepts =
+		 * SnomedRequests.prepareSearchConcept().setComponentIds(conceptIds).
+		 * setExpand("fsn()") .build(branchPath).executeSync(bus);
+		 * 
+		 * for (ISnomedConcept concept : concepts) { if
+		 * (concept.getFsn().getTerm().endsWith(semanticTag)) { return false; }
+		 * }
+		 */
 
 		return true;
 
@@ -195,13 +203,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		String usAcc = description.getAcceptabilityMap().get(Constants.US_EN_LANG_REFSET);
 		String gbAcc = description.getAcceptabilityMap().get(Constants.GB_EN_LANG_REFSET);
 
-	
-		
 		// NOTE: Supports international only at this point
 		// Only check active synonyms
 		if (description.isActive() && Constants.SYNONYM.equals(description.getTypeId())) {
 			for (String word : words) {
-				
+
 				// Step 1: Check en-us preferred synonyms for en-gb spellings
 				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc) && refsetToLanguageSpecificWordsMap
 						.get(Constants.GB_EN_LANG_REFSET).contains(word.toLowerCase())) {
@@ -217,9 +223,9 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				}
 			}
 		}
-		
+
 		return errorMessage;
-	
+
 	}
 
 	@Override
@@ -240,29 +246,36 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 			System.out.println("  Checking word " + word);
 
-			if (caseSignificantWordsMap.containsKey(word.toLowerCase())) {
+			if (caseSignificantWordsMap.containsKey(word.toLowerCase())
+					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
+				result += "Description contains case-sensitive words but is not marked case sensitive: "
+						+ caseSignificantWordsMap.get(word.toLowerCase()) + ".\n";
 
-				// Check 1: term containing case-sensitive words should not be
-				// entire-term-case-insensitive
-				if (Constants.ENTIRE_TERM_CASE_INSENSITIVE.equals(description.getCaseSignificanceId())) {
-					result += "Description marked case insensitive should not contain case-sensitive word: "
-							+ caseSignificantWordsMap.get(word.toLowerCase()) + ".\n";
-				}
-
-				// Check 2: term marked ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE
-				// should not start with case sensitive word
-				// TODO Confirm this
-				else if (Constants.ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE.equals(description.getCaseSignificanceId())
-						&& description.getTerm().startsWith(word)) {
-					result += "Description marked only initial character case insensitive should not start with a case-sensitive word: " + word + ".\n";
-				}
-				// Check 3: term containing case-sensitive word with invalid
-				// case
-				else if (caseSignificantWordsMap.containsKey(word.toLowerCase())
-						&& !caseSignificantWordsMap.get(word.toLowerCase()).equals(word)) {
-					result += "Description contains case-sensitive word with improper case: " + word + " should be "
-							+ caseSignificantWordsMap.get(word.toLowerCase()) + ".\n";
-				}
+				/*
+				 * TODO Extra functionality beyond requirements, left in for possible use later
+				 * // Check 1: term containing case-sensitive words should not
+				 * be // entire-term-case-insensitive if
+				 * (Constants.ENTIRE_TERM_CASE_INSENSITIVE.equals(description.
+				 * getCaseSignificanceId())) { result +=
+				 * "Description marked case insensitive should not contain case-sensitive word: "
+				 * + caseSignificantWordsMap.get(word.toLowerCase()) + ".\n"; }
+				 * 
+				 * // Check 2: term marked
+				 * ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE // should not start
+				 * with case sensitive word // TODO Confirm this else if
+				 * (Constants.ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE.equals(
+				 * description.getCaseSignificanceId()) &&
+				 * description.getTerm().startsWith(word)) { result +=
+				 * "Description marked only initial character case insensitive should not start with a case-sensitive word: "
+				 * + word + ".\n"; } // Check 3: term containing case-sensitive
+				 * word with invalid // case else if
+				 * (caseSignificantWordsMap.containsKey(word.toLowerCase()) &&
+				 * !caseSignificantWordsMap.get(word.toLowerCase()).equals(word)
+				 * ) { result +=
+				 * "Description contains case-sensitive word with improper case: "
+				 * + word + " should be " +
+				 * caseSignificantWordsMap.get(word.toLowerCase()) + ".\n"; }
+				 */
 			}
 		}
 		if (result.length() > 0) {
