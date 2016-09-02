@@ -221,6 +221,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
+			
+			System.out.println("Matches found");
 
 			// get the concept id (if existing/SCTID)
 			// or concept's parent id (if new concept/UUID)
@@ -238,18 +240,26 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			if (lookupId == null) {
 				return matchesInHierarchy;
 			}
+			
+			System.out.println("lookupId: " + lookupId);
+		
 
 			// use id to retrieve concept for hierarchy detection
 			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
+			System.out.println("  Hierarchy (orig.): " + getHierarchyIdForConcept(iSnomedConcept));
+			
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
+				System.out.println("    Checking matching concept " + iSnomedDescription.getConceptId());
 				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
 						.setComponentId(iSnomedDescription.getConceptId()).setExpand("ancestors(direct:false)")
 						.build(branchPath).executeSync(bus);
-
+				System.out.println("      Hierarchy: " + getHierarchyIdForConcept(matchingConcept));
+				
 				if (getHierarchyIdForConcept(iSnomedConcept).equals(getHierarchyIdForConcept(matchingConcept))) {
+					System.out.println("Matching term in hierarchy found!");
 					matchesInHierarchy.add(
 							new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 				}
