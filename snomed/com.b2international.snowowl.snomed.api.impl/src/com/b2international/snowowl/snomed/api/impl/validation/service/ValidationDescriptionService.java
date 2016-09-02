@@ -50,7 +50,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	// NOTE: This will not handle cases where the same word exists with
 	// different capitalizations
 	// However, at this time no further precision is required
-	public static final Map<String, String> caseSignificantWordsMap = new HashMap<>();
+	public static final Set<String> caseSignificantWords = new HashSet<>();
 	static {
 
 		String fileName = "/opt/termserver/resources/test-resources/cs_words.txt";
@@ -68,11 +68,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				String[] words = line.split("\\s+");
 
 				// format: 0: word, 1: type (unused)
-				caseSignificantWordsMap.put(words[0].toLowerCase(), words[0]);
+				caseSignificantWords.add(words[0]);
 			}
 			fileReader.close();
 			logger.info(
-					"Loaded " + caseSignificantWordsMap.size() + " case sensitive words into cache from: " + fileName);
+					"Loaded " + caseSignificantWords.size() + " case sensitive words into cache from: " + fileName);
 		} catch (IOException e) {
 			logger.debug("Failed to retrieve case sensitive words file: " + fileName);
 
@@ -197,10 +197,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		Set<Description> matchesInHierarchy = new HashSet<>();
 
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(true)
-				.filterByTerm(description.getTerm())
-				.filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
+				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
 				.build(branchPath).executeSync(bus);
 
 		Set<ISnomedDescription> matchesInSnomed = new HashSet<>();
@@ -298,25 +296,25 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	public String getCaseSensitiveWordsErrorMessage(Description description) {
 		String result = "";
 
-		// return immediately if description null
-		if (description == null) {
+		// return immediately if description or term null
+		if (description == null || description.getTerm() == null) {
 			return result;
 		}
 
 		String[] words = description.getTerm().split("\\s+");
 
 		for (String word : words) {
+			
+			System.out.println("Checking word " + word + " in set? " + caseSignificantWords.contains(word));
 
 			// NOTE: Simple test to see if a case-sensitive term exists as
-			// written
-			// Original test checked for mis-capitalization, but too many false
-			// positives
-			// e.g. "oF" appears in list but spuriously reports "of"
+			// written. Original check for mis-capitalization, but false
+			// positives, e.g. "oF" appears in list but spuriously reports "of"
 			// Map preserved for lower-case matching in future
-			if (word.equals(caseSignificantWordsMap.get(word.toLowerCase()))
+			if (caseSignificantWords.contains(word)
 					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
 				result += "Description contains case-sensitive words but is not marked case sensitive: "
-						+ caseSignificantWordsMap.get(word.toLowerCase()) + ".\n";
+						+ caseSignificantWords.contains(word) + ".\n";
 
 			}
 		}
