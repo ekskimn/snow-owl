@@ -194,11 +194,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
-		
+
 		Set<Description> matchesInHierarchy = new HashSet<>();
-		
-		final SnomedDescriptions descriptions = SnomedRequests
-				.prepareSearchDescription()
+
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
 				.filterByActive(true)
 				.filterByTerm(description.getTerm())
 				.filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
@@ -216,32 +215,36 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
 
-			// get the concept id (if existing/SCTID) 
+			// get the concept id (if existing/SCTID)
 			// or concept's parent id (if new concept/UUID)
 			String lookupId = null;
-			if (concept.getId().matches("[0-9]*")) {
-				lookupId = concept.getId();
-			} else {
-				Iterator<? extends Relationship> iter = concept.getRelationships().iterator();
-				while (iter.hasNext()) {
-					Relationship rel = iter.next();
-					if (rel.isActive() && rel.getTypeId().equals(Constants.IS_A)) {
-						lookupId = rel.getDestinationId();
-					}
+
+			Iterator<? extends Relationship> iter = concept.getRelationships().iterator();
+			while (iter.hasNext()) {
+				Relationship rel = iter.next();
+				if (rel.isActive() && rel.getTypeId().equals(Constants.IS_A)) {
+					lookupId = rel.getDestinationId();
 				}
 			}
-	
+
+			// if id could not be retrieved, cannot determine hierarchy
+			if (lookupId == null) {
+				return matchesInHierarchy;
+			}
+
 			// use id to retrieve concept for hierarchy detection
 			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
-		
+
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
-				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept().setComponentId(iSnomedDescription.getConceptId())
-						.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
-	
+				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
+						.setComponentId(iSnomedDescription.getConceptId()).setExpand("ancestors(direct:false)")
+						.build(branchPath).executeSync(bus);
+
 				if (getHierarchyIdForConcept(iSnomedConcept).equals(getHierarchyIdForConcept(matchingConcept))) {
-					matchesInHierarchy.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
+					matchesInHierarchy.add(
+							new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 				}
 			}
 		}
@@ -304,8 +307,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		for (String word : words) {
 
-			// NOTE: Simple test to see if a case-sensitive term exists as written
-			// Original test checked for mis-capitalization, but too many false positives
+			// NOTE: Simple test to see if a case-sensitive term exists as
+			// written
+			// Original test checked for mis-capitalization, but too many false
+			// positives
 			// e.g. "oF" appears in list but spuriously reports "of"
 			// Map preserved for lower-case matching in future
 			if (word.equals(caseSignificantWordsMap.get(word.toLowerCase()))
