@@ -180,10 +180,19 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	private String getHierarchyIdForConcept(ISnomedConcept concept) {
 
+		// if not yet retrieved, cache the root concepts
 		if (hierarchyRootIds == null) {
 			cacheHierarchyRootConcepts();
 		}
+		
+		// check if this concept is a root
+		for (String rootId : hierarchyRootIds) {
+			if (rootId.equals(concept.getId())) {
+				return rootId;
+			}
+		}
 
+		// otherwise check ancestors
 		for (ISnomedConcept ancestor : concept.getAncestors()) {
 			if (hierarchyRootIds.contains(ancestor.getId())) {
 				return ancestor.getId().toString();
@@ -304,9 +313,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		String[] words = description.getTerm().split("\\s+");
 
 		for (String word : words) {
-			
-			System.out.println("Checking word " + word + " in set? " + caseSignificantWords.contains(word));
-
+		
 			// NOTE: Simple test to see if a case-sensitive term exists as
 			// written. Original check for mis-capitalization, but false
 			// positives, e.g. "oF" appears in list but spuriously reports "of"
