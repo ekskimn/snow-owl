@@ -325,7 +325,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		for (String word : words) {
 
-			if (caseSignificantWordsMap.containsKey(word.toLowerCase())
+			// NOTE: Simple test to see if a case-sensitive term exists as written
+			// Original test checked for mis-capitalization, but too many false positives
+			// e.g. "oF" appears in list but spuriously reports "of"
+			// Map preserved for lower-case matching in future
+			if (word.equals(caseSignificantWordsMap.get(word.toLowerCase()))
 					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
 				result += "Description contains case-sensitive words but is not marked case sensitive: "
 						+ caseSignificantWordsMap.get(word.toLowerCase()) + ".\n";
