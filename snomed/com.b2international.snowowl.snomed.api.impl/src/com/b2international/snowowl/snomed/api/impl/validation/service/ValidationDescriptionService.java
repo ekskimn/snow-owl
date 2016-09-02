@@ -71,8 +71,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				caseSignificantWords.add(words[0]);
 			}
 			fileReader.close();
-			logger.info(
-					"Loaded " + caseSignificantWords.size() + " case sensitive words into cache from: " + fileName);
+			logger.info("Loaded " + caseSignificantWords.size() + " case sensitive words into cache from: " + fileName);
 		} catch (IOException e) {
 			logger.debug("Failed to retrieve case sensitive words file: " + fileName);
 
@@ -184,7 +183,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		if (hierarchyRootIds == null) {
 			cacheHierarchyRootConcepts();
 		}
-		
+
 		// check if this concept is a root
 		for (String rootId : hierarchyRootIds) {
 			if (rootId.equals(concept.getId())) {
@@ -224,20 +223,29 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			
 			System.out.println("Matches found");
 
-			// get the concept id (if existing/SCTID)
-			// or concept's parent id (if new concept/UUID)
+			// the concept id used to determine the hierarchy
 			String lookupId = null;
+			
+			// if this is a root id, use it as the lookup id
+			if (hierarchyRootIds.contains(concept.getId())) {
+				lookupId = concept.getId();
+			}
 
-			Iterator<? extends Relationship> iter = concept.getRelationships().iterator();
-			while (iter.hasNext()) {
-				Relationship rel = iter.next();
-				if (rel.isActive() && rel.getTypeId().equals(Constants.IS_A)) {
-					lookupId = rel.getDestinationId();
+			// otherwise, use the first active parent as lookup id
+			else {
+				Iterator<? extends Relationship> iter = concept.getRelationships().iterator();
+				while (iter.hasNext()) {
+					Relationship rel = iter.next();
+					if (rel.isActive() && Constants.IS_A.equals(rel.getTypeId())) {
+						lookupId = rel.getDestinationId();
+					}
 				}
 			}
 
 			// if id could not be retrieved, cannot determine hierarchy
+			// either SNOMED CT root concept, or has no active parents
 			if (lookupId == null) {
+				System.out.println("Lookup id is null, skipping");
 				return matchesInHierarchy;
 			}
 			
@@ -249,6 +257,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
 			System.out.println("  Hierarchy (orig.): " + getHierarchyIdForConcept(iSnomedConcept));
+			
+			// back out if cannot determine hierarchy (current case: new hierarchical root)
+			if (getHierarchyIdForConcept(iSnomedConcept) == null) {
+				System.out.println("Could not determine hierarchy for original concept. Skipping.");
+				return matchesInHierarchy;
+			}
 			
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
@@ -323,15 +337,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		String[] words = description.getTerm().split("\\s+");
 
 		for (String word : words) {
-		
+
 			// NOTE: Simple test to see if a case-sensitive term exists as
 			// written. Original check for mis-capitalization, but false
 			// positives, e.g. "oF" appears in list but spuriously reports "of"
 			// Map preserved for lower-case matching in future
 			if (caseSignificantWords.contains(word)
 					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
-				result += "Description contains case-sensitive words but is not marked case sensitive: "
-						+ word + ".\n";
+				result += "Description contains case-sensitive words but is not marked case sensitive: " + word + ".\n";
 
 			}
 		}
