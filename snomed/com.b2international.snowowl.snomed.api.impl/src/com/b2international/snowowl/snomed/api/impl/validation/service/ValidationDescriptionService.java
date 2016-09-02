@@ -203,6 +203,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
 
+		// on first invocation, cache the hierarchy root ids
+		if (hierarchyRootIds == null) {
+			cacheHierarchyRootConcepts();
+		}
+		
 		Set<Description> matchesInHierarchy = new HashSet<>();
 
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
