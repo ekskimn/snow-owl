@@ -314,7 +314,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			if (caseSignificantWords.contains(word)
 					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
 				result += "Description contains case-sensitive words but is not marked case sensitive: "
-						+ caseSignificantWords.contains(word) + ".\n";
+						+ word + ".\n";
 
 			}
 		}
