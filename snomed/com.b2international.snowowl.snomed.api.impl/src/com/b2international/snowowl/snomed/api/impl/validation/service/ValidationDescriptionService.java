@@ -168,20 +168,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		hierarchyRootIds = new HashSet<>();
 
-		System.out.println("Caching hierarchy root ids");
 		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
 				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(direct:true)").build(branchPath)
 				.executeSync(bus);
-		System.out.println(" Retrieved SNOMEDCT root concept");
 		for (ISnomedConcept rootConcept : rootConcepts) {
 			for (ISnomedConcept childConcept : rootConcept.getDescendants()) {
-				System.out.println(" Adding hierarchy root id " + childConcept.getId());
 				hierarchyRootIds.add(childConcept.getId());
 			}
 		}
-
-		System.out.println("hierarchyRootIds (" + hierarchyRootIds.size() + "): " + hierarchyRootIds);
-
 	}
 
 	private String getHierarchyIdForConcept(ISnomedConcept concept) {
@@ -200,9 +194,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
-
-		System.out.println("Checking unique within hierarchy for " + description.getId() + "/"
-				+ description.getConceptId() + "/" + description.getTerm() + "/" + description.getLanguageCode());
 		
 		Set<Description> matchesInHierarchy = new HashSet<>();
 		
@@ -217,19 +208,13 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		// filter by exact match
 		for (ISnomedDescription iSnomedDescription : descriptions) {
-			System.out.println("Checking against description " + iSnomedDescription.getId() + "/"
-					+ iSnomedDescription.getConceptId() + "/" + iSnomedDescription.getTerm() + "/"
-					+ iSnomedDescription.getLanguageCode());
 			if (iSnomedDescription.getTerm().equals(description.getTerm())) {
-				System.out.println("  Match found!");
 				matchesInSnomed.add(iSnomedDescription);
 			}
 		}
 
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
-
-			System.out.println("Matches found: " + matchesInSnomed.size());
 
 			// get the concept id (if existing/SCTID) 
 			// or concept's parent id (if new concept/UUID)
@@ -245,23 +230,17 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					}
 				}
 			}
-			
-			System.out.println("Hierarchy lookup id: " + lookupId);
-
+	
 			// use id to retrieve concept for hierarchy detection
 			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
-
-			System.out.println("  Concept hierarchy id:  " + getHierarchyIdForConcept(iSnomedConcept));
-			
+		
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
 				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept().setComponentId(iSnomedDescription.getConceptId())
 						.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
-				System.out.println("  Matching hierarchy id: " + getHierarchyIdForConcept(matchingConcept));
-
+	
 				if (getHierarchyIdForConcept(iSnomedConcept).equals(getHierarchyIdForConcept(matchingConcept))) {
-					System.out.println("   --> Match");
 					matchesInHierarchy.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 				}
 			}
