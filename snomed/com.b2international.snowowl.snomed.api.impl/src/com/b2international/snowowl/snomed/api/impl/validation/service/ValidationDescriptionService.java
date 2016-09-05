@@ -50,7 +50,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	// NOTE: This will not handle cases where the same word exists with
 	// different capitalizations
 	// However, at this time no further precision is required
-	public static final Map<String, String> caseSignificantWordsMap = new HashMap<>();
+	public static final Set<String> caseSignificantWords = new HashSet<>();
 	static {
 
 		String fileName = "/opt/termserver/resources/test-resources/cs_words.txt";
@@ -68,11 +68,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				String[] words = line.split("\\s+");
 
 				// format: 0: word, 1: type (unused)
-				caseSignificantWordsMap.put(words[0].toLowerCase(), words[0]);
+				caseSignificantWords.add(words[0]);
 			}
 			fileReader.close();
-			logger.info(
-					"Loaded " + caseSignificantWordsMap.size() + " case sensitive words into cache from: " + fileName);
+			logger.info("Loaded " + caseSignificantWords.size() + " case sensitive words into cache from: " + fileName);
 		} catch (IOException e) {
 			logger.debug("Failed to retrieve case sensitive words file: " + fileName);
 
@@ -168,28 +167,31 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		hierarchyRootIds = new HashSet<>();
 
-		System.out.println("Caching hierarchy root ids");
 		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
 				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(direct:true)").build(branchPath)
 				.executeSync(bus);
-		System.out.println(" Retrieved SNOMEDCT root concept");
 		for (ISnomedConcept rootConcept : rootConcepts) {
 			for (ISnomedConcept childConcept : rootConcept.getDescendants()) {
-				System.out.println(" Adding hierarchy root id " + childConcept.getId());
 				hierarchyRootIds.add(childConcept.getId());
 			}
 		}
-
-		System.out.println("hierarchyRootIds (" + hierarchyRootIds.size() + "): " + hierarchyRootIds);
-
 	}
 
 	private String getHierarchyIdForConcept(ISnomedConcept concept) {
 
+		// if not yet retrieved, cache the root concepts
 		if (hierarchyRootIds == null) {
 			cacheHierarchyRootConcepts();
 		}
 
+		// check if this concept is a root
+		for (String rootId : hierarchyRootIds) {
+			if (rootId.equals(concept.getId())) {
+				return rootId;
+			}
+		}
+
+		// otherwise check ancestors
 		for (ISnomedConcept ancestor : concept.getAncestors()) {
 			if (hierarchyRootIds.contains(ancestor.getId())) {
 				return ancestor.getId().toString();
@@ -201,68 +203,84 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
 
-		System.out.println("Checking unique within hierarchy for " + description.getId() + "/"
-				+ description.getConceptId() + "/" + description.getTerm() + "/" + description.getLanguageCode());
+		// on first invocation, cache the hierarchy root ids
+		if (hierarchyRootIds == null) {
+			cacheHierarchyRootConcepts();
+		}
 		
 		Set<Description> matchesInHierarchy = new HashSet<>();
-		
-		final SnomedDescriptions descriptions = SnomedRequests
-				.prepareSearchDescription()
-				.filterByActive(true)
-				.filterByTerm(description.getTerm())
-				.filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
+
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
+				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
 				.build(branchPath).executeSync(bus);
 
 		Set<ISnomedDescription> matchesInSnomed = new HashSet<>();
 
 		// filter by exact match
 		for (ISnomedDescription iSnomedDescription : descriptions) {
-			System.out.println("Checking against description " + iSnomedDescription.getId() + "/"
-					+ iSnomedDescription.getConceptId() + "/" + iSnomedDescription.getTerm() + "/"
-					+ iSnomedDescription.getLanguageCode());
 			if (iSnomedDescription.getTerm().equals(description.getTerm())) {
-				System.out.println("  Match found!");
 				matchesInSnomed.add(iSnomedDescription);
 			}
 		}
 
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
+			
+			System.out.println("Matches found");
 
-			System.out.println("Matches found: " + matchesInSnomed.size());
-
-			// get the concept id (if existing/SCTID) 
-			// or concept's parent id (if new concept/UUID)
+			// the concept id used to determine the hierarchy
 			String lookupId = null;
-			if (concept.getId().matches("[0-9]*")) {
+			
+			// if this is a root id, use it as the lookup id
+			if (hierarchyRootIds.contains(concept.getId())) {
 				lookupId = concept.getId();
-			} else {
+			}
+
+			// otherwise, use the first active parent as lookup id
+			else {
 				Iterator<? extends Relationship> iter = concept.getRelationships().iterator();
 				while (iter.hasNext()) {
 					Relationship rel = iter.next();
-					if (rel.isActive() && rel.getTypeId().equals(Constants.IS_A)) {
+					if (rel.isActive() && Constants.IS_A.equals(rel.getTypeId())) {
 						lookupId = rel.getDestinationId();
 					}
 				}
 			}
+
+			// if id could not be retrieved, cannot determine hierarchy
+			// either SNOMED CT root concept, or has no active parents
+			if (lookupId == null) {
+				System.out.println("Lookup id is null, skipping");
+				return matchesInHierarchy;
+			}
 			
-			System.out.println("Hierarchy lookup id: " + lookupId);
+			System.out.println("lookupId: " + lookupId);
+		
 
 			// use id to retrieve concept for hierarchy detection
 			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
-			System.out.println("  Concept hierarchy id:  " + getHierarchyIdForConcept(iSnomedConcept));
+			System.out.println("  Hierarchy (orig.): " + getHierarchyIdForConcept(iSnomedConcept));
+			
+			// back out if cannot determine hierarchy (current case: new hierarchical root)
+			if (getHierarchyIdForConcept(iSnomedConcept) == null) {
+				System.out.println("Could not determine hierarchy for original concept. Skipping.");
+				return matchesInHierarchy;
+			}
 			
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
-				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept().setComponentId(iSnomedDescription.getConceptId())
-						.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
-				System.out.println("  Matching hierarchy id: " + getHierarchyIdForConcept(matchingConcept));
-
+				System.out.println("    Checking matching concept " + iSnomedDescription.getConceptId());
+				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
+						.setComponentId(iSnomedDescription.getConceptId()).setExpand("ancestors(direct:false)")
+						.build(branchPath).executeSync(bus);
+				System.out.println("      Hierarchy: " + getHierarchyIdForConcept(matchingConcept));
+				
 				if (getHierarchyIdForConcept(iSnomedConcept).equals(getHierarchyIdForConcept(matchingConcept))) {
-					System.out.println("   --> Match");
-					matchesInHierarchy.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
+					System.out.println("Matching term in hierarchy found!");
+					matchesInHierarchy.add(
+							new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 				}
 			}
 		}
@@ -316,8 +334,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	public String getCaseSensitiveWordsErrorMessage(Description description) {
 		String result = "";
 
-		// return immediately if description null
-		if (description == null) {
+		// return immediately if description or term null
+		if (description == null || description.getTerm() == null) {
 			return result;
 		}
 
@@ -325,10 +343,13 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		for (String word : words) {
 
-			if (caseSignificantWordsMap.containsKey(word.toLowerCase())
+			// NOTE: Simple test to see if a case-sensitive term exists as
+			// written. Original check for mis-capitalization, but false
+			// positives, e.g. "oF" appears in list but spuriously reports "of"
+			// Map preserved for lower-case matching in future
+			if (caseSignificantWords.contains(word)
 					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
-				result += "Description contains case-sensitive words but is not marked case sensitive: "
-						+ caseSignificantWordsMap.get(word.toLowerCase()) + ".\n";
+				result += "Description contains case-sensitive words but is not marked case sensitive: " + word + ".\n";
 
 			}
 		}
