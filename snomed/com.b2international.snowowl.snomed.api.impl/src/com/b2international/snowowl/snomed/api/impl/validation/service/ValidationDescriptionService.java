@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -105,7 +106,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				words.add(line.toLowerCase()); // assumed to be single-word
 												// lines
 			}
-			fileReader.close();	
+			fileReader.close();
 			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId
 					+ " from: " + fileName);
 
@@ -264,13 +265,18 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
-				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
-						.setComponentId(iSnomedDescription.getConceptId()).setExpand("ancestors(direct:false)")
-						.build(branchPath).executeSync(bus);
-			
-				if (getHierarchyIdForConcept(iSnomedConcept).equals(getHierarchyIdForConcept(matchingConcept))) {
-					matchesInHierarchy.add(
-							new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
+
+				SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept().filterByActive(true)
+						.filterByComponentIds(Collections.singleton(iSnomedDescription.getConceptId()))
+						.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
+
+				if (matchingConcepts.getTotal() != 0) {
+
+					if (getHierarchyIdForConcept(iSnomedConcept)
+							.equals(getHierarchyIdForConcept(matchingConcepts.getItems().get(0)))) {
+						matchesInHierarchy.add(
+								new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
+					}
 				}
 			}
 		}
@@ -301,15 +307,19 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			for (String word : words) {
 
 				// Step 1: Check en-us preferred synonyms for en-gb spellings
-				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc) && refsetToLanguageSpecificWordsMap.containsKey(Constants.GB_EN_LANG_REFSET) && refsetToLanguageSpecificWordsMap
-						.get(Constants.GB_EN_LANG_REFSET).contains(word.toLowerCase())) {
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc)
+						&& refsetToLanguageSpecificWordsMap.containsKey(Constants.GB_EN_LANG_REFSET)
+						&& refsetToLanguageSpecificWordsMap.get(Constants.GB_EN_LANG_REFSET)
+								.contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-us refset but refers to a word that has en-gb spelling: "
 							+ word + "\n";
 				}
 
 				// Step 2: Check en-gb preferred synonyms for en-en spellings
-				if (Constants.ACCEPTABILITY_PREFERRED.equals(gbAcc) && refsetToLanguageSpecificWordsMap.containsKey(Constants.US_EN_LANG_REFSET) && refsetToLanguageSpecificWordsMap
-						.get(Constants.US_EN_LANG_REFSET).contains(word.toLowerCase())) {
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(gbAcc)
+						&& refsetToLanguageSpecificWordsMap.containsKey(Constants.US_EN_LANG_REFSET)
+						&& refsetToLanguageSpecificWordsMap.get(Constants.US_EN_LANG_REFSET)
+								.contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-gb refset but refers to a word that has en-us spelling: "
 							+ word + "\n";
 				}
@@ -342,16 +352,17 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				// term starting with case sensitive word must be ETCS
 				if (description.getTerm().startsWith(word)
 						&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
-					result += "Description starts with case-sensitive word but is not marked entire term case sensitive: " + word
-							+ ".\n";
-				} 
-				
-				// term containing case sensitive word (not at start) must be ETCS or OICCI
+					result += "Description starts with case-sensitive word but is not marked entire term case sensitive: "
+							+ word + ".\n";
+				}
+
+				// term containing case sensitive word (not at start) must be
+				// ETCS or OICCI
 				else if (!Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())
 						&& !Constants.ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE
 								.equals(description.getCaseSignificanceId())) {
-					result += "Description contains case-sensitive word but is not marked entire term case sensitive or only initial character case insensitive: " + word
-							+ ".\n";
+					result += "Description contains case-sensitive word but is not marked entire term case sensitive or only initial character case insensitive: "
+							+ word + ".\n";
 				}
 			}
 		}
