@@ -227,8 +227,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
 
-			System.out.println("Matches found");
-
 			// the concept id used to determine the hierarchy
 			String lookupId = null;
 
@@ -251,35 +249,26 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			// if id could not be retrieved, cannot determine hierarchy
 			// either SNOMED CT root concept, or has no active parents
 			if (lookupId == null) {
-				System.out.println("Lookup id is null, skipping");
 				return matchesInHierarchy;
 			}
-
-			System.out.println("lookupId: " + lookupId);
 
 			// use id to retrieve concept for hierarchy detection
 			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
-			System.out.println("  Hierarchy (orig.): " + getHierarchyIdForConcept(iSnomedConcept));
-
 			// back out if cannot determine hierarchy (current case: new
 			// hierarchical root)
 			if (getHierarchyIdForConcept(iSnomedConcept) == null) {
-				System.out.println("Could not determine hierarchy for original concept. Skipping.");
 				return matchesInHierarchy;
 			}
 
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
-				System.out.println("    Checking matching concept " + iSnomedDescription.getConceptId());
 				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
 						.setComponentId(iSnomedDescription.getConceptId()).setExpand("ancestors(direct:false)")
 						.build(branchPath).executeSync(bus);
-				System.out.println("      Hierarchy: " + getHierarchyIdForConcept(matchingConcept));
-
+			
 				if (getHierarchyIdForConcept(iSnomedConcept).equals(getHierarchyIdForConcept(matchingConcept))) {
-					System.out.println("Matching term in hierarchy found!");
 					matchesInHierarchy.add(
 							new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 				}
