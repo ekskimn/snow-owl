@@ -73,7 +73,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			fileReader.close();
 			logger.info("Loaded " + caseSignificantWords.size() + " case sensitive words into cache from: " + fileName);
 		} catch (IOException e) {
-			logger.debug("Failed to retrieve case sensitive words file: " + fileName);
+			logger.info("Failed to retrieve case sensitive words file: " + fileName);
 
 		}
 
@@ -105,13 +105,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				words.add(line.toLowerCase()); // assumed to be single-word
 												// lines
 			}
-			fileReader.close();
-			refsetToLanguageSpecificWordsMap.put(refsetId, words);
+			fileReader.close();	
 			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId
 					+ " from: " + fileName);
 
 		} catch (IOException e) {
 			logger.info("Failed to retrieve language-specific terms for refset " + refsetId + " in file " + fileName);
+		} finally {
+			refsetToLanguageSpecificWordsMap.put(refsetId, words);
 		}
 	}
 
@@ -311,14 +312,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			for (String word : words) {
 
 				// Step 1: Check en-us preferred synonyms for en-gb spellings
-				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc) && refsetToLanguageSpecificWordsMap
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc) && refsetToLanguageSpecificWordsMap.containsKey(Constants.GB_EN_LANG_REFSET) && refsetToLanguageSpecificWordsMap
 						.get(Constants.GB_EN_LANG_REFSET).contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-us refset but refers to a word that has en-gb spelling: "
 							+ word + "\n";
 				}
 
 				// Step 2: Check en-gb preferred synonyms for en-en spellings
-				if (Constants.ACCEPTABILITY_PREFERRED.equals(gbAcc) && refsetToLanguageSpecificWordsMap
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(gbAcc) && refsetToLanguageSpecificWordsMap.containsKey(Constants.US_EN_LANG_REFSET) && refsetToLanguageSpecificWordsMap
 						.get(Constants.US_EN_LANG_REFSET).contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-gb refset but refers to a word that has en-us spelling: "
 							+ word + "\n";
