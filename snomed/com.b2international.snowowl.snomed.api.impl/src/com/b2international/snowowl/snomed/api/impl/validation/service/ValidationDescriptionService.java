@@ -268,7 +268,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			// use id to retrieve concept for hierarchy detection
 			ISnomedConcept hierarchyConcept = null;
 			// try {
-			hierarchyConcept = SnomedRequests.prepareSearchConcept().filterByActive(true)
+			hierarchyConcept = SnomedRequests.prepareSearchConcept()
 					.filterByComponentIds(Collections.singleton(lookupId)).setLimit(1000)
 					.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "true", 0, 1000))
 					.build(branchPath).executeSync(bus).getItems().get(0);
