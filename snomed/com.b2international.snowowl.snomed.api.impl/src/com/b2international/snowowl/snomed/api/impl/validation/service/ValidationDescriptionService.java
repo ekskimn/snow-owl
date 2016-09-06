@@ -302,7 +302,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 						.build(branchPath).executeSync(bus);
 				conceptsWithAncestors.add(conceptWithAncestors);
 
-				System.out.println("    Ancestor count: " + conceptWithoutAncestor.getAncestors().getTotal());
+				System.out.println("    Ancestor count: " + conceptWithAncestors.getAncestors().getTotal());
 
 			}
 
