@@ -267,7 +267,8 @@ final class SnomedConceptConverter extends BaseSnomedComponentConverter<SnomedCo
 			try {
 				TopDocs search = searcher.search(conceptQuery, 1);
 				if (search.scoreDocs.length < 1) {
-					((SnomedConcept) concept).setAncestors(new SnomedConcepts(offset, limit, search.totalHits));	
+					((SnomedConcept) concept).setAncestors(new SnomedConcepts(offset, limit, search.totalHits));
+					return;
 				}
 				
 				final Document doc = searcher.doc(search.scoreDocs[0].doc, SnomedMappings.fieldsToLoad().parent().ancestor().build());
