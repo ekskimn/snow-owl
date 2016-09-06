@@ -185,7 +185,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		if (concept == null) {
 			return null;
 		}
-		
+
 		// if not yet retrieved, cache the root concepts
 		if (hierarchyRootIds == null) {
 			cacheHierarchyRootConcepts();
@@ -219,12 +219,9 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		Set<Description> matchesInHierarchy = new HashSet<>();
 
 		// retrieve partially-matching descriptions
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(true)
-				.filterByTerm(description.getTerm())
-				.filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
+				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
 				.build(branchPath).executeSync(bus);
-
 
 		System.out.println("Partial matches found in SNOMED " + descriptions.getTotal());
 
@@ -269,19 +266,16 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 
 			// use id to retrieve concept for hierarchy detection
-
 			ISnomedConcept hierarchyConcept = null;
-			try {
-				hierarchyConcept = SnomedRequests.prepareSearchConcept()
-						.filterByActive(true)
-						.filterByComponentIds(Collections.singleton(lookupId))
-						.setLimit(1000)
-						.setExpand("ancestors(direct:false)")
-						.build(branchPath).executeSync(bus)
-						.getItems().get(0);
-			} catch (Exception e) {
-				System.out.println("  Could not retrieve ancestors for lookup id " + lookupId);
-			}
+			// try {
+			hierarchyConcept = SnomedRequests.prepareSearchConcept().filterByActive(true)
+					.filterByComponentIds(Collections.singleton(lookupId)).setLimit(1000)
+					.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "true", 0, 1000))
+					.build(branchPath).executeSync(bus).getItems().get(0);
+			// } catch (Exception e) {
+			// System.out.println(" Could not retrieve ancestors for lookup id "
+			// + lookupId);
+			// }
 
 			System.out.println("  lookup hierarchy: " + getHierarchyIdForConcept(hierarchyConcept));
 
@@ -294,29 +288,30 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
 
 				System.out.println("   Searching using prepare: " + iSnomedDescription.getConceptId());
-				
-				SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept()
-						.filterByActive(true)
-						.filterByComponentIds(Collections.singleton(iSnomedDescription.getConceptId()))
-						.setLimit(1000)
-						.setExpand("ancestors(direct:false)")
-						.build(branchPath)
-						.executeSync(bus);
 
-				System.out.println("    No. of matches from prepareSearch " + matchingConcepts.getTotal());
+				ISnomedConcept matchingConceptWithAncestors = null;
+				// try {
+				matchingConceptWithAncestors = SnomedRequests.prepareSearchConcept().filterByActive(true)
+						.filterByComponentIds(Collections.singleton(iSnomedDescription.getConceptId())).setLimit(1000)
+						.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "true", 0, 1000))
+						.build(branchPath).executeSync(bus).getItems().get(0);
 
-				if (matchingConcepts.getTotal() != 0) {
+				System.out.println("    No. of matches from prepareSearch "
+						+ matchingConceptWithAncestors.getAncestors().getTotal());
 
-					System.out
-							.println("     Hierarchy: " + getHierarchyIdForConcept(matchingConcepts.getItems().get(0)));
+				// } catch (Exception e) {
+				// System.out.println(" Could not retrieve ancestors for " +
+				// iSnomedDescription.getConceptId());
+				// }
+				System.out.println("     Hierarchy: " + getHierarchyIdForConcept(matchingConceptWithAncestors));
 
-					if (getHierarchyIdForConcept(hierarchyConcept)
-							.equals(getHierarchyIdForConcept(matchingConcepts.getItems().get(0)))) {
-						System.out.println("      -> MATCH from prepareSearch");
-						matchesInHierarchy.add(
-								new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
-					}
+				if (getHierarchyIdForConcept(hierarchyConcept)
+						.equals(getHierarchyIdForConcept(matchingConceptWithAncestors))) {
+					System.out.println("      -> MATCH from prepareSearch");
+					matchesInHierarchy.add(
+							new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 				}
+
 			}
 		}
 
