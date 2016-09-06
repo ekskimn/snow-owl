@@ -231,7 +231,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		for (ISnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(description.getTerm())) {
 				matchesInSnomed.add(iSnomedDescription);
-				matchingConceptIds = new HashSet<>();
+				matchingConceptIds.add(iSnomedDescription.getConceptId());
 			}
 		}
 
@@ -286,27 +286,51 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 			
 			// retrieve active concepts from saved concept ids
-			SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
-					.filterByActive(true)
-					.filterByComponentIds(matchingConceptIds)
-					.build(branchPath)
-					.executeSync(bus);
-			
-			// use active concept list to singly-retrieve concepts with ancestors
+			System.out.println("  Retrieving " + matchingConceptIds.size() + " matching concepts: " + matchingConceptIds.toString());
+			SnomedConcepts concepts;
 			List<ISnomedConcept> conceptsWithAncestors = new ArrayList<>();
-			for (ISnomedConcept conceptWithoutAncestor : concepts) {
-				System.out.println("Retrieving ancestors for " + conceptWithoutAncestor.getId());
-				ISnomedConcept conceptWithAncestors = SnomedRequests.prepareGetConcept()
-						.setComponentId(conceptWithoutAncestor.getId())
+			try {
+				concepts= SnomedRequests.prepareSearchConcept()
+						.filterByActive(true)
+						.filterByComponentIds(matchingConceptIds)
 						.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
-						.build(branchPath).executeSync(bus);
-				conceptsWithAncestors.add(conceptWithAncestors);
+						
+						.build(branchPath)
+						.executeSync(bus);
+				
 
-				System.out.println("    Ancestor count: " + conceptWithAncestors.getAncestors().getTotal());
+				System.out.println("Expansion successful, retrieved " + concepts.getTotal() + " concepts");
+				
+				conceptsWithAncestors = concepts.getItems();
+			} catch (Exception e) {
+					System.out.println("Expansion failed, using single retrieval");
+					
+					concepts= SnomedRequests.prepareSearchConcept()
+							.filterByActive(true)
+							.filterByComponentIds(matchingConceptIds)
+							.build(branchPath)
+							.executeSync(bus);
+					
+					
+					
+					// use active concept list to singly-retrieve concepts with ancestors
+					for (ISnomedConcept conceptWithoutAncestor : concepts) {
+						System.out.println("Retrieving ancestors for " + conceptWithoutAncestor.getId());
+						ISnomedConcept conceptWithAncestors = SnomedRequests.prepareGetConcept()
+								.setComponentId(conceptWithoutAncestor.getId())
+								.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
+								.build(branchPath)
+								.executeSync(bus);
+						conceptsWithAncestors.add(conceptWithAncestors);
+
+						System.out.println("    Ancestor count: " + conceptWithAncestors.getAncestors().getTotal());
+
+					}
 
 			}
-
-			// cycle over matching descriptions and compare to concepts witha ncestors
+			System.out.println("  Found " + concepts.getTotal() + " matching concepts");
+		
+			// cycle over matching descriptions and compare to concepts with ancestors
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
 				System.out.println("  Checking term " + iSnomedDescription.getTerm() + " on concept " + iSnomedDescription.getConceptId());
 
