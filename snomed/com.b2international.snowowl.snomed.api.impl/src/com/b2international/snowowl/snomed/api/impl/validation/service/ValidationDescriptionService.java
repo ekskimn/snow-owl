@@ -276,6 +276,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 				SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept().filterByActive(true)
 						.filterByComponentIds(Collections.singleton(iSnomedDescription.getConceptId()))
+						.setLimit(1000)
 						.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
 				System.out.println("    No. of matches from prepareSearch " + matchingConcepts.getTotal());
@@ -291,21 +292,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 						matchesInHierarchy.add(
 								new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 					}
-				}
-
-				try {
-					ISnomedConcept testConcept = SnomedRequests.prepareGetConcept()
-						.setComponentId(iSnomedDescription.getConceptId())
-						.setExpand("ancestors(direct:false")
-						.build(branchPath)
-						.executeSync(bus);
-					if (getHierarchyIdForConcept(iSnomedConcept)
-							.equals(getHierarchyIdForConcept(testConcept))) {
-						System.out.println("      -> MATCH from direct retrieval");
-					}
-					
-				} catch (Exception e) {
-					System.out.println("    Direct get failed");
 				}
 			}
 		}
