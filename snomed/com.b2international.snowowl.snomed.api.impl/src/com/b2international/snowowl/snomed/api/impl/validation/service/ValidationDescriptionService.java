@@ -228,6 +228,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
 
+			System.out.println("Matches found in SNOMED for " + description.getTerm());
+
 			// the concept id used to determine the hierarchy
 			String lookupId = null;
 
@@ -247,6 +249,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				}
 			}
 
+			System.out.println(" lookup id: " + lookupId);
+
 			// if id could not be retrieved, cannot determine hierarchy
 			// either SNOMED CT root concept, or has no active parents
 			if (lookupId == null) {
@@ -257,6 +261,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
+			System.out.println("  lookup hierarchy: " + getHierarchyIdForConcept(iSnomedConcept));
+
 			// back out if cannot determine hierarchy (current case: new
 			// hierarchical root)
 			if (getHierarchyIdForConcept(iSnomedConcept) == null) {
@@ -266,17 +272,40 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			// retrieve matching concepts (with ancestors) and compare
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
 
+				System.out.println("   Searching using prepare: " + iSnomedDescription.getConceptId());
+
 				SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept().filterByActive(true)
 						.filterByComponentIds(Collections.singleton(iSnomedDescription.getConceptId()))
 						.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
+				System.out.println("    No. of matches from prepareSearch " + matchingConcepts.getTotal());
+
 				if (matchingConcepts.getTotal() != 0) {
+
+					System.out
+							.println("     Hierarchy: " + getHierarchyIdForConcept(matchingConcepts.getItems().get(0)));
 
 					if (getHierarchyIdForConcept(iSnomedConcept)
 							.equals(getHierarchyIdForConcept(matchingConcepts.getItems().get(0)))) {
+						System.out.println("      -> MATCH from prepareSearch");
 						matchesInHierarchy.add(
 								new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 					}
+				}
+
+				try {
+					ISnomedConcept testConcept = SnomedRequests.prepareGetConcept()
+						.setComponentId(iSnomedDescription.getConceptId())
+						.setExpand("ancestors(direct:false")
+						.build(branchPath)
+						.executeSync(bus);
+					if (getHierarchyIdForConcept(iSnomedConcept)
+							.equals(getHierarchyIdForConcept(testConcept))) {
+						System.out.println("      -> MATCH from direct retrieval");
+					}
+					
+				} catch (Exception e) {
+					System.out.println("    Direct get failed");
 				}
 			}
 		}
