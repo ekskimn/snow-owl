@@ -181,6 +181,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	private String getHierarchyIdForConcept(ISnomedConcept concept) {
 
+		// if concept null, return null
+		if (concept == null) {
+			return null;
+		}
+		
 		// if not yet retrieved, cache the root concepts
 		if (hierarchyRootIds == null) {
 			cacheHierarchyRootConcepts();
@@ -210,15 +215,21 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			cacheHierarchyRootConcepts();
 		}
 
+		// the return set
 		Set<Description> matchesInHierarchy = new HashSet<>();
 
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
-				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
+		// retrieve partially-matching descriptions
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(description.getTerm())
+				.filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
 				.build(branchPath).executeSync(bus);
 
-		Set<ISnomedDescription> matchesInSnomed = new HashSet<>();
+
+		System.out.println("Partial matches found in SNOMED " + descriptions.getTotal());
 
 		// filter by exact match
+		Set<ISnomedDescription> matchesInSnomed = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(description.getTerm())) {
 				matchesInSnomed.add(iSnomedDescription);
@@ -228,7 +239,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
 
-			System.out.println("Matches found in SNOMED for " + description.getTerm());
+			System.out.println(" Exact matches found in SNOMED " + matchesInSnomed.size());
 
 			// the concept id used to determine the hierarchy
 			String lookupId = null;
@@ -258,14 +269,24 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 
 			// use id to retrieve concept for hierarchy detection
-			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
-					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
-			System.out.println("  lookup hierarchy: " + getHierarchyIdForConcept(iSnomedConcept));
+			ISnomedConcept hierarchyConcept = null;
+			try {
+				hierarchyConcept = SnomedRequests.prepareSearchConcept()
+						.filterByActive(true)
+						.filterByComponentIds(Collections.singleton(lookupId))
+						.setLimit(1000)
+						.setExpand("ancestors(direct:false)")
+						.build(branchPath).executeSync(bus)
+						.getItems().get(0);
+			} catch (Exception e) {
+				System.out.println("  Could not retrieve ancestors for lookup id " + lookupId);
+			}
 
-			// back out if cannot determine hierarchy (current case: new
-			// hierarchical root)
-			if (getHierarchyIdForConcept(iSnomedConcept) == null) {
+			System.out.println("  lookup hierarchy: " + getHierarchyIdForConcept(hierarchyConcept));
+
+			// back out if cannot determine hierarchy
+			if (hierarchyConcept == null || getHierarchyIdForConcept(hierarchyConcept) == null) {
 				return matchesInHierarchy;
 			}
 
@@ -273,11 +294,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
 
 				System.out.println("   Searching using prepare: " + iSnomedDescription.getConceptId());
-
-				SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept().filterByActive(true)
+				
+				SnomedConcepts matchingConcepts = SnomedRequests.prepareSearchConcept()
+						.filterByActive(true)
 						.filterByComponentIds(Collections.singleton(iSnomedDescription.getConceptId()))
 						.setLimit(1000)
-						.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
+						.setExpand("ancestors(direct:false)")
+						.build(branchPath)
+						.executeSync(bus);
 
 				System.out.println("    No. of matches from prepareSearch " + matchingConcepts.getTotal());
 
@@ -286,7 +310,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					System.out
 							.println("     Hierarchy: " + getHierarchyIdForConcept(matchingConcepts.getItems().get(0)));
 
-					if (getHierarchyIdForConcept(iSnomedConcept)
+					if (getHierarchyIdForConcept(hierarchyConcept)
 							.equals(getHierarchyIdForConcept(matchingConcepts.getItems().get(0)))) {
 						System.out.println("      -> MATCH from prepareSearch");
 						matchesInHierarchy.add(
