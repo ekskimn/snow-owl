@@ -199,6 +199,7 @@ public class DelegateCDOServerChangeManager {
 							//log if anything had changed
 							if (processor.hadChangesToProcess()) {
 
+								LOGGER.info("Start ICDOChangeProcessor commit() {}", processor.getClass());
 								//XXX if the change set does not contain any changes to the specific terminology
 								//there is no need to initialize tracking index writer at IndexServerService
 								//and also *NO* need to reopen reader triggered by #commit on change processor.
@@ -209,6 +210,8 @@ public class DelegateCDOServerChangeManager {
 								//log changes
 								logUserActivity(processor);
 								
+								LOGGER.info("Finished ICDOChangeProcessor commit() {}", processor.getClass());
+
 								// Add to set of change processors that committed changes successfully
 								committedChangeProcessors.add(processor);
 							}
@@ -248,7 +251,9 @@ public class DelegateCDOServerChangeManager {
 					@Override 
 					protected IStatus run(final IProgressMonitor monitor) {
 						try {
+							LOGGER.info("Start ICDOChangeProcessor afterCommit() {}", processor.getClass());
 							processor.afterCommit();
+							LOGGER.info("Finished ICDOChangeProcessor afterCommit() {}", processor.getClass());
 							return Status.OK_STATUS;
 						} catch (final RuntimeException e) {
 							return new Status(IStatus.ERROR, DatastoreServerActivator.PLUGIN_ID, "Error while cleaning up change processor with " + processor.getName() + " for branch: " + branchPath, e);
