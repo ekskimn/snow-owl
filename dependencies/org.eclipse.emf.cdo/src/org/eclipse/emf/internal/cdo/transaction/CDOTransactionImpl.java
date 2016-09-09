@@ -2488,8 +2488,7 @@ public class CDOTransactionImpl extends CDOViewImpl implements InternalCDOTransa
     {
       CDODataInput in = new CDODataInputImpl(new ExtendedDataInputStream(stream))
       {
-        @Override
-        protected CDOPackageRegistry getPackageRegistry()
+        public CDOPackageRegistry getPackageRegistry()
         {
           return getSession().getPackageRegistry();
         }
