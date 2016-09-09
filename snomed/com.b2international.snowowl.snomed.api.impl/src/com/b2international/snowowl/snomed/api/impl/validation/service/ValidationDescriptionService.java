@@ -68,8 +68,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			while ((line = bufferedReader.readLine()) != null) {
 				String[] words = line.split("\\s+");
 
-				// format: 0: word, 1: type (unused)
-				caseSignificantWords.add(words[0]);
+				// format: 0: word, 1: type (only use type 1 words)
+				if (words[1].equals("1")) {
+					caseSignificantWords.add(words[0]);
+				}
 			}
 			fileReader.close();
 			logger.info("Loaded " + caseSignificantWords.size() + " case sensitive words into cache from: " + fileName);
@@ -265,14 +267,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			ISnomedConcept hierarchyConcept = null;
 
 			try {
-			hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
-					.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
-					.build(branchPath).executeSync(bus);
+				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
+						.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
+						.build(branchPath).executeSync(bus);
 
-			// back out if cannot determine hierarchy
-			if (hierarchyConcept == null || getHierarchyIdForConcept(hierarchyConcept) == null) {
-				return matchesInHierarchy;
-			}
+				// back out if cannot determine hierarchy
+				if (hierarchyConcept == null || getHierarchyIdForConcept(hierarchyConcept) == null) {
+					return matchesInHierarchy;
+				}
 			} catch (Exception e) {
 				// do nothing, failure should not interrupt
 			}
