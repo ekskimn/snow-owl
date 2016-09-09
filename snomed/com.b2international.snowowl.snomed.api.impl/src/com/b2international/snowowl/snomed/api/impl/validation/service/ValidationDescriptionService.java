@@ -332,7 +332,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			for (String word : words) {
 
 				// Step 1: Check en-us preferred synonyms for en-gb spellings
-				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc)
+				if (usAcc != null
 						&& refsetToLanguageSpecificWordsMap.containsKey(Constants.GB_EN_LANG_REFSET)
 						&& refsetToLanguageSpecificWordsMap.get(Constants.GB_EN_LANG_REFSET)
 								.contains(word.toLowerCase())) {
@@ -341,7 +341,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				}
 
 				// Step 2: Check en-gb preferred synonyms for en-en spellings
-				if (Constants.ACCEPTABILITY_PREFERRED.equals(gbAcc)
+				if (gbAcc != null
 						&& refsetToLanguageSpecificWordsMap.containsKey(Constants.US_EN_LANG_REFSET)
 						&& refsetToLanguageSpecificWordsMap.get(Constants.US_EN_LANG_REFSET)
 								.contains(word.toLowerCase())) {
