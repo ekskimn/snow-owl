@@ -22,7 +22,6 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 
-import com.b2international.snowowl.datastore.index.mapping.Mappings;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
@@ -33,9 +32,6 @@ import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
  */
 public class SnomedDescriptionExporter extends SnomedCoreExporter {
 
-	//TODO store this as well in index
-	private static final String LANGUAGE_CODE = "en";
-	
 	public SnomedDescriptionExporter(final SnomedExportConfiguration configuration) {
 		super(checkNotNull(configuration, "configuration"));
 	}
@@ -48,6 +44,7 @@ public class SnomedDescriptionExporter extends SnomedCoreExporter {
 				.active()
 				.module()
 				.descriptionConcept()
+				.descriptionLanguageCode()
 				.descriptionType()
 				.descriptionTerm()
 				.descriptionCaseSignificance()
@@ -67,7 +64,7 @@ public class SnomedDescriptionExporter extends SnomedCoreExporter {
 		sb.append(HT);
 		sb.append(SnomedMappings.descriptionConcept().getValueAsString(doc));
 		sb.append(HT);
-		sb.append(LANGUAGE_CODE);
+		sb.append(SnomedMappings.descriptionLanguageCode().getValueAsString(doc));
 		sb.append(HT);
 		sb.append(SnomedMappings.descriptionType().getValueAsString(doc));
 		sb.append(HT);
