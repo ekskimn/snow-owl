@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchPoint;
 import org.eclipse.emf.cdo.common.commit.CDOCommitInfo;
-import org.eclipse.emf.cdo.common.commit.CDOCommitInfoHandler;
 import org.eclipse.emf.cdo.transaction.CDOMerger;
 import org.eclipse.emf.cdo.transaction.CDOTransaction;
 import org.eclipse.emf.cdo.util.CommitException;
@@ -51,7 +50,6 @@ import com.b2international.snowowl.core.merge.MergeConflict;
 import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.datastore.cdo.CDOUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
-import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.events.BranchChangedEvent;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator;
@@ -92,7 +90,6 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
 			}
 		}
 		segmentIds.set(maxExistingSegment+1);
-        registerCommitListener(repository.getCdoRepository());
     }
     
     private synchronized Pair<Integer, Integer> nextTwoSegments() {
@@ -323,16 +320,13 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
         return getCDOBranch(parent).createBranch(name);
     }
 
-    @SuppressWarnings("restriction")
-    private void registerCommitListener(ICDORepository repository) {
-        repository.getRepository().addCommitInfoHandler(new CDOCommitInfoHandler() {
-			@Override
-            public void handleCommitInfo(CDOCommitInfo commitInfo) {
-                if (!(commitInfo instanceof org.eclipse.emf.cdo.internal.common.commit.FailureCommitInfo)) {
-                    handleCommit((InternalBranch) getBranch(commitInfo.getBranch().getID()), commitInfo.getTimeStamp());
-                }
-            }
-        });
+    /**
+     * Notifies this branch manager that a commit has happened on the given cdoBranchId with the given commitTimestamp.
+     * @param cdoBranchId
+     * @param commitTimestamp
+     */
+    public final void handleCommit(int cdoBranchId, long commitTimestamp) {
+    	handleCommit((InternalBranch) getBranch(cdoBranchId), commitTimestamp);
     }
     
     @Override
