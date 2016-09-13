@@ -179,6 +179,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				hierarchyRootIds.add(childConcept.getId());
 			}
 		}
+		logger.info("Cached " + hierarchyRootIds.size() + " hierarchy root ids for validation");
 	}
 
 	private String getHierarchyIdForConcept(ISnomedConcept concept) {
@@ -211,6 +212,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
+		
+		System.out.println("Checking for matching description " + description.getTerm());
 
 		// on first invocation, cache the hierarchy root ids
 		if (hierarchyRootIds == null) {
