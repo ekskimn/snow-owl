@@ -210,9 +210,14 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return null;
 	}
 
+	/**
+	 * @param concept
+	 * @param description
+	 * @return
+	 */
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
-		
+
 		System.out.println("Checking for matching description " + description.getTerm());
 
 		// on first invocation, cache the hierarchy root ids
@@ -227,7 +232,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
 				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
 				.build(branchPath).executeSync(bus);
-		
+
 		System.out.println("  Found " + descriptions.getTotal() + " partial matches");
 
 		// filter by exact match and save concept ids
@@ -239,8 +244,9 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				matchingConceptIds.add(iSnomedDescription.getConceptId());
 			}
 		}
-		
-		System.out.println("  Found " + matchesInSnomed.size() + " exact matches on concepts " + matchingConceptIds.toString());
+
+		System.out.println(
+				"  Found " + matchesInSnomed.size() + " exact matches on concepts " + matchingConceptIds.toString());
 
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
@@ -252,8 +258,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			if (hierarchyRootIds.contains(concept.getId())) {
 				lookupId = concept.getId();
 			}
-			
-			
 
 			// otherwise, use the first active parent as lookup id
 			else {
@@ -265,7 +269,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					}
 				}
 			}
-			
+
 			System.out.println("  Lookup id: " + lookupId);
 
 			// if id could not be retrieved, cannot determine hierarchy
@@ -281,8 +285,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 						.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 						.build(branchPath).executeSync(bus);
-				
-				System.out.println("  Hierarchy concept " + hierarchyConcept.getId() + " has " + hierarchyConcept.getAncestors().getTotal() + " ancestors with root " + this.getHierarchyIdForConcept(hierarchyConcept));
+
+				System.out.println("  Hierarchy concept " + hierarchyConcept.getId() + " has "
+						+ hierarchyConcept.getAncestors().getTotal() + " ancestors with root "
+						+ this.getHierarchyIdForConcept(hierarchyConcept));
 
 				// back out if cannot determine hierarchy
 				if (hierarchyConcept == null || getHierarchyIdForConcept(hierarchyConcept) == null) {
@@ -294,22 +300,28 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 
 			// retrieve active concepts from saved concept ids
-			SnomedConcepts conceptsWithAncestors;
+			List<ISnomedConcept> conceptsWithAncestors = new ArrayList();
 			try {
-				conceptsWithAncestors = SnomedRequests.prepareSearchConcept().filterByActive(true)
-						.filterByComponentIds(matchingConceptIds)
-						.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
-						.build(branchPath).executeSync(bus);
-				
-				System.out.println("  Concepts with ancestors loaded: " + conceptsWithAncestors.getTotal());
+		
+				for (String conceptId : matchingConceptIds) {
+					ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
+							.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
+
+							.build(branchPath).executeSync(bus);
+					conceptsWithAncestors.add(iSnomedConcept);
+				}
+
+				System.out.println("  Concepts with ancestors loaded: " + conceptsWithAncestors.size());
 
 				// cycle over matching descriptions and compare to concepts with
 				// ancestors
 				for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
 					System.out.println("    Checking description " + iSnomedDescription.getTerm());
 					for (ISnomedConcept iSnomedConcept : conceptsWithAncestors) {
-						
-						System.out.println("     Checking against concept " + iSnomedConcept.getId() + " with " + iSnomedConcept.getAncestors().getTotal() + " ancestors in hierarchy " + this.getHierarchyIdForConcept(iSnomedConcept));
+
+						System.out.println("     Checking against concept " + iSnomedConcept.getId() + " with "
+								+ iSnomedConcept.getAncestors().getTotal() + " ancestors in hierarchy "
+								+ this.getHierarchyIdForConcept(iSnomedConcept));
 						if (iSnomedConcept.getId().equals(iSnomedDescription.getConceptId())) {
 							if (getHierarchyIdForConcept(hierarchyConcept)
 									.equals(getHierarchyIdForConcept(iSnomedConcept))) {
@@ -352,8 +364,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			for (String word : words) {
 
 				// Step 1: Check en-us preferred synonyms for en-gb spellings
-				if (usAcc != null
-						&& refsetToLanguageSpecificWordsMap.containsKey(Constants.GB_EN_LANG_REFSET)
+				if (usAcc != null && refsetToLanguageSpecificWordsMap.containsKey(Constants.GB_EN_LANG_REFSET)
 						&& refsetToLanguageSpecificWordsMap.get(Constants.GB_EN_LANG_REFSET)
 								.contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-us refset but refers to a word that has en-gb spelling: "
@@ -361,8 +372,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				}
 
 				// Step 2: Check en-gb preferred synonyms for en-en spellings
-				if (gbAcc != null
-						&& refsetToLanguageSpecificWordsMap.containsKey(Constants.US_EN_LANG_REFSET)
+				if (gbAcc != null && refsetToLanguageSpecificWordsMap.containsKey(Constants.US_EN_LANG_REFSET)
 						&& refsetToLanguageSpecificWordsMap.get(Constants.US_EN_LANG_REFSET)
 								.contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-gb refset but refers to a word that has en-us spelling: "
