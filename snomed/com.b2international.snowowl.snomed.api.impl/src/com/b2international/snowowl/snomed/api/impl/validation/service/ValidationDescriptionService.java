@@ -289,7 +289,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					return matchesInHierarchy;
 				}
 			} catch (Exception e) {
-				System.out.println("  Exception getting hierarchy concept with ancestors " + e.getMessage() + ", " + e.getStackTrace().toString());
+				System.out.println("  Exception getting hierarchy concept with ancestors ");
 				// do nothing, failure should not interrupt
 			}
 
@@ -320,7 +320,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 					}
 				}
 			} catch (Exception e) {
-				System.out.println(" Exception retrieving match concept ancestors " + e.getMessage() + e.getCause().toString());
+				System.out.println(" Exception retrieving match concept ancestors " + e.getMessage());
 				// do nothing -- prevent blocking errors
 				// TODO Revisit this and similar Drools error handling
 			}
