@@ -51,6 +51,9 @@ import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.datastore.ICDOChangeProcessor;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
+import com.b2international.snowowl.datastore.index.DelegatingIndexCommitChangeSet;
+import com.b2international.snowowl.datastore.index.ImmutableIndexCommitChangeSet;
+import com.b2international.snowowl.datastore.index.IndexCommitChangeSet;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
@@ -195,17 +198,12 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	}
 
 	private boolean isSystemCommit() {
-		return SpecialUserStore.SYSTEM_USER_NAME.equals(getUserId());
+		return SpecialUserStore.SYSTEM_USER_NAME.equals(commitChangeSet.getUserId());
 	}
 	
 	@Override
 	public boolean hadChangesToProcess() {
 		return !entry.getChanges().isEmpty() || isSystemCommit();
-	}
-	
-	@Override
-	public String getUserId() {
-		return entry.getUserId();
 	}
 	
 	private void processAddition(CDOObject newComponent) {
@@ -485,17 +483,18 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	}
 
 	@Override
-	public String getChangeDescription() {
-		return String.format("Traceability logged for %d concept(s).", entry.getChanges().size());
-	}
-	
-	@Override
 	public String getName() {
 		return "SNOMED CT Traceability";
 	}
 
 	@Override
-	public void commit() throws SnowowlServiceException {
+	public IndexCommitChangeSet commit() throws SnowowlServiceException {
+		return new DelegatingIndexCommitChangeSet(ImmutableIndexCommitChangeSet.builder().build()) {
+			@Override
+			public String getDescription() {
+				return String.format("Traceability logged for %d concept(s).", entry.getChanges().size());
+			}
+		};
 	}
 
 	@Override
@@ -504,8 +503,4 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		this.commitChangeSet = null;
 	}
 
-	@Override
-	public IBranchPath getBranchPath() {
-		return branchPath;
-	}
 }

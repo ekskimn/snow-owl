@@ -19,8 +19,11 @@ import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
 import java.util.Collection;
+<<<<<<< HEAD
 import java.util.Date;
 import java.util.Map;
+=======
+>>>>>>> [snomed] track index changes properly in SNOMED CT change processors
 import java.util.Set;
 
 import org.eclipse.emf.cdo.server.IStoreAccessor;
@@ -43,6 +46,7 @@ import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.index.BaseCDOChangeProcessor;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessor;
+import com.b2international.snowowl.datastore.index.IndexCommitChangeSet;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
@@ -279,8 +283,8 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 	}
 	
 	@Override
-	protected void postUpdateDocuments(Map<Long, Revision> mappings, Multimap<Class<? extends Revision>, Long> deletions) {
-		final Collection<String> releasableComponentIds = getReleasableComponentIds(deletions);
+	protected void postUpdateDocuments(IndexCommitChangeSet commitChangeSet) {
+		final Collection<String> releasableComponentIds = getReleasableComponentIds(commitChangeSet.getRevisionDeletions());
 		if (!releasableComponentIds.isEmpty()) {
 			identifierService.release(releasableComponentIds);
 		}
