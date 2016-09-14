@@ -24,6 +24,8 @@ import com.b2international.snowowl.core.events.RepositoryEvent;
  */
 public final class BranchChangedEvent extends RepositoryEvent {
 	
+	private static final long serialVersionUID = 1L;
+	
 	private final String branch;
 	
 	public BranchChangedEvent(final String repositoryId, final String branch) {
@@ -44,5 +46,4 @@ public final class BranchChangedEvent extends RepositoryEvent {
 	public String toString() {
 		return "BranchChangedEvent " + branch; 
 	}
-
 }
