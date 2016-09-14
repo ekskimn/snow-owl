@@ -15,7 +15,12 @@ package com.b2international.snowowl.snomed.api.impl;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -121,6 +126,35 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);
 
+	private static final Map<String, String> dialectMatchesUsToGb;
+
+	static {
+		dialectMatchesUsToGb = new HashMap<>();
+		String fileName = "/opt/termserver/resources/test-resources/spelling_variants.txt";
+
+		File file = new File(fileName);
+		FileReader fileReader;
+		BufferedReader bufferedReader;
+		try {
+			fileReader = new FileReader(file);
+			bufferedReader = new BufferedReader(fileReader);
+			String line;
+			// skip header line
+			// TODO Check whether header line exists in file
+			bufferedReader.readLine();
+			while ((line = bufferedReader.readLine()) != null) {
+				String[] words = line.split("\\s+");
+
+				dialectMatchesUsToGb.put(words[0], words[1]);
+			}
+			fileReader.close();
+			LOGGER.info("Loaded " + dialectMatchesUsToGb.size() + " spelling variants from: " + fileName);
+		} catch (IOException e) {
+			LOGGER.info("Failed to retrieve case sensitive words file: " + fileName);
+
+		}
+	}
+	
 	private final InputFactory inputFactory;
 	
 	private final Cache<String, SnomedBrowserBulkChangeRun> bulkChangeRuns = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS).build();
@@ -791,4 +825,18 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return resultBuilder.build();
 	}
 	
+	private static SnomedIndexService getIndexService() {
+		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
+	}
+
+	@Override
+	public Map<String, String> getDialectMatches(List<String> tokenizedWords) {
+		Map<String, String> matches = new HashMap<>();
+		for (String word : tokenizedWords) {
+			if (dialectMatchesUsToGb.containsKey(word)) {
+				matches.put(word, dialectMatchesUsToGb.get(word));
+			}
+		}
+		return matches;
+	}
 }
