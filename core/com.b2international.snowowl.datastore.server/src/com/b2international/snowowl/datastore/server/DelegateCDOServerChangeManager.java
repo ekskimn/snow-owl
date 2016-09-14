@@ -48,6 +48,7 @@ import com.b2international.snowowl.core.exceptions.ApiException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.ICDOChangeProcessor;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
+import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.events.RepositoryCommitNotification;
 import com.b2international.snowowl.datastore.exception.RepositoryLockException;
@@ -250,6 +251,7 @@ public class DelegateCDOServerChangeManager {
 				branchPath.getPath(),
 				commitChangeSet.getTimestamp(),
 				commitChangeSet.getUserId(),
+				CDOCommitInfoUtils.removeUuidPrefix(commitChangeSet.getCommitComment()),
 				mergedChangeSet.getNewComponents(),
 				mergedChangeSet.getChangedComponents(),
 				mergedChangeSet.getDeletedComponents()
