@@ -446,6 +446,8 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 200, message = "OK", response = Void.class)
 	})
 
+	@RequestMapping(value="/{path:**}/dialect/matches", method=RequestMethod.GET)
+	public @ResponseBody Map<String, String> getDialectMatches(
 		@ApiParam(value="Set of words to check for alternate dialect spellings")
 		@RequestParam(value="tokenizedWords", required=true) 
 		final Set<String> tokenizedWords) {	
