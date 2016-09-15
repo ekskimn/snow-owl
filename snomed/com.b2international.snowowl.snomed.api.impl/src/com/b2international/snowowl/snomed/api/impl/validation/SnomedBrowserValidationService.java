@@ -86,7 +86,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 
 
 	@Override
-	public Map<String, String> getDialectMatches(List<String> tokenizedWords) {
+	public Map<String, String> getDialectMatches(Set<String> tokenizedWords) {
 		Map<String, String> matches = new HashMap<>();
 		for (String word : tokenizedWords) {
 			if (ValidationUtility.hasUsSpelling(word)) {
