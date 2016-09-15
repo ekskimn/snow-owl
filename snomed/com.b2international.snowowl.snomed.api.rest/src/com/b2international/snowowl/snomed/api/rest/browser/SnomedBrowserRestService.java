@@ -21,6 +21,7 @@ import java.net.URISyntaxException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -445,7 +446,10 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 200, message = "OK", response = Void.class)
 	})
 	@RequestMapping(value="/{path:**}/dialect/matches", method=RequestMethod.POST)
-	public @ResponseBody Map<String, String> getDialectMatches(List<String> tokenizedWords) {	
+	public @ResponseBody Map<String, String> getDialectMatches(
+		@ApiParam(value="Set of words to check for alternate dialect spellings")
+		@RequestParam(value="tokenizedWords", required=true) 
+		final Set<String> tokenizedWords) {	
 		return validationService.getDialectMatches(tokenizedWords);
 	}
 
