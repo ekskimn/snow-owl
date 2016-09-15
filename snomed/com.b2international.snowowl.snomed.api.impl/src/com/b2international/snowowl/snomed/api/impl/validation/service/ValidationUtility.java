@@ -65,7 +65,7 @@ public class ValidationUtility {
 			}
 			
 		} catch (IOException e) {
-			logger.info("Failed to load international file map: " + e.getMessage());
+			logger.info("Failed to load dialect en-us to en-gb map: " + e.getMessage());
 
 		}
 	}
