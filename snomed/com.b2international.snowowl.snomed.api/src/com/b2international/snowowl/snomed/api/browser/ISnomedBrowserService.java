@@ -109,5 +109,6 @@ public interface ISnomedBrowserService {
 	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, String userId, List<ExtendedLocale> locales);
 
 	ISnomedBrowserBulkChangeRun getBulkChange(String bulkChangeId);
+	
 
 }

@@ -437,5 +437,16 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	private URI getBulkChangeRunUri(final String branchPath, final ISnomedBrowserBulkChangeRun bulkChangeRun) throws URISyntaxException {
 		return linkTo(getClass()).slash(branchPath).slash("concepts").slash("bulk").slash(bulkChangeRun.getId()).toUri();
 	}
+	
+	@ApiOperation(
+			value="Retrieve dialect spelling matches",
+			notes="Retrieve map of alternate dialect spellings given a tokenized word sequence.")
+	@ApiResponses({
+		@ApiResponse(code = 200, message = "OK", response = Void.class)
+	})
+	@RequestMapping(value="/{path:**}/constants", method=RequestMethod.GET)
+	public @ResponseBody Map<String, String> getDialectMatches(List<String> tokenizedWords) {	
+		return validationService.getDialectMatches(tokenizedWords);
+	}
 
 }
