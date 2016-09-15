@@ -21,6 +21,8 @@ target
 *.log
 *.iml
 *.idea
+*.project
+*.classpath
 
 *.sh
 
