@@ -273,7 +273,7 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 		// New relationship on nested branch resets the concept's version to 1 again
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
 		requestBody = givenRelationshipRequestBody(DISEASE, TEMPORAL_CONTEXT, FINDING_CONTEXT, MODULE_SCT_CORE, "New relationship on " + nestedBranchPath.getPath());
-		assertComponentCreated(testBranchPath, SnomedComponentType.RELATIONSHIP, requestBody);
+		assertComponentCreated(nestedBranchPath, SnomedComponentType.RELATIONSHIP, requestBody);
 		
 		// Deleting a relationship from the middle
 		final String relationshipId = relationshipIds.remove(7);
