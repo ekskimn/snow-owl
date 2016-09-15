@@ -446,7 +446,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	})
 	@RequestMapping(value="/{path:**}/constants", method=RequestMethod.GET)
 	public @ResponseBody Map<String, String> getDialectMatches(List<String> tokenizedWords) {	
-		return browserService.getDialectMatches(tokenizedWords);
+		return validationService.getDialectMatches(tokenizedWords);
 	}
 
 }

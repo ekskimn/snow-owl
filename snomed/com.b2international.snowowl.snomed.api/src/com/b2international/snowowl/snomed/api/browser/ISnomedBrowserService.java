@@ -110,6 +110,5 @@ public interface ISnomedBrowserService {
 
 	ISnomedBrowserBulkChangeRun getBulkChange(String bulkChangeId);
 	
-	Map<String, String> getDialectMatches(List<String> tokenizedWords);
 
 }

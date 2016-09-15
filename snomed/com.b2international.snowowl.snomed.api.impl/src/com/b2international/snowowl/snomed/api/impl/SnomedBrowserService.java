@@ -829,14 +829,4 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
 	}
 
-	@Override
-	public Map<String, String> getDialectMatches(List<String> tokenizedWords) {
-		Map<String, String> matches = new HashMap<>();
-		for (String word : tokenizedWords) {
-			if (dialectMatchesUsToGb.containsKey(word)) {
-				matches.put(word, dialectMatchesUsToGb.get(word));
-			}
-		}
-		return matches;
-	}
 }
