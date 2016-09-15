@@ -84,7 +84,7 @@ public class ValidationUtility {
 	public static String getGbSpellingForUsSpelling(String usWord) {
 		String word = dialectMatchesUsToGb.get(usWord.toLowerCase());
 		// preserve first-letter capitalization
-		if (usWord.substring(0, 1).equals(usWord.substring(0, 1).toUpperCase())) {
+		if (word != null && !word.isEmpty() && usWord != null && !usWord.isEmpty() && usWord.substring(0, 1).equals(usWord.substring(0, 1).toUpperCase())) {
 			word = word.substring(0, 1).toUpperCase() + word.substring(1);
 		}
 		return word;
