@@ -82,7 +82,12 @@ public class ValidationUtility {
 	
 	// used by 
 	public static String getGbSpellingForUsSpelling(String usWord) {
-		return dialectMatchesUsToGb.get(usWord.toLowerCase());
+		String word = dialectMatchesUsToGb.get(usWord.toLowerCase());
+		// preserve first-letter capitalization
+		if (usWord.substring(0, 1).equals(usWord.substring(0, 1).toUpperCase())) {
+			word = word.substring(0, 1).toUpperCase() + word.substring(1);
+		}
+		return word;
 	}
 
 }
