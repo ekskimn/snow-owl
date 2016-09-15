@@ -395,15 +395,34 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void deleteDescriptionOnNestedBranch() {
 		givenBranchWithPath(testBranchPath);
+		
+		List<String> descriptionIds = newArrayList();
+		Map<?, ?> requestBody;
+		
+		for (int i = 0; i < 10; i++) {
+			requestBody = createRequestBody(DISEASE, "Rare disease " + i, Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on " + testBranchPath.getPath());
+			final String descriptionId = assertComponentCreated(testBranchPath, SnomedComponentType.DESCRIPTION, requestBody);
+			descriptionIds.add(descriptionId);
+		}
+		
+		// New description on nested branch resets the concept's version to 1 again
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
-		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
-		final String descriptionId = assertComponentCreated(nestedBranchPath, SnomedComponentType.DESCRIPTION, createRequestBody);		
+		requestBody = createRequestBody(DISEASE, "Rare disease 9000", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on " + nestedBranchPath.getPath());
+		assertComponentCreated(nestedBranchPath, SnomedComponentType.DESCRIPTION, requestBody);
 
+		// Deleting a description from the middle
+		final String descriptionId = descriptionIds.remove(4);
+		
+		assertDescriptionCanBeDeleted(testBranchPath, descriptionId);
+		assertDescriptionNotExists(testBranchPath, descriptionId);
+		
 		assertDescriptionCanBeDeleted(nestedBranchPath, descriptionId);
 		assertDescriptionNotExists(nestedBranchPath, descriptionId);
-		assertDescriptionNotExists(nestedBranchPath.getParent(), descriptionId);
-		assertDescriptionNotExists(nestedBranchPath.getParent().getParent(), descriptionId);
-		assertDescriptionNotExists(nestedBranchPath.getParent().getParent().getParent(), descriptionId);
+		
+		for (String remainingId : descriptionIds) {
+			assertDescriptionExists(testBranchPath, remainingId);
+			assertDescriptionExists(nestedBranchPath, remainingId);
+		}
 	}
 	
 	@Test

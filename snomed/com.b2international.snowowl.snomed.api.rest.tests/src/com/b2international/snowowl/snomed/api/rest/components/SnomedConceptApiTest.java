@@ -28,6 +28,8 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreatedWithStatus;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotCreated;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
@@ -385,6 +387,41 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.body("items.id[0]", equalTo("255203001"))
 				.body("items.id[1]", equalTo("72670004"))
 				;
+	}
+	
+	@Test
+	public void deleteConcept() {
+		givenBranchWithPath(testBranchPath);
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		final String conceptId = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, requestBody);
+		assertComponentCanBeDeleted(testBranchPath, SnomedComponentType.CONCEPT, conceptId);
+		assertComponentNotExists(testBranchPath, SnomedComponentType.CONCEPT, conceptId);
+	}
+	
+	@Test
+	public void deleteConceptOnNestedBranch() {
+		givenBranchWithPath(testBranchPath);
+
+		Map<?, ?> requestBody;
+		String parentId = ROOT_CONCEPT;
+		
+		for (int i = 0; i < 10; i++) {
+			requestBody = givenConceptRequestBody(null, parentId, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+			parentId = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, requestBody);
+		}
+
+		// New component on nested branch resets the container's version to 1 again
+		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "A", "B");
+		requestBody = givenConceptRequestBody(null, parentId, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		assertComponentCreated(nestedBranchPath, SnomedComponentType.CONCEPT, requestBody);
+
+		// Deleting the last concept in the chain
+		assertComponentCanBeDeleted(testBranchPath, SnomedComponentType.CONCEPT, parentId);
+		assertComponentNotExists(testBranchPath, SnomedComponentType.CONCEPT, parentId);
+
+		// Should still exist on the nested branch, and be possible to remove
+		assertComponentCanBeDeleted(nestedBranchPath, SnomedComponentType.CONCEPT, parentId);
+		assertComponentNotExists(nestedBranchPath, SnomedComponentType.CONCEPT, parentId);
 	}
 
 	private ResponseBodyExtractionOptions getComponentMembers(IBranchPath branchPath, String componentId) {
