@@ -18,7 +18,17 @@ package com.b2international.snowowl.snomed.api.rest.components;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createMainPath;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentActive;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreatedWithStatus;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionNotExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertPreferredTermEquals;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -385,15 +395,34 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void deleteDescriptionOnNestedBranch() {
 		givenBranchWithPath(testBranchPath);
+		
+		List<String> descriptionIds = newArrayList();
+		Map<?, ?> requestBody;
+		
+		for (int i = 0; i < 10; i++) {
+			requestBody = createRequestBody(DISEASE, "Rare disease " + i, Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on " + testBranchPath.getPath());
+			final String descriptionId = assertComponentCreated(testBranchPath, SnomedComponentType.DESCRIPTION, requestBody);
+			descriptionIds.add(descriptionId);
+		}
+		
+		// New description on nested branch resets the concept's version to 1 again
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
-		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
-		final String descriptionId = assertComponentCreated(nestedBranchPath, SnomedComponentType.DESCRIPTION, createRequestBody);		
+		requestBody = createRequestBody(DISEASE, "Rare disease 9000", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on " + nestedBranchPath.getPath());
+		assertComponentCreated(nestedBranchPath, SnomedComponentType.DESCRIPTION, requestBody);
 
+		// Deleting a description from the middle
+		final String descriptionId = descriptionIds.remove(4);
+		
+		assertDescriptionCanBeDeleted(testBranchPath, descriptionId);
+		assertDescriptionNotExists(testBranchPath, descriptionId);
+		
 		assertDescriptionCanBeDeleted(nestedBranchPath, descriptionId);
 		assertDescriptionNotExists(nestedBranchPath, descriptionId);
-		assertDescriptionNotExists(nestedBranchPath.getParent(), descriptionId);
-		assertDescriptionNotExists(nestedBranchPath.getParent().getParent(), descriptionId);
-		assertDescriptionNotExists(nestedBranchPath.getParent().getParent().getParent(), descriptionId);
+		
+		for (String remainingId : descriptionIds) {
+			assertDescriptionExists(testBranchPath, remainingId);
+			assertDescriptionExists(nestedBranchPath, remainingId);
+		}
 	}
 	
 	@Test
