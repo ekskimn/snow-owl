@@ -377,7 +377,66 @@ public class CDORevisionDeltaImpl implements InternalCDORevisionDelta
           CDOList originList = ((InternalCDORevision)originRevision).getList(feature);
           CDOList dirtyList = ((InternalCDORevision)dirtyRevision).getList(feature);
 
-          analyzer.analyzeLists(originList, dirtyList, new NOOPList());
+          if (!feature.isOrdered())
+          {
+            int originListSize = originList.size();
+            int dirtyListSize = dirtyList.size();
+            boolean[] dirtyListSources = new boolean[dirtyListSize];
+
+            /* 
+             * For unordered lists, no move deltas should be generated; check whether the item in the old list 
+             * is still present in the new one, if not, create a remove delta. We inspect items starting at
+             * the end, so changes need not be simulated on a copy of originList.
+             */
+            for (int i = originListSize - 1; i >= 0; i--)
+            {
+              Object originValue = originList.get(i);
+              boolean remove = true;
+
+              for (int j = dirtyListSize - 1; j >= 0; j--)
+              {
+                if (!dirtyListSources[j])
+                {
+                  Object dirtyValue = dirtyList.get(j);
+
+                  if (compare(originValue, dirtyValue))
+                  {
+                    dirtyListSources[j] = true;
+                    remove = false;
+                    break;
+                  }
+                }
+              }
+
+              if (remove)
+              {
+                CDORemoveFeatureDeltaImpl delta = new CDORemoveFeatureDeltaImpl(feature, i);
+                delta.setValue(originValue);
+                changes.add(delta);
+                originListSize--;
+              }
+            }
+
+            /*
+             * Any remaining items in the dirty list that were not paired up with an item from the old list
+             * will need to be added, preferably to the end of the list.
+             */
+            for (int j = 0; j < dirtyListSize; j++)
+            {
+              if (!dirtyListSources[j])
+              {
+                Object dirtyValue = dirtyList.get(j);
+                CDOFeatureDelta delta = new CDOAddFeatureDeltaImpl(feature, originListSize, dirtyValue);
+                changes.add(delta);
+                originListSize++;
+              }
+            }
+          }
+          else
+          {
+            analyzer.analyzeLists(originList, dirtyList, new NOOPList());
+          }
+
           if (!changes.isEmpty())
           {
             featureDeltas.put(feature, listFeatureDelta);
