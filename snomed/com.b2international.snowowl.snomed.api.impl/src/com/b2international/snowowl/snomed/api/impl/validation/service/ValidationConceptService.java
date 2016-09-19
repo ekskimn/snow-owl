@@ -4,7 +4,6 @@ import org.ihtsdo.drools.service.ConceptService;
 
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
 
 public class ValidationConceptService implements ConceptService {
 
@@ -18,12 +17,6 @@ public class ValidationConceptService implements ConceptService {
 
 	@Override
 	public boolean isActive(String conceptId) {
-		System.out.println("isActive     :     " + conceptId);
-		System.out.println("  branchPath : " + branchPath);
-		System.out.println("  browserNull: " + terminologyBrowser == null ? "true" : "false");
-		
-		SnomedConceptIndexEntry entry = terminologyBrowser.getConcept(branchPath, conceptId);
-		System.out.println("  concept    : " + entry == null ? "null" : entry.toString());
 		return terminologyBrowser.getConcept(branchPath, conceptId).isActive();
 	}
 
