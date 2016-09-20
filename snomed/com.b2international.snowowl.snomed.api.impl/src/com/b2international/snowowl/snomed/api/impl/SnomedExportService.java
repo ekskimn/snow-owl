@@ -78,7 +78,7 @@ public class SnomedExportService implements ISnomedExportService {
 		String branchMetaShortname = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "shortname");
 		String branchMetaDefaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "defaultNamespace");
 		if (!Strings.isEmpty(branchMetaShortname) && !Strings.isEmpty(branchMetaDefaultNamespace)) {
-			namespace = branchMetaShortname + branchMetaDefaultNamespace;
+			namespace = branchMetaShortname.toUpperCase() + branchMetaDefaultNamespace;
 		}
 		return namespace;
 	}
