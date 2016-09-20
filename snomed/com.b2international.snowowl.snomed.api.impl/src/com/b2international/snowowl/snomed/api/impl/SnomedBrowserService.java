@@ -825,8 +825,4 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return resultBuilder.build();
 	}
 	
-	private static SnomedIndexService getIndexService() {
-		return ApplicationContext.getServiceForClass(SnomedIndexService.class);
-	}
-
 }
