@@ -30,7 +30,7 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
-import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationDescriptionService implements org.ihtsdo.drools.service.DescriptionService {
 
