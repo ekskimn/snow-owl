@@ -2240,6 +2240,11 @@ public class SnomedComponentService implements ISnomedComponentService, IPostSto
 					final String predicateStorageKey = split[0];
 					final String key = split[1];
 					final PredicateIndexEntry predicate = predicateMappings.get(predicateStorageKey);
+					
+					if (predicate == null) {
+						continue;
+					}
+					
 					final HierarchyInclusionType type = HierarchyInclusionType.get(key);
 					if (type != null) {
 						predicates.get(type).put(componentId, predicate);	
