@@ -38,4 +38,6 @@ public interface ISnomedExportService {
 	 * @throws SnomedExportException if the configuration is invalid, or the export fails for some reason
 	 */
 	File export(ISnomedExportConfiguration configuration);
+
+	String resolveNamespaceId(String branchPath);
 }

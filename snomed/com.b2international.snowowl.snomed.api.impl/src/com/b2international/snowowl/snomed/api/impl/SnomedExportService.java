@@ -25,7 +25,10 @@ import static com.google.common.base.Strings.nullToEmpty;
 import java.io.File;
 import java.util.Map;
 
+import javax.annotation.Resource;
+
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.xtext.util.Strings;
 
 import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.StringUtils;
@@ -33,19 +36,24 @@ import com.b2international.commons.collect.LongSets;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.server.domain.StorageRef;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.ISnomedExportService;
 import com.b2international.snowowl.snomed.api.exception.SnomedExportException;
+import com.b2international.snowowl.snomed.api.impl.domain.SnomedExportConfiguration;
 import com.b2international.snowowl.snomed.common.ContentSubType;
+import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.core.domain.ISnomedExportConfiguration;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.exporter.model.SnomedRf2ExportModel;
 import com.google.common.collect.ImmutableMap;
 
@@ -54,11 +62,26 @@ import com.google.common.collect.ImmutableMap;
  */
 public class SnomedExportService implements ISnomedExportService {
 
+	@Resource
+	private IEventBus bus;
+
 	private static final Map<Rf2ReleaseType, ContentSubType> TYPE_MAPPING = ImmutableMap.of(
 			Rf2ReleaseType.DELTA, DELTA, 
 			Rf2ReleaseType.SNAPSHOT, SNAPSHOT, 
 			Rf2ReleaseType.FULL, FULL
 		);
+	
+	@Override
+	public String resolveNamespaceId(String branchPath) {
+		String namespace = "INT";
+		Branch branch = SnomedRequests.branching().prepareGet(branchPath).executeSync(bus);
+		String branchMetaShortname = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "shortname");
+		String branchMetaDefaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "defaultNamespace");
+		if (!Strings.isEmpty(branchMetaShortname) && !Strings.isEmpty(branchMetaDefaultNamespace)) {
+			namespace = branchMetaShortname + branchMetaDefaultNamespace;
+		}
+		return namespace;
+	}
 	
 	@Override
 	public File export(final ISnomedExportConfiguration configuration) {

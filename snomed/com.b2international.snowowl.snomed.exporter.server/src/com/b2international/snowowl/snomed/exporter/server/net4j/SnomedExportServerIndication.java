@@ -138,14 +138,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		deltaExportEndEffectiveTime = deltaExportEndEffectiveTimeString.equals("") ? null : convertRF2StringToDate(deltaExportEndEffectiveTimeString);
 		releaseType = ContentSubType.getByValue(in.readInt());
 		unsetEffectiveTimeLabel = in.readUTF();
-		
-		configuration = new SnomedExportConfigurationImpl(
-				branchPath, 
-				releaseType, 
-				unsetEffectiveTimeLabel,
-				deltaExportStartEffectiveTime, 
-				deltaExportEndEffectiveTime);
-		
+				
 		includeRf1 = in.readBoolean();
 		includeExtendedDescriptionTypes = in.readBoolean();
 
@@ -170,6 +163,14 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		}
 		
 		clientNamespace = in.readUTF();
+		
+		configuration = new SnomedExportConfigurationImpl(
+				branchPath, 
+				releaseType, 
+				unsetEffectiveTimeLabel,
+				deltaExportStartEffectiveTime, 
+				deltaExportEndEffectiveTime,
+				clientNamespace);
 		
 		LogUtils.logExportActivity(LOGGER, userId, branchPath, 
 				MessageFormat.format("SNOMED CT export{0}requested.", coreComponentExport ? " with core components " : " "));

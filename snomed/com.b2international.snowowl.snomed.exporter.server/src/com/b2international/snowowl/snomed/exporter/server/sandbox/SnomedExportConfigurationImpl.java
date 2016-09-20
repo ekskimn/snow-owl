@@ -64,6 +64,8 @@ public class SnomedExportConfigurationImpl implements SnomedExportConfiguration 
 	private final Date deltaExportStartEffectiveTime;
 	private final Date deltaExportEndEffectiveTime;
 
+	private final String clientNamespace;
+
 	private final Supplier<Map<IBranchPath, Collection<String>>> versionPathToSegmentNameMappingSupplier = 
 			memoize(new Supplier<Map<IBranchPath, Collection<String>>>() {
 				public Map<IBranchPath, Collection<String>> get() {
@@ -110,13 +112,15 @@ public class SnomedExportConfigurationImpl implements SnomedExportConfiguration 
 			final ContentSubType contentSubType,
 			final String unsetEffectiveTimeLabel,
 			@Nullable final Date deltaExportStartEffectiveTime, 
-			@Nullable final Date deltaExportEndEffectiveTime) {
+			@Nullable final Date deltaExportEndEffectiveTime,
+			final String clientNamespace) {
 
 		this.currentBranchPath = checkNotNull(currentBranchPath, "currentBranchPath");
 		this.contentSubType = checkNotNull(contentSubType, "contentSubType");
 		this.unsetEffectiveTimeLabel = checkNotNull(unsetEffectiveTimeLabel, "unsetEffectiveTimeLabel");
 		this.deltaExportStartEffectiveTime = deltaExportStartEffectiveTime;
 		this.deltaExportEndEffectiveTime = deltaExportEndEffectiveTime;
+		this.clientNamespace = clientNamespace;
 	}
 
 	@Override
@@ -151,5 +155,9 @@ public class SnomedExportConfigurationImpl implements SnomedExportConfiguration 
 	
 	private List<ICodeSystemVersion> getAllVersion() {
 		return getServiceForClass(CodeSystemService.class).getAllTagsWithHead(REPOSITORY_UUID);
+	}
+	
+	public String getClientNamespace() {
+		return clientNamespace;
 	}
 }

@@ -68,4 +68,11 @@ public interface SnomedExportConfiguration {
 	 * @return the effective time label for unpublished components
 	 */
 	String getUnsetEffectiveTimeLabel();
+	
+	/**
+	 * Returns INT or the country-code and namespace identifier. This is used in the directory name and filenames of the exported files.
+	 * @return namespace for directory and file names.
+	 */
+	String getClientNamespace();
+	
 }
