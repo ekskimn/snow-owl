@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongSet;
-import com.b2international.commons.StringUtils;
 import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
@@ -51,7 +50,6 @@ import com.b2international.index.revision.RevisionIndexWrite;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.index.revision.RevisionWriter;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.ComponentUtils;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.events.metrics.MetricsThreadLocal;
@@ -72,14 +70,12 @@ import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedIconProvider;
-import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.datastore.index.change.ConceptChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.ConstraintChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.DescriptionChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.RefSetMemberChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.RelationshipChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomies;
@@ -90,7 +86,6 @@ import com.b2international.snowowl.terminologymetadata.TerminologymetadataPackag
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
@@ -109,7 +104,6 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 	private final Set<CodeSystemVersion> dirtyCodeSystemVersions = newHashSet();
 	
 	private final IBranchPath branchPath;
-	private final ISnomedIdentifierService identifierService;
 	private final RevisionIndex index;
 	
 	private Taxonomy inferredTaxonomy;
@@ -123,10 +117,9 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 	
 	private Multimap<Class<? extends Revision>, Long> deletions = HashMultimap.create();
 
-	SnomedCDOChangeProcessor(final IBranchPath branchPath, final RevisionIndex index, final ISnomedIdentifierService identifierService) {
+	SnomedCDOChangeProcessor(final IBranchPath branchPath, final RevisionIndex index) {
 		this.index = index;
 		this.branchPath = Preconditions.checkNotNull(branchPath, "Branch path argument cannot be null.");
-		this.identifierService = identifierService;
 	}
 	
 	@Override
@@ -368,11 +361,6 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 
 		LOGGER.info("Updating indexes...");
 
-		final Collection<String> releasableComponentIds = getReleasableComponentIds();
-		if (!releasableComponentIds.isEmpty()) {
-			identifierService.release(releasableComponentIds);
-		}
-		
 		LOGGER.info("Processing and updating index changes successfully finished.");
 	}
 
@@ -383,46 +371,6 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 				destinationIds.add(newRelationship.getDestination().getId());
 			}
 		}
-	}
-
-	private Collection<String> getReleasableComponentIds() {
-		final Collection<String> releasableComponentIds = newHashSet();
-		for (Class<? extends Revision> type : deletions.keySet()) {
-			if (isCoreComponent(type)) {
-				releasableComponentIds.addAll(getReleasableComponentIds((Class<? extends RevisionDocument>) type, deletions.get(type)));
-			}
-		}
-		return releasableComponentIds;
-	}
-
-	private boolean isCoreComponent(Class<? extends Revision> type) {
-		return SnomedConceptDocument.class == type || SnomedDescriptionIndexEntry.class == type || SnomedRelationshipIndexEntry.class == type;
-	}
-
-	private Collection<String> getReleasableComponentIds(final Class<? extends RevisionDocument> type, final Iterable<Long> storageKeys) {
-		return ImmutableSet.copyOf(ComponentUtils.<String>getIds(getReleasableComponents(type, storageKeys)));
-	}
-
-	private <T extends RevisionDocument> Iterable<T> getReleasableComponents(final Class<T> type, final Iterable<Long> storageKeys) {
-		IBranchPath currentBranchPath = getBranchPath();
-		final Set<Long> releasableStorageKeys = newHashSet(storageKeys);
-
-		while (!StringUtils.isEmpty(currentBranchPath.getParentPath())) {
-			currentBranchPath = currentBranchPath.getParent();
-			final Iterable<T> hits = index.read(currentBranchPath.getPath(), new RevisionIndexRead<Iterable<T>>() {
-				@Override
-				public Iterable<T> execute(RevisionSearcher index) throws IOException {
-					return index.get(type, releasableStorageKeys);
-				}
-			});
-			for (T hit : hits) {
-				// the ID of this component cannot be released because it is being used on an ancestor branch
-				releasableStorageKeys.remove(hit.getStorageKey());
-			}
-		}
-		
-		// the remaining storageKeys can be removed, since they are not in use on any ancestor branch
-		return getRevisions(type, releasableStorageKeys);
 	}
 
 	/**

@@ -23,7 +23,6 @@ import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.datastore.ICDOChangeProcessor;
 import com.b2international.snowowl.datastore.server.CDOChangeProcessorFactory;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 
 /**
  * CDO change processor factory responsible to create {@link SnomedCDOChangeProcessor change processors} for SNOMED CT terminology.
@@ -36,8 +35,7 @@ public class SnomedCDOChangeProcessorFactory implements CDOChangeProcessorFactor
 	public ICDOChangeProcessor createChangeProcessor(final IBranchPath branchPath) throws SnowowlServiceException {
 		final ApplicationContext context = ApplicationContext.getInstance();
 		final RevisionIndex index = context.getService(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
-		final ISnomedIdentifierService identifierService = context.getService(ISnomedIdentifierService.class);
-		return new SnomedCDOChangeProcessor(branchPath, index, identifierService);
+		return new SnomedCDOChangeProcessor(branchPath, index);
 	}
 
 	@Override
