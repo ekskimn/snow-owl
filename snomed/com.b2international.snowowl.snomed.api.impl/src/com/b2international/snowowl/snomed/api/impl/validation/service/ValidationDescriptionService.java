@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -172,7 +171,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		hierarchyRootIds = new HashSet<>();
 
 		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
-				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(direct:true)").build(branchPath)
+				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(form:\"inferred\",direct:true)").build(branchPath)
 				.executeSync(bus);
 		for (ISnomedConcept rootConcept : rootConcepts) {
 			for (ISnomedConcept childConcept : rootConcept.getDescendants()) {
@@ -274,7 +273,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 			try {
 				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
-						.setExpand(String.format("ancestors(form:inferred,direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
+						.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 						.build(branchPath).executeSync(bus);
 
 				// back out if cannot determine hierarchy
@@ -286,12 +285,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 
 			// retrieve active concepts from saved concept ids
-			List<ISnomedConcept> conceptsWithAncestors = new ArrayList();
+			List<ISnomedConcept> conceptsWithAncestors = new ArrayList<>();
 			try {
 
 				for (String conceptId : matchingConceptIds) {
 					ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
-							.setExpand(String.format("ancestors(form:inferred,direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
+							.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 							.build(branchPath).executeSync(bus);
 					conceptsWithAncestors.add(iSnomedConcept);
 				}
