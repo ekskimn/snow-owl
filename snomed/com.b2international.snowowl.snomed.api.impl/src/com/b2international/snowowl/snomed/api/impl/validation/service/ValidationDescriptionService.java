@@ -274,7 +274,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 			try {
 				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
-						.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
+						.setExpand(String.format("ancestors(form:inferred,direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 						.build(branchPath).executeSync(bus);
 
 				// back out if cannot determine hierarchy
@@ -291,7 +291,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 				for (String conceptId : matchingConceptIds) {
 					ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
-							.setExpand(String.format("ancestors(direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
+							.setExpand(String.format("ancestors(form:inferred,direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 							.build(branchPath).executeSync(bus);
 					conceptsWithAncestors.add(iSnomedConcept);
 				}
