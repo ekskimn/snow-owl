@@ -15,11 +15,11 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
+import org.eclipse.xtext.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.api.NullBranchPath;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequest;
 import com.b2international.snowowl.datastore.BranchPathUtils;
@@ -28,6 +28,8 @@ import com.b2international.snowowl.datastore.ICodeSystemVersion;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 
 /** 
@@ -77,37 +79,31 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 	}
 	
 	public static IBranchPath getLatestReleaseBranch(TransactionContext context) {
-		
-		IBranchPath latestReleaseParentPath = context.branch().branchPath();
-		
-		while (!NullBranchPath.INSTANCE.equals(latestReleaseParentPath)) {
+		String codeSystemShortName = BranchMetadataResolver.getEffectiveBranchMetadataValue(context.branch(), "codeSystemShortName");
+		codeSystemShortName = Strings.isEmpty(codeSystemShortName) ? SnomedTerminologyComponentConstants.SNOMED_INT_SHORT_NAME : codeSystemShortName;
 
-			final CodeSystemVersions versions = new CodeSystemRequests(context.id())
-					.prepareSearchCodeSystemVersion()
-					.setParentPath(latestReleaseParentPath)
-					.build(IBranchPath.MAIN_BRANCH)
-					.execute(context.service(IEventBus.class))
-					.getSync();
+		final CodeSystemVersions versions = new CodeSystemRequests(context.id())
+				.prepareSearchCodeSystemVersion()
+				.setCodeSystemShortName(codeSystemShortName)
+				.build(IBranchPath.MAIN_BRANCH)
+				.execute(context.service(IEventBus.class))
+				.getSync();
 
-			ICodeSystemVersion latestReleaseVersion = null;
-			
-			for (ICodeSystemVersion version : versions) {
-				if (latestReleaseVersion == null || version.getEffectiveDate() > latestReleaseVersion.getEffectiveDate()) {
-					latestReleaseVersion = version;
-				}
+		ICodeSystemVersion latestReleaseVersion = null;
+		for (ICodeSystemVersion version : versions) {
+			if (latestReleaseVersion == null || version.getEffectiveDate() > latestReleaseVersion.getEffectiveDate()) {
+				latestReleaseVersion = version;
 			}
-			
-			if (latestReleaseVersion != null) {
-				return BranchPathUtils.createPath(latestReleaseVersion.getPath());
-			}
-			
-			latestReleaseParentPath = latestReleaseParentPath.getParent();
 		}
-		
-		LOG.warn("Couldn't find latest release branch for path {}, using MAIN as the reference point.", context.branch().path());
-		return BranchPathUtils.createMainPath();
+
+		if (latestReleaseVersion != null) {
+			return BranchPathUtils.createPath(latestReleaseVersion.getPath());
+		} else {
+			LOG.warn("No releases found for codesystem {}.", codeSystemShortName);
+			return BranchPathUtils.createMainPath();
+		}
 	}
-		
+
 	protected boolean updateModule(final TransactionContext context, final Component component) {
 		if (null == moduleId) {
 			return false;
