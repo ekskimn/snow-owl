@@ -557,7 +557,7 @@
 				<dependency>
 					<groupId>org.ihtsdo.drools</groupId>
 					<artifactId>snomed-drools</artifactId>
-					<version>1.0.12-SNAPSHOT</version>
+					<version>1.0.12</version>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>
@@ -630,7 +630,7 @@
 		<profile>
 			<id>tp_dependencies</id>
 			<properties>
-				<target.platform.version>4.5.75-SNAPSHOT</target.platform.version>
+				<target.platform.version>4.5.77-SNAPSHOT</target.platform.version>
 				<target.platform.url>${nexus.url}/content/unzip/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.target.update/${target.platform.version}/com.b2international.snowowl.server.target.update-${target.platform.version}.zip-unzip/</target.platform.url>
 			</properties>
 			<repositories>
