@@ -22,6 +22,7 @@ import static com.google.common.collect.Sets.newHashSet;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
@@ -30,6 +31,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import com.b2international.collections.longs.LongKeyLongMap;
@@ -38,6 +41,7 @@ import com.b2international.snowowl.snomed.datastore.services.ISnomedComponentSer
 import com.b2international.snowowl.snomed.exporter.server.sandbox.SnomedExportConfiguration;
 import com.b2international.snowowl.snomed.exporter.server.sandbox.SnomedExporter;
 import com.b2international.snowowl.snomed.exporter.server.sandbox.AbstractSnomedRelationshipExporter;
+import com.b2international.snowowl.snomed.exporter.server.sandbox.SnomedFileSwitchingExporter;
 import com.google.common.base.Joiner;
 import com.google.common.base.Supplier;
 
@@ -59,6 +63,7 @@ public class SnomedExportExecutor {
 	
 	private final String temporaryWorkingDirectory;
 	private final File baseReleaseDir;
+	private File releaseFileRelativeDirectory;
 	private File releaseFilePath;
 	private final SnomedExporter snomedExporter;
 	private final Set<String> modulesToExport;
@@ -69,6 +74,7 @@ public class SnomedExportExecutor {
 		}
 	});
 	private final Collection<String> visitedIdWithEffectiveTime;
+	private final Map<String, Writer> releaseFileWriters;
 
 	private SnomedExportConfiguration configuration;
 
@@ -78,6 +84,7 @@ public class SnomedExportExecutor {
 		this.clientNamespace = clientNamespace;
 		configuration = this.snomedExporter.getConfiguration();
 		visitedIdWithEffectiveTime = newHashSet();
+		releaseFileWriters = new HashMap<>();
 		
 		baseReleaseDir = new File(workingDirectory + File.separatorChar + RELEASE_BASE_DIRECTORY + clientNamespace);
 		if (!baseReleaseDir.exists()) {
@@ -105,50 +112,40 @@ public class SnomedExportExecutor {
 	}
 	
 	private File write() throws IOException {
-		final File releaseFileRelativePath = new File(
+		releaseFileRelativeDirectory = new File(
 				temporaryWorkingDirectory + 
 				File.separatorChar + 
 				RELEASE_BASE_DIRECTORY + 
 				clientNamespace + 
 				File.separatorChar + 
-				snomedExporter.getRelativeDirectory() + 
-				File.separatorChar + 
-				snomedExporter.getFileName());
+				snomedExporter.getRelativeDirectory());
 		
-		if (releaseFileRelativePath.getParentFile() != null) {
-			releaseFileRelativePath.getParentFile().mkdirs();
+		releaseFileRelativeDirectory.mkdirs();
+		
+		Writer writer = null;
+		boolean fileSwitchingExporter = snomedExporter instanceof SnomedFileSwitchingExporter;
+		if (!fileSwitchingExporter) {
+			writer = getFileWriter(snomedExporter.getFileName());
 		}
-		
-		releaseFileRelativePath.createNewFile();
-
-		FileChannel fileChannel = null;
-		RandomAccessFile randomAccessFile = null;
-
-		try {
-			
-			randomAccessFile = new RandomAccessFile(releaseFileRelativePath, "rw");
-			fileChannel = randomAccessFile.getChannel();
-			
-			writeFileHeader(fileChannel, snomedExporter.getColumnHeaders());
-			
+		try {			
 			for (final String line : snomedExporter) {
-				if (snomedExporter instanceof SnomedRf2Exporter && !isToExport(line)) {
+				final String[] rows = line.split("\t");
+				if (snomedExporter instanceof SnomedRf2Exporter && !isToExport(rows)) {
 					continue;
 				}
-				fileChannel.write(ByteBuffer.wrap(line.getBytes(UTF_8)));
-				fileChannel.write(ByteBuffer.wrap(SnomedExporter.CR_LF.getBytes(UTF_8)));
+				if (fileSwitchingExporter) {
+					writer = getFileWriter(((SnomedFileSwitchingExporter)snomedExporter).getFileName(rows));
+				}
+				writer.write(line);
+				writer.write(SnomedExporter.CR_LF);
 			}
 			
 		} finally {
 			
-			if (null != randomAccessFile) {
-				randomAccessFile.close();
+			for (Writer writ : releaseFileWriters.values()) {
+				writ.close();
 			}
-			
-			if (null != fileChannel) {
-				fileChannel.close();
-			}
-			
+
 			if (null != snomedExporter) {
 				try {
 					snomedExporter.close();
@@ -161,19 +158,31 @@ public class SnomedExportExecutor {
 					throw new SnowowlRuntimeException("Error while releasing exporter.", e);
 				}
 			}
-			
 		}
 		
-		return releaseFileRelativePath;
+		return releaseFileRelativeDirectory;
 	}
 	
-	private void writeFileHeader(final FileChannel fileChannel, final String[] columnHeaders) throws IOException {
-		fileChannel.write(ByteBuffer.wrap(Joiner.on("\t").join(columnHeaders).trim().getBytes(UTF_8)));
-		fileChannel.write(ByteBuffer.wrap(SnomedExporter.CR_LF.getBytes(UTF_8)));
+	private Writer getFileWriter(String filename) throws IOException {
+		Writer writer = releaseFileWriters.get(filename);
+		if (writer == null) {
+			File file = new File(releaseFileRelativeDirectory, filename);
+			boolean newFile = !file.exists();
+			writer = new BufferedWriter(new FileWriter(file));
+			if (newFile) {
+				writeFileHeader(writer, snomedExporter.getColumnHeaders());
+			}
+			releaseFileWriters.put(filename, writer);
+		}
+		return writer;
+	}
+	
+	private void writeFileHeader(final Writer writer, final String[] columnHeaders) throws IOException {
+		writer.write(Joiner.on("\t").join(columnHeaders).trim());
+		writer.write(SnomedExporter.CR_LF);
 	}
 
-	private boolean isToExport(final String row) {
-		final String[] split = row.split("\t");
+	private boolean isToExport(final String[] split) {
 		final String id = split[0];
 		if ("id".equals(id)) { //header
 			return true;
@@ -189,7 +198,7 @@ public class SnomedExportExecutor {
 		final String moduleId = split[3];
 		if (isModuleToExport(moduleId)) {
 			if (snomedExporter instanceof AbstractSnomedRelationshipExporter) {
-				if (isSourceAndDestinationRight(row)) {
+				if (isSourceAndDestinationRight(split)) {
 					return true;
 				} else {
 					return false;
@@ -206,8 +215,7 @@ public class SnomedExportExecutor {
 		return modulesToExport.contains(moduleId);
 	}
 	
-	private boolean isSourceAndDestinationRight(final String line) {
-		final String[] split = line.split("\t");
+	private boolean isSourceAndDestinationRight(final String[] split) {
 		final long moduleId = conceptIdToModuleIdSupplier.get().get(Long.parseLong(split[4])/*sourceModuleId*/);
 		return modulesToExport.contains(String.valueOf(moduleId));
 	}

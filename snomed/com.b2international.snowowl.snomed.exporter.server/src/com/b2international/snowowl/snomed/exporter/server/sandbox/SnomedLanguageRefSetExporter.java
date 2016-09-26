@@ -21,19 +21,27 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
+import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.exporter.server.SnomedRfFileNameBuilder;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 
 /**
  * Exporter for language type reference sets.
  */
-public class SnomedLanguageRefSetExporter extends SnomedRefSetExporter {
+public class SnomedLanguageRefSetExporter extends SnomedRefSetExporter implements SnomedFileSwitchingExporter {
 
 	private static final Set<String> FIELDS_TO_LOAD = SnomedMappings.fieldsToLoad().fields(COMMON_FIELDS_TO_LOAD).memberAcceptabilityId().build();
+	private final IEventBus eventBus;
 	
 	public SnomedLanguageRefSetExporter(final SnomedExportConfiguration configuration, final String refSetId, final SnomedRefSetType type) {
 		super(checkNotNull(configuration, "configuration"), checkNotNull(refSetId, "refSetId"), checkNotNull(type, "type"));
+		ApplicationContext applicationContext = ApplicationContext.getInstance();
+		eventBus = applicationContext.getService(IEventBus.class);
 	}
 	
 	@Override
@@ -53,5 +61,29 @@ public class SnomedLanguageRefSetExporter extends SnomedRefSetExporter {
 	@Override
 	public String[] getColumnHeaders() {
 		return SnomedRf2Headers.LANGUAGE_TYPE_HEADER;
+	}
+	
+	@Override
+	public String getFileName(String[] rows) {
+		// der2_cRefset_LanguageDelta-en_INT_20160731.txt
+		SnomedExportConfiguration configuration = getConfiguration();
+		String referencedComponentId = rows[5];
+		String languageCode = getLanguageCode(referencedComponentId, configuration);
+		return new StringBuilder("der2_cRefset_Language")
+			.append(String.valueOf(configuration.getContentSubType()))
+			.append("-")
+			.append(languageCode)
+			.append("_")
+			.append(configuration.getClientNamespace())
+			.append("_")
+			.append(SnomedRfFileNameBuilder.getReleaseDate(configuration))
+			.append(".txt")
+			.toString();
+	}
+
+	private String getLanguageCode(String referencedComponentId, SnomedExportConfiguration configuration) {
+		ISnomedDescription description = SnomedRequests.prepareGetDescription().setComponentId(referencedComponentId).build(configuration.getCurrentBranchPath().getPath()).executeSync(eventBus);
+		String languageCode = description.getLanguageCode();
+		return languageCode;
 	}
 }

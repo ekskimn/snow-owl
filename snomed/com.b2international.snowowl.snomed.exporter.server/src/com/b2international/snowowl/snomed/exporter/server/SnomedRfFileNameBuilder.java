@@ -68,7 +68,7 @@ public class SnomedRfFileNameBuilder {
 	/*
 	 * return the transient effective time if set, otherwise today's date
 	 */
-	private static String getReleaseDate(final SnomedExportConfiguration config) {
+	public static String getReleaseDate(final SnomedExportConfiguration config) {
 		String releaseDate = getExportTime();
 		if (!config.getUnsetEffectiveTimeLabel().isEmpty() && !config.getUnsetEffectiveTimeLabel().equals(EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL)) {
 			releaseDate = config.getUnsetEffectiveTimeLabel();

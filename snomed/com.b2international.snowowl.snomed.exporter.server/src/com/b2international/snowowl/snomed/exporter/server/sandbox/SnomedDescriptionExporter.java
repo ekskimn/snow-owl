@@ -22,15 +22,17 @@ import java.util.Set;
 
 import org.apache.lucene.document.Document;
 
+import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
+import com.b2international.snowowl.snomed.exporter.server.SnomedRfFileNameBuilder;
 
 /**
  * RF2 export implementation for SNOMED&nbsp;CT description.
  *
  */
-public class SnomedDescriptionExporter extends SnomedCoreExporter {
+public class SnomedDescriptionExporter extends SnomedCoreExporter implements SnomedFileSwitchingExporter {
 
 	public SnomedDescriptionExporter(final SnomedExportConfiguration configuration) {
 		super(checkNotNull(configuration, "configuration"));
@@ -72,6 +74,24 @@ public class SnomedDescriptionExporter extends SnomedCoreExporter {
 		sb.append(HT);
 		sb.append(SnomedMappings.descriptionCaseSignificance().getValueAsString(doc));
 		return sb.toString();
+	}
+	
+	@Override
+	public String getFileName(String[] rows) {
+		SnomedExportConfiguration configuration = getConfiguration();
+		String type = SnomedConstants.Concepts.TEXT_DEFINITION.equals(rows[6]) ? "TextDefinition" : "Description";
+		return new StringBuilder("sct2_")
+		.append(type)
+		.append("_")
+		.append(String.valueOf(configuration.getContentSubType()))
+		.append("-")
+		.append(rows[5])// languageCode
+		.append("_")
+		.append(configuration.getClientNamespace())
+		.append("_")
+		.append(SnomedRfFileNameBuilder.getReleaseDate(configuration))
+		.append(".txt")
+		.toString();
 	}
 
 	@Override
