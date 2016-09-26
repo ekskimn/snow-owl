@@ -19,11 +19,14 @@ import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenUpdatingBranchWithPathAndMetadata;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Collection;
@@ -110,6 +113,19 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	}
 	
 	private Multimap<String, Map<String, Object>> classify(String branch) throws Exception {
+		final String classificationRunId = waitForClassificationToComplete(branch);
+		// get relationship changes
+		final Collection<Map<String, Object>> items = RestExtensions.get(SnomedApiTestConstants.SCT_API, branch, "classifications", classificationRunId, "relationship-changes").body().path("items");
+		// index all relationship changes by their source ID
+		return Multimaps.index(items, new Function<Map<String, Object>, String>() {
+			@Override
+			public String apply(Map<String, Object> input) {
+				return (String) input.get("sourceId");
+			}
+		});
+	}
+
+	private String waitForClassificationToComplete(String branch) throws InterruptedException {
 		final Map<String, Object> classifyReq = ImmutableMap.<String, Object>of("reasonerId", SnomedCoreConfiguration.ELK_REASONER_ID); 
 		final Response classificationCreated = RestExtensions.postJson(SnomedApiTestConstants.SCT_API, classifyReq, branch, "classifications");
 		classificationCreated.then().statusCode(201);
@@ -122,17 +138,23 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			classificationStatus = ClassificationStatus.valueOf(RestExtensions.get(SnomedApiTestConstants.SCT_API, branch, "classifications", classificationRunId).body().<String>path("status"));
 		} while(ClassificationStatus.RUNNING == classificationStatus || ClassificationStatus.SCHEDULED == classificationStatus);
 		assertEquals(ClassificationStatus.COMPLETED, classificationStatus);
-		// get relationship changes
-		final Collection<Map<String, Object>> items = RestExtensions.get(SnomedApiTestConstants.SCT_API, branch, "classifications", classificationRunId, "relationship-changes").body().path("items");
-		// index all relationship changes by their source ID
-		return Multimaps.index(items, new Function<Map<String, Object>, String>() {
-			@Override
-			public String apply(Map<String, Object> input) {
-				return (String) input.get("sourceId");
-			}
-		});
+		return classificationRunId;
 	}
 
+	private String waitForClassificationSaveToComplete(String branch, String classificationRunId) throws InterruptedException {
+		final Map<String, Object> persistRequest = ImmutableMap.<String, Object>of("status", ClassificationStatus.SAVED.toString()); 
+		final Response persistResponse = RestExtensions.putJson(SnomedApiTestConstants.SCT_API, persistRequest, branch, "classifications", classificationRunId);
+		persistResponse.then().statusCode(204);
+		// wait for persisting relationships to complete, but no more than 1 min
+		ClassificationStatus classificationStatus;
+		do {
+			Thread.sleep(500);
+			classificationStatus = ClassificationStatus.valueOf(RestExtensions.get(SnomedApiTestConstants.SCT_API, branch, "classifications", classificationRunId).body().<String>path("status"));
+		} while(ClassificationStatus.SAVING_IN_PROGRESS == classificationStatus);
+		assertEquals(ClassificationStatus.SAVED, classificationStatus);
+		return classificationRunId;
+	}
+	
 	@Test
 	public void offerRedundantRelationships() throws Exception {
 		// create a parent concept
@@ -152,5 +174,27 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		final Map<String, Object> relationshipChange = Iterables.getOnlyElement(conceptRelationshipChanges);
 		assertEquals(ChangeNature.REDUNDANT.name(), relationshipChange.get("changeNature"));
 	}
-	
+
+	@Test
+	public void persistChangesWithNamespaceMetadata() throws Exception {
+		final Map<?, ?> metadata = ImmutableMap.of(SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY, "9999999");
+		whenUpdatingBranchWithPathAndMetadata(testBranchPath, metadata);
+		
+		// create a parent concept and a random target concept
+		final Map<?, ?> parentBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		final String parentConcept = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, parentBody);
+		final String targetConcept = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, parentBody);
+		
+		// add a new stated relationship to the parent concept pointing to the target
+		final Map<?, ?> relationshipReq = givenRelationshipRequestBody(parentConcept, Concepts.MORPHOLOGY, targetConcept, Concepts.MODULE_SCT_CORE, "New relationship");
+		assertComponentCreated(testBranchPath, SnomedComponentType.RELATIONSHIP, relationshipReq);
+		
+		// run and save the classification
+		final String classificationRunId = waitForClassificationToComplete(testBranchPath.getPath());
+		waitForClassificationSaveToComplete(testBranchPath.getPath(), classificationRunId);
+		
+		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, parentConcept, "relationships()")
+			.and().assertThat()
+			.body("relationships.items.id", hasItem(containsString("9999999")));
+	}
 }

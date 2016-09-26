@@ -16,22 +16,26 @@
 package com.b2international.snowowl.snomed.reasoner.server.diff.relationship;
 
 import java.util.Collection;
-import java.util.Map;
 
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ComponentIdentifierPair;
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChange.Nature;
 import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChangeProcessor;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSetMember;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -47,12 +51,24 @@ public class RelationshipPersister extends OntologyChangeProcessor<StatementFrag
 	
 	private final Collection<String> relationshipIds = Sets.newHashSet();
 	
+	private final String defaultModuleId;
+	private final String defaultReasonerNamespace;
+	
 	public RelationshipPersister(final SnomedEditingContext context, final Nature nature) {
 		this.context = context;
 		this.nature = nature;
 		this.inferredRelationshipConcept = context.lookup(Concepts.INFERRED_RELATIONSHIP, Concept.class);
 		this.existentialRelationshipConcept = context.lookup(Concepts.EXISTENTIAL_RESTRICTION_MODIFIER, Concept.class);
 		this.universalRelationshipConcept = context.lookup(Concepts.UNIVERSAL_RESTRICTION_MODIFIER, Concept.class);
+		
+		final IEventBus eventBus = ApplicationContext.getServiceForClass(IEventBus.class);
+		final Branch editingContextBranch = SnomedRequests.branching()
+				.prepareGet(context.getBranch())
+				.execute(eventBus)
+				.getSync();
+		
+		this.defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(editingContextBranch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
+		this.defaultReasonerNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(editingContextBranch, SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY);
 	}
 
 	@Override
@@ -75,11 +91,12 @@ public class RelationshipPersister extends OntologyChangeProcessor<StatementFrag
 
 		final String sourceConceptId = Long.toString(conceptId);
 		final Concept sourceConcept = context.lookup(sourceConceptId, Concept.class);
-		final String namespace = SnomedIdentifiers.create(sourceConceptId).getNamespace();
-		final Concept module = sourceConcept.getModule();
-		
 		final Concept typeConcept = context.lookup(Long.toString(addedEntry.getTypeId()), Concept.class);
 		final Concept destinationConcept = context.lookup(Long.toString(addedEntry.getDestinationId()), Concept.class);
+		
+		// Use module and/or namespace from source concept, if not given
+		final Concept module = (defaultModuleId != null) ? context.lookup(defaultModuleId, Concept.class) : sourceConcept.getModule();
+		final String namespace = (defaultReasonerNamespace != null) ? defaultReasonerNamespace : SnomedIdentifiers.create(sourceConceptId).getNamespace();
 		
 		final Relationship newRel = context.buildEmptyRelationship(namespace);
 		

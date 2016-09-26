@@ -33,15 +33,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class SnomedCoreConfiguration {
 	
 	public static final String ELK_REASONER_ID = "org.semanticweb.elk.elk.reasoner.factory"; //$NON-NLS-1$
-	private static final String DEFAULT_REASONER = ELK_REASONER_ID;
+	
+	public static final String DEFAULT_REASONER = ELK_REASONER_ID;
 	public static final String DEFAULT_LANGUAGE = "en-gb"; //$NON-NLS-1$
+	
 	public static final int DEFAULT_MAXIMUM_REASONER_COUNT = 2;
 	public static final int DEFAULT_MAXIMUM_REASONER_RESULTS = 10;
 	public static final int DEFAULT_MAXIMUM_REASONER_RUNS = 1000;
+	
 	public static final String DEFAULT_NAMESPACE = ""; //$NON-NLS-1$
 	public static final String DEFAULT_MODULE = Concepts.MODULE_SCT_CORE;
+	
+	// Branch metadata property keys
 	public static final String BRANCH_DEFAULT_NAMESPACE_KEY = "defaultNamespace";
-	public static final String BRANCH_ASSERTION_GROUP_NAMES = "assertionGroupNames";
+	public static final String BRANCH_DEFAULT_REASONER_NAMESPACE_KEY = "defaultReasonerNamespace";
+	public static final String BRANCH_DEFAULT_MODULE_ID_KEY = "defaultModuleId";
+	public static final String BRANCH_ASSERTION_GROUP_NAMES_KEY = "assertionGroupNames";
 	
 	@Min(1)
 	@Max(3)

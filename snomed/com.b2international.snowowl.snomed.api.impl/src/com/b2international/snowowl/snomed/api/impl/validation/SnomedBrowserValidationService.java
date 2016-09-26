@@ -47,7 +47,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	@Override
 	public List<ISnomedInvalidContent> validateConcept(String branchPath, ISnomedBrowserConcept browserConcept, List<ExtendedLocale> locales) {
 		final Branch branch = SnomedRequests.branching().prepareGet(branchPath).executeSync(bus);
-		final String assertionGroupNamesString = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_ASSERTION_GROUP_NAMES);
+		final String assertionGroupNamesString = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_ASSERTION_GROUP_NAMES_KEY);
 		final Set<String> assertionGroupNames = new HashSet<String>();
 		if (Strings.isNullOrEmpty(assertionGroupNamesString)) {
 			throw new BadRequestException("No assertion groups configured for this branch.");

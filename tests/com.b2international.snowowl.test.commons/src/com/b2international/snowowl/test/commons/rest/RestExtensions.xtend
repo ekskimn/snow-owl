@@ -171,5 +171,8 @@ class RestExtensions {
 	def static Response postJson(String api, Map<String, ?> json, String...segments) {
 		givenAuthenticatedRequest(api).withJson(json).post(asPath(segments))
 	}
-
+	
+	def static Response putJson(String api, Map<String, ?> json, String...segments) {
+		givenAuthenticatedRequest(api).withJson(json).put(asPath(segments))
+	}
 }
