@@ -25,11 +25,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.RandomAccessFile;
 import java.io.Writer;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,11 +50,6 @@ import com.google.common.base.Supplier;
  */
 public class SnomedExportExecutor {
 	
-	/**
-	 * 
-	 */
-	private static final Charset UTF_8 = Charset.forName("UTF-8");
-
 	private static final String RELEASE_BASE_DIRECTORY = "SnomedCT_Release_";
 	
 	private final String temporaryWorkingDirectory;
@@ -168,7 +159,7 @@ public class SnomedExportExecutor {
 		if (writer == null) {
 			File file = new File(releaseFileRelativeDirectory, filename);
 			boolean newFile = !file.exists();
-			writer = new BufferedWriter(new FileWriter(file));
+			writer = new BufferedWriter(new FileWriter(file, true));
 			if (newFile) {
 				writeFileHeader(writer, snomedExporter.getColumnHeaders());
 			}
