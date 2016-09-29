@@ -146,7 +146,12 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 				case DEFAULT:
 					termDisjunctionQuery.add(createExactMatchQuery(searchTerm, termQueryBuilder));
 					termDisjunctionQuery.add(createAllTermsPresentQuery(searchTerm, termQueryBuilder));
-					termDisjunctionQuery.add(createAllTermPrefixesPresentQuery(searchTerm, termQueryBuilder));
+				
+					final BooleanQuery prefixesQuery = createAllTermPrefixesPresentQuery(searchTerm, termQueryBuilder);
+					if (prefixesQuery.getClauses().length > 0) {
+						termDisjunctionQuery.add(prefixesQuery);
+					}
+					
 					break;
 					
 				default:
@@ -203,7 +208,7 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 		return termQueryBuilder.createBooleanQuery(SnomedMappings.descriptionTerm().fieldName(), searchTerm, Occur.MUST);
 	}
 
-	private Query createAllTermPrefixesPresentQuery(final String searchTerm, final QueryBuilder termQueryBuilder) {
+	private BooleanQuery createAllTermPrefixesPresentQuery(final String searchTerm, final QueryBuilder termQueryBuilder) {
 		final BooleanQuery query = new BooleanQuery(true);
 		final List<String> prefixes = IndexUtils.split(termQueryBuilder.getAnalyzer(), searchTerm);
 	
