@@ -29,6 +29,11 @@ import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescrip
  */
 public final class SnomedDescriptionSearchRequestBuilder extends SnomedSearchRequestBuilder<SnomedDescriptionSearchRequestBuilder, SnomedDescriptions> {
 
+	public enum MatchMode {
+		DEFAULT,
+		EXACT
+	}
+
 	SnomedDescriptionSearchRequestBuilder(String repositoryId) {
 		super(repositoryId);
 	}
@@ -64,6 +69,10 @@ public final class SnomedDescriptionSearchRequestBuilder extends SnomedSearchReq
 	
 	public SnomedDescriptionSearchRequestBuilder filterByAcceptability(Acceptability acceptabilityFilter) {
 		return addOption(OptionKey.ACCEPTABILITY, acceptabilityFilter);
+	}
+	
+	public SnomedDescriptionSearchRequestBuilder mode(MatchMode mode) {
+		return addOption(OptionKey.MODE, mode);
 	}
 	
 	@Override

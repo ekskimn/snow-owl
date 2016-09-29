@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -30,6 +29,7 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionSearchRequestBuilder.MatchMode;
 import com.b2international.snowowl.snomed.datastore.server.request.SnomedRequests;
 
 public class ValidationDescriptionService implements org.ihtsdo.drools.service.DescriptionService {
@@ -141,8 +141,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
-				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(exactTerm)
+				.mode(MatchMode.EXACT)
+				.build(branchPath)
+				.executeSync(bus);
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -155,8 +159,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(false)
-				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(false)
+				.filterByTerm(exactTerm)
+				.mode(MatchMode.EXACT)
+				.build(branchPath)
+				.executeSync(bus);
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -227,9 +235,13 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		Set<Description> matchesInHierarchy = new HashSet<>();
 
 		// retrieve partially-matching descriptions
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
-				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
-				.build(branchPath).executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(description.getTerm())
+				.filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
+				.mode(MatchMode.EXACT)
+				.build(branchPath)
+				.executeSync(bus);
 
 		// filter by exact match and save concept ids
 		Set<String> matchingConceptIds = new HashSet<>();

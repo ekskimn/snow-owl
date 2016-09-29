@@ -33,11 +33,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.spans.SpanFirstQuery;
-import org.apache.lucene.search.spans.SpanMultiTermQueryWrapper;
-import org.apache.lucene.search.spans.SpanNearQuery;
-import org.apache.lucene.search.spans.SpanQuery;
-import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.util.QueryBuilder;
 
 import com.b2international.snowowl.core.api.IBranchPath;
@@ -45,7 +40,6 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.datastore.index.IndexUtils;
-import com.b2international.snowowl.datastore.index.lucene.BookendTokenFilter;
 import com.b2international.snowowl.datastore.index.lucene.ComponentTermAnalyzer;
 import com.b2international.snowowl.datastore.index.mapping.IndexField;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
@@ -56,10 +50,10 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptio
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
 import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedQueryBuilder;
 import com.b2international.snowowl.snomed.datastore.server.converter.SnomedConverters;
+import com.b2international.snowowl.snomed.datastore.server.request.SnomedDescriptionSearchRequestBuilder.MatchMode;
 import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Iterables;
 
 import bak.pcj.LongCollection;
 import bak.pcj.adapter.LongCollectionToCollectionAdapter;
@@ -69,13 +63,16 @@ import bak.pcj.adapter.LongCollectionToCollectionAdapter;
  */
 final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDescriptions> {
 
+	private static final int MIN_TERM_LENGTH = 2;
+	
 	enum OptionKey {
 		TERM,
 		CONCEPT_ESCG,
 		CONCEPT_ID,
 		TYPE,
 		ACCEPTABILITY,
-		LANGUAGE;
+		LANGUAGE,
+		MODE;
 	}
 	
 	SnomedDescriptionSearchRequest() {}
@@ -83,8 +80,8 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 	@Override
 	protected SnomedDescriptions doExecute(BranchContext context) throws IOException {
 		final IndexSearcher searcher = context.service(IndexSearcher.class);
-		if (containsKey(OptionKey.TERM) && getString(OptionKey.TERM).length() < 3) {
-			throw new BadRequestException("Description term must be at least 3 characters long.");
+		if (containsKey(OptionKey.TERM) && getString(OptionKey.TERM).length() < MIN_TERM_LENGTH) {
+			throw new BadRequestException("Description term must be at least " + MIN_TERM_LENGTH + " characters long.");
 		}
 		
 		if (containsKey(OptionKey.ACCEPTABILITY) || !languageRefSetIds().isEmpty()) {
@@ -140,14 +137,21 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 			final QueryBuilder termQueryBuilder = new QueryBuilder(bookendAnalyzer);
 			final DisjunctionMaxQuery termDisjunctionQuery = new DisjunctionMaxQuery(0.0f);
 			
-			termDisjunctionQuery.add(createExactMatchQuery(searchTerm, termQueryBuilder));
-			termDisjunctionQuery.add(createAllTermsPresentQuery(searchTerm, termQueryBuilder));
-			
-			final ComponentTermAnalyzer nonBookendAnalyzer = new ComponentTermAnalyzer(false, false);
-			final List<String> prefixes = IndexUtils.split(nonBookendAnalyzer, searchTerm);
-
-			termDisjunctionQuery.add(createAllTermPrefixesPresentFromBeginningQuery(prefixes));
-			termDisjunctionQuery.add(createAllTermPrefixesPresentQuery(prefixes));
+			final MatchMode mode = containsKey(OptionKey.MODE) ? get(OptionKey.MODE, MatchMode.class) : MatchMode.DEFAULT;
+			switch (mode) {
+				case EXACT:
+					termDisjunctionQuery.add(createExactMatchQuery(searchTerm, termQueryBuilder));
+					break;
+				
+				case DEFAULT:
+					termDisjunctionQuery.add(createExactMatchQuery(searchTerm, termQueryBuilder));
+					termDisjunctionQuery.add(createAllTermsPresentQuery(searchTerm, termQueryBuilder));
+					termDisjunctionQuery.add(createAllTermPrefixesPresentQuery(searchTerm, termQueryBuilder));
+					break;
+					
+				default:
+					throw new IllegalStateException("Unknown description term match mode " + mode + ".");
+			}
 			
 			queryBuilder.and(termDisjunctionQuery);
 			sort = Sort.RELEVANCE;
@@ -199,24 +203,17 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 		return termQueryBuilder.createBooleanQuery(SnomedMappings.descriptionTerm().fieldName(), searchTerm, Occur.MUST);
 	}
 
-	private Query createAllTermPrefixesPresentFromBeginningQuery(List<String> prefixes) {
-		final List<SpanQuery> clauses = newArrayList();
-		clauses.add(new SpanTermQuery(SnomedMappings.descriptionTerm().toTerm(Character.toString(BookendTokenFilter.LEADING_MARKER))));
-		
-		for (String prefix : prefixes) {
-			clauses.add(new SpanMultiTermQueryWrapper<>(new PrefixQuery(SnomedMappings.descriptionTerm().toTerm(prefix))));
-		}
-		
-		return new SpanFirstQuery(new SpanNearQuery(Iterables.toArray(clauses, SpanQuery.class), 0, true), prefixes.size() + 1);
-	}
-
-	private Query createAllTermPrefixesPresentQuery(List<String> prefixes) {
+	private Query createAllTermPrefixesPresentQuery(final String searchTerm, final QueryBuilder termQueryBuilder) {
 		final BooleanQuery query = new BooleanQuery(true);
-
-		for (String prefix : prefixes) {
-			query.add(new PrefixQuery(SnomedMappings.descriptionTerm().toTerm(prefix)), Occur.MUST);
+		final List<String> prefixes = IndexUtils.split(termQueryBuilder.getAnalyzer(), searchTerm);
+	
+		for (final String prefix : prefixes) {
+			// Skip small individual tokens as they generate lots of prefix candidates 
+			if (prefix.length() >= MIN_TERM_LENGTH) {
+				query.add(new PrefixQuery(SnomedMappings.descriptionTerm().toTerm(prefix)), Occur.MUST);
+			}
 		}
-
+	
 		return query;
 	}
 
