@@ -26,11 +26,12 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.snowowl.core.domain.CollectionResource;
-import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.impl.SnomedMrcmService;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
+import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -44,13 +45,7 @@ import com.wordnik.swagger.annotations.ApiResponses;
 public class SnomedMrcmController extends AbstractSnomedRestService {
 
 	@Autowired
-	private IEventBus bus;
-	
-	@Autowired
 	private SnomedMrcmService mrcmService;
-	
-	@Autowired
-	private SnomedResourceExpander resourceExpander;
 	
 	@ApiOperation(
 		value = "Retrieve MRCM relationship rules for a concept.", 
@@ -64,7 +59,7 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 	}
 	
 	@RequestMapping(value="/{path:**}/domain-attributes", method=RequestMethod.GET)
-	public @ResponseBody SnomedConcepts getDomainAttributes(
+	public @ResponseBody DeferredResult<SnomedConcepts> getDomainAttributes(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -89,11 +84,11 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 		
-		return mrcmService.getDomainAttributes(branchPath, parentIds, offset, limit, getExtendedLocales(acceptLanguage), expand);
+		return DeferredResults.wrap(mrcmService.getDomainAttributes(branchPath, parentIds, offset, limit, getExtendedLocales(acceptLanguage), expand));
 	}
 
 	@RequestMapping(value="/{path:**}/attribute-values/{attributeId}", method=RequestMethod.GET)
-	public @ResponseBody SnomedConcepts getAttributeValues(
+	public @ResponseBody DeferredResult<SnomedConcepts> getAttributeValues(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -122,8 +117,8 @@ public class SnomedMrcmController extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 		
-		return mrcmService.getAttributeValues(branchPath, attributeId.toString(), termPrefix, 
-				offset, limit, getExtendedLocales(acceptLanguage), expand);
+		return DeferredResults.wrap(mrcmService.getAttributeValues(branchPath, attributeId.toString(), termPrefix, 
+				offset, limit, getExtendedLocales(acceptLanguage), expand));
 	}
 
 }

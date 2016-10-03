@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -52,7 +53,7 @@ public class SnomedMrcmService {
 		return predicates;
 	}
 
-	public SnomedConcepts getDomainAttributes(String branchPath, List<String> parentIds, 
+	public Promise<SnomedConcepts> getDomainAttributes(String branchPath, List<String> parentIds, 
 			int offset, int limit, final List<ExtendedLocale> locales, final String expand) {
 		
 		StringBuilder builder = new StringBuilder();
@@ -65,7 +66,7 @@ public class SnomedMrcmService {
 				}
 			}
 			if (typeExpressions.isEmpty()) {
-				return new SnomedConcepts(offset, limit, 0);
+				return Promise.immediate(new SnomedConcepts(offset, limit, 0)); 
 			}
 			for (String typeExpression : typeExpressions) {
 				if (builder.length() > 0) {
@@ -86,10 +87,10 @@ public class SnomedMrcmService {
 			.setExpand(expand)
 			.setLocales(locales)
 			.build(branchPath)
-			.executeSync(bus);
+			.execute(bus);
 	}
 
-	public SnomedConcepts getAttributeValues(String branchPath, String attributeId, String termPrefix, 
+	public Promise<SnomedConcepts> getAttributeValues(String branchPath, String attributeId, String termPrefix, 
 			int offset, int limit, List<ExtendedLocale> locales, String expand) {
 		
 		IBranchPath branch = getBranch(branchPath);
@@ -131,7 +132,7 @@ public class SnomedMrcmService {
 				.setExpand(expand)
 				.setLocales(locales)
 				.build(branchPath)
-				.executeSync(bus);
+				.execute(bus);
 	}
 	
 	private IBranchPath getBranch(String branchPath) {
