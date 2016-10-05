@@ -67,15 +67,13 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			while ((line = bufferedReader.readLine()) != null) {
 				String[] words = line.split("\\s+");
 
-				// format: 0: word, 1: type (only use type 1 words)
-				if (words[1].equals("1")) {
-					caseSignificantWords.add(words[0]);
-				}
+				// format: 0: word, 1: type (unused)
+				caseSignificantWords.add(words[0]);
 			}
 			fileReader.close();
 			logger.info("Loaded " + caseSignificantWords.size() + " case sensitive words into cache from: " + fileName);
 		} catch (IOException e) {
-			logger.info("Failed to retrieve case sensitive words file: " + fileName);
+			logger.debug("Failed to retrieve case sensitive words file: " + fileName);
 
 		}
 
@@ -108,13 +106,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 												// lines
 			}
 			fileReader.close();
+			refsetToLanguageSpecificWordsMap.put(refsetId, words);
 			logger.info("Loaded " + words.size() + " language-specific spellings into cache for refset " + refsetId
 					+ " from: " + fileName);
 
 		} catch (IOException e) {
 			logger.info("Failed to retrieve language-specific terms for refset " + refsetId + " in file " + fileName);
-		} finally {
-			refsetToLanguageSpecificWordsMap.put(refsetId, words);
 		}
 	}
 
@@ -171,22 +168,16 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		hierarchyRootIds = new HashSet<>();
 
 		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
-				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(form:\"inferred\",direct:true)").build(branchPath)
+				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(direct:true)").build(branchPath)
 				.executeSync(bus);
 		for (ISnomedConcept rootConcept : rootConcepts) {
 			for (ISnomedConcept childConcept : rootConcept.getDescendants()) {
 				hierarchyRootIds.add(childConcept.getId());
 			}
 		}
-		logger.info("Cached " + hierarchyRootIds.size() + " hierarchy root ids for validation");
 	}
 
 	private String getHierarchyIdForConcept(ISnomedConcept concept) {
-
-		// if concept null, return null
-		if (concept == null) {
-			return null;
-		}
 
 		// if not yet retrieved, cache the root concepts
 		if (hierarchyRootIds == null) {
@@ -209,11 +200,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return null;
 	}
 
-	/**
-	 * @param concept
-	 * @param description
-	 * @return
-	 */
 	@Override
 	public Set<Description> findMatchingDescriptionInHierarchy(Concept concept, Description description) {
 
@@ -221,31 +207,30 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		if (hierarchyRootIds == null) {
 			cacheHierarchyRootConcepts();
 		}
-
-		// the return set
+		
 		Set<Description> matchesInHierarchy = new HashSet<>();
 
-		// retrieve partially-matching descriptions
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
 				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
 				.build(branchPath).executeSync(bus);
 
-		// filter by exact match and save concept ids
-		Set<String> matchingConceptIds = new HashSet<>();
 		Set<ISnomedDescription> matchesInSnomed = new HashSet<>();
+
+		// filter by exact match
 		for (ISnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(description.getTerm())) {
 				matchesInSnomed.add(iSnomedDescription);
-				matchingConceptIds.add(iSnomedDescription.getConceptId());
 			}
 		}
 
 		// if matches found
 		if (matchesInSnomed.size() > 0) {
+			
+			System.out.println("Matches found");
 
 			// the concept id used to determine the hierarchy
 			String lookupId = null;
-
+			
 			// if this is a root id, use it as the lookup id
 			if (hierarchyRootIds.contains(concept.getId())) {
 				lookupId = concept.getId();
@@ -265,51 +250,38 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			// if id could not be retrieved, cannot determine hierarchy
 			// either SNOMED CT root concept, or has no active parents
 			if (lookupId == null) {
+				System.out.println("Lookup id is null, skipping");
 				return matchesInHierarchy;
 			}
+			
+			System.out.println("lookupId: " + lookupId);
+		
 
 			// use id to retrieve concept for hierarchy detection
-			ISnomedConcept hierarchyConcept = null;
+			ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
+					.setExpand("ancestors(direct:false)").build(branchPath).executeSync(bus);
 
-			try {
-				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
-						.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
-						.build(branchPath).executeSync(bus);
-
-				// back out if cannot determine hierarchy
-				if (hierarchyConcept == null || getHierarchyIdForConcept(hierarchyConcept) == null) {
-					return matchesInHierarchy;
-				}
-			} catch (Exception e) {
-				// do nothing, failure should not interrupt
+			System.out.println("  Hierarchy (orig.): " + getHierarchyIdForConcept(iSnomedConcept));
+			
+			// back out if cannot determine hierarchy (current case: new hierarchical root)
+			if (getHierarchyIdForConcept(iSnomedConcept) == null) {
+				System.out.println("Could not determine hierarchy for original concept. Skipping.");
+				return matchesInHierarchy;
 			}
-
-			// retrieve active concepts from saved concept ids
-			List<ISnomedConcept> conceptsWithAncestors = new ArrayList<>();
-			try {
-
-				for (String conceptId : matchingConceptIds) {
-					ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
-							.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
-							.build(branchPath).executeSync(bus);
-					conceptsWithAncestors.add(iSnomedConcept);
+			
+			// retrieve matching concepts (with ancestors) and compare
+			for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
+				System.out.println("    Checking matching concept " + iSnomedDescription.getConceptId());
+				ISnomedConcept matchingConcept = SnomedRequests.prepareGetConcept()
+						.setComponentId(iSnomedDescription.getConceptId()).setExpand("ancestors(direct:false)")
+						.build(branchPath).executeSync(bus);
+				System.out.println("      Hierarchy: " + getHierarchyIdForConcept(matchingConcept));
+				
+				if (getHierarchyIdForConcept(iSnomedConcept).equals(getHierarchyIdForConcept(matchingConcept))) {
+					System.out.println("Matching term in hierarchy found!");
+					matchesInHierarchy.add(
+							new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 				}
-
-				// cycle over matching descriptions and compare to concepts with
-				// ancestors
-				for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
-					for (ISnomedConcept iSnomedConcept : conceptsWithAncestors) {
-						if (iSnomedConcept.getId().equals(iSnomedDescription.getConceptId())) {
-							if (getHierarchyIdForConcept(hierarchyConcept)
-									.equals(getHierarchyIdForConcept(iSnomedConcept))) {
-								matchesInHierarchy.add(new ValidationSnomedDescription(iSnomedDescription,
-										iSnomedDescription.getConceptId()));
-							}
-						}
-					}
-				}
-			} catch (Exception e) {
-				// do nothing -- prevent blocking errors
 			}
 		}
 
@@ -339,17 +311,15 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			for (String word : words) {
 
 				// Step 1: Check en-us preferred synonyms for en-gb spellings
-				if (usAcc != null && refsetToLanguageSpecificWordsMap.containsKey(Constants.GB_EN_LANG_REFSET)
-						&& refsetToLanguageSpecificWordsMap.get(Constants.GB_EN_LANG_REFSET)
-								.contains(word.toLowerCase())) {
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(usAcc) && refsetToLanguageSpecificWordsMap
+						.get(Constants.GB_EN_LANG_REFSET).contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-us refset but refers to a word that has en-gb spelling: "
 							+ word + "\n";
 				}
 
 				// Step 2: Check en-gb preferred synonyms for en-en spellings
-				if (gbAcc != null && refsetToLanguageSpecificWordsMap.containsKey(Constants.US_EN_LANG_REFSET)
-						&& refsetToLanguageSpecificWordsMap.get(Constants.US_EN_LANG_REFSET)
-								.contains(word.toLowerCase())) {
+				if (Constants.ACCEPTABILITY_PREFERRED.equals(gbAcc) && refsetToLanguageSpecificWordsMap
+						.get(Constants.US_EN_LANG_REFSET).contains(word.toLowerCase())) {
 					errorMessage += "Synonym is preferred in the en-gb refset but refers to a word that has en-us spelling: "
 							+ word + "\n";
 				}
@@ -377,23 +347,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			// written. Original check for mis-capitalization, but false
 			// positives, e.g. "oF" appears in list but spuriously reports "of"
 			// Map preserved for lower-case matching in future
-			if (caseSignificantWords.contains(word)) {
+			if (caseSignificantWords.contains(word)
+					&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
+				result += "Description contains case-sensitive words but is not marked case sensitive: " + word + ".\n";
 
-				// term starting with case sensitive word must be ETCS
-				if (description.getTerm().startsWith(word)
-						&& !Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())) {
-					result += "Description starts with case-sensitive word but is not marked entire term case sensitive: "
-							+ word + ".\n";
-				}
-
-				// term containing case sensitive word (not at start) must be
-				// ETCS or OICCI
-				else if (!Constants.ENTIRE_TERM_CASE_SENSITIVE.equals(description.getCaseSignificanceId())
-						&& !Constants.ONLY_INITIAL_CHARACTER_CASE_INSENSITIVE
-								.equals(description.getCaseSignificanceId())) {
-					result += "Description contains case-sensitive word but is not marked entire term case sensitive or only initial character case insensitive: "
-							+ word + ".\n";
-				}
 			}
 		}
 		return result;
