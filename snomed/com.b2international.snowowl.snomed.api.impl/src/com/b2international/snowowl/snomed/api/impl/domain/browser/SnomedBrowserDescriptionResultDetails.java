@@ -19,7 +19,6 @@ public class SnomedBrowserDescriptionResultDetails implements ISnomedBrowserDesc
 
 	private String conceptId;
 	private String fsn;
-	private String preferredSynonym;
 	private boolean active;
 	private String moduleId;
 	private DefinitionStatus definitionStatus;
@@ -32,11 +31,6 @@ public class SnomedBrowserDescriptionResultDetails implements ISnomedBrowserDesc
 	@Override
 	public String getFsn() {
 		return fsn;
-	}
-	
-	@Override
-	public String getPreferredSynonym() {
-		return preferredSynonym;
 	}
 
 	@Override
@@ -61,10 +55,6 @@ public class SnomedBrowserDescriptionResultDetails implements ISnomedBrowserDesc
 	public void setFsn(final String fsn) {
 		this.fsn = fsn;
 	}
-	
-	public void setPreferredSynonym(final String preferredSynonym) {
-		this.preferredSynonym = preferredSynonym;
-	}
 
 	public void setActive(final boolean active) {
 		this.active = active;
@@ -85,8 +75,6 @@ public class SnomedBrowserDescriptionResultDetails implements ISnomedBrowserDesc
 		builder.append(conceptId);
 		builder.append(", fsn=");
 		builder.append(fsn);
-		builder.append(", preferredSynonym=");
-		builder.append(preferredSynonym);
 		builder.append(", active=");
 		builder.append(active);
 		builder.append(", moduleId=");

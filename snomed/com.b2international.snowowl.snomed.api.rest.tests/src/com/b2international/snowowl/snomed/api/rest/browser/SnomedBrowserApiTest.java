@@ -34,7 +34,6 @@ import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserA
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.createIsaRelationship;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.generateComponentId;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.givenConceptRequestBody;
-import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.nullValue;
 
@@ -53,7 +52,6 @@ import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -67,8 +65,6 @@ import com.jayway.restassured.response.ValidatableResponse;
  */
 public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 
-	private static final String FINDING_CONTEXT = "408729009";
-	
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
 	@Test
@@ -294,51 +290,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		Assert.assertEquals("OneA", getFsn(SnomedBrowserApiAssert.getConcept(branchPath, (String) conceptOne.get("conceptId"))).get("term"));
 		Assert.assertEquals("TwoA", getFsn(SnomedBrowserApiAssert.getConcept(branchPath, (String) conceptTwo.get("conceptId"))).get("term"));
 	}
-	
-	@Test
-	public void getConceptChildren() throws IOException {
-		givenBranchWithPath(testBranchPath);
-		
-		// Create child of Finding context
-		createConcept(testBranchPath, "Special finding context (attribute)", "Special finding context", FINDING_CONTEXT);
-		
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
-				.when().get("/browser/{path}/concepts/{conceptId}/children?form=stated&preferredDescriptionType=FSN", testBranchPath.getPath(), FINDING_CONTEXT)
-				.then().assertThat().statusCode(200)
-				.and().body("size()", equalTo(1))
-				.and().body("[0].fsn", equalTo("Special finding context (attribute)"));
-		
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
-				.when().get("/browser/{path}/concepts/{conceptId}/children?form=stated&preferredDescriptionType=SYNONYM", testBranchPath.getPath(), FINDING_CONTEXT)
-				.then().assertThat().statusCode(200)
-				.and().body("size()", equalTo(1))
-				.and().body("[0].preferredSynonym", equalTo("Special finding context"));
-	}
-	
-	@Test
-	public void searchDescriptions() throws IOException {
-		givenBranchWithPath(testBranchPath);
-		
-		// Create child of Finding context with unique PT and FSN
-		createConcept(testBranchPath, "Visotactile finding context (attribute)", "Circulatory finding context", FINDING_CONTEXT);
-		
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
-				.when().get("/browser/{path}/descriptions?query={query}&preferredDescriptionType=FSN", testBranchPath.getPath(), "visotactile")
-				.then().assertThat().statusCode(200)
-				.and().body("size()", equalTo(1))
-				.and().body("[0].concept.fsn", equalTo("Visotactile finding context (attribute)"));
-		
-		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
-				.when().get("/browser/{path}/descriptions?query={query}&preferredDescriptionType=SYNONYM", testBranchPath.getPath(), "circulatory")
-				.then().assertThat().statusCode(200)
-				.and().body("size()", equalTo(1))
-				.and().body("[0].concept.preferredSynonym", equalTo("Circulatory finding context"));
-	}
-	
+
 	private Map<String, Object> getFsn(final Map<String, Object> conceptOne) {
 		@SuppressWarnings("unchecked")
 		final List<Map<String, Object>> descs = (List<Map<String, Object>>) conceptOne.get("descriptions");
@@ -350,16 +302,12 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		return null;
 	}
 
-	private Map<String, Object> createConceptWithFsn(String fsn) throws IOException {
-		return createConcept(createMainPath(), fsn, fsn, ROOT_CONCEPT);
-	}
-	
-	private Map<String, Object> createConcept(IBranchPath branchPath, String fsn, String pt, String parentId) throws IOException {
+	private Map<String, Object> createConceptWithFsn(String fsn) throws JsonProcessingException, IOException {
 		Date creationDate = new Date();
-		final ImmutableList<?> descriptions = createDescriptions(fsn, pt, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
-		final ImmutableList<?> relationships = createIsaRelationship(parentId, MODULE_SCT_CORE, creationDate);
-		final Map<?, ?> requestBody = givenConceptRequestBody(null, true, fsn, pt, MODULE_SCT_CORE, descriptions, relationships, creationDate);
-		final ExtractableResponse<Response> extract = assertComponentCreatedWithStatus(branchPath, requestBody, 200).extract();
+		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
+		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate);
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, true, fsn, MODULE_SCT_CORE, descriptions, relationships, creationDate);
+		final ExtractableResponse<Response> extract = assertComponentCreatedWithStatus(createMainPath(), requestBody, 200).extract();
 		return objectMapper.readValue(extract.body().asString(), new TypeReference<Map<String, Object>>(){});
 	}
 	
@@ -371,4 +319,5 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final Map<?, ?> requestBody = givenConceptRequestBody(conceptId, true, fsn, MODULE_SCT_CORE, descriptions, relationships, creationDate);
 		return assertComponentCreatedWithStatus(createMainPath(), requestBody, 200);
 	}
+
 }

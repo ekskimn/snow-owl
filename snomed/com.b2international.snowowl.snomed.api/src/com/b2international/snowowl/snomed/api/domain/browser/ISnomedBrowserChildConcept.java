@@ -21,8 +21,7 @@ import com.b2international.snowowl.snomed.core.domain.DefinitionStatusProvider;
 /**
  * Represents a summary of a specific SNOMED CT concept, returned when requesting concept children the IHTSDO SNOMED CT Browser.
  */
-public interface ISnomedBrowserChildConcept extends IConceptIdWithFsnProvider, IConceptIdWithPreferredSynonymProvider,
-		IStatusWithModuleIdProvider, DefinitionStatusProvider, TaxonomyNode {
+public interface ISnomedBrowserChildConcept extends IConceptIdWithFsnProvider, DefinitionStatusProvider, IStatusWithModuleIdProvider, TaxonomyNode {
 
 	/**
 	 * @return the characteristic type of the IS A relationship where the link to the child concept originates from

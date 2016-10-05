@@ -49,7 +49,6 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConce
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConstant;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
-import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
@@ -340,11 +339,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Stated or inferred form", allowableValues="stated, inferred")
 			@RequestParam(value="form", defaultValue="inferred")
-			final String form,
-			
-			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
-			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
-			final SnomedBrowserDescriptionType preferredDescriptionType) {
+			final String form) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -358,7 +353,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		
 		if ("stated".equals(form) || "inferred".equals(form)) {
 			final IComponentRef ref = createComponentRef(branchPath, conceptId);
-			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form), preferredDescriptionType);
+			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form));
 		}
 		
 		throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
@@ -375,7 +370,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/{path:**}/descriptions",
 			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsFSN(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -394,11 +389,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String languageSetting,
-			
-			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
-			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
-			final SnomedBrowserDescriptionType preferredDescriptionType) {
+			final String languageSetting) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -411,7 +402,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final StorageRef ref = new StorageRef(repositoryId, branchPath);
-		return browserService.getDescriptions(ref, query, extendedLocales, offset, limit, preferredDescriptionType);
+		return browserService.getDescriptions(ref, query, extendedLocales, offset, limit);
 	}
 
 	@ApiOperation(

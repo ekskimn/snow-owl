@@ -41,13 +41,6 @@ public interface ISnomedDescription extends SnomedCoreComponent {
 	String getTypeId();
 	
 	/**
-	 * Returns the container concept of the description.
-	 *  
-	 * @return the container concept
-	 */
-	ISnomedConcept getConcept();
-	
-	/**
 	 * Returns the type concept of the description.
 	 *  
 	 * @return the type concept

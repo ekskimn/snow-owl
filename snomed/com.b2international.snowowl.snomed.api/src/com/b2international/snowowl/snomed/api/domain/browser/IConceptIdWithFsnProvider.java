@@ -16,17 +16,13 @@
 package com.b2international.snowowl.snomed.api.domain.browser;
 
 /**
- * Holds a SNOMED CT concept's unique identifier along with its FSN for the requested language and dialect.
+ * Holds a SNOMED CT concept's unique identifier along with its Fully Specified Name.
  */
 public interface IConceptIdWithFsnProvider {
 
-	/** 
-	 * @return The concept's unique component identifier 
-	 */
+	/** @return the concept's unique component identifier */
 	String getConceptId();
 
-	/**
-	 * @return The fully specified name of this concept for the requested dialect
-	 */
+	/** @return the Fully Specified Name of this concept for the requested language code */
 	String getFsn();
 }
