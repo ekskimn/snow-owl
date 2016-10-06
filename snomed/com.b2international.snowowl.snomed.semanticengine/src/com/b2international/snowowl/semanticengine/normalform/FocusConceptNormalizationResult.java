@@ -17,20 +17,17 @@ package com.b2international.snowowl.semanticengine.normalform;
 
 import java.util.Collection;
 
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
-
-
+import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 
 /**
  * Simple class to hold the results of the normalization of an expression's focus concepts.
- * 
  */
 public final class FocusConceptNormalizationResult {
-	public Collection<SnomedConceptDocument> filteredPrimitiveSuperTypes;
+	public Collection<ISnomedConcept> filteredPrimitiveSuperTypes;
 	public ConceptDefinition mergedConceptDefinition;
 	
-	FocusConceptNormalizationResult(Collection<SnomedConceptDocument> filteredPrimitiveSuperTypes2, ConceptDefinition mergedConceptDefinition) {
-		this.filteredPrimitiveSuperTypes = filteredPrimitiveSuperTypes2;
+	FocusConceptNormalizationResult(Collection<ISnomedConcept> filteredPrimitiveSuperTypes, ConceptDefinition mergedConceptDefinition) {
+		this.filteredPrimitiveSuperTypes = filteredPrimitiveSuperTypes;
 		this.mergedConceptDefinition = mergedConceptDefinition;
 	}
 	

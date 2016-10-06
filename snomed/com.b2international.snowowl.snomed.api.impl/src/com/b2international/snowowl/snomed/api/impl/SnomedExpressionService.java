@@ -25,7 +25,6 @@ import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpre
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
@@ -64,14 +63,14 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 					attributes = groups.get(groupNum).getAttributes();
 				}
 				attributes.add(new SnomedExpressionAttribute(
-						getCreateConcept(branchPath, relationship.getTypeId(), concepts), 
-						getCreateConcept(branchPath, relationship.getDestinationId(), concepts)));
+						getCreateConcept(branchPath, relationship.getTypeConcept(), concepts), 
+						getCreateConcept(branchPath, relationship.getDestinationConcept(), concepts)));
 			}
 		}
 		
-		final Collection<SnomedConceptDocument> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
-		for (SnomedConceptDocument superType : superTypes) {
-			expression.addConcept(getCreateConcept(branchPath, superType.getId(), concepts));
+		final Collection<ISnomedConcept> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
+		for (ISnomedConcept superType : superTypes) {
+			expression.addConcept(getCreateConcept(branchPath, superType, concepts));
 		}
 		
 		SnomedServiceHelper.populateConceptTerms(Collections2.transform(concepts.values(), expressionToConceptMinFunction), extendedLocales, descriptionService);
@@ -84,23 +83,21 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				.filterByActive(true)
 				.filterBySource(conceptId)
 				.filterByCharacteristicType(Concepts.INFERRED_RELATIONSHIP)
+				.setExpand("destination(),type()")
 				.build(branchPath)
 				.execute(bus)
 				.getSync();
 	}
 
-	private ISnomedExpressionConcept getCreateConcept(String branchPath, String conceptId, Map<String, SnomedExpressionConcept> concepts) {
+	private ISnomedExpressionConcept getCreateConcept(String branchPath, ISnomedConcept concept, Map<String, SnomedExpressionConcept> concepts) {
+		final String conceptId = concept.getId();
 		
 		if (!concepts.containsKey(conceptId)) {
-			final ISnomedConcept concept = SnomedRequests.prepareGetConcept()
-					.setComponentId(conceptId)
-					.build(branchPath)
-					.execute(bus)
-					.getSync();
-					
-			concepts.put(conceptId, new SnomedExpressionConcept(conceptId, concept.getDefinitionStatus().isPrimitive()));
+			boolean primitive = concept.getDefinitionStatus().isPrimitive();
+			concepts.put(conceptId, new SnomedExpressionConcept(conceptId, primitive));
 		}
-		return concepts.get(conceptId);
+		
+		return concepts.get(concept);
 	}
 
 	private static final Function<SnomedExpressionConcept, ISnomedConceptMin> expressionToConceptMinFunction = new Function<SnomedExpressionConcept, ISnomedConceptMin>() {

@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.b2international.collections.PrimitiveSets;
+import com.b2international.collections.longs.LongSet;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.dsl.scg.Concept;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -33,7 +35,6 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
@@ -84,8 +85,8 @@ public class FocusConceptNormalizer {
 	}
 
 	public FocusConceptNormalizationResult normalizeFocusConcepts(Collection<Concept> focusConcepts, boolean normaliseAttributeValues) {
-		Collection<SnomedConceptDocument> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(toIdSet(focusConcepts));
-		Collection<SnomedConceptDocument> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes);
+		Collection<ISnomedConcept> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(toIdSet(focusConcepts));
+		Collection<ISnomedConcept> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes);
 		ConceptDefinitionNormalizer conceptDefinitionNormalizer = new ConceptDefinitionNormalizer(branchPath);
 		Map<Concept, ConceptDefinition> conceptDefinitions = conceptDefinitionNormalizer.getNormalizedConceptDefinitions(focusConcepts);
 		ConceptDefinitionMerger conceptDefinitionMerger = new ConceptDefinitionMerger(subsumptionTester);
@@ -93,33 +94,27 @@ public class FocusConceptNormalizer {
 		return new FocusConceptNormalizationResult(filteredPrimitiveSuperTypes, mergedFocusConceptDefinitions);
 	}
 	
-	public Collection<SnomedConceptDocument> collectNonRedundantProximalPrimitiveSuperTypes(Collection<String> focusConceptIds) {
-		final Collection<SnomedConceptDocument> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
+	public Collection<ISnomedConcept> collectNonRedundantProximalPrimitiveSuperTypes(Collection<String> focusConceptIds) {
+		final Collection<ISnomedConcept> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
 		return filterRedundantSuperTypes(proximalPrimitiveSupertypes);
 	}
 
-	private Collection<SnomedConceptDocument> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
-		Set<SnomedConceptDocument> proximatePrimitiveSuperTypes = new HashSet<>();
+	private Collection<ISnomedConcept> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
+		Set<ISnomedConcept> proximatePrimitiveSuperTypes = new HashSet<>();
 
 		if (focusConceptIds.isEmpty()) {
 			return proximatePrimitiveSuperTypes;
 		}
 		
-		Collection<SnomedConceptDocument> focusConcepts = SnomedRequests.prepareSearchConcept()
+		SnomedConcepts focusConcepts = SnomedRequests.prepareSearchConcept()
 				.setComponentIds(focusConceptIds)
 				.setLimit(focusConceptIds.size())
 				.build(branchPath)
 				.execute(getServiceForClass(IEventBus.class))
-				.then(new Function<SnomedConcepts, Collection<SnomedConceptDocument>>() {
-					@Override
-					public Collection<SnomedConceptDocument> apply(SnomedConcepts input) {
-						return SnomedConceptDocument.fromConcepts(input);
-					}
-				})
 				.getSync();
 				
 		
-		for (SnomedConceptDocument focusConcept : focusConcepts) {
+		for (ISnomedConcept focusConcept : focusConcepts) {
 			proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(focusConcept));
 		}
 		
@@ -137,11 +132,11 @@ public class FocusConceptNormalizer {
 	 * @param proximalPrimitiveSuperTypes
 	 * @return
 	 */
-	private Collection<SnomedConceptDocument> filterRedundantSuperTypes(Collection<SnomedConceptDocument> proximalPrimitiveSuperTypes) {
-		List<SnomedConceptDocument> filteredSuperTypes = new ArrayList<SnomedConceptDocument>(proximalPrimitiveSuperTypes);
+	private Collection<ISnomedConcept> filterRedundantSuperTypes(Collection<ISnomedConcept> proximalPrimitiveSuperTypes) {
+		List<ISnomedConcept> filteredSuperTypes = new ArrayList<ISnomedConcept>(proximalPrimitiveSuperTypes);
 		
-		for(SnomedConceptDocument superType: proximalPrimitiveSuperTypes) {
-			for(SnomedConceptDocument otherSuperType: proximalPrimitiveSuperTypes) {
+		for(ISnomedConcept superType: proximalPrimitiveSuperTypes) {
+			for(ISnomedConcept otherSuperType: proximalPrimitiveSuperTypes) {
 				if (!otherSuperType.equals(superType) && filteredSuperTypes.contains(otherSuperType) && isSuperTypeOf(superType, otherSuperType)) {
 					filteredSuperTypes.remove(superType);
 				}
@@ -151,10 +146,10 @@ public class FocusConceptNormalizer {
 		return filteredSuperTypes;
 	}
 
-	private Set<SnomedConceptDocument> getProximatePrimitiveSuperTypes(SnomedConceptDocument focusConcept) {
-		Set<SnomedConceptDocument> proximatePrimitiveSuperTypes = new HashSet<SnomedConceptDocument>();
+	private Set<ISnomedConcept> getProximatePrimitiveSuperTypes(ISnomedConcept focusConcept) {
+		Set<ISnomedConcept> proximatePrimitiveSuperTypes = new HashSet<ISnomedConcept>();
 		
-		if (focusConcept.isPrimitive()) {
+		if (focusConcept.getDefinitionStatus().isPrimitive()) {
 			proximatePrimitiveSuperTypes.add(focusConcept);
 			return proximatePrimitiveSuperTypes;
 		}
@@ -172,28 +167,27 @@ public class FocusConceptNormalizer {
 
 		for (ISnomedRelationship relationship : outboundRelationships) {
 			ISnomedConcept destinationConcept = relationship.getDestinationConcept();
-			SnomedConceptDocument destinationConceptDocument = SnomedConceptDocument.builder(destinationConcept).build();
 			
 			if (destinationConcept.getDefinitionStatus().isPrimitive()) {
-				proximatePrimitiveSuperTypes.add(destinationConceptDocument);
+				proximatePrimitiveSuperTypes.add(destinationConcept);
 			} else {
-				proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(destinationConceptDocument));
+				proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(destinationConcept));
 			}
 		}
 		return filterSuperTypesToProximate(proximatePrimitiveSuperTypes);
 	}
 
-	private Set<SnomedConceptDocument> filterSuperTypesToProximate(Set<SnomedConceptDocument> superTypes) {
-			Set<SnomedConceptDocument> filteredProximateSuperTypes = new HashSet<SnomedConceptDocument>();
+	private Set<ISnomedConcept> filterSuperTypesToProximate(Set<ISnomedConcept> superTypes) {
+			Set<ISnomedConcept> filteredProximateSuperTypes = new HashSet<ISnomedConcept>();
 			
-			for (SnomedConceptDocument superType : superTypes) {
+			for (ISnomedConcept superType : superTypes) {
 				if (filteredProximateSuperTypes.isEmpty()) {
 					filteredProximateSuperTypes.add(superType);
 				} else {
 					// remove types from proximateSuperTypes, if there is a more specific type among the superTypes
 					boolean toBeAdded = false;
-					Set<SnomedConceptDocument> removedProximateSuperTypes = new HashSet<SnomedConceptDocument>();
-					for (SnomedConceptDocument proximateSuperType : filteredProximateSuperTypes) {
+					Set<ISnomedConcept> removedProximateSuperTypes = new HashSet<ISnomedConcept>();
+					for (ISnomedConcept proximateSuperType : filteredProximateSuperTypes) {
 						/*
 						 * If the super type is a super type of a type already in the proximate super type set, then 
 						 * it shouldn't be added, no further checks necessary.
@@ -225,9 +219,12 @@ public class FocusConceptNormalizer {
 			return filteredProximateSuperTypes;
 		}
 
-	private boolean isSuperTypeOf(SnomedConceptDocument superType, SnomedConceptDocument subType) {
+	private boolean isSuperTypeOf(ISnomedConcept superType, ISnomedConcept subType) {
 		long superTypeId = Long.parseLong(superType.getId());
-		return subType.getAncestors().contains(superTypeId) || subType.getParents().contains(superTypeId);
+		LongSet ancestorIds = PrimitiveSets.newLongOpenHashSet(subType.getAncestorIds());
+		LongSet parentIds = PrimitiveSets.newLongOpenHashSet(subType.getParentIds());
+		
+		return ancestorIds.contains(superTypeId) || parentIds.contains(superTypeId);
 	}
 	
 	private Collection<String> toIdSet(Collection<Concept> focusConcepts) {
