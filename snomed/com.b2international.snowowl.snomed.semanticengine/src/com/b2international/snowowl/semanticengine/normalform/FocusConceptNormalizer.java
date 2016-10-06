@@ -23,21 +23,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 
 import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongSet;
-import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.dsl.scg.Concept;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.semanticengine.subsumption.SubsumptionTester;
-import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Collections2;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 
 /**
  * <b>5.3.3 Normalize focus concepts</b><br/>
@@ -68,6 +72,35 @@ import com.google.common.collect.Collections2;
  */
 public class FocusConceptNormalizer {
 	
+	private final class ParentCacheLoader extends CacheLoader<String, ISnomedConcept> {
+		
+		@Override
+		public ISnomedConcept load(String conceptId) throws Exception {
+			ISnomedConcept conceptWithParents = SnomedRequests.prepareGetConcept()
+				.setComponentId(conceptId)
+				.setExpand("ancestors(direct:true,form:\"inferred\")")
+				.build(branchPath)
+				.execute(getServiceForClass(IEventBus.class))
+				.getSync();
+			
+			return conceptWithParents;
+		}
+
+		@Override
+		public Map<String, ISnomedConcept> loadAll(Iterable<? extends String> conceptIds) throws Exception {
+			Collection<String> conceptIdSet = ImmutableSet.copyOf(conceptIds);
+			SnomedConcepts conceptsWithParents = SnomedRequests.prepareSearchConcept()
+					.setComponentIds(conceptIdSet)
+					.setLimit(conceptIdSet.size())
+					.setExpand("ancestors(direct:true,form:\"inferred\")")
+					.build(branchPath)
+					.execute(getServiceForClass(IEventBus.class))
+					.getSync();
+
+			return Maps.uniqueIndex(conceptsWithParents, IComponent.ID_FUNCTION);
+		}
+	}
+
 	private final String branchPath;
 	private final SubsumptionTester subsumptionTester;
 	
@@ -106,16 +139,17 @@ public class FocusConceptNormalizer {
 			return proximatePrimitiveSuperTypes;
 		}
 		
-		SnomedConcepts focusConcepts = SnomedRequests.prepareSearchConcept()
-				.setComponentIds(focusConceptIds)
-				.setLimit(focusConceptIds.size())
-				.build(branchPath)
-				.execute(getServiceForClass(IEventBus.class))
-				.getSync();
-				
+		LoadingCache<String, ISnomedConcept> parentCache = CacheBuilder.newBuilder().build(new ParentCacheLoader());
 		
-		for (ISnomedConcept focusConcept : focusConcepts) {
-			proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(focusConcept));
+		try {
+			
+			Iterable<ISnomedConcept> focusConcepts = parentCache.getAll(focusConceptIds).values();
+			for (ISnomedConcept focusConcept : focusConcepts) {
+				proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(focusConcept, parentCache));
+			}
+
+		} catch (ExecutionException e) {
+			throw new UncheckedExecutionException(e.getCause());
 		}
 		
 		return proximatePrimitiveSuperTypes;
@@ -146,34 +180,23 @@ public class FocusConceptNormalizer {
 		return filteredSuperTypes;
 	}
 
-	private Set<ISnomedConcept> getProximatePrimitiveSuperTypes(ISnomedConcept focusConcept) {
+	private Set<ISnomedConcept> getProximatePrimitiveSuperTypes(ISnomedConcept focusConceptWithParents, LoadingCache<String, ISnomedConcept> parentCache) {
 		Set<ISnomedConcept> proximatePrimitiveSuperTypes = new HashSet<ISnomedConcept>();
 		
-		if (focusConcept.getDefinitionStatus().isPrimitive()) {
-			proximatePrimitiveSuperTypes.add(focusConcept);
+		if (focusConceptWithParents.getDefinitionStatus().isPrimitive()) {
+			proximatePrimitiveSuperTypes.add(focusConceptWithParents);
 			return proximatePrimitiveSuperTypes;
 		}
 		
-		final SnomedRelationships outboundRelationships = SnomedRequests.prepareSearchRelationship()
-				.all()
-				.filterByActive(true)
-				.filterByType(Concepts.IS_A)
-				.filterByCharacteristicType(Concepts.INFERRED_RELATIONSHIP)
-				.filterBySource(focusConcept.getId())
-				.setExpand("destination()")
-				.build(branchPath)
-				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-				.getSync();
-
-		for (ISnomedRelationship relationship : outboundRelationships) {
-			ISnomedConcept destinationConcept = relationship.getDestinationConcept();
-			
-			if (destinationConcept.getDefinitionStatus().isPrimitive()) {
-				proximatePrimitiveSuperTypes.add(destinationConcept);
+		for (ISnomedConcept parent : focusConceptWithParents.getAncestors()) {
+			if (parent.getDefinitionStatus().isPrimitive()) {
+				proximatePrimitiveSuperTypes.add(parent);
 			} else {
-				proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(destinationConcept));
+				final ISnomedConcept parentWithParents = parentCache.getUnchecked(parent.getId());
+				proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(parentWithParents, parentCache));
 			}
 		}
+		
 		return filterSuperTypesToProximate(proximatePrimitiveSuperTypes);
 	}
 
