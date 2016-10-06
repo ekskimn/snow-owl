@@ -136,7 +136,7 @@
 	<appender name="LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>serviceability/logs/log.log</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-			<fileNamePattern>serviceability/logs/log_%d{yyyy-MM-dd}.log</fileNamePattern>
+			<fileNamePattern>serviceability/logs/log_%d.log</fileNamePattern>
 			<!-- keep 90 days' worth of history -->
       		<maxHistory>90</maxHistory>
 		</rollingPolicy>
@@ -157,6 +157,10 @@
 			<MinIndex>1</MinIndex>
 			<MaxIndex>4</MaxIndex>
 		</rollingPolicy>
+		<triggeringPolicy
+			class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+			<MaxFileSize>50MB</MaxFileSize>
+		</triggeringPolicy>
 		<filter class="ch.qos.logback.core.filter.EvaluatorFilter">
 			<evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
 				<marker>SNOW_OWL_USER_ACCESS</marker>
@@ -213,7 +217,7 @@
 	<appender name="EVENT_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>serviceability/eventlogs/eventlog.log</file>
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-			<fileNamePattern>serviceability/eventlogs/eventlog_%d{yyyy-MM-dd}.log</fileNamePattern>
+			<fileNamePattern>serviceability/eventlogs/eventlog_%d.log</fileNamePattern>
 			<!-- keep 90 days' worth of history -->
       		<maxHistory>90</maxHistory>
 		</rollingPolicy>
