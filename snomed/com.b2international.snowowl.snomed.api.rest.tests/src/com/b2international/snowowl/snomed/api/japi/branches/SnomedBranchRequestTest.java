@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.api.japi.branches;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
 import java.util.List;
@@ -25,7 +26,6 @@ import java.util.UUID;
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchManager;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
@@ -80,7 +80,13 @@ public class SnomedBranchRequestTest {
 				}
 			})
 			.getSync();
-		assertNull(error, error);
+		
+		if (error != null) {
+			assertThat(error, allOf(containsString("Branch with '"), containsString("' identifier already exists")));
+		} else {
+			fail(error);
+		}
+		
 		assertEquals(1, getCdoBranches(branchName).size());
 	}
 	
