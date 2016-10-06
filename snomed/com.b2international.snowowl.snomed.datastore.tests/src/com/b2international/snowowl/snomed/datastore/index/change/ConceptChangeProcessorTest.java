@@ -457,6 +457,72 @@ public class ConceptChangeProcessorTest extends BaseChangeProcessorTest {
 		assertEquals(0, processor.getDeletions().size());
 	}
 	
+	@Test
+	public void inactivatedInferredIsaRelationshipDoesNotClearConceptAncestors() throws Exception {
+		// given two parent concepts and a child concept
+		final String childId = generateConceptId();
+		final String parent1Id = generateConceptId();
+		final String parent2Id = generateConceptId();
+		
+		final Concept childConcept = createConcept(childId);
+		final Concept parent1Concept = createConcept(parent1Id);
+		final Concept parent2Concept = createConcept(parent2Id);
+		
+		Relationship stated1Relationship = createStatedRelationship(childId, Concepts.IS_A, parent1Id);
+		Relationship inferred1Relationship = createInferredRelationship(childId, Concepts.IS_A, parent1Id);
+		Relationship stated2Relationship = createStatedRelationship(childId, Concepts.IS_A, parent2Id);
+		Relationship inferred2Relationship = createInferredRelationship(childId, Concepts.IS_A, parent2Id);
+		
+		final long childIdLong = Long.parseLong(childId);
+		final long parent1IdLong = Long.parseLong(parent1Id);
+		final long parent2IdLong = Long.parseLong(parent2Id);
+
+		// index the child and parent concept documents as current state
+		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(parent1Concept.cdoID()), doc(parent1Concept).build());
+		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(parent2Concept.cdoID()), doc(parent2Concept).build());
+		
+		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(childConcept.cdoID()), doc(childConcept)
+				.statedParents(PrimitiveSets.newLongOpenHashSet(parent1IdLong, parent2IdLong))
+				.statedAncestors(PrimitiveSets.newLongOpenHashSet(SnomedConceptDocument.ROOT_ID))
+				.parents(PrimitiveSets.newLongOpenHashSet(parent1IdLong, parent2IdLong))
+				.ancestors(PrimitiveSets.newLongOpenHashSet(SnomedConceptDocument.ROOT_ID))
+				.build());
+		
+		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(stated1Relationship.cdoID()), SnomedRelationshipIndexEntry.builder(stated1Relationship).build());
+		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(inferred1Relationship.cdoID()), SnomedRelationshipIndexEntry.builder(inferred1Relationship).build());
+		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(stated2Relationship.cdoID()), SnomedRelationshipIndexEntry.builder(stated2Relationship).build());
+		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(inferred2Relationship.cdoID()), SnomedRelationshipIndexEntry.builder(inferred2Relationship).build());
+		
+		registerExistingObject(childConcept);
+		registerExistingObject(parent1Concept);
+		registerExistingObject(parent2Concept);
+		
+		// inactivate inferred relationship
+		inferred2Relationship.setActive(false);
+		inferred2Relationship.unsetEffectiveTime();
+		registerDirty(inferred2Relationship);
+		registerSetRevisionDelta(inferred2Relationship, SnomedPackage.Literals.COMPONENT__ACTIVE, false);
+		
+		inferredChangedConceptIds.add(childIdLong);
+		inferredChangedConceptIds.add(parent1IdLong);
+		inferredChangedConceptIds.add(parent2IdLong);
+		
+		final ConceptChangeProcessor processor = process();
+		
+		assertEquals(1, processor.getMappings().size());
+		assertEquals(0, processor.getDeletions().size());
+		
+		final SnomedConceptDocument expected = doc(childConcept)
+				.statedParents(PrimitiveSets.newLongOpenHashSet(parent1IdLong, parent2IdLong))
+				.statedAncestors(PrimitiveSets.newLongOpenHashSet(SnomedConceptDocument.ROOT_ID))
+				.parents(PrimitiveSets.newLongOpenHashSet(parent1IdLong))
+				.ancestors(PrimitiveSets.newLongOpenHashSet(SnomedConceptDocument.ROOT_ID))
+				.build();
+		
+		final Revision actual = processor.getMappings().get(CDOIDUtil.getLong(childConcept.cdoID()));
+		assertDocEquals(expected, actual);
+	}
+	
 	private Builder doc(final Concept concept) {
 		return SnomedConceptDocument.builder()
 				.id(concept.getId())

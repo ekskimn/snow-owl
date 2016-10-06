@@ -318,6 +318,8 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 			
 			for (SnomedConceptDocument statedSourceConcept : searcher.search(statedSourceConceptsQuery)) {
 				statedConceptIds.add(Long.parseLong(statedSourceConcept.getId()));
+				statedConceptIds.addAll(statedSourceConcept.getParents());
+				statedConceptIds.addAll(statedSourceConcept.getAncestors());
 			}
 		}
 		
@@ -333,6 +335,8 @@ public class SnomedCDOChangeProcessor implements ICDOChangeProcessor {
 			
 			for (SnomedConceptDocument inferredSourceConcept : searcher.search(inferredSourceConceptsQuery)) {
 				inferredConceptIds.add(Long.parseLong(inferredSourceConcept.getId()));
+				inferredConceptIds.addAll(inferredSourceConcept.getParents());
+				inferredConceptIds.addAll(inferredSourceConcept.getAncestors());
 			}
 		}
 		
