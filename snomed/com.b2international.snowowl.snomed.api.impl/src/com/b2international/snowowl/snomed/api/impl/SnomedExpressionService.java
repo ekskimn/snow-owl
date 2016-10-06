@@ -63,14 +63,14 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 					attributes = groups.get(groupNum).getAttributes();
 				}
 				attributes.add(new SnomedExpressionAttribute(
-						getCreateConcept(branchPath, relationship.getTypeConcept(), concepts), 
-						getCreateConcept(branchPath, relationship.getDestinationConcept(), concepts)));
+						getCreateConcept(relationship.getTypeConcept(), concepts), 
+						getCreateConcept(relationship.getDestinationConcept(), concepts)));
 			}
 		}
 		
 		final Collection<ISnomedConcept> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
 		for (ISnomedConcept superType : superTypes) {
-			expression.addConcept(getCreateConcept(branchPath, superType, concepts));
+			expression.addConcept(getCreateConcept(superType, concepts));
 		}
 		
 		SnomedServiceHelper.populateConceptTerms(Collections2.transform(concepts.values(), expressionToConceptMinFunction), extendedLocales, descriptionService);
@@ -89,7 +89,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				.getSync();
 	}
 
-	private ISnomedExpressionConcept getCreateConcept(String branchPath, ISnomedConcept concept, Map<String, SnomedExpressionConcept> concepts) {
+	private ISnomedExpressionConcept getCreateConcept(ISnomedConcept concept, Map<String, SnomedExpressionConcept> concepts) {
 		final String conceptId = concept.getId();
 		
 		if (!concepts.containsKey(conceptId)) {
@@ -97,7 +97,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 			concepts.put(conceptId, new SnomedExpressionConcept(conceptId, primitive));
 		}
 		
-		return concepts.get(concept);
+		return concepts.get(conceptId);
 	}
 
 	private static final Function<SnomedExpressionConcept, ISnomedConceptMin> expressionToConceptMinFunction = new Function<SnomedExpressionConcept, ISnomedConceptMin>() {
