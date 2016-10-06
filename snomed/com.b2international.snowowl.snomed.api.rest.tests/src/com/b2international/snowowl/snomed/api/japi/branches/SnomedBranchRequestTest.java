@@ -83,8 +83,6 @@ public class SnomedBranchRequestTest {
 		
 		if (error != null) {
 			assertThat(error, allOf(containsString("Branch with '"), containsString("' identifier already exists")));
-		} else {
-			fail(error);
 		}
 		
 		assertEquals(1, getCdoBranches(branchName).size());
