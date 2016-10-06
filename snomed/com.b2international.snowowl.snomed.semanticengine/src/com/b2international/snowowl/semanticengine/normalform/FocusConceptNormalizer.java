@@ -16,12 +16,12 @@
 package com.b2international.snowowl.semanticengine.normalform;
 
 import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
+import static com.google.common.collect.Maps.newHashMap;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
@@ -118,8 +118,8 @@ public class FocusConceptNormalizer {
 	}
 
 	public FocusConceptNormalizationResult normalizeFocusConcepts(Collection<Concept> focusConcepts, boolean normaliseAttributeValues) {
-		Collection<ISnomedConcept> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(toIdSet(focusConcepts));
-		Collection<ISnomedConcept> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes);
+		Map<String, ISnomedConcept> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(toIdSet(focusConcepts));
+		Collection<ISnomedConcept> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes).values();
 		ConceptDefinitionNormalizer conceptDefinitionNormalizer = new ConceptDefinitionNormalizer(branchPath);
 		Map<Concept, ConceptDefinition> conceptDefinitions = conceptDefinitionNormalizer.getNormalizedConceptDefinitions(focusConcepts);
 		ConceptDefinitionMerger conceptDefinitionMerger = new ConceptDefinitionMerger(subsumptionTester);
@@ -128,12 +128,12 @@ public class FocusConceptNormalizer {
 	}
 	
 	public Collection<ISnomedConcept> collectNonRedundantProximalPrimitiveSuperTypes(Collection<String> focusConceptIds) {
-		final Collection<ISnomedConcept> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
-		return filterRedundantSuperTypes(proximalPrimitiveSupertypes);
+		final Map<String, ISnomedConcept> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
+		return filterRedundantSuperTypes(proximalPrimitiveSupertypes).values();
 	}
 
-	private Collection<ISnomedConcept> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
-		Set<ISnomedConcept> proximatePrimitiveSuperTypes = new HashSet<>();
+	private Map<String, ISnomedConcept> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
+		Map<String, ISnomedConcept> proximatePrimitiveSuperTypes = newHashMap();
 
 		if (focusConceptIds.isEmpty()) {
 			return proximatePrimitiveSuperTypes;
@@ -145,7 +145,7 @@ public class FocusConceptNormalizer {
 			
 			Iterable<ISnomedConcept> focusConcepts = parentCache.getAll(focusConceptIds).values();
 			for (ISnomedConcept focusConcept : focusConcepts) {
-				proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(focusConcept, parentCache));
+				proximatePrimitiveSuperTypes.putAll(getProximatePrimitiveSuperTypes(focusConcept, parentCache));
 			}
 
 		} catch (ExecutionException e) {
@@ -163,16 +163,16 @@ public class FocusConceptNormalizer {
 	 * <li>A duplicate of another member of the set</li>
 	 * <li>A super type of another concept in the set.</li>
 	 * </ul>
-	 * @param proximalPrimitiveSuperTypes
+	 * @param proximalPrimitiveSupertypes
 	 * @return
 	 */
-	private Collection<ISnomedConcept> filterRedundantSuperTypes(Collection<ISnomedConcept> proximalPrimitiveSuperTypes) {
-		List<ISnomedConcept> filteredSuperTypes = new ArrayList<ISnomedConcept>(proximalPrimitiveSuperTypes);
+	private Map<String, ISnomedConcept> filterRedundantSuperTypes(Map<String, ISnomedConcept> proximalPrimitiveSupertypes) {
+		Map<String, ISnomedConcept> filteredSuperTypes = newHashMap(proximalPrimitiveSupertypes);
 		
-		for(ISnomedConcept superType: proximalPrimitiveSuperTypes) {
-			for(ISnomedConcept otherSuperType: proximalPrimitiveSuperTypes) {
-				if (!otherSuperType.equals(superType) && filteredSuperTypes.contains(otherSuperType) && isSuperTypeOf(superType, otherSuperType)) {
-					filteredSuperTypes.remove(superType);
+		for (Entry<String, ISnomedConcept> superType: proximalPrimitiveSupertypes.entrySet()) {
+			for (Entry<String, ISnomedConcept> otherSuperType: proximalPrimitiveSupertypes.entrySet()) {
+				if (!otherSuperType.getKey().equals(superType.getKey()) && filteredSuperTypes.containsKey(otherSuperType.getKey()) && isSuperTypeOf(superType.getValue(), otherSuperType.getValue())) {
+					filteredSuperTypes.remove(superType.getKey());
 				}
 			}
 		}
@@ -180,42 +180,42 @@ public class FocusConceptNormalizer {
 		return filteredSuperTypes;
 	}
 
-	private Set<ISnomedConcept> getProximatePrimitiveSuperTypes(ISnomedConcept focusConceptWithParents, LoadingCache<String, ISnomedConcept> parentCache) {
-		Set<ISnomedConcept> proximatePrimitiveSuperTypes = new HashSet<ISnomedConcept>();
+	private Map<String, ISnomedConcept> getProximatePrimitiveSuperTypes(ISnomedConcept focusConceptWithParents, LoadingCache<String, ISnomedConcept> parentCache) {
+		Map<String, ISnomedConcept> proximatePrimitiveSuperTypes = newHashMap();
 		
 		if (focusConceptWithParents.getDefinitionStatus().isPrimitive()) {
-			proximatePrimitiveSuperTypes.add(focusConceptWithParents);
+			proximatePrimitiveSuperTypes.put(focusConceptWithParents.getId(), focusConceptWithParents);
 			return proximatePrimitiveSuperTypes;
 		}
 		
 		for (ISnomedConcept parent : focusConceptWithParents.getAncestors()) {
 			if (parent.getDefinitionStatus().isPrimitive()) {
-				proximatePrimitiveSuperTypes.add(parent);
+				proximatePrimitiveSuperTypes.put(parent.getId(), parent);
 			} else {
 				final ISnomedConcept parentWithParents = parentCache.getUnchecked(parent.getId());
-				proximatePrimitiveSuperTypes.addAll(getProximatePrimitiveSuperTypes(parentWithParents, parentCache));
+				proximatePrimitiveSuperTypes.putAll(getProximatePrimitiveSuperTypes(parentWithParents, parentCache));
 			}
 		}
 		
 		return filterSuperTypesToProximate(proximatePrimitiveSuperTypes);
 	}
 
-	private Set<ISnomedConcept> filterSuperTypesToProximate(Set<ISnomedConcept> superTypes) {
-			Set<ISnomedConcept> filteredProximateSuperTypes = new HashSet<ISnomedConcept>();
+	private Map<String, ISnomedConcept> filterSuperTypesToProximate(Map<String, ISnomedConcept> proximatePrimitiveSuperTypes) {
+			Map<String, ISnomedConcept> filteredProximateSuperTypes = newHashMap();
 			
-			for (ISnomedConcept superType : superTypes) {
+			for (Entry<String, ISnomedConcept> superType : proximatePrimitiveSuperTypes.entrySet()) {
 				if (filteredProximateSuperTypes.isEmpty()) {
-					filteredProximateSuperTypes.add(superType);
+					filteredProximateSuperTypes.put(superType.getKey(), superType.getValue());
 				} else {
 					// remove types from proximateSuperTypes, if there is a more specific type among the superTypes
 					boolean toBeAdded = false;
 					Set<ISnomedConcept> removedProximateSuperTypes = new HashSet<ISnomedConcept>();
-					for (ISnomedConcept proximateSuperType : filteredProximateSuperTypes) {
+					for (ISnomedConcept proximateSuperType : filteredProximateSuperTypes.values()) {
 						/*
 						 * If the super type is a super type of a type already in the proximate super type set, then 
 						 * it shouldn't be added, no further checks necessary.
 						 */
-						if (isSuperTypeOf(superType, proximateSuperType)) {
+						if (isSuperTypeOf(superType.getValue(), proximateSuperType)) {
 							toBeAdded = false;
 							break;
 						}
@@ -224,7 +224,7 @@ public class FocusConceptNormalizer {
 						 * Remove super type and add more specific type. In case of multiple super types we get here several times, 
 						 * but since we are using Set<Integer>, adding the same concept multiple times is not an issue. 
 						 */
-						if (isSuperTypeOf(proximateSuperType, superType)) {
+						if (isSuperTypeOf(proximateSuperType, superType.getValue())) {
 							removedProximateSuperTypes.add(proximateSuperType);
 						}
 						
@@ -232,9 +232,9 @@ public class FocusConceptNormalizer {
 					}
 					
 					// process differences
-					filteredProximateSuperTypes.removeAll(removedProximateSuperTypes);
+					filteredProximateSuperTypes.values().removeAll(removedProximateSuperTypes);
 					if (toBeAdded) {
-						filteredProximateSuperTypes.add(superType);
+						filteredProximateSuperTypes.put(superType.getKey(), superType.getValue());
 					}
 				}
 			}
