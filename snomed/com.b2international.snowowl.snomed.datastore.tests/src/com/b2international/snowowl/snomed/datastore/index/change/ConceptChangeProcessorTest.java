@@ -400,7 +400,7 @@ public class ConceptChangeProcessorTest extends BaseChangeProcessorTest {
 		dirtyConcept.setModule(module());
 		dirtyConcept.setExhaustive(false);
 		registerDirty(dirtyConcept);
-		registerSetRevisionDelta(dirtyConcept, SnomedPackage.Literals.COMPONENT__ACTIVE, false);
+		registerSetRevisionDelta(dirtyConcept, SnomedPackage.Literals.COMPONENT__ACTIVE, true, false);
 		
 		final ConceptChangeProcessor processor = process();
 		
@@ -501,7 +501,7 @@ public class ConceptChangeProcessorTest extends BaseChangeProcessorTest {
 		inferred2Relationship.setActive(false);
 		inferred2Relationship.unsetEffectiveTime();
 		registerDirty(inferred2Relationship);
-		registerSetRevisionDelta(inferred2Relationship, SnomedPackage.Literals.COMPONENT__ACTIVE, false);
+		registerSetRevisionDelta(inferred2Relationship, SnomedPackage.Literals.COMPONENT__ACTIVE, true, false);
 		
 		inferredChangedConceptIds.add(childIdLong);
 		inferredChangedConceptIds.add(parent1IdLong);
