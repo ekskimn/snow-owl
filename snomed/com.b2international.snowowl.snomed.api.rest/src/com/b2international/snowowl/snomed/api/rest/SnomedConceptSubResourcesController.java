@@ -245,7 +245,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	@RequestMapping(
 			value="/{path:**}/concepts/{conceptId}/descendants",
 			method = RequestMethod.GET)
-	public DeferredResult<ISnomedConcept> getDescendants(
+	public DeferredResult<SnomedConcepts> getDescendants(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -280,10 +280,16 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	
 		return DeferredResults.wrap(SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
-				.setExpand(String.format("descendants(direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", direct, offset, limit))
+				.setExpand(String.format("descendants(form:\"%s\",direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", form, direct, offset, limit))
 				.setLocales(getExtendedLocales(acceptLanguage))
 				.build(branchPath)
-				.execute(bus));
+				.execute(bus)
+				.then(new Function<ISnomedConcept, SnomedConcepts>() {
+					@Override
+					public SnomedConcepts apply(ISnomedConcept input) {
+						return input.getDescendants();
+					}
+				}));
 	}
 
 	@ApiOperation(
