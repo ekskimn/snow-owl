@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -53,6 +55,7 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
@@ -441,7 +444,88 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	private Set<ISnomedBrowserMergeReviewDetail> getConceptDetails(final MergeReview mergeReview, final List<ExtendedLocale> extendedLocales) throws InterruptedException, ExecutionException {
 		final String sourcePath = mergeReview.sourcePath();
 		final String targetPath = mergeReview.targetPath();
-		final Set<String> mergeReviewIntersection = mergeReview.mergeReviewIntersection();
+		
+		final Set<String> sourceConceptIds = Sets.newHashSet();
+		final Set<String> sourceDescriptionIds = Sets.newHashSet();
+		
+		ConceptChanges sourceChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.sourceToTargetReviewId()).execute(bus).getSync();
+		
+		for (String id : sourceChanges.changedConcepts()) {
+			ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
+			if (componentCategory == ComponentCategory.DESCRIPTION) {
+				sourceDescriptionIds.add(id);
+			} else if (componentCategory == ComponentCategory.CONCEPT) {
+				sourceConceptIds.add(id);
+			} else {
+				LOG.warn("Changed concept set contained non-concept id: {}", id);
+			}
+		}
+		
+		if (!sourceDescriptionIds.isEmpty()) {
+			
+			sourceConceptIds.addAll(SnomedRequests.prepareSearchDescription()
+				.setComponentIds(sourceDescriptionIds)
+				.setLimit(sourceDescriptionIds.size())
+				.build(sourcePath)
+				.execute(bus)
+				.then(new Function<SnomedDescriptions, Set<String>>() {
+					@Override
+					public Set<String> apply(SnomedDescriptions input) {
+						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
+							@Override
+							public String apply(ISnomedDescription input) {
+								return input.getConceptId();
+							}
+						}).toSet();
+					}
+				}).getSync());
+
+			sourceConceptIds.removeAll(sourceChanges.deletedConcepts());
+			
+		}
+		
+		ConceptChanges targetChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.targetToSourceReviewId()).execute(bus).getSync();
+		
+		final Set<String> targetConceptIds = Sets.newHashSet();
+		final Set<String> targetDescriptionIds = Sets.newHashSet();
+		
+		for (String id : targetChanges.changedConcepts()) {
+			ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
+			if (componentCategory == ComponentCategory.DESCRIPTION) {
+				targetDescriptionIds.add(id);
+			} else if (componentCategory == ComponentCategory.CONCEPT) {
+				targetConceptIds.add(id);
+			} else {
+				LOG.warn("Changed concept set contained non-concept id: {}", id);
+			}
+		}
+		
+		if (!targetDescriptionIds.isEmpty()) {
+			
+			targetConceptIds.addAll(SnomedRequests.prepareSearchDescription()
+				.setComponentIds(targetDescriptionIds)
+				.setLimit(targetDescriptionIds.size())
+				.build(targetPath)
+				.execute(bus)
+				.then(new Function<SnomedDescriptions, Set<String>>() {
+					@Override
+					public Set<String> apply(SnomedDescriptions input) {
+						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
+							@Override
+							public String apply(ISnomedDescription input) {
+								return input.getConceptId();
+							}
+						}).toSet();
+					}
+				}).getSync());
+			
+			targetConceptIds.removeAll(targetChanges.deletedConcepts());
+			
+		}
+		
+		sourceConceptIds.retainAll(targetConceptIds);
+		
+		final Set<String> mergeReviewIntersection = sourceConceptIds;
 		
 		final List<ListenableFuture<ISnomedBrowserMergeReviewDetail>> changeFutures = Lists.newArrayList();
 		final MergeReviewParameters parameters = new MergeReviewParameters(sourcePath, targetPath, extendedLocales, mergeReview.id());

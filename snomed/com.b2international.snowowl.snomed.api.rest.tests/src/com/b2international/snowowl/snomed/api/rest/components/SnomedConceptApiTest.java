@@ -22,18 +22,12 @@ import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.INVALID_ACCEPTABILITY_MAP;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeMerged;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeRebased;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertMergeJobFails;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenDeletingBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreatedWithStatus;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
@@ -56,11 +50,13 @@ import org.junit.Test;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
+import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.google.common.collect.ImmutableList;
@@ -424,6 +420,66 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		assertComponentNotExists(nestedBranchPath, SnomedComponentType.CONCEPT, parentId);
 	}
 
+	@Test
+	public void deleteConceptOnNestedBranchThenRebase() {
+		
+		givenBranchWithPath(testBranchPath);
+
+		IBranchPath projectPath = BranchPathUtils.createPath(testBranchPath, "P");
+		givenBranchWithPath(projectPath);
+		
+		IBranchPath firstTaskPath = BranchPathUtils.createPath(projectPath, "1");
+		givenBranchWithPath(firstTaskPath);
+		
+		// Create new concept, promote to project
+
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		String concept = assertComponentCreated(firstTaskPath, SnomedComponentType.CONCEPT, requestBody);
+		assertComponentExists(firstTaskPath, SnomedComponentType.CONCEPT, concept);
+		
+		assertBranchCanBeMerged(firstTaskPath, "Merging first task into project");
+		
+		// Create task A, modify concept
+		
+		IBranchPath taskAPath = BranchPathUtils.createPath(projectPath, "A");
+		givenBranchWithPath(taskAPath);
+		
+		assertComponentExists(taskAPath, SnomedComponentType.CONCEPT, concept);
+		
+		assertComponentHasProperty(taskAPath, SnomedComponentType.CONCEPT, concept, "definitionStatus", DefinitionStatus.PRIMITIVE.name());
+		
+		final Map<?, ?> changeOnTask = ImmutableMap.builder()
+				.put("definitionStatus", DefinitionStatus.FULLY_DEFINED)
+				.put("commitComment", "Changed definition status on task A")
+				.build();
+		
+		assertComponentCanBeUpdated(taskAPath, SnomedComponentType.CONCEPT, concept, changeOnTask);
+		assertComponentHasProperty(taskAPath, SnomedComponentType.CONCEPT, concept, "definitionStatus", DefinitionStatus.FULLY_DEFINED.name());
+		
+		// Create task B, delete concept, promote to project
+		
+		IBranchPath taskBPath = BranchPathUtils.createPath(projectPath, "B");
+		givenBranchWithPath(taskBPath);
+		
+		assertComponentExists(taskBPath, SnomedComponentType.CONCEPT, concept);
+		assertComponentCanBeDeleted(taskBPath, SnomedComponentType.CONCEPT, concept);
+		assertComponentNotExists(taskBPath, SnomedComponentType.CONCEPT, concept);
+		
+		assertBranchCanBeMerged(taskBPath, "Merging task B into project");
+
+		// Rebase task A - does not rebase as expected
+		
+		assertMergeJobFails(taskAPath.getParent(), taskAPath, "Rebasing task A should fail");
+
+		// Delete concept on task A and rebase again.
+		
+		assertComponentCanBeDeleted(taskAPath, SnomedComponentType.CONCEPT, concept);
+		
+		assertBranchCanBeRebased(taskAPath, "Rebase task A");
+		
+	}
+	
+	
 	private ResponseBodyExtractionOptions getComponentMembers(IBranchPath branchPath, String componentId) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 			.when().get("/{path}/{componentType}?referencedComponentId={componentId}", branchPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), componentId)

@@ -17,11 +17,18 @@ package com.b2international.snowowl.snomed.api.rest.branches;
 
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE_SCT_CORE;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.SYNONYM;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeMerged;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeRebased;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenDescriptionRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
@@ -41,6 +48,7 @@ import org.junit.Test;
 
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
@@ -50,6 +58,7 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 
@@ -299,5 +308,110 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		.then()
 			.statusCode(200)
 			.body("status", equalTo(ReviewStatus.STALE.toString()));		
+	}
+	
+	@Test
+	public void noDescriptionIdsInChangedConceptIdsForConceptChange() {
+		
+		givenBranchWithPath(testBranchPath); // project branch
+		
+		IBranchPath firstTaskPath = BranchPathUtils.createPath(testBranchPath, "1");
+		givenBranchWithPath(firstTaskPath);
+		
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		String concept = assertComponentCreated(firstTaskPath, SnomedComponentType.CONCEPT, requestBody);
+		
+		assertComponentExists(firstTaskPath, SnomedComponentType.CONCEPT, concept);
+		assertBranchCanBeMerged(firstTaskPath, "Merging first task into project");
+		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, concept);
+		
+		IBranchPath secondTaskPath = BranchPathUtils.createPath(testBranchPath, "2");
+		givenBranchWithPath(secondTaskPath);
+		
+		final Map<Object, Object> descriptionForSecondTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		descriptionForSecondTask.put("conceptId", concept);
+		descriptionForSecondTask.put("commitComment", "Created new synonym");
+		
+		assertComponentCreated(secondTaskPath, SnomedComponentType.DESCRIPTION, descriptionForSecondTask);
+		
+		IBranchPath thirdTaskPath = BranchPathUtils.createPath(testBranchPath, "3");
+		givenBranchWithPath(thirdTaskPath);
+		
+		final Map<Object, Object> descriptionForThirdTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at third ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		descriptionForThirdTask.put("conceptId", concept);
+		descriptionForThirdTask.put("commitComment", "Created new synonym");
+		
+		assertComponentCreated(thirdTaskPath, SnomedComponentType.DESCRIPTION, descriptionForThirdTask);
+		
+		assertBranchCanBeMerged(thirdTaskPath, "Merging concept deletion to project");
+		
+		final String reviewId = andCreatedMergeReview(secondTaskPath.getPath(), testBranchPath.getPath());
+		assertReviewCurrent(reviewId);
+		
+		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
+			.statusCode(200)
+			.and()
+			.extract()
+			.body()
+			.as(JsonNode.class);
+		
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());
+		
+	}
+	
+	@Test
+	public void noDescriptionIdsInChangedConceptIdsForConceptDeletion() {
+		
+		givenBranchWithPath(testBranchPath); // project branch
+		
+		IBranchPath firstTaskPath = BranchPathUtils.createPath(testBranchPath, "1");
+		givenBranchWithPath(firstTaskPath);
+		
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		String concept = assertComponentCreated(firstTaskPath, SnomedComponentType.CONCEPT, requestBody);
+		
+		assertComponentExists(firstTaskPath, SnomedComponentType.CONCEPT, concept);
+		assertBranchCanBeMerged(firstTaskPath, "Merging first task into project");
+		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, concept);
+		
+		IBranchPath secondTaskPath = BranchPathUtils.createPath(testBranchPath, "2");
+		givenBranchWithPath(secondTaskPath);
+		
+		final Map<Object, Object> descriptionForSecondTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		descriptionForSecondTask.put("conceptId", concept);
+		descriptionForSecondTask.put("commitComment", "Created new synonym");
+		
+		assertComponentCreated(secondTaskPath, SnomedComponentType.DESCRIPTION, descriptionForSecondTask);
+		
+		IBranchPath thirdTaskPath = BranchPathUtils.createPath(testBranchPath, "3");
+		givenBranchWithPath(thirdTaskPath);
+		
+		final Map<Object, Object> descriptionForThirdTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at third ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		descriptionForThirdTask.put("conceptId", concept);
+		descriptionForThirdTask.put("commitComment", "Created new synonym");
+		
+		assertComponentCreated(thirdTaskPath, SnomedComponentType.DESCRIPTION, descriptionForThirdTask);
+		
+		assertComponentCanBeDeleted(thirdTaskPath, SnomedComponentType.CONCEPT, concept);
+		assertComponentNotExists(thirdTaskPath, SnomedComponentType.CONCEPT, concept);
+		
+		assertBranchCanBeMerged(thirdTaskPath, "Merging concept deletion to project");
+		
+		assertComponentNotExists(testBranchPath, SnomedComponentType.CONCEPT, concept);
+		
+		final String reviewId = andCreatedMergeReview(secondTaskPath.getPath(), testBranchPath.getPath());
+		assertReviewCurrent(reviewId);
+		
+		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
+			.statusCode(200)
+			.and()
+			.extract()
+			.body()
+			.as(JsonNode.class);
+		
+		assertTrue(reviewDetails.isArray());
+		assertEquals(0, reviewDetails.size());
+		
 	}
 }
