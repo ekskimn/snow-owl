@@ -445,87 +445,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final String sourcePath = mergeReview.sourcePath();
 		final String targetPath = mergeReview.targetPath();
 		
-		final Set<String> sourceConceptIds = Sets.newHashSet();
-		final Set<String> sourceDescriptionIds = Sets.newHashSet();
-		
-		ConceptChanges sourceChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.sourceToTargetReviewId()).execute(bus).getSync();
-		
-		for (String id : sourceChanges.changedConcepts()) {
-			ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
-			if (componentCategory == ComponentCategory.DESCRIPTION) {
-				sourceDescriptionIds.add(id);
-			} else if (componentCategory == ComponentCategory.CONCEPT) {
-				sourceConceptIds.add(id);
-			} else {
-				LOG.warn("Changed concept set contained non-concept id: {}", id);
-			}
-		}
-		
-		if (!sourceDescriptionIds.isEmpty()) {
-			
-			sourceConceptIds.addAll(SnomedRequests.prepareSearchDescription()
-				.setComponentIds(sourceDescriptionIds)
-				.setLimit(sourceDescriptionIds.size())
-				.build(sourcePath)
-				.execute(bus)
-				.then(new Function<SnomedDescriptions, Set<String>>() {
-					@Override
-					public Set<String> apply(SnomedDescriptions input) {
-						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
-							@Override
-							public String apply(ISnomedDescription input) {
-								return input.getConceptId();
-							}
-						}).toSet();
-					}
-				}).getSync());
-
-			sourceConceptIds.removeAll(sourceChanges.deletedConcepts());
-			
-		}
-		
-		ConceptChanges targetChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.targetToSourceReviewId()).execute(bus).getSync();
-		
-		final Set<String> targetConceptIds = Sets.newHashSet();
-		final Set<String> targetDescriptionIds = Sets.newHashSet();
-		
-		for (String id : targetChanges.changedConcepts()) {
-			ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
-			if (componentCategory == ComponentCategory.DESCRIPTION) {
-				targetDescriptionIds.add(id);
-			} else if (componentCategory == ComponentCategory.CONCEPT) {
-				targetConceptIds.add(id);
-			} else {
-				LOG.warn("Changed concept set contained non-concept id: {}", id);
-			}
-		}
-		
-		if (!targetDescriptionIds.isEmpty()) {
-			
-			targetConceptIds.addAll(SnomedRequests.prepareSearchDescription()
-				.setComponentIds(targetDescriptionIds)
-				.setLimit(targetDescriptionIds.size())
-				.build(targetPath)
-				.execute(bus)
-				.then(new Function<SnomedDescriptions, Set<String>>() {
-					@Override
-					public Set<String> apply(SnomedDescriptions input) {
-						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
-							@Override
-							public String apply(ISnomedDescription input) {
-								return input.getConceptId();
-							}
-						}).toSet();
-					}
-				}).getSync());
-			
-			targetConceptIds.removeAll(targetChanges.deletedConcepts());
-			
-		}
-		
-		sourceConceptIds.retainAll(targetConceptIds);
-		
-		final Set<String> mergeReviewIntersection = sourceConceptIds;
+		final Set<String> mergeReviewIntersection = getFilteredMergeReviewIntersection(mergeReview);
 		
 		final List<ListenableFuture<ISnomedBrowserMergeReviewDetail>> changeFutures = Lists.newArrayList();
 		final MergeReviewParameters parameters = new MergeReviewParameters(sourcePath, targetPath, extendedLocales, mergeReview.id());
@@ -543,6 +463,140 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		LOG.debug("Merge review {} count: {} initial, {} filtered", mergeReview.id(), changes.size(), relevantChanges.size());
 		return relevantChanges;
 	}
+
+	private Set<String> getFilteredMergeReviewIntersection(final MergeReview mergeReview) {
+		
+		final Set<String> sourceConceptIds = Sets.newHashSet();
+		final Set<String> sourceDescriptionIds = Sets.newHashSet();
+		final Set<String> sourceRelationshipIds = Sets.newHashSet();
+		
+		ConceptChanges sourceChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.sourceToTargetReviewId()).execute(bus).getSync();
+		
+		for (String id : sourceChanges.changedConcepts()) {
+			ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
+			if (componentCategory == ComponentCategory.CONCEPT) {
+				sourceConceptIds.add(id);
+			} else if (componentCategory == ComponentCategory.DESCRIPTION) {
+				sourceDescriptionIds.add(id);
+			} else if (componentCategory == ComponentCategory.RELATIONSHIP) {
+				sourceRelationshipIds.add(id);
+			} else {
+				LOG.warn("Changed concept set contained invalid component id: {}", id);
+			}
+		}
+		
+		if (!sourceDescriptionIds.isEmpty()) {
+			
+			sourceConceptIds.addAll(SnomedRequests.prepareSearchDescription()
+				.setComponentIds(sourceDescriptionIds)
+				.setLimit(sourceDescriptionIds.size())
+				.build(mergeReview.sourcePath())
+				.execute(bus)
+				.then(new Function<SnomedDescriptions, Set<String>>() {
+					@Override
+					public Set<String> apply(SnomedDescriptions input) {
+						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
+							@Override
+							public String apply(ISnomedDescription input) {
+								return input.getConceptId();
+							}
+						}).toSet();
+					}
+				}).getSync());
+
+			
+		}
+		
+		if (!sourceRelationshipIds.isEmpty()) {
+			
+			sourceConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
+				.setComponentIds(sourceRelationshipIds)
+				.setLimit(sourceRelationshipIds.size())
+				.build(mergeReview.sourcePath())
+				.execute(bus)
+				.then(new Function<SnomedRelationships, Set<String>>() {
+					@Override
+					public Set<String> apply(SnomedRelationships input) {
+						return FluentIterable.from(input).transform(new Function<ISnomedRelationship, String>() {
+							@Override
+							public String apply(ISnomedRelationship input) {
+								return input.getSourceId();
+							}
+						}).toSet();
+					}
+				}).getSync());
+			
+		}
+		
+		sourceConceptIds.removeAll(sourceChanges.deletedConcepts());
+		
+		ConceptChanges targetChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.targetToSourceReviewId()).execute(bus).getSync();
+		
+		final Set<String> targetConceptIds = Sets.newHashSet();
+		final Set<String> targetDescriptionIds = Sets.newHashSet();
+		final Set<String> targetRelationshipIds = Sets.newHashSet();
+		
+		for (String id : targetChanges.changedConcepts()) {
+			ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
+			if (componentCategory == ComponentCategory.CONCEPT) {
+				targetConceptIds.add(id);
+			} else if (componentCategory == ComponentCategory.DESCRIPTION) {
+				targetDescriptionIds.add(id);
+			} else if (componentCategory == ComponentCategory.RELATIONSHIP) {
+				targetRelationshipIds.add(id);
+			} else {
+				LOG.warn("Changed concept set contained invalid component id: {}", id);
+			}
+		}
+		
+		if (!targetDescriptionIds.isEmpty()) {
+			
+			targetConceptIds.addAll(SnomedRequests.prepareSearchDescription()
+				.setComponentIds(targetDescriptionIds)
+				.setLimit(targetDescriptionIds.size())
+				.build(mergeReview.targetPath())
+				.execute(bus)
+				.then(new Function<SnomedDescriptions, Set<String>>() {
+					@Override
+					public Set<String> apply(SnomedDescriptions input) {
+						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
+							@Override
+							public String apply(ISnomedDescription input) {
+								return input.getConceptId();
+							}
+						}).toSet();
+					}
+				}).getSync());
+			
+			
+		}
+		
+		if (!targetRelationshipIds.isEmpty()) {
+			
+			targetConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
+				.setComponentIds(targetRelationshipIds)
+				.setLimit(targetRelationshipIds.size())
+				.build(mergeReview.targetPath())
+				.execute(bus)
+				.then(new Function<SnomedRelationships, Set<String>>() {
+					@Override
+					public Set<String> apply(SnomedRelationships input) {
+						return FluentIterable.from(input).transform(new Function<ISnomedRelationship, String>() {
+							@Override
+							public String apply(ISnomedRelationship input) {
+								return input.getSourceId();
+							}
+						}).toSet();
+					}
+				}).getSync());
+		}
+		
+		targetConceptIds.removeAll(targetChanges.deletedConcepts());
+		
+		sourceConceptIds.retainAll(targetConceptIds);
+		
+		return sourceConceptIds;
+	}
 	
 	@Override
 	public void mergeAndReplayConceptUpdates(final String mergeReviewId, final String userId, final List<ExtendedLocale> extendedLocales) throws IOException, InterruptedException, ExecutionException {
@@ -551,7 +605,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final String targetPath = mergeReview.targetPath();
 
 		// Check we have a full set of manually merged concepts 
-		final Set<String> mergeReviewIntersection = mergeReview.mergeReviewIntersection();
+		final Set<String> mergeReviewIntersection = getFilteredMergeReviewIntersection(mergeReview);
 		final List<ListenableFuture<String>> changeFutures = Lists.newArrayList();
 		final MergeReviewParameters parameters = new MergeReviewParameters(sourcePath, targetPath, extendedLocales, mergeReview.id());
 

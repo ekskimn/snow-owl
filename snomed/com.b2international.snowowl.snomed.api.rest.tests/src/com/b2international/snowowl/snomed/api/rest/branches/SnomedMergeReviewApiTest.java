@@ -23,13 +23,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeMerged;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeRebased;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenDescriptionRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -39,6 +33,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -54,7 +49,10 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -311,7 +309,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@Test
-	public void noDescriptionIdsInChangedConceptIdsForConceptChange() {
+	public void noDescriptionIdsInChangedConceptIdsWhenConceptChangedForMergeReview() {
 		
 		givenBranchWithPath(testBranchPath); // project branch
 		
@@ -343,9 +341,9 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		assertComponentCreated(thirdTaskPath, SnomedComponentType.DESCRIPTION, descriptionForThirdTask);
 		
-		assertBranchCanBeMerged(thirdTaskPath, "Merging concept deletion to project");
+		assertBranchCanBeMerged(thirdTaskPath, "Merging new description to project");
 		
-		final String reviewId = andCreatedMergeReview(secondTaskPath.getPath(), testBranchPath.getPath());
+		final String reviewId = andCreatedMergeReview(testBranchPath.getPath(), secondTaskPath.getPath());
 		assertReviewCurrent(reviewId);
 		
 		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
@@ -358,10 +356,28 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		assertTrue(reviewDetails.isArray());
 		assertEquals(1, reviewDetails.size());
 		
+		JsonNode jsonNode = reviewDetails.get(0).get("autoMergedConcept");
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().header("Accept-Language", "en-GB")
+			.content(jsonNode)
+			.contentType(ContentType.JSON)
+			.when()
+			.post("/merge-reviews/{id}/{conceptId}", reviewId, concept)
+			.then()
+			.statusCode(200);
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().header("Accept-Language", "en-GB")
+			.when()
+			.post("/merge-reviews/{id}/apply", reviewId)
+			.then()
+			.statusCode(204);
+		
 	}
 	
 	@Test
-	public void noDescriptionIdsInChangedConceptIdsForConceptDeletion() {
+	public void noDescriptionIdsInChangedConceptIdsWhenConceptDeletedForMergeReview() {
 		
 		givenBranchWithPath(testBranchPath); // project branch
 		
@@ -400,7 +416,183 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		assertComponentNotExists(testBranchPath, SnomedComponentType.CONCEPT, concept);
 		
-		final String reviewId = andCreatedMergeReview(secondTaskPath.getPath(), testBranchPath.getPath());
+		final String reviewId = andCreatedMergeReview(testBranchPath.getPath(), secondTaskPath.getPath());
+		assertReviewCurrent(reviewId);
+		
+		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
+			.statusCode(200)
+			.and()
+			.extract()
+			.body()
+			.as(JsonNode.class);
+		
+		assertTrue(reviewDetails.isArray());
+		assertEquals(0, reviewDetails.size());
+		
+	}
+	
+	@Test
+	public void noDescriptionIdsInChangedConceptIdsForAcceptedMergeReview() {
+		
+		givenBranchWithPath(testBranchPath); // project branch
+		
+		IBranchPath firstTaskPath = BranchPathUtils.createPath(testBranchPath, "1");
+		givenBranchWithPath(firstTaskPath);
+		
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		String conceptId = assertComponentCreated(firstTaskPath, SnomedComponentType.CONCEPT, requestBody);
+		assertComponentExists(firstTaskPath, SnomedComponentType.CONCEPT, conceptId);
+		
+		final Map<Object, Object> descriptionBody = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("Description to change ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		descriptionBody.put("conceptId", conceptId);
+		descriptionBody.put("commitComment", "Created new synonym");
+		
+		String descriptionId = assertComponentCreated(firstTaskPath, SnomedComponentType.DESCRIPTION, descriptionBody);
+		
+		assertComponentExists(firstTaskPath, SnomedComponentType.DESCRIPTION, descriptionId);
+		
+		final Map<Object, Object> descriptionUpdateBody = ImmutableMap.<Object, Object>builder()
+				.put("acceptability", Collections.emptyMap())
+				.put("descriptionId", descriptionId)
+				.put("commitComment", "Update description")
+				.build();
+		
+		assertComponentCanBeUpdated(firstTaskPath, SnomedComponentType.DESCRIPTION, descriptionId, descriptionUpdateBody);
+		assertComponentHasProperty(firstTaskPath, SnomedComponentType.DESCRIPTION, descriptionId, "acceptabilityMap", null);
+		
+		assertBranchCanBeMerged(firstTaskPath, "Merging first task into project");
+		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, conceptId);
+		assertComponentExists(testBranchPath, SnomedComponentType.DESCRIPTION, descriptionId);
+
+
+		IBranchPath secondTaskPath = BranchPathUtils.createPath(testBranchPath, "2");
+		givenBranchWithPath(secondTaskPath);
+		
+		final Map<Object, Object> descriptionUpdateBodyUk = ImmutableMap.<Object, Object>builder()
+				.put("acceptability", ACCEPTABLE_ACCEPTABILITY_MAP)
+				.put("descriptionId", descriptionId)
+				.put("commitComment", "Update description on second task")
+				.build();
+		
+		assertComponentCanBeUpdated(secondTaskPath, SnomedComponentType.DESCRIPTION, descriptionId, descriptionUpdateBodyUk);
+
+		
+		IBranchPath thirdTaskPath = BranchPathUtils.createPath(testBranchPath, "3");
+		givenBranchWithPath(thirdTaskPath);
+		
+		Map<String, Acceptability> usAcceptabilityMapPreferred = ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_US, Acceptability.PREFERRED);
+		
+		final Map<Object, Object> descriptionUpdateBodyUs = ImmutableMap.<Object, Object>builder()
+				.put("acceptability", usAcceptabilityMapPreferred)
+				.put("descriptionId", descriptionId)
+				.put("commitComment", "Update description on third task")
+				.build();
+		
+		assertComponentCanBeUpdated(thirdTaskPath, SnomedComponentType.DESCRIPTION, descriptionId, descriptionUpdateBodyUs);
+		
+		assertBranchCanBeMerged(thirdTaskPath, "Merging third task to project");
+		
+		final String reviewId = andCreatedMergeReview(testBranchPath.getPath(), secondTaskPath.getPath());
+		assertReviewCurrent(reviewId);
+		
+		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
+			.statusCode(200)
+			.and()
+			.extract()
+			.body()
+			.as(JsonNode.class);
+		
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());
+		
+		JsonNode jsonNode = reviewDetails.get(0).get("autoMergedConcept");
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().header("Accept-Language", "en-GB")
+			.content(jsonNode)
+			.contentType(ContentType.JSON)
+			.when()
+			.post("/merge-reviews/{id}/{conceptId}", reviewId, conceptId)
+			.then()
+			.statusCode(200);
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().header("Accept-Language", "en-GB")
+			.when()
+			.post("/merge-reviews/{id}/apply", reviewId)
+			.then()
+			.statusCode(204);
+		
+	}
+	
+	@Test
+	public void noRelationshipIdsInChangedConceptIdsForMergeReview() {
+		
+		givenBranchWithPath(testBranchPath); // project branch
+		
+		IBranchPath firstTaskPath = BranchPathUtils.createPath(testBranchPath, "1");
+		givenBranchWithPath(firstTaskPath);
+		
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		String conceptId = assertComponentCreated(firstTaskPath, SnomedComponentType.CONCEPT, requestBody);
+		assertComponentExists(firstTaskPath, SnomedComponentType.CONCEPT, conceptId);
+		
+		final Map<?, ?> relationshipRequestBody = givenRelationshipRequestBody(conceptId, Concepts.IS_A, FINDING_CONTEXT, MODULE_SCT_CORE, "New relationship on concept");
+		final String relationshipId = assertComponentCreated(firstTaskPath, SnomedComponentType.RELATIONSHIP, relationshipRequestBody);
+		
+		final Map<String,Object> refSetReq = createRefSetRequestBody(SnomedRefSetType.SIMPLE, SnomedTerminologyComponentConstants.RELATIONSHIP, Concepts.REFSET_SIMPLE_TYPE);
+		final String refSetId = assertComponentCreated(firstTaskPath, SnomedComponentType.REFSET, refSetReq);
+		assertComponentExists(firstTaskPath, SnomedComponentType.REFSET, refSetId);
+		
+		final Map<String, Object> memberReq = createRefSetMemberRequestBody(relationshipId, refSetId);
+		String memberId = assertComponentCreated(firstTaskPath, SnomedComponentType.MEMBER, memberReq);
+		
+		assertComponentExists(firstTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()");
+		
+		assertBranchCanBeMerged(firstTaskPath, "Merging first task into project");
+		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, conceptId);
+		
+		IBranchPath secondTaskPath = BranchPathUtils.createPath(testBranchPath, "2");
+		givenBranchWithPath(secondTaskPath);
+
+		getComponent(secondTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
+			.then()
+			.body("moduleId", CoreMatchers.equalTo(Concepts.MODULE_SCT_CORE));
+		
+		final Map<?, ?> moduleUpdate = ImmutableMap.of("moduleId", "900000000000012004", "commitComment", "Update member module: " + memberId);
+
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().contentType(ContentType.JSON)
+			.and().body(moduleUpdate)
+			.when().put("/{path}/{componentType}/{id}", secondTaskPath, SnomedComponentType.MEMBER.toLowerCasePlural(), memberId);
+		
+		getComponent(secondTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
+			.then()
+			.body("moduleId", CoreMatchers.equalTo("900000000000012004"));
+			
+
+		IBranchPath thirdTaskPath = BranchPathUtils.createPath(testBranchPath, "3");
+		givenBranchWithPath(thirdTaskPath);
+
+		getComponent(thirdTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
+			.then()
+			.body("active", CoreMatchers.equalTo(true));
+	
+		final Map<?, ?> inactivationReq = ImmutableMap.of("active", false, "commitComment", "Inactivate member: " + memberId);
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().contentType(ContentType.JSON)
+			.and().body(inactivationReq)
+			.when().put("/{path}/{componentType}/{id}", thirdTaskPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), memberId);
+
+		getComponent(thirdTaskPath, SnomedComponentType.MEMBER, memberId, "referencedComponent()")
+			.then()
+			.body("active", CoreMatchers.equalTo(false));
+		
+		
+		assertBranchCanBeMerged(thirdTaskPath, "Merging third task to project");
+		
+		final String reviewId = andCreatedMergeReview(testBranchPath.getPath(), secondTaskPath.getPath());
 		assertReviewCurrent(reviewId);
 		
 		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()

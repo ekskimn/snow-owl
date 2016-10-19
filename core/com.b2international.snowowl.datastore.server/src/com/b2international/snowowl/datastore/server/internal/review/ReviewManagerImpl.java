@@ -311,6 +311,10 @@ public class ReviewManagerImpl implements ReviewManager {
 					}
 				}
 			}
+		}
+		
+		for (final Class<? extends Revision> revisionType : compare.getNewRevisionTypes()) {
+			final Hits<? extends Revision> hits = compare.searchNew(Query.select(revisionType).where(Expressions.matchAll()).build());
 			// iterate over again and add non root ids
 			for (Revision hit : hits) {
 				if (hit instanceof ContainerIdProvider) {
@@ -347,6 +351,10 @@ public class ReviewManagerImpl implements ReviewManager {
 					}
 				}
 			}
+		}
+		
+		for (final Class<? extends Revision> revisionType : compare.getDeletedRevisionTypes()) {
+			final Hits<? extends Revision> hits = compare.searchDeleted(Query.select(revisionType).where(Expressions.matchAll()).build());
 			// iterate over again and add non root ids
 			for (Revision hit : hits) {
 				if (hit instanceof ContainerIdProvider) {
