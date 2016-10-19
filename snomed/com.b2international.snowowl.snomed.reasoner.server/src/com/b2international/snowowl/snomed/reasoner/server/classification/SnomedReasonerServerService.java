@@ -115,6 +115,7 @@ import com.google.common.primitives.Longs;
  */
 public class SnomedReasonerServerService extends CollectingService<Reasoner, ClassificationRequest> implements SnomedReasonerService, IDisposableService {
 
+
 	private static final Ordering<ISnomedConcept> STORAGE_KEY_ORDERING = Ordering.from(new Comparator<ISnomedConcept>() {
 		@Override
 		public int compare(ISnomedConcept o1, ISnomedConcept o2) {
@@ -123,6 +124,10 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	}).nullsLast();
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedReasonerServerService.class);
+	
+	private static final boolean DISABLE_ICONS = true;
+	
+	private static final long ROOT_CONCEPT = Long.parseLong(Concepts.ROOT_CONCEPT);
 	
 	private final IListener invalidationListener = new IListener() {
 		@Override 
@@ -403,23 +408,31 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 		if (changeConceptCache.containsKey(id)) {
 			return changeConceptCache.get(id); 
 		} else {
-			final ChangeConcept concept = SnomedRequests.prepareGetConcept()
-					.setComponentId(Long.toString(id))
-					.build(branchPath.getPath())
-					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-					.then(new Function<ISnomedConcept, ChangeConcept>() {
-						@Override
-						public ChangeConcept apply(ISnomedConcept input) {
-							return new ChangeConcept(id, Long.parseLong(input.getIconId()));
-						}
-					})
-					.fail(new Function<Throwable, ChangeConcept>() {
-						@Override
-						public ChangeConcept apply(Throwable input) {
-							return new ChangeConcept(id, Long.parseLong(Concepts.ROOT_CONCEPT));
-						}
-					})
-					.getSync();
+			
+			final ChangeConcept concept;
+			
+			if (DISABLE_ICONS) {
+				concept = new ChangeConcept(id, ROOT_CONCEPT);
+			} else {
+				concept = SnomedRequests.prepareGetConcept()
+						.setComponentId(Long.toString(id))
+						.build(branchPath.getPath())
+						.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+						.then(new Function<ISnomedConcept, ChangeConcept>() {
+							@Override
+							public ChangeConcept apply(ISnomedConcept input) {
+								return new ChangeConcept(id, Long.parseLong(input.getIconId()));
+							}
+						})
+						.fail(new Function<Throwable, ChangeConcept>() {
+							@Override
+							public ChangeConcept apply(Throwable input) {
+								return new ChangeConcept(id, ROOT_CONCEPT);
+							}
+						})
+						.getSync();
+			}
+			
 			changeConceptCache.put(id, concept);
 			return concept;
 		}
