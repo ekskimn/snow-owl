@@ -114,13 +114,19 @@ class CisClient {
 		return String.format("%s/%s", baseUrl, contextRoot);
 	}
 
-	private void checkResponseStatus(final HttpResponse response) {
+	private void checkResponseStatus(final HttpResponse response) throws IOException {
 		final StatusLine statusLine = response.getStatusLine();
 		final int statusCode = statusLine.getStatusCode();
 		final String reasonPhrase = statusLine.getReasonPhrase();
 		
 		if (statusCode != HttpStatus.SC_OK) {
 			LOGGER.error("{} {}", statusCode, reasonPhrase);
+			
+			final HttpEntity errorEntity = response.getEntity();
+			if (errorEntity != null) {
+				LOGGER.error(EntityUtils.toString(errorEntity));
+			}
+			
 			throw new CisClientException(statusCode, reasonPhrase);
 		}
 	}
