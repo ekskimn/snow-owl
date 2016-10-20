@@ -397,8 +397,8 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 				entry.statedAncestors = statedAncestors;
 			}
 			
-			entry.referringRefSets = Collections3.toImmutableSet(referringRefSets);
-			entry.referringMappingRefSets = Collections3.toImmutableSet(referringMappingRefSets);
+			entry.referringRefSets = Collections3.toImmutableList(referringRefSets);
+			entry.referringMappingRefSets = Collections3.toImmutableList(referringMappingRefSets);
 			
 			return entry;
 		}
