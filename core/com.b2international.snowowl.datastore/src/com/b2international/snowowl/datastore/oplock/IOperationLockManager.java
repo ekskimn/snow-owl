@@ -16,6 +16,7 @@
 package com.b2international.snowowl.datastore.oplock;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * Represents an exclusive lock manager that allows contexts of arbitrary type to lock potentially nested
@@ -80,4 +81,11 @@ public interface IOperationLockManager<C extends Serializable> {
 	 * @throws OperationLockException when one or more locks for the given targets could not be released for some reason
 	 */
 	void unlock(C context, Iterable<? extends IOperationLockTarget> targets) throws OperationLockException;
+
+	/**
+	 * Collects a snapshot of currently granted locks.
+	 * <p>
+	 * @return a list of granted locks information objects, sorted by lock identifer (never {@code null})
+	 */
+	List<OperationLockInfo<C>> getLocks();
 }

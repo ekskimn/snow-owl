@@ -18,6 +18,7 @@ package com.b2international.snowowl.datastore.server.oplock;
 import java.io.Serializable;
 
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
+import com.b2international.snowowl.datastore.oplock.OperationLockInfo;
 
 /**
  * An {@link AbstractOperationLockManager} implementation that uses {@link ReentrantOperationLock}s.

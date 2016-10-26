@@ -17,9 +17,6 @@ package com.b2international.snowowl.datastore.server.internal.branch;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -34,7 +31,6 @@ import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
 import com.b2international.index.query.Query.AfterWhereBuilder;
-import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.branch.Branch;
@@ -43,12 +39,6 @@ import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.exceptions.RequestTimeoutException;
-import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
-import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
-import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
-import com.b2international.snowowl.datastore.oplock.impl.SingleRepositoryAndBranchLockTarget;
-import com.b2international.snowowl.datastore.server.oplock.OperationLockInfo;
-import com.b2international.snowowl.datastore.server.oplock.impl.DatastoreOperationLockManager;
 import com.google.common.base.Function;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -140,23 +130,6 @@ public abstract class BranchManagerImpl implements BranchManager {
 		final Branch branch = getBranchFromStore(path);
 		if (branch == null) {
 			throw new NotFoundException(Branch.class.getSimpleName(), path);
-		}
-		
-		final IDatastoreOperationLockManager lockManager = ApplicationContext.getInstance().getService(IDatastoreOperationLockManager.class);
-		if (lockManager != null) {
-			final List<OperationLockInfo<DatastoreLockContext>> locks = ((DatastoreOperationLockManager) lockManager).getLocks();
-			for (OperationLockInfo<DatastoreLockContext> operationLockInfo : locks) {
-				final IOperationLockTarget target = operationLockInfo.getTarget();
-				if (target instanceof SingleRepositoryAndBranchLockTarget) {
-					SingleRepositoryAndBranchLockTarget lockTarget = (SingleRepositoryAndBranchLockTarget) target;
-					if (lockTarget.getBranchPath().equals(branch.branchPath())) {
-						Map<String, Object> lockInfo = new HashMap<>();
-						lockInfo.put("creationDate", operationLockInfo.getCreationDate());
-						lockInfo.put("context", operationLockInfo.getContext());
-						branch.metadata().put("lock", lockInfo);
-					}
-				}
-			}
 		}
 		
 		return branch;

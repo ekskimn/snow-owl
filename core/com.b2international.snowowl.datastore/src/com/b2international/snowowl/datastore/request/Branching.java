@@ -44,7 +44,11 @@ public class Branching {
 	}
 	
 	public Request<ServiceProvider, Branch> prepareGet(String path) {
-		return RepositoryRequests.wrap(repositoryId, new ReadBranchRequest(path));
+		return RepositoryRequests.wrap(repositoryId, new ReadBranchRequest(path, false));
+	}
+	
+	public Request<ServiceProvider, Branch> prepareGetWithLocks(String path) {
+		return RepositoryRequests.wrap(repositoryId, new ReadBranchRequest(path, true));
 	}
 	
 	public Request<ServiceProvider, Branches> prepareGetChildren(String path) {

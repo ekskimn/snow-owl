@@ -30,6 +30,7 @@ import org.eclipse.core.runtime.ListenerList;
 import com.b2international.snowowl.datastore.oplock.IOperationLockManager;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
+import com.b2international.snowowl.datastore.oplock.OperationLockInfo;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreOperationLockException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -198,13 +199,7 @@ public abstract class AbstractOperationLockManager<C extends Serializable> imple
 		return ImmutableList.copyOf(grantedLocks.values());
 	}
 
-	/**
-	 * (non-API)
-	 * <p>
-	 * Collects a snapshot of currently granted locks.
-	 * <p>
-	 * @return a list of granted locks information objects, sorted by lock identifer (never {@code null})
-	 */
+	@Override
 	public List<OperationLockInfo<C>> getLocks() {
 
 		final List<OperationLockInfo<C>> result = Lists.newArrayList();

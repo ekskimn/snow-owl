@@ -15,22 +15,56 @@
  */
 package com.b2international.snowowl.datastore.events;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.domain.RepositoryContext;
+import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
+import com.b2international.snowowl.datastore.oplock.OperationLockInfo;
+import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
+import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
+import com.b2international.snowowl.datastore.oplock.impl.SingleRepositoryAndBranchLockTarget;
 
 /**
  * @since 4.1
  */
 public final class ReadBranchRequest extends BranchRequest<Branch> {
 
-	public ReadBranchRequest(final String branchPath) {
+	private final boolean expandLock;
+
+	public ReadBranchRequest(final String branchPath, boolean expandLock) {
 		super(branchPath);
+		this.expandLock = expandLock;
 	}
 	
 	@Override
 	public Branch execute(RepositoryContext context) {
-		return context.service(BranchManager.class).getBranch(getBranchPath());
+		Branch branch = context.service(BranchManager.class).getBranch(getBranchPath());
+		
+		if (expandLock) {
+			final IDatastoreOperationLockManager lockManager = ApplicationContext.getInstance().getService(IDatastoreOperationLockManager.class);
+			if (lockManager != null) {
+				final List<OperationLockInfo<DatastoreLockContext>> locks = lockManager.getLocks();
+				for (OperationLockInfo<DatastoreLockContext> operationLockInfo : locks) {
+					final IOperationLockTarget target = operationLockInfo.getTarget();
+					if (target instanceof SingleRepositoryAndBranchLockTarget) {
+						SingleRepositoryAndBranchLockTarget lockTarget = (SingleRepositoryAndBranchLockTarget) target;
+						if (lockTarget.getBranchPath().equals(branch.branchPath())) {
+							Map<String, Object> lockInfo = new HashMap<>();
+							lockInfo.put("creationDate", operationLockInfo.getCreationDate());
+							lockInfo.put("context", operationLockInfo.getContext());
+							branch.metadata().put("lock", lockInfo);
+						}
+					}
+				}
+			}
+		}
+
+		return branch;
 	}
 	
 	@Override
