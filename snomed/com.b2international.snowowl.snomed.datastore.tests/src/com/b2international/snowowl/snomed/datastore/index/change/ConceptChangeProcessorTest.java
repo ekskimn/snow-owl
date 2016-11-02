@@ -49,7 +49,6 @@ import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomy;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
-import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -368,7 +367,7 @@ public class ConceptChangeProcessorTest extends BaseChangeProcessorTest {
 		registerExistingObject(concept);
 		registerExistingObject(member);
 		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(concept.cdoID()), doc(concept)
-				.referringRefSets(HashMultiset.create(ImmutableList.of(referringReferenceSetId, referringReferenceSetId, otherReferenceSetId))) // Two members in the same reference set
+				.referringRefSets(ImmutableList.of(referringReferenceSetId, referringReferenceSetId, otherReferenceSetId)) // Two members in the same reference set
 				.build());
 		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(member.cdoID()), SnomedRefSetMemberIndexEntry.builder(member).build());
 		
@@ -378,12 +377,12 @@ public class ConceptChangeProcessorTest extends BaseChangeProcessorTest {
 		
 		// the concept needs to be reindexed with the referring member value
 		final SnomedConceptDocument expected = doc(concept)
-				.referringRefSets(HashMultiset.create(ImmutableList.of(referringReferenceSetId, otherReferenceSetId))) // One member still remains
+				.referringRefSets(ImmutableList.of(referringReferenceSetId, otherReferenceSetId)) // One member still remains
 				.build();
 		
 		assertEquals(1, processor.getMappings().size());
 		final Revision actual = Iterables.getOnlyElement(processor.getMappings().values());
-		assertDocEquals(expected, actual);
+		assertDocEquals(expected, actual, true);
 		assertEquals(0, processor.getDeletions().size());
 	}
 	
@@ -428,7 +427,7 @@ public class ConceptChangeProcessorTest extends BaseChangeProcessorTest {
 		registerExistingObject(concept);
 		registerExistingObject(member);
 		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(concept.cdoID()), doc(concept)
-				.referringMappingRefSets(HashMultiset.create(ImmutableList.of(referringMappingReferenceSetId, referringMappingReferenceSetId, otherReferenceSetId))) // Two mapping members
+				.referringMappingRefSets(ImmutableList.of(referringMappingReferenceSetId, referringMappingReferenceSetId, otherReferenceSetId)) // Two mapping members
 				.build());
 		indexRevision(RevisionBranch.MAIN_PATH, CDOIDUtil.getLong(member.cdoID()), SnomedRefSetMemberIndexEntry.builder(member).build());
 		
@@ -438,11 +437,11 @@ public class ConceptChangeProcessorTest extends BaseChangeProcessorTest {
 		
 		// the concept needs to be reindexed with the referring member value
 		final SnomedConceptDocument expected = doc(concept)
-				.referringMappingRefSets(HashMultiset.create(ImmutableList.of(referringMappingReferenceSetId, otherReferenceSetId))) // One mapping member remains
+				.referringMappingRefSets(ImmutableList.of(referringMappingReferenceSetId, otherReferenceSetId)) // One mapping member remains
 				.build();
 		assertEquals(1, processor.getMappings().size());
 		final Revision actual = Iterables.getOnlyElement(processor.getMappings().values());
-		assertDocEquals(expected, actual);
+		assertDocEquals(expected, actual, true);
 		assertEquals(0, processor.getDeletions().size());
 	}
 	

@@ -17,11 +17,12 @@ package com.b2international.index.revision;
 
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -208,6 +209,10 @@ public abstract class BaseRevisionIndexTest {
 	}
 	
 	protected void assertDocEquals(Object expected, Object actual) {
+		assertDocEquals(expected, actual, false);
+	}
+	
+	protected void assertDocEquals(Object expected, Object actual, boolean unordered) {
 		for (Field f : mappings.getMapping(expected.getClass()).getFields()) {
 			if (Revision.REPLACED_INS.equals(f.getName()) 
 					|| Revision.SEGMENT_ID.equals(f.getName())
@@ -218,7 +223,15 @@ public abstract class BaseRevisionIndexTest {
 				// skip revision fields from equality check
 				continue;
 			}
-			assertEquals(String.format("Field '%s' should be equal", f.getName()), Reflections.getValue(expected, f), Reflections.getValue(actual, f));
+			Object expectedObject = Reflections.getValue(expected, f);
+			Object actualObject = Reflections.getValue(actual, f);
+			
+			if (unordered && expectedObject instanceof List && actualObject instanceof List) {
+				assertEquals(String.format("Unordered list '%s' should have equal length", f.getName()), ((List<?>) expectedObject).size(), ((List<?>) actualObject).size());
+				assertTrue(String.format("Unordered list '%s' should contain all items", f.getName()), ((List<?>) expectedObject).containsAll((List<?>) actualObject));
+			} else {
+				assertEquals(String.format("Field '%s' should be equal", f.getName()), expectedObject, actualObject);
+			}
 		}
 	}
 	
