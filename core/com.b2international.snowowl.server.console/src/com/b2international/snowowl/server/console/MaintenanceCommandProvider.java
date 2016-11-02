@@ -15,36 +15,65 @@
  */
 package com.b2international.snowowl.server.console;
 
+import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.StringUtils;
+import com.b2international.index.BulkIndexWrite;
+import com.b2international.index.Hits;
+import com.b2international.index.Index;
+import com.b2international.index.IndexWrite;
+import com.b2international.index.Searcher;
+import com.b2international.index.Writer;
+import com.b2international.index.query.Expressions;
+import com.b2international.index.query.Query;
 import com.b2international.index.revision.Purge;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.ApplicationContext.ServiceRegistryEntry;
+import com.b2international.snowowl.core.Repository;
+import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
+import com.b2international.snowowl.datastore.server.internal.branch.BranchManagerImpl;
+import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
+import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
 import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequestBuilder;
 import com.b2international.snowowl.datastore.server.reindex.ReindexResult;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 
 /**
  * OSGI command contribution with Snow Owl commands.
  *
  */
 public class MaintenanceCommandProvider implements CommandProvider {
+
+	private static final Pattern TMP_BRANCH_NAME_PATTERN = Pattern.compile(String.format("^(%s)([%s]{1,%s})(_[0-9]{1,19}$)",
+			Pattern.quote(Branch.TEMP_PREFIX), Branch.DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET, Branch.DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH));
 
 	class Artefact {
 		public long storageKey;
@@ -120,6 +149,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				return;
 			}
 			
+			if ("fixtempbranches".equals(cmd)) {
+				fixTempBranches(interpreter);
+				return;
+			}
+			
 			interpreter.println(getHelp());
 		} catch (Exception ex) {
 			LoggerFactory.getLogger("console").error("Failed to execute command", ex);
@@ -129,6 +163,149 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				interpreter.println(ex.getMessage());
 			}
 		}
+	}
+
+	private void fixTempBranches(final CommandInterpreter interpreter) {
+		
+		final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
+		final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
+		
+		Index index = repository.service(Index.class);
+		
+		Integer numberOfAffectedBranches = index.write(new IndexWrite<Integer>() {
+			@Override
+			public Integer execute(Writer writer) throws IOException {
+				
+				Searcher searcher = writer.searcher();
+				Hits<InternalBranch> hits = searcher.search(Query.select(InternalBranch.class).where(Expressions.matchAll()).limit(Integer.MAX_VALUE).build());
+				
+				Multimap<Integer, InternalBranch> idToBranchesMap = Multimaps.index(hits, new Function<InternalBranch, Integer>() {
+					@Override
+					public Integer apply(InternalBranch input) {
+						input.setBranchManager((BranchManagerImpl) repository.service(BranchManager.class));
+						return ((InternalCDOBasedBranch) input).cdoBranchId();
+					}
+				});
+				
+				List<IndexWrite<Void>> indexWrites = Lists.newArrayList();
+				
+				int i = 0;
+				
+				for (Entry<Integer, Collection<InternalBranch>> entry : idToBranchesMap.asMap().entrySet()) {
+					
+					if (entry.getValue().size() > 1) {
+						
+						List<String> branchInfo = FluentIterable.from(entry.getValue()).transform(new Function<InternalBranch, String>() {
+							@Override
+							public String apply(InternalBranch input) {
+								return String.format("[%s] %s", input.headTimestamp(), input.path());
+							}
+						}).toList();
+						
+						if (entry.getValue().size() > 2) {
+							interpreter.println(String.format("More than one branch exists with the same id: %s %s", entry.getKey(), Joiner.on("; ").join(branchInfo)));
+							continue;
+						}
+						
+						InternalBranch first = Iterables.getFirst(entry.getValue(), null);
+						InternalBranch second = Iterables.getLast(entry.getValue(), null);
+						
+						if (first != null && second != null) {
+							
+							InternalBranch keep = null;
+							InternalBranch remove = null;
+							
+							if (first.name().startsWith(Branch.TEMP_PREFIX) && !second.name().startsWith(Branch.TEMP_PREFIX)) {
+								keep = second;
+								remove = first;
+							} else if (!first.name().startsWith(Branch.TEMP_PREFIX) && second.name().startsWith(Branch.TEMP_PREFIX)) {
+								keep = first;
+								remove = second;
+							} else {
+								interpreter.println(String.format("Inconsistent temporary branch name prefixes: %s %s", entry.getKey(), Joiner.on("; ").join(branchInfo)));
+								continue;
+							}
+							
+							if (!isBranchesStructurallyEqual((InternalCDOBasedBranch) keep, (InternalCDOBasedBranch) remove)) {
+								interpreter.println(String.format("Inconsistent temporary branches: %s %s", entry.getKey(), Joiner.on("; ").join(branchInfo)));
+								continue;
+							}
+							
+							if (remove.headTimestamp() > keep.headTimestamp()) {
+								
+								final InternalBranch finalKeep = keep.withHeadTimestamp(remove.headTimestamp());
+								
+								IndexWrite<Void> update = new IndexWrite<Void>() {
+									@Override
+									public Void execute(Writer index) throws IOException {
+										index.put(finalKeep.path(), finalKeep);
+										return null;
+									}
+								};
+								
+								indexWrites.add(update);
+								
+								interpreter.println(String.format("Using head timestamp of %s for %s: [%s] >> [%s]", remove.name(), keep.name(), remove.headTimestamp(), keep.headTimestamp()));
+								
+							}
+							
+							final InternalBranch finalRemove = remove;
+							
+							IndexWrite<Void> delete = new IndexWrite<Void>() {
+								@Override
+								public Void execute(Writer index) throws IOException {
+									index.remove(InternalBranch.class, finalRemove.path());
+									return null;
+								}
+							};
+							
+							indexWrites.add(delete);
+							
+							i++;
+							
+							interpreter.println(String.format("Removing temporary branch entry: %s", remove.name()));
+						}
+						
+					}
+					
+				}
+				
+				if (!indexWrites.isEmpty())	{
+					
+					BulkIndexWrite<Void> bulkIndexWrite = new BulkIndexWrite<>(indexWrites);
+					bulkIndexWrite.execute(writer);
+					
+					writer.commit();
+					
+					interpreter.println("Changes successfully committed to index.");
+					
+				}
+				
+				return i;
+			}
+		});
+		
+		if (numberOfAffectedBranches > 0) {
+			interpreter.println(String.format("%s temporary branches were fixed", numberOfAffectedBranches));
+		} else {
+			interpreter.println("None of the temporary branches are inconsistent");
+		}
+	}
+	
+	private boolean isBranchesStructurallyEqual(InternalCDOBasedBranch keep, InternalCDOBasedBranch remove) {
+		return keep.baseTimestamp() == remove.baseTimestamp() &&
+				keep.parentPath().equals(remove.parentPath()) &&
+				keep.name().equals(getBareTemporaryBranchName(remove.name())) &&
+				keep.parentSegments().size() == remove.parentSegments().size() && keep.parentSegments().containsAll(remove.parentSegments()) &&
+				keep.segments().size() >= remove.segments().size() && keep.segments().containsAll(remove.segments());
+	}
+	
+	private String getBareTemporaryBranchName(String tempBranchName) {
+		Matcher matcher = TMP_BRANCH_NAME_PATTERN.matcher(tempBranchName);
+		if (matcher.matches()) {
+			return matcher.group(2);
+		}
+		return "";
 	}
 
 	private void purge(CommandInterpreter interpreter) {
