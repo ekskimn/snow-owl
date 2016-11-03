@@ -266,8 +266,25 @@ public class MaintenanceCommandProvider implements CommandProvider {
 							interpreter.println(String.format("Removing temporary branch entry: %s", remove.name()));
 						}
 						
+					} else if (entry.getValue().size() == 1) {
+						
+						final InternalBranch singleBranch = Iterables.getOnlyElement(entry.getValue());
+						
+						if (singleBranch.name().startsWith(Branch.TEMP_PREFIX)) {
+							
+							IndexWrite<Void> delete = new IndexWrite<Void>() {
+								@Override
+								public Void execute(Writer index) throws IOException {
+									index.remove(InternalBranch.class, singleBranch.path());
+									return null;
+								}
+							};
+							
+							indexWrites.add(delete);
+							i++;
+							interpreter.println(String.format("Removing standalone temporary branch entry: %s", singleBranch.name()));
+						}
 					}
-					
 				}
 				
 				if (!indexWrites.isEmpty())	{
