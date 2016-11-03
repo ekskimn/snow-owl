@@ -24,6 +24,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.emf.common.util.EList;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.osgi.framework.console.CommandInterpreter;
 import org.eclipse.osgi.framework.console.CommandProvider;
 import org.slf4j.LoggerFactory;
@@ -44,7 +46,9 @@ import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
+import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
 import com.b2international.snowowl.datastore.server.internal.branch.BranchManagerImpl;
@@ -57,6 +61,10 @@ import com.b2international.snowowl.datastore.server.reindex.ReindexRequestBuilde
 import com.b2international.snowowl.datastore.server.reindex.ReindexResult;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Builder;
+import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -65,6 +73,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
+import com.google.common.collect.Sets;
 
 /**
  * OSGI command contribution with Snow Owl commands.
@@ -154,6 +163,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				return;
 			}
 			
+			if ("fixrefsetdocs".equals(cmd)) {
+				fixRefsetDocs(interpreter);
+				return;
+			}
+			
 			interpreter.println(getHelp());
 		} catch (Exception ex) {
 			LoggerFactory.getLogger("console").error("Failed to execute command", ex);
@@ -163,6 +177,63 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				interpreter.println(ex.getMessage());
 			}
 		}
+	}
+
+	private void fixRefsetDocs(final CommandInterpreter interpreter) {
+		
+		final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
+		final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
+		
+		Index index = repository.service(Index.class);
+		
+		index.write(new IndexWrite<Void>() {
+			@Override
+			public Void execute(Writer writer) throws IOException {
+				
+				try (SnomedEditingContext editingContext = new SnomedEditingContext(BranchPathUtils.createMainPath())) {
+					
+					Set<String> refsetIds = Sets.newHashSet();
+					
+					EList<EObject> eRefsets = editingContext.getRefSetEditingContext().getEditingContextRootResource().eContents();
+					for (EObject eRefset : eRefsets) {
+						if (eRefset instanceof SnomedRefSet) {
+							SnomedRefSet snomedRefSet = (SnomedRefSet) eRefset;
+							refsetIds.add(snomedRefSet.getIdentifierId());
+						}
+					}
+					
+					interpreter.println(String.format("Found %s reference sets", refsetIds.size()));
+					
+					Searcher searcher = writer.searcher();
+					Hits<SnomedConceptDocument> hits = searcher.search(Query.select(SnomedConceptDocument.class)
+							.where(RevisionDocument.Expressions.ids(refsetIds)).limit(Integer.MAX_VALUE).build());
+					
+					for (SnomedConceptDocument hit : hits) {
+						
+						if (hit.getRefSetStorageKey() > 0) {
+							interpreter.println(String.format("Found correct refset document: %s", hit.getId()));
+							continue;
+						}
+						
+						final Builder doc = SnomedConceptDocument.builder(hit);
+						SnomedRefSet refSet = editingContext.getRefSetEditingContext().lookup(hit.getId(), SnomedRefSet.class);
+						
+						if (refSet != null) {
+							doc.refSet(refSet);
+						}
+						
+						interpreter.println(String.format("Fixed refset document with id %s", hit.getId()));
+						
+						writer.put(hit._id(), doc.build());
+						
+					}
+					
+					writer.commit();
+				}
+				
+				return null;
+			}
+		});
 	}
 
 	private void fixTempBranches(final CommandInterpreter interpreter) {
