@@ -35,6 +35,7 @@ import org.eclipse.net4j.util.lifecycle.LifecycleUtil;
 import com.b2international.commons.Pair;
 import com.b2international.index.BulkIndexWrite;
 import com.b2international.index.IndexWrite;
+import com.b2international.index.Searcher;
 import com.b2international.index.Writer;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
@@ -121,7 +122,7 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
 				final String name = branch.getName();
 				final long baseTimestamp = repository.getBaseTimestamp(branch);
 				final long headTimestamp = repository.getHeadTimestamp(branch);
-				reopen(parent, name, existingBranch == null ? new MetadataImpl() : existingBranch.metadata(), baseTimestamp, headTimestamp, cdoBranchId);
+				doReopen(parent.path(), name, existingBranch == null ? new MetadataImpl() : existingBranch.metadata(), baseTimestamp, headTimestamp, cdoBranchId);
 			}
 		}
     }
@@ -292,16 +293,17 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
         if (repository.getIndexUpdater() != null) {
         	repository.getIndexUpdater().reopen(BranchPathUtils.createPath(childCDOBranch), cdoBranchPath);
         }
-        return reopen(parent, name, metadata, timeStamp, timeStamp, childCDOBranch.getID());
+        return doReopen(parent.path(), name, metadata, timeStamp, timeStamp, childCDOBranch.getID());
     }
 
-    private InternalBranch reopen(final InternalBranch parent, final String name, final Metadata metadata, final long baseTimestamp, final long headTimestamp, final int cdoBranchId) {
+    private InternalBranch doReopen(final String parentPath, final String name, final Metadata metadata, final long baseTimestamp, final long headTimestamp, final int cdoBranchId) {
     	final Pair<Integer, Integer> nextTwoSegments = nextTwoSegments();
     	return commit(new IndexWrite<InternalBranch>() {
 			@Override
 			public InternalBranch execute(Writer index) throws IOException {
-				final InternalCDOBasedBranch parentBranch = (InternalCDOBasedBranch) parent;
-				final String parentPath = parent.path();
+				final Searcher searcher = index.searcher();
+				final InternalCDOBasedBranch parentBranch = (InternalCDOBasedBranch) searcher.get(InternalBranch.class, parentPath);
+				
 				final Set<Integer> parentSegments = newHashSet();
 		    	// all branch should know the segment path to the ROOT
 		    	parentSegments.addAll(parentBranch.parentSegments());
@@ -310,10 +312,10 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
 				// the "new" child branch
 				final CDOBranchImpl childBranch = new CDOBranchImpl(name, parentPath, baseTimestamp, headTimestamp, metadata, cdoBranchId, nextTwoSegments.getA(), Collections.singleton(nextTwoSegments.getA()), parentSegments);
 				create(childBranch).execute(index);
-				update(parent.getClass(), parentPath, new Function<InternalBranch, InternalBranch>() {
+				update(InternalBranch.class, parentPath, new Function<InternalBranch, InternalBranch>() {
 					@Override
 					public InternalBranch apply(InternalBranch input) {
-						return parentBranch.withSegmentId(nextTwoSegments.getB());
+						return ((InternalCDOBasedBranch) input).withSegmentId(nextTwoSegments.getB());
 					}
 				}).execute(index);
 				return childBranch;
