@@ -216,6 +216,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 						}
 						
 						final Builder doc = SnomedConceptDocument.builder(hit);
+						doc.branchPath(hit.getBranchPath());
+						doc.replacedIns(hit.getReplacedIns());
+						doc.commitTimestamp(hit.getCommitTimestamp());
+						doc.segmentId(hit.getSegmentId());
+						
 						SnomedRefSet refSet = editingContext.getRefSetEditingContext().lookup(hit.getId(), SnomedRefSet.class);
 						
 						if (refSet != null) {
