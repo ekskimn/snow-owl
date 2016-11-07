@@ -95,9 +95,13 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="term", required=false) 
 			final String termFilter,
 
-			@ApiParam(value="The ESCG expression to match")
+			@ApiParam(value="Deprecated! The ESCG expression to match")
 			@RequestParam(value="escg", required=false) 
 			final String escgFilter,
+			
+			@ApiParam(value="The ECL expression to match")
+			@RequestParam(value="ecl", required=false) 
+			final String eclFilter,
 			
 			@ApiParam(value="A set of Concept identifiers")
 			@RequestParam(value="conceptIds", required=false) 
@@ -187,6 +191,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.setComponentIds(conceptIds)
 					.filterByTerm(termFilter)
 					.filterByEscg(escgFilter)
+					.filterByEcl(eclFilter)
 					.filterByModule(moduleFilter)
 					.filterByActive(activeFilter)
 					.setExpand(expand)
