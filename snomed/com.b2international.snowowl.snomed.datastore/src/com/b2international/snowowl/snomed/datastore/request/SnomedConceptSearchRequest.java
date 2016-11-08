@@ -290,6 +290,11 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			return SnomedConverters.newConceptConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
 		}
 	}
+	
+	@Override
+	protected SnomedConcepts createEmptyResult(int offset, int limit) {
+		return new SnomedConcepts(offset, limit, 0);
+	}
 
 	private Expression addSearchProfile(final Expression searchProfileQuery, final Expression query) {
 		if (searchProfileQuery == null) {
