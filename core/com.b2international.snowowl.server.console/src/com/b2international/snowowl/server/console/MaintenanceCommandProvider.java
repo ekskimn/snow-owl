@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.server.console;
 
+import static com.google.common.collect.Sets.newHashSet;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Comparator;
@@ -67,6 +69,7 @@ import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Builder;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -177,6 +180,11 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				return;
 			}
 			
+			if ("fixrelationships".equals(cmd)) {
+				fixRelationships(interpreter);
+				return;
+			}
+			
 			interpreter.println(getHelp());
 		} catch (Exception ex) {
 			LoggerFactory.getLogger("console").error("Failed to execute command", ex);
@@ -186,6 +194,39 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				interpreter.println(ex.getMessage());
 			}
 		}
+	}
+
+	private void fixRelationships(final CommandInterpreter interpreter) {
+		
+		final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
+		final Repository repository = repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID);
+		
+		Index index = repository.service(Index.class);
+		
+		index.write(new IndexWrite<Void>() {
+			@Override
+			public Void execute(Writer writer) throws IOException {
+				
+				Set<String> relationshipIds = newHashSet("6624515026", "6624516025", "6624517023", "6613668024");
+				
+				Searcher searcher = writer.searcher();
+				Hits<SnomedRelationshipIndexEntry> hits = searcher.search(Query.select(SnomedRelationshipIndexEntry.class)
+						.where(RevisionDocument.Expressions.ids(relationshipIds)).limit(Integer.MAX_VALUE).build());
+				
+				interpreter.println(String.format("Found %s relationship documents", hits.getTotal()));
+				
+				for (SnomedRelationshipIndexEntry entry : hits) {
+					writer.remove(SnomedRelationshipIndexEntry.class, entry._id());
+					interpreter.println(String.format("Removing relationships document: %s", entry));
+				}
+								
+				writer.commit();
+				
+				return null;
+			}
+		});
+		
+		
 	}
 
 	private void fixRefsetDocs(final CommandInterpreter interpreter) {
