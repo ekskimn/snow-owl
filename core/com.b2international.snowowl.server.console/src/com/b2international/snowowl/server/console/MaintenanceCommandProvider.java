@@ -17,10 +17,10 @@ package com.b2international.snowowl.server.console;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,6 +46,9 @@ import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
@@ -67,6 +70,8 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDoc
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
@@ -74,6 +79,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.google.common.primitives.Longs;
 
 /**
  * OSGI command contribution with Snow Owl commands.
@@ -81,6 +87,8 @@ import com.google.common.collect.Sets;
  */
 public class MaintenanceCommandProvider implements CommandProvider {
 
+	private static final String DEFAULT_BRANCH_PREFIX = "|--";
+	private static final String DEFAULT_INDENT = "   ";
 	private static final Pattern TMP_BRANCH_NAME_PATTERN = Pattern.compile(String.format("^(%s)([%s]{1,%s})(_[0-9]{1,19}$)",
 			Pattern.quote(Branch.TEMP_PREFIX), Branch.DEFAULT_ALLOWED_BRANCH_NAME_CHARACTER_SET, Branch.DEFAULT_MAXIMUM_BRANCH_NAME_LENGTH));
 
@@ -110,6 +118,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		buffer.append("\tsnowowl reindex [repositoryId] [failedCommitTimestamp]- reindexes the content for the given repository ID from the given failed commit timestamp (optional, default timestamp is 1 which means no failed commit).\n");
 		buffer.append("\tsnowowl optimize [repositoryId] [maxSegments] - optimizes the underlying index for the repository to have the supplied maximum number of segments (default number is 1)\n");
 		buffer.append("\tsnowowl purge [repositoryId] [branchPath] [ALL|LATEST|HISTORY] - optimizes the underlying index by deleting unnecessary documents from the given branch using the given purge strategy (default strategy is LATEST)\n");
+		buffer.append("\tsnowowl listbranches [repository] [branchPath] - prints all the child branches of the specified branch path in the system for a repository. Branch path is MAIN by default and has to be full path (e.g. MAIN/PROJECT/TASK)\n");
 		return buffer.toString();
 	}
 
@@ -494,7 +503,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	public synchronized void listRepositories(CommandInterpreter interpreter) {
-		ICDORepositoryManager repositoryManager = ApplicationContext.getServiceForClass(ICDORepositoryManager.class);
+		ICDORepositoryManager repositoryManager = getRepositoryManager();
 		Set<String> uuidKeySet = repositoryManager.uuidKeySet();
 		if (!uuidKeySet.isEmpty()) {
 			interpreter.println("Repositories:");
@@ -504,34 +513,84 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		}
 	}
 
-	public synchronized void listBranches(CommandInterpreter interpreter)
-			throws InterruptedException, ExecutionException {
-
-		String repositoryName = interpreter.nextArgument();
-		if (isValidRepositoryName(repositoryName, interpreter)) {
-			IEventBus eventBus = ApplicationContext.getInstance().getService(IEventBus.class);
-			interpreter.println("Repository " + repositoryName + " branches:");
-			Branch branch = RepositoryRequests.branching(repositoryName).prepareGet("MAIN").executeSync(eventBus, 1000);
-			processBranch(branch, 0, interpreter);
+	public synchronized void listBranches(CommandInterpreter interpreter) {
+		
+		String repositoryUUID = interpreter.nextArgument();
+		
+		if (isValidRepositoryName(repositoryUUID, interpreter)) {
+			
+			String parentBranchPath = interpreter.nextArgument();
+			
+			if (Strings.isNullOrEmpty(parentBranchPath)) {
+				interpreter.println("Parent branch path was not specified, falling back to MAIN");
+				parentBranchPath = Branch.MAIN_PATH;
+			} else if (!parentBranchPath.startsWith(Branch.MAIN_PATH)) {
+				interpreter.println("Specify parent branch with full path. i.e. MAIN/PROJECT/TASK1");
+				return;
+			}
+			
+			Branch parentBranch = null;
+			
+			try {
+				 parentBranch = RepositoryRequests.branching(repositoryUUID).prepareGet(parentBranchPath).executeSync(getBus(), 1000);
+			} catch (NotFoundException e) {
+				interpreter.println(String.format("Unable to find %s", parentBranchPath));
+				return;
+			}
+			
+			if (parentBranch != null) {
+				interpreter.println(String.format("Branch hierarchy for %s in repository %s:", parentBranchPath, repositoryUUID));
+				print(parentBranch, getDepthOfBranch(parentBranch), interpreter);
+			}
+			
 		}
 	}
-
-	// Depth-first traversal
-	private void processBranch(Branch childBranch, int indent, CommandInterpreter interpreter) {
-
-		StringBuffer sb = new StringBuffer();
-		for (int i = 0; i < indent; i++) {
-			sb.append(' ');
-
+	
+	private void print(final Branch branch, final int parentDepth, CommandInterpreter interpreter) {
+		
+		printBranch(branch, getDepthOfBranch(branch) - parentDepth, interpreter);
+		
+		List<? extends Branch> children = FluentIterable.from(branch.children()).filter(new Predicate<Branch>() {
+			@Override
+			public boolean apply(Branch input) {
+				return input.parentPath().equals(branch.path());
+			}
+		}).toSortedList(new Comparator<Branch>() {
+			@Override
+			public int compare(Branch o1, Branch o2) {
+				return Longs.compare(o1.baseTimestamp(), o2.baseTimestamp());
+			}
+		});
+		
+		if (children.size() != 0) {
+			for (Branch child : children) {
+				print(child, parentDepth, interpreter);
+			}
 		}
-		sb.append(childBranch.name());
-		interpreter.println(sb.toString());
-		indent++;
-		Collection<? extends Branch> children = childBranch.children();
-		for (Branch branch : children) {
-			processBranch(branch, indent, interpreter);
+		
+	}
+
+	private void printBranch(Branch branch, int depth, CommandInterpreter interpreter) {
+		interpreter.println(String.format("%-30s %-12s B: %s H: %s",
+				String.format("%s%s%s", 
+				getIndentationForBranch(depth), 
+				DEFAULT_BRANCH_PREFIX, 
+				branch.name()),
+				String.format("[%s]", branch.state()),
+				Dates.formatByGmt(branch.baseTimestamp(), DateFormats.LONG), 
+				Dates.formatByGmt(branch.headTimestamp(), DateFormats.LONG)));
+	}
+		
+	private String getIndentationForBranch(int depth) {
+		String indent = "";
+		for (int i = 0; i < depth; i++) {
+			indent += DEFAULT_INDENT;
 		}
-		indent--;
+		return indent;
+	}
+
+	private int getDepthOfBranch(Branch currentBranch) {
+		return Iterables.size(Splitter.on(Branch.SEPARATOR).split(currentBranch.path()));
 	}
 
 	public synchronized void checkServices(CommandInterpreter ci) {
@@ -549,20 +608,24 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 
 	private boolean isValidRepositoryName(String repositoryName, CommandInterpreter interpreter) {
-		if (repositoryName == null) {
-			interpreter.println(
-					"Repository name should be specified. Execute 'listrepositories' to see the available repositories.");
+		
+		if (Strings.isNullOrEmpty(repositoryName)) {
+			interpreter.println("Repository name should be specified. Execute 'listrepositories' to see the available repositories.");
 			return false;
 		}
-
-		ICDORepositoryManager repositoryManager = ApplicationContext.getServiceForClass(ICDORepositoryManager.class);
-		Set<String> uuidKeySet = repositoryManager.uuidKeySet();
+		
+		Set<String> uuidKeySet = getRepositoryManager().uuidKeySet();
+		
 		if (!uuidKeySet.contains(repositoryName)) {
 			interpreter.println("Could not find repository called: " + repositoryName);
 			interpreter.println("Available repository names are: " + uuidKeySet);
 			return false;
 		}
+		
 		return true;
+	}
 
+	private ICDORepositoryManager getRepositoryManager() {
+		return ApplicationContext.getServiceForClass(ICDORepositoryManager.class);
 	}
 }
