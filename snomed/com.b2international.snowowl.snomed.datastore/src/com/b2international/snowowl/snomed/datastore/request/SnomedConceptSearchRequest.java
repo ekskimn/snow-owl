@@ -275,9 +275,8 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			queryExpression = addSearchProfile(searchProfileQuery, queryBuilder.build());
 			sortBy = SortBy.NONE;
 		}
-		
-		
-		final Hits<SnomedConceptDocument> hits = searcher.search(Query.select(SnomedConceptDocument.class)
+
+		final Hits<SnomedConceptDocument> hits = searcher.search(Query.selectPartial(SnomedConceptDocument.class, fields())
 				.where(queryExpression)
 				.offset(offset())
 				.limit(limit())

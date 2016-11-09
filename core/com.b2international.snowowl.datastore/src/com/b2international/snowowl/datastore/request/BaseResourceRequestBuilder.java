@@ -17,6 +17,7 @@ package com.b2international.snowowl.datastore.request;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.ExtendedLocale;
@@ -32,11 +33,13 @@ public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBu
 
 	private Options expand = OptionsBuilder.newBuilder().build();
 	private List<ExtendedLocale> locales = Collections.emptyList();
+	private Set<String> fields = Collections.emptySet();
 	
 	protected BaseResourceRequestBuilder(final String repositoryId) {
 		super(repositoryId);
 	}
 	
+
 	public final B setLocales(List<ExtendedLocale> locales) {
 		if (!CompareUtils.isEmpty(locales)) {
 			this.locales = locales;
@@ -58,11 +61,19 @@ public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBu
 		return getSelf();
 	}
 	
+	public final B setFields(Set<String> fields) {
+		if (!CompareUtils.isEmpty(fields)) {
+			this.fields = fields;
+		}
+		return getSelf();
+	}
+
 	@Override
 	protected final Request<BranchContext, R> doBuild() {
 		final BaseResourceRequest<BranchContext, R> req = create();
 		req.setLocales(locales);
 		req.setExpand(expand);
+		req.setFields(fields);
 		return req;
 	}
 
