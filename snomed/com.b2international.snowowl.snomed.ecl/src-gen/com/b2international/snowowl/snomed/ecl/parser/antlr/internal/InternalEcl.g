@@ -969,21 +969,34 @@ ruleAttributeConstraint returns [EObject current=null]
 )
 )?(
 (
-(
 		{ 
+<<<<<<< feature/ecl-support
 	        newCompositeNode(grammarAccess.getAttributeConstraintAccess().getAttributeConceptReferenceParserRuleCall_1_0_0()); 
+=======
+	        newCompositeNode(grammarAccess.getAttributeConstraintAccess().getAttributeAttributeParserRuleCall_2_0()); 
+>>>>>>> be9d8b9 SO-1782: support descendantOf and desc.OrSelfOf in attribute part...
 	    }
+<<<<<<< feature/ecl-support
 		lv_attribute_1_1=ruleConceptReference		{
+=======
+		lv_attribute_2_0=ruleAttribute		{
+>>>>>>> be9d8b9 SO-1782: support descendantOf and desc.OrSelfOf in attribute part...
 	        if ($current==null) {
 	            $current = createModelElementForParent(grammarAccess.getAttributeConstraintRule());
 	        }
        		set(
        			$current, 
        			"attribute",
+<<<<<<< feature/ecl-support
         		lv_attribute_1_1, 
         		"ConceptReference");
+=======
+        		lv_attribute_2_0, 
+        		"Attribute");
+>>>>>>> be9d8b9 SO-1782: support descendantOf and desc.OrSelfOf in attribute part...
 	        afterParserOrEnumRuleCall();
 	    }
+<<<<<<< feature/ecl-support
 
     |		{ 
 	        newCompositeNode(grammarAccess.getAttributeConstraintAccess().getAttributeAnyParserRuleCall_1_0_1()); 
@@ -1001,6 +1014,8 @@ ruleAttributeConstraint returns [EObject current=null]
 	    }
 
 )
+=======
+>>>>>>> be9d8b9 SO-1782: support descendantOf and desc.OrSelfOf in attribute part...
 
 )
 )(
@@ -1022,6 +1037,260 @@ ruleAttributeConstraint returns [EObject current=null]
 
 )
 ))
+<<<<<<< feature/ecl-support
+=======
+;
+
+
+
+
+
+// Entry rule entryRuleAttribute
+entryRuleAttribute returns [EObject current=null] 
+	:
+	{ newCompositeNode(grammarAccess.getAttributeRule()); }
+	 iv_ruleAttribute=ruleAttribute 
+	 { $current=$iv_ruleAttribute.current; } 
+	 EOF 
+;
+
+// Rule Attribute
+ruleAttribute returns [EObject current=null] 
+    @init { enterRule(); 
+    }
+    @after { leaveRule(); }:
+(
+    { 
+        newCompositeNode(grammarAccess.getAttributeAccess().getAttributeDescendantOfParserRuleCall_0()); 
+    }
+    this_AttributeDescendantOf_0=ruleAttributeDescendantOf
+    { 
+        $current = $this_AttributeDescendantOf_0.current; 
+        afterParserOrEnumRuleCall();
+    }
+
+    |
+    { 
+        newCompositeNode(grammarAccess.getAttributeAccess().getAttributeDescendantOrSelfOfParserRuleCall_1()); 
+    }
+    this_AttributeDescendantOrSelfOf_1=ruleAttributeDescendantOrSelfOf
+    { 
+        $current = $this_AttributeDescendantOrSelfOf_1.current; 
+        afterParserOrEnumRuleCall();
+    }
+
+    |
+    { 
+        newCompositeNode(grammarAccess.getAttributeAccess().getConceptReferenceParserRuleCall_2()); 
+    }
+    this_ConceptReference_2=ruleConceptReference
+    { 
+        $current = $this_ConceptReference_2.current; 
+        afterParserOrEnumRuleCall();
+    }
+
+    |
+    { 
+        newCompositeNode(grammarAccess.getAttributeAccess().getAnyParserRuleCall_3()); 
+    }
+    this_Any_3=ruleAny
+    { 
+        $current = $this_Any_3.current; 
+        afterParserOrEnumRuleCall();
+    }
+)
+;
+
+
+
+
+
+// Entry rule entryRuleAttributeDescendantOf
+entryRuleAttributeDescendantOf returns [EObject current=null] 
+	:
+	{ newCompositeNode(grammarAccess.getAttributeDescendantOfRule()); }
+	 iv_ruleAttributeDescendantOf=ruleAttributeDescendantOf 
+	 { $current=$iv_ruleAttributeDescendantOf.current; } 
+	 EOF 
+;
+
+// Rule AttributeDescendantOf
+ruleAttributeDescendantOf returns [EObject current=null] 
+    @init { enterRule(); 
+    }
+    @after { leaveRule(); }:
+(this_LT_0=RULE_LT
+    { 
+    newLeafNode(this_LT_0, grammarAccess.getAttributeDescendantOfAccess().getLTTerminalRuleCall_0()); 
+    }
+(
+(
+(
+		{ 
+	        newCompositeNode(grammarAccess.getAttributeDescendantOfAccess().getConstraintConceptReferenceParserRuleCall_1_0_0()); 
+	    }
+		lv_constraint_1_1=ruleConceptReference		{
+	        if ($current==null) {
+	            $current = createModelElementForParent(grammarAccess.getAttributeDescendantOfRule());
+	        }
+       		set(
+       			$current, 
+       			"constraint",
+        		lv_constraint_1_1, 
+        		"ConceptReference");
+	        afterParserOrEnumRuleCall();
+	    }
+
+    |		{ 
+	        newCompositeNode(grammarAccess.getAttributeDescendantOfAccess().getConstraintAnyParserRuleCall_1_0_1()); 
+	    }
+		lv_constraint_1_2=ruleAny		{
+	        if ($current==null) {
+	            $current = createModelElementForParent(grammarAccess.getAttributeDescendantOfRule());
+	        }
+       		set(
+       			$current, 
+       			"constraint",
+        		lv_constraint_1_2, 
+        		"Any");
+	        afterParserOrEnumRuleCall();
+	    }
+
+)
+
+)
+))
+;
+
+
+
+
+
+// Entry rule entryRuleAttributeDescendantOrSelfOf
+entryRuleAttributeDescendantOrSelfOf returns [EObject current=null] 
+	:
+	{ newCompositeNode(grammarAccess.getAttributeDescendantOrSelfOfRule()); }
+	 iv_ruleAttributeDescendantOrSelfOf=ruleAttributeDescendantOrSelfOf 
+	 { $current=$iv_ruleAttributeDescendantOrSelfOf.current; } 
+	 EOF 
+;
+
+// Rule AttributeDescendantOrSelfOf
+ruleAttributeDescendantOrSelfOf returns [EObject current=null] 
+    @init { enterRule(); 
+    }
+    @after { leaveRule(); }:
+(this_DBL_LT_0=RULE_DBL_LT
+    { 
+    newLeafNode(this_DBL_LT_0, grammarAccess.getAttributeDescendantOrSelfOfAccess().getDBL_LTTerminalRuleCall_0()); 
+    }
+(
+(
+(
+		{ 
+	        newCompositeNode(grammarAccess.getAttributeDescendantOrSelfOfAccess().getConstraintConceptReferenceParserRuleCall_1_0_0()); 
+	    }
+		lv_constraint_1_1=ruleConceptReference		{
+	        if ($current==null) {
+	            $current = createModelElementForParent(grammarAccess.getAttributeDescendantOrSelfOfRule());
+	        }
+       		set(
+       			$current, 
+       			"constraint",
+        		lv_constraint_1_1, 
+        		"ConceptReference");
+	        afterParserOrEnumRuleCall();
+	    }
+
+    |		{ 
+	        newCompositeNode(grammarAccess.getAttributeDescendantOrSelfOfAccess().getConstraintAnyParserRuleCall_1_0_1()); 
+	    }
+		lv_constraint_1_2=ruleAny		{
+	        if ($current==null) {
+	            $current = createModelElementForParent(grammarAccess.getAttributeDescendantOrSelfOfRule());
+	        }
+       		set(
+       			$current, 
+       			"constraint",
+        		lv_constraint_1_2, 
+        		"Any");
+	        afterParserOrEnumRuleCall();
+	    }
+
+)
+
+)
+))
+;
+
+
+
+
+
+// Entry rule entryRuleCardinality
+entryRuleCardinality returns [EObject current=null] 
+	:
+	{ newCompositeNode(grammarAccess.getCardinalityRule()); }
+	 iv_ruleCardinality=ruleCardinality 
+	 { $current=$iv_ruleCardinality.current; } 
+	 EOF 
+;
+
+// Rule Cardinality
+ruleCardinality returns [EObject current=null] 
+    @init { enterRule(); 
+    }
+    @after { leaveRule(); }:
+(this_SQUARE_OPEN_0=RULE_SQUARE_OPEN
+    { 
+    newLeafNode(this_SQUARE_OPEN_0, grammarAccess.getCardinalityAccess().getSQUARE_OPENTerminalRuleCall_0()); 
+    }
+(
+(
+		{ 
+	        newCompositeNode(grammarAccess.getCardinalityAccess().getMinNonNegativeIntegerParserRuleCall_1_0()); 
+	    }
+		lv_min_1_0=ruleNonNegativeInteger		{
+	        if ($current==null) {
+	            $current = createModelElementForParent(grammarAccess.getCardinalityRule());
+	        }
+       		set(
+       			$current, 
+       			"min",
+        		lv_min_1_0, 
+        		"NonNegativeInteger");
+	        afterParserOrEnumRuleCall();
+	    }
+
+)
+)this_TO_2=RULE_TO
+    { 
+    newLeafNode(this_TO_2, grammarAccess.getCardinalityAccess().getTOTerminalRuleCall_2()); 
+    }
+(
+(
+		{ 
+	        newCompositeNode(grammarAccess.getCardinalityAccess().getMaxMaxValueParserRuleCall_3_0()); 
+	    }
+		lv_max_3_0=ruleMaxValue		{
+	        if ($current==null) {
+	            $current = createModelElementForParent(grammarAccess.getCardinalityRule());
+	        }
+       		set(
+       			$current, 
+       			"max",
+        		lv_max_3_0, 
+        		"MaxValue");
+	        afterParserOrEnumRuleCall();
+	    }
+
+)
+)this_SQUARE_CLOSE_4=RULE_SQUARE_CLOSE
+    { 
+    newLeafNode(this_SQUARE_CLOSE_4, grammarAccess.getCardinalityAccess().getSQUARE_CLOSETerminalRuleCall_4()); 
+    }
+)
+>>>>>>> be9d8b9 SO-1782: support descendantOf and desc.OrSelfOf in attribute part...
 ;
 
 

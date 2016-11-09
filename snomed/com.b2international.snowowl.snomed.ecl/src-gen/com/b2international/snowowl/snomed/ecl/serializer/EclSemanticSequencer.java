@@ -70,11 +70,47 @@ public class EclSemanticSequencer extends AbstractDelegatingSemanticSequencer {
 				sequence_ConceptReference(context, (ConceptReference) semanticObject); 
 				return; 
 			case EclPackage.DESCENDANT_OF:
-				sequence_DescendantOf(context, (DescendantOf) semanticObject); 
-				return; 
+				if(context == grammarAccess.getAttributeRule() ||
+				   context == grammarAccess.getAttributeDescendantOfRule()) {
+					sequence_AttributeDescendantOf(context, (DescendantOf) semanticObject); 
+					return; 
+				}
+				else if(context == grammarAccess.getAndExpressionConstraintRule() ||
+				   context == grammarAccess.getAndExpressionConstraintAccess().getAndExpressionConstraintLeftAction_1_0() ||
+				   context == grammarAccess.getDescendantOfRule() ||
+				   context == grammarAccess.getExclusionExpressionConstraintRule() ||
+				   context == grammarAccess.getExclusionExpressionConstraintAccess().getExclusionExpressionConstraintLeftAction_1_0() ||
+				   context == grammarAccess.getExpressionConstraintRule() ||
+				   context == grammarAccess.getOrExpressionConstraintRule() ||
+				   context == grammarAccess.getOrExpressionConstraintAccess().getOrExpressionConstraintLeftAction_1_0() ||
+				   context == grammarAccess.getRefinedExpressionConstraintRule() ||
+				   context == grammarAccess.getRefinedExpressionConstraintAccess().getRefinedExpressionConstraintConstraintAction_1_0() ||
+				   context == grammarAccess.getSimpleExpressionConstraintRule()) {
+					sequence_DescendantOf(context, (DescendantOf) semanticObject); 
+					return; 
+				}
+				else break;
 			case EclPackage.DESCENDANT_OR_SELF_OF:
-				sequence_DescendantOrSelfOf(context, (DescendantOrSelfOf) semanticObject); 
-				return; 
+				if(context == grammarAccess.getAttributeRule() ||
+				   context == grammarAccess.getAttributeDescendantOrSelfOfRule()) {
+					sequence_AttributeDescendantOrSelfOf(context, (DescendantOrSelfOf) semanticObject); 
+					return; 
+				}
+				else if(context == grammarAccess.getAndExpressionConstraintRule() ||
+				   context == grammarAccess.getAndExpressionConstraintAccess().getAndExpressionConstraintLeftAction_1_0() ||
+				   context == grammarAccess.getDescendantOrSelfOfRule() ||
+				   context == grammarAccess.getExclusionExpressionConstraintRule() ||
+				   context == grammarAccess.getExclusionExpressionConstraintAccess().getExclusionExpressionConstraintLeftAction_1_0() ||
+				   context == grammarAccess.getExpressionConstraintRule() ||
+				   context == grammarAccess.getOrExpressionConstraintRule() ||
+				   context == grammarAccess.getOrExpressionConstraintAccess().getOrExpressionConstraintLeftAction_1_0() ||
+				   context == grammarAccess.getRefinedExpressionConstraintRule() ||
+				   context == grammarAccess.getRefinedExpressionConstraintAccess().getRefinedExpressionConstraintConstraintAction_1_0() ||
+				   context == grammarAccess.getSimpleExpressionConstraintRule()) {
+					sequence_DescendantOrSelfOf(context, (DescendantOrSelfOf) semanticObject); 
+					return; 
+				}
+				else break;
 			case EclPackage.EXCLUSION_EXPRESSION_CONSTRAINT:
 				sequence_ExclusionExpressionConstraint(context, (ExclusionExpressionConstraint) semanticObject); 
 				return; 
@@ -162,9 +198,31 @@ public class EclSemanticSequencer extends AbstractDelegatingSemanticSequencer {
 	
 	/**
 	 * Constraint:
+<<<<<<< feature/ecl-support
 	 *     (reversed?=REVERSED? (attribute=ConceptReference | attribute=Any) comparison=Comparison)
+=======
+	 *     (cardinality=Cardinality? reversed?=REVERSED? attribute=Attribute comparison=Comparison)
+>>>>>>> be9d8b9 SO-1782: support descendantOf and desc.OrSelfOf in attribute part...
 	 */
 	protected void sequence_AttributeConstraint(EObject context, Refinement semanticObject) {
+		genericSequencer.createSequence(context, semanticObject);
+	}
+	
+	
+	/**
+	 * Constraint:
+	 *     (constraint=ConceptReference | constraint=Any)
+	 */
+	protected void sequence_AttributeDescendantOf(EObject context, DescendantOf semanticObject) {
+		genericSequencer.createSequence(context, semanticObject);
+	}
+	
+	
+	/**
+	 * Constraint:
+	 *     (constraint=ConceptReference | constraint=Any)
+	 */
+	protected void sequence_AttributeDescendantOrSelfOf(EObject context, DescendantOrSelfOf semanticObject) {
 		genericSequencer.createSequence(context, semanticObject);
 	}
 	
