@@ -122,6 +122,24 @@ public interface EclFactory extends EFactory
   Refinement createRefinement();
 
   /**
+   * Returns a new object of class '<em>Attribute Constraint</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Attribute Constraint</em>'.
+   * @generated
+   */
+  AttributeConstraint createAttributeConstraint();
+
+  /**
+   * Returns a new object of class '<em>Cardinality</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Cardinality</em>'.
+   * @generated
+   */
+  Cardinality createCardinality();
+
+  /**
    * Returns a new object of class '<em>Comparison</em>'.
    * <!-- begin-user-doc -->
    * <!-- end-user-doc -->
@@ -201,6 +219,24 @@ public interface EclFactory extends EFactory
    * @generated
    */
   DottedExpressionConstraint createDottedExpressionConstraint();
+
+  /**
+   * Returns a new object of class '<em>Or Refinement</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>Or Refinement</em>'.
+   * @generated
+   */
+  OrRefinement createOrRefinement();
+
+  /**
+   * Returns a new object of class '<em>And Refinement</em>'.
+   * <!-- begin-user-doc -->
+   * <!-- end-user-doc -->
+   * @return a new object of class '<em>And Refinement</em>'.
+   * @generated
+   */
+  AndRefinement createAndRefinement();
 
   /**
    * Returns the package supported by this factory.

@@ -11,7 +11,7 @@ OrExpressionConstraint returns ExpressionConstraint:
 	AndExpressionConstraint ({OrExpressionConstraint.left=current} OR right=AndExpressionConstraint)*;
 	
 AndExpressionConstraint returns ExpressionConstraint:
-	ExclusionExpressionConstraint ({AndExpressionConstraint.left=current} (AND | COMMA) right=ExclusionExpressionConstraint)*;
+	ExclusionExpressionConstraint ({AndExpressionConstraint.left=current} AndOperator right=ExclusionExpressionConstraint)*;
 	
 ExclusionExpressionConstraint returns ExpressionConstraint:
 	RefinedExpressionConstraint ({ExclusionExpressionConstraint.left=current} MINUS right=RefinedExpressionConstraint)?;
@@ -56,9 +56,15 @@ Any:
 	WILDCARD {Any};
 
 Refinement:
-	AttributeConstraint;
+	OrRefinement;
+
+OrRefinement returns Refinement:
+	AndRefinement ({OrRefinement.left=current} OR right=AndRefinement)*;
+
+AndRefinement returns Refinement:
+	AttributeConstraint ({AndRefinement.left=current} AndOperator right=AttributeConstraint)*;
 	
-AttributeConstraint returns Refinement:
+AttributeConstraint:
 	(cardinality=Cardinality)? (reversed?=REVERSED)? attribute=Attribute comparison=Comparison;
 	
 Attribute returns ExpressionConstraint:
@@ -91,21 +97,28 @@ Term 				hidden() : (TermCharacter)+ (WS+ (TermCharacter)+)*;
 TermCharacter 		hidden() : LT|GT
 								|DBL_LT|DBL_GT
 								|LT_EM|GT_EM
-								|AND|OR|NOT
+								|AND|OR|NOT|MINUS
 								|ZERO|DIGIT_NONZERO
 								|LETTER|CARET
-								|EQUAL|PLUS
+								|EQUAL|NOT_EQUAL|PLUS
 								|CURLY_OPEN|CURLY_CLOSE
 								|ROUND_OPEN|ROUND_CLOSE
 								|SQUARE_OPEN|SQUARE_CLOSE
 								|DOT|COLON|COMMA
-								|REVERSED
+								|REVERSED|TO
+								|WILDCARD
 								|OTHER_CHARACTER;
+NonNegativeInteger returns ecore::EInt
+					hidden() : ZERO | DIGIT_NONZERO (DIGIT_NONZERO|ZERO)*;
+MaxValue 		   returns ecore::EInt
+					hidden() : NonNegativeInteger | WILDCARD;
+AndOperator			hidden() : AND | COMMA;
 
 // ---TERMINALS---
 
 // ECL terminals
 terminal REVERSED				: 'R';
+terminal TO						: '..';
 
 // bool operators
 terminal AND 					: 'AND';
