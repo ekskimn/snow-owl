@@ -80,6 +80,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 	
 	private SnomedRelationships getActiveInferredRelationships(String branchPath, String conceptId) {
 		return SnomedRequests.prepareSearchRelationship()
+				.all()
 				.filterByActive(true)
 				.filterBySource(conceptId)
 				.filterByCharacteristicType(Concepts.INFERRED_RELATIONSHIP)
