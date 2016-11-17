@@ -51,10 +51,16 @@ public class EclSyntacticSequencer extends AbstractSyntacticSequencer {
 			return getEQUALToken(semanticObject, ruleCall, node);
 		else if(ruleCall.getRule() == grammarAccess.getGTRule())
 			return getGTToken(semanticObject, ruleCall, node);
+		else if(ruleCall.getRule() == grammarAccess.getGTERule())
+			return getGTEToken(semanticObject, ruleCall, node);
 		else if(ruleCall.getRule() == grammarAccess.getGT_EMRule())
 			return getGT_EMToken(semanticObject, ruleCall, node);
+		else if(ruleCall.getRule() == grammarAccess.getHASHRule())
+			return getHASHToken(semanticObject, ruleCall, node);
 		else if(ruleCall.getRule() == grammarAccess.getLTRule())
 			return getLTToken(semanticObject, ruleCall, node);
+		else if(ruleCall.getRule() == grammarAccess.getLTERule())
+			return getLTEToken(semanticObject, ruleCall, node);
 		else if(ruleCall.getRule() == grammarAccess.getLT_EMRule())
 			return getLT_EMToken(semanticObject, ruleCall, node);
 		else if(ruleCall.getRule() == grammarAccess.getMINUSRule())
@@ -167,6 +173,15 @@ public class EclSyntacticSequencer extends AbstractSyntacticSequencer {
 	}
 	
 	/**
+	 * terminal GTE					: '>=';
+	 */
+	protected String getGTEToken(EObject semanticObject, RuleCall ruleCall, INode node) {
+		if (node != null)
+			return getTokenText(node);
+		return ">=";
+	}
+	
+	/**
 	 * terminal GT_EM					: '>!';
 	 */
 	protected String getGT_EMToken(EObject semanticObject, RuleCall ruleCall, INode node) {
@@ -176,12 +191,30 @@ public class EclSyntacticSequencer extends AbstractSyntacticSequencer {
 	}
 	
 	/**
+	 * terminal HASH					: '#';
+	 */
+	protected String getHASHToken(EObject semanticObject, RuleCall ruleCall, INode node) {
+		if (node != null)
+			return getTokenText(node);
+		return "#";
+	}
+	
+	/**
 	 * terminal LT						: '<';
 	 */
 	protected String getLTToken(EObject semanticObject, RuleCall ruleCall, INode node) {
 		if (node != null)
 			return getTokenText(node);
 		return "<";
+	}
+	
+	/**
+	 * terminal LTE					: '<=';
+	 */
+	protected String getLTEToken(EObject semanticObject, RuleCall ruleCall, INode node) {
+		if (node != null)
+			return getTokenText(node);
+		return "<=";
 	}
 	
 	/**
