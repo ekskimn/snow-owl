@@ -51,6 +51,20 @@ public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<Branc
 	@NotNull
 	private Options options;
 	
+	/**
+	 * Operator that can be used to specify more fine-grained value filtering.
+	 * 
+	 * @since 5.4
+	 */
+	public enum Operator {
+		EQUALS,
+		NOT_EQUALS,
+		GREATER_THAN,
+		GREATER_THAN_EQUALS,
+		LESS_THAN,
+		LESS_THAN_EQUALS,
+	}
+	
 	@NotNull
 	private Collection<String> componentIds;
 	
@@ -131,6 +145,15 @@ public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<Branc
 	@JsonIgnore
 	protected String getIdField() {
 		return DocumentMapping._ID;
+	}
+	
+	/**
+	 * Constructs the operator property name for the given property name.
+	 * @param property
+	 * @return
+	 */
+	public static String operator(String property) {
+		return String.format("%sOperator", property);
 	}
 
 	@Override
