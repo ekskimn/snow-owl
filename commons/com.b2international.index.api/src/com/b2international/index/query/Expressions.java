@@ -17,6 +17,7 @@ package com.b2international.index.query;
 
 import static com.google.common.collect.Lists.newArrayList;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 
@@ -79,6 +80,10 @@ public class Expressions {
 
 	}
 	
+	public static Expression exists(final String field) {
+		return matchRange(field, (String) null, (String) null);
+	}
+	
 	public static Expression nestedMatch(final String path, Expression expression) {
 		final List<String> pathSegments = Lists.reverse(Splitter.on(".").splitToList(path));
 		Expression previous = expression;
@@ -107,6 +112,10 @@ public class Expressions {
 	public static Expression match(String field, Integer value) {
 		return new IntPredicate(field, value);
 	}
+	
+	public static Expression match(String field, BigDecimal value) {
+		return new DecimalPredicate(field, value);
+	}
 
 	public static Expression matchAll() {
 		return new MatchAll();
@@ -130,6 +139,14 @@ public class Expressions {
 
 	public static Expression matchRange(String field, String from, String to) {
 		return new StringRangePredicate(field, from, to);
+	}
+	
+	public static Expression matchRange(String field, BigDecimal from, BigDecimal to) {
+		return new DecimalRangePredicate(field, from, to);
+	}
+	
+	public static Expression matchRange(String field, BigDecimal from, BigDecimal to, boolean includeFrom, boolean includeTo) {
+		return new DecimalRangePredicate(field, from, to, includeFrom, includeTo);
 	}
 
 	public static Expression matchAnyInt(String field, Iterable<Integer> values) {
