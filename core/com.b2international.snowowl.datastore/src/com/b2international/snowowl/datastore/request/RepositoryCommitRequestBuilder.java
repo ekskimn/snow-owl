@@ -22,6 +22,7 @@ import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.RequestBuilder;
 import com.b2international.snowowl.core.events.metrics.Metrics;
+import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 
 /**
  * @since 4.5
@@ -34,6 +35,7 @@ public class RepositoryCommitRequestBuilder extends BaseRequestBuilder<Repositor
 	private String commitComment = "";
 	private Request<TransactionContext, ?> body;
 	private long preparationTime = Metrics.SKIP;
+	private String parentContextDescription = DatastoreLockContextDescriptions.ROOT;
 
 	protected RepositoryCommitRequestBuilder(String repositoryId) {
 		this.repositoryId = repositoryId;
@@ -72,13 +74,18 @@ public class RepositoryCommitRequestBuilder extends BaseRequestBuilder<Repositor
 		this.preparationTime = preparationTime;
 		return getSelf();
 	}
+	
+	public final RepositoryCommitRequestBuilder setParentContextDescription(String parentContextDescription) {
+		this.parentContextDescription = parentContextDescription;
+		return getSelf();
+	}
 
 	@Override
 	protected final Request<ServiceProvider, CommitInfo> doBuild() {
 		return new RepositoryRequest<>(repositoryId, 
 				new BranchRequest<>(branch,
 					// additional functionality can be extended here after BranchRequest
-					extend(new RevisionIndexReadRequest<>(new TransactionalRequest(userId, commitComment, body, preparationTime)))
+					extend(new RevisionIndexReadRequest<>(new TransactionalRequest(userId, commitComment, body, preparationTime, parentContextDescription)))
 				));
 	}
 	

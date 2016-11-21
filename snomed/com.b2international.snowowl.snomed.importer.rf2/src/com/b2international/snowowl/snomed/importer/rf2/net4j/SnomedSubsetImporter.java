@@ -43,6 +43,7 @@ import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
+import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.server.snomed.ImportOnlySnomedTransactionContext;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
@@ -183,7 +184,7 @@ public class SnomedSubsetImporter {
 			}
 
 			final String comment = new StringBuilder("Imported ").append(information.getSubsetName()).append(".").toString();
-			context.commit(userId, comment);
+			context.commit(userId, comment, DatastoreLockContextDescriptions.ROOT);
 		} catch (IOException e) {
 			LOGGER.error("Error while reading input file.");
 			throw new SnowowlServiceException("Error while reading input file.", e);
@@ -334,7 +335,7 @@ public class SnomedSubsetImporter {
 			.build()
 			.execute(context);
 		
-		context.commit(userId, "Created '" + label + "' concept");
+		context.commit(userId, "Created '" + label + "' concept", DatastoreLockContextDescriptions.ROOT);
 	}
 
 	/*
