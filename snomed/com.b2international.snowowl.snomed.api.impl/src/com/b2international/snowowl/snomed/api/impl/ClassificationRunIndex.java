@@ -42,7 +42,6 @@ import com.b2international.index.lucene.QueryBuilderBase.QueryBuilder;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.datastore.store.SingleDirectoryIndexImpl;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -166,17 +165,17 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		}
 	}
 
-	public List<IClassificationRun> getAllClassificationRuns(final StorageRef storageRef, final String userId) throws IOException {
+	public List<IClassificationRun> getAllClassificationRuns(final String branchPath, final String userId) throws IOException {
 		final Query query = Fields.newQuery()
 				.field(FIELD_CLASS, ClassificationRun.class.getSimpleName())
-				.field(FIELD_BRANCH_PATH, storageRef.getBranchPath())
+				.field(FIELD_BRANCH_PATH, branchPath)
 				.matchAll();
 		
 		return this.<IClassificationRun>search(query, ClassificationRun.class);
 	}
 
-	public IClassificationRun getClassificationRun(final StorageRef storageRef, final String classificationId, final String userId) throws IOException {
-		final Query query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, storageRef, null, userId);
+	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId, final String userId) throws IOException {
+		final Query query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, branchPath, null, userId);
 
 		try {
 			return Iterables.getOnlyElement(search(query, ClassificationRun.class, 1));
@@ -341,9 +340,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	 * @param userId
 	 * @return
 	 */
-	public List<IEquivalentConceptSet> getEquivalentConceptSets(final StorageRef storageRef, final String classificationId, final String userId) throws IOException {
+	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final String userId) throws IOException {
 
-		final Query query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, storageRef, null, userId);
+		final Query query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, branchPath, null, userId);
 		return this.<IEquivalentConceptSet>search(query, EquivalentConceptSet.class);
 	}
 
@@ -356,9 +355,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	 * @param offset
 	 * @return
 	 */
-	public IRelationshipChangeList getRelationshipChanges(final StorageRef storageRef, final String classificationId, final String sourceConceptId, final String userId, final int offset, final int limit) throws IOException {
+	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String sourceConceptId, final String userId, final int offset, final int limit) throws IOException {
 
-		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, storageRef, sourceConceptId, userId);
+		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, branchPath, sourceConceptId, userId);
 		final RelationshipChangeList result = new RelationshipChangeList();
 
 		result.setTotal(getHitCount(query));
@@ -391,12 +390,12 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		return Iterables.getFirst(search(query, 1), null);
 	}
 
-	private Query createClassQuery(final String className, final String classificationId, final StorageRef storageRef, String componentId, final String userId) {
+	private Query createClassQuery(final String className, final String classificationId, final String branchPath, String componentId, final String userId) {
 		final QueryBuilder query = Fields.newQuery()
 				.field(FIELD_CLASS, className)
 				.field(FIELD_ID, classificationId)
 				.field(FIELD_USER_ID, userId)
-				.field(FIELD_BRANCH_PATH, storageRef.getBranchPath());
+				.field(FIELD_BRANCH_PATH, branchPath);
 		if (componentId != null) {
 			query.field(FIELD_COMPONENT_ID, componentId);
 		}
