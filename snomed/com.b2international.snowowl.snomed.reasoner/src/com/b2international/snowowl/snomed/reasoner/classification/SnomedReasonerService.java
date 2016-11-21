@@ -28,6 +28,7 @@ import com.b2international.snowowl.core.api.IBranchPath;
  * <li>{@link #beginClassification(UUID, IBranchPath) starting classification of a branch}
  * <li>{@link #beginClassification(UUID, IBranchPath, List) starting classification of a branch with additional definitions}
  * <li>{@link #getResult(UUID) retrieving classification results for review}
+ * <li>{@link #removeResult(UUID) removing classification results, if they exist}
  * <li>{@link #getEquivalentConcepts(UUID) returning equivalence sets}
  * <li>{@link #persistChanges(UUID, String) persisting changes from a classification run}
  * <li>{@link #canStartImmediately() checking reasoner availability}
@@ -56,6 +57,13 @@ public interface SnomedReasonerService {
 	 */
 	GetResultResponse getResult(UUID classificationId);
 
+	/**
+	 * Removes any stored result for the classification run.
+	 * 
+	 * @param classificationId the unique identifier of the classification run
+	 */
+	void removeResult(UUID classificationId);
+	
 	/**
 	 * Returns equivalent sets computed from the classification. This method blocks until a result becomes available.
 	 * 

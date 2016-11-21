@@ -289,6 +289,11 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 		final Type responseType = taxonomy.isStale() ? Type.STALE : Type.SUCCESS;
 		return new GetResultResponse(responseType, doGetResult(classificationId, taxonomy));  
 	}
+	
+	@Override
+	public void removeResult(final UUID classificationId) {
+		taxonomyResultRegistry.remove(classificationId);
+	}
 
 	private RevisionIndex getIndex() {
 		return ApplicationContext.getInstance().getService(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
