@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -40,6 +41,8 @@ import com.b2international.commons.status.SerializableStatus;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.remotejobs.AbstractRemoteJobEvent;
 import com.b2international.snowowl.datastore.remotejobs.IRemoteJobManager;
@@ -93,6 +96,8 @@ import com.google.common.collect.Sets;
 /**
  */
 public class SnomedClassificationServiceImpl implements ISnomedClassificationService {
+
+	private static final long BRANCH_READ_TIMEOUT = 5000L;
 
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedClassificationServiceImpl.class);
 	
@@ -299,6 +304,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	@Override
 	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final String userId) {
 
+		final Branch branch = getBranchIfExists(branchPath);
+		
 		final StorageRef storageRef = createStorageRef(branchPath);
 		final IBranchPath oldBranchPath = storageRef.getBranch().branchPath();
 
@@ -311,6 +318,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 		final ClassificationRun classificationRun = new ClassificationRun();
 		classificationRun.setId(remoteJobId.toString());
+		classificationRun.setLastCommitDate(new Date(branch.headTimestamp()));
 		classificationRun.setReasonerId(reasonerId);
 		classificationRun.setCreationDate(new Date());
 		classificationRun.setUserId(userId);
@@ -324,6 +332,20 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 		getReasonerService().beginClassification(classificationRequest);
 		return classificationRun;
+	}
+	
+	private Branch getBranchIfExists(final String branchPath) {
+		
+		final Branch branch = SnomedRequests.branching()
+				.prepareGet(branchPath)
+				.execute(bus)
+				.getSync(BRANCH_READ_TIMEOUT, TimeUnit.MILLISECONDS);
+		
+		if (!branch.isDeleted()) {
+			return branch;
+		} else {
+			throw new NotFoundException("Branch", branchPath);
+		}
 	}
 
 	@Override

@@ -26,6 +26,7 @@ public class ClassificationRun extends ClassificationInput implements IClassific
 
 	private String id;
 	private ClassificationStatus status;
+	private Date lastCommitDate;
 	private Date creationDate;
 	private Date completionDate;
 	private Date saveDate;
@@ -41,6 +42,11 @@ public class ClassificationRun extends ClassificationInput implements IClassific
 	@Override
 	public ClassificationStatus getStatus() {
 		return status;
+	}
+	
+	@Override
+	public Date getLastCommitDate() {
+		return lastCommitDate;
 	}
 
 	@Override
@@ -79,6 +85,10 @@ public class ClassificationRun extends ClassificationInput implements IClassific
 		this.status = status;
 	}
 
+	public void setLastCommitDate(final Date lastCommitDate) {
+		this.lastCommitDate = lastCommitDate;
+	}
+	
 	public void setCreationDate(final Date creationDate) {
 		this.creationDate = creationDate;
 	}
@@ -110,8 +120,8 @@ public class ClassificationRun extends ClassificationInput implements IClassific
 		builder.append(id);
 		builder.append(", status=");
 		builder.append(status);
-		builder.append(", creationDate=");
-		builder.append(creationDate);
+		builder.append(", lastCommitDate=");
+		builder.append(lastCommitDate);
 		builder.append(", completionDate=");
 		builder.append(completionDate);
 		builder.append(", saveDate=");
