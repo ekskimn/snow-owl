@@ -52,7 +52,6 @@ import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventBusHandler
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventSwitch;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobState;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobUtils;
-import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
@@ -76,7 +75,6 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationRequest;
@@ -291,11 +289,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public List<IClassificationRun> getAllClassificationRuns(final String branchPath, final String userId) {
-
-		final StorageRef storageRef = createStorageRef(branchPath);
+		getBranchIfExists(branchPath);
 
 		try {
-			return indexService.getAllClassificationRuns(storageRef, userId);
+			return indexService.getAllClassificationRuns(branchPath, userId);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -303,11 +300,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final String userId) {
-
 		final Branch branch = getBranchIfExists(branchPath);
-		
-		final StorageRef storageRef = createStorageRef(branchPath);
-		final IBranchPath oldBranchPath = storageRef.getBranch().branchPath();
+		final IBranchPath oldBranchPath = branch.branchPath();
 
 		final ClassificationRequest classificationRequest = new ClassificationRequest(userId, oldBranchPath)
 		.withParentContextDescription(DatastoreLockContextDescriptions.ROOT)
@@ -350,11 +344,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId, final String userId) {
-
-		final StorageRef storageRef = createStorageRef(branchPath);
+		getBranchIfExists(branchPath);
 
 		try {
-			return indexService.getClassificationRun(storageRef, classificationId, userId);
+			return indexService.getClassificationRun(branchPath, classificationId, userId);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -362,12 +355,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales, final String userId) {
-		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
-		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(storageRef, classificationId, userId);
+			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(branchPath, classificationId, userId);
 			final Set<String> conceptIds = newHashSet();
 			
 			for (final IEquivalentConceptSet conceptSet : conceptSets) {
@@ -401,13 +392,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	private IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit) {
-		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
 
-		final StorageRef storageRef = createStorageRef(branchPath);
-
 		try {
-			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, userId, offset, limit);
+			return indexService.getRelationshipChanges(branchPath, classificationId, conceptId, userId, offset, limit);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -523,7 +511,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public void persistChanges(final String branchPath, final String classificationId, final String userId) {
-		// Check if it exists
 		IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId, userId);
 
 		if (!ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
@@ -572,11 +559,5 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		} catch (final IOException e) {
 			LOG.error("Caught IOException while deleting classification data for ID {}.", classificationId, e);
 		}					
-	}
-
-	private StorageRef createStorageRef(final String branchPath) {
-		final StorageRef storageRef = new StorageRef(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath);
-		storageRef.checkStorageExists();
-		return storageRef;
 	}
 }
