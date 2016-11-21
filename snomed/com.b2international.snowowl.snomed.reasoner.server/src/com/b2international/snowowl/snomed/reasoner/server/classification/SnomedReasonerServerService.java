@@ -311,15 +311,15 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 		new RelationshipNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder).collectNormalFormChanges(null, new OntologyChangeProcessor<StatementFragment>() {
 			@Override 
 			protected void handleAddedSubject(final long conceptId, final StatementFragment addedSubject) {
-				registerEntry(conceptId, addedSubject, Nature.INFERRED);
+				registerEntry(conceptId, addedSubject, Nature.INFERRED, null);
 			}
 			
 			@Override 
 			protected void handleRemovedSubject(final long conceptId, final StatementFragment removedSubject) {
-				registerEntry(conceptId, removedSubject, Nature.REDUNDANT);
+				registerEntry(conceptId, removedSubject, Nature.REDUNDANT, Long.toString(removedSubject.getStatementId()));
 			}
 	
-			private void registerEntry(final long conceptId, final StatementFragment subject, final Nature changeNature) {
+			private void registerEntry(final long conceptId, final StatementFragment subject, final Nature changeNature, final String id) {
 				
 				final ChangeConcept sourceComponent = getOrCreateChangeConcept(changeConceptCache, branchPath, conceptId);
 				final ChangeConcept typeComponent = getOrCreateChangeConcept(changeConceptCache, branchPath, subject.getTypeId());
@@ -333,6 +333,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 				
 				final RelationshipChangeEntry entry = new RelationshipChangeEntry(
 						changeNature, 
+						id,
 						sourceComponent, 
 						typeComponent, 
 						destinationComponent, 

@@ -24,6 +24,13 @@ import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 public interface IRelationshipChange {
 
 	/**
+	 * Returns the relationship ID, if it exists (only for redundant changes).
+	 * 
+	 * @return the relationship ID
+	 */
+	String getId();
+	
+	/**
 	 * Returns the nature of the change (inferred or redundant).
 	 * 
 	 * @return the change nature
