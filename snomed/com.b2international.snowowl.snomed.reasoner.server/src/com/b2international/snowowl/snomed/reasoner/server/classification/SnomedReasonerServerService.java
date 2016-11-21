@@ -269,16 +269,16 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 		Map<Long, ChangeConcept> changeConceptCache = newHashMap();
 		new RelationshipNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder).collectNormalFormChanges(null, new OntologyChangeProcessor<StatementFragment>() {
 			@Override 
-			protected void handleAddedSubject(long conceptId, StatementFragment addedSubject) {
-				registerEntry(conceptId, addedSubject, Nature.INFERRED);
+			protected void handleAddedSubject(final long conceptId, final StatementFragment addedSubject) {
+				registerEntry(conceptId, addedSubject, Nature.INFERRED, null);
 			}
 			
 			@Override 
-			protected void handleRemovedSubject(long conceptId, StatementFragment removedSubject) {
-				registerEntry(conceptId, removedSubject, Nature.REDUNDANT);
+			protected void handleRemovedSubject(final long conceptId, final StatementFragment removedSubject) {
+				registerEntry(conceptId, removedSubject, Nature.REDUNDANT, Long.toString(removedSubject.getStatementId()));
 			}
 	
-			private void registerEntry(long conceptId, StatementFragment subject, Nature changeNature) {
+			private void registerEntry(final long conceptId, final StatementFragment subject, final Nature changeNature, final String id) {
 				
 				ChangeConcept sourceComponent = getOrCreateChangeConcept(changeConceptCache, branchPath, conceptId);
 				ChangeConcept typeComponent = getOrCreateChangeConcept(changeConceptCache, branchPath, subject.getTypeId());
@@ -292,6 +292,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 				
 				RelationshipChangeEntry entry = new RelationshipChangeEntry(
 						changeNature, 
+						id,
 						sourceComponent, 
 						typeComponent, 
 						destinationComponent, 

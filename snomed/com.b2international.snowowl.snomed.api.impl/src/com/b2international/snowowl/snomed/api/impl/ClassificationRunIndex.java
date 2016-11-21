@@ -297,6 +297,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 			final RelationshipChange convertedRelationshipChange = new RelationshipChange();
 			final ChangeNature changeNature = Nature.INFERRED.equals(relationshipChange.getNature()) ? ChangeNature.INFERRED : ChangeNature.REDUNDANT;
 			convertedRelationshipChange.setChangeNature(changeNature);
+			convertedRelationshipChange.setId(relationshipChange.getId());
 			convertedRelationshipChange.setDestinationId(Long.toString(relationshipChange.getDestination().getId()));
 			convertedRelationshipChange.setDestinationNegated(relationshipChange.isDestinationNegated());
 
