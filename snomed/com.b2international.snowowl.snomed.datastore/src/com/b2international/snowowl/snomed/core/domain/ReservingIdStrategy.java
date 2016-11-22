@@ -63,6 +63,10 @@ public class ReservingIdStrategy implements IdGenerationStrategy {
 		}
 	}
 
+	public String getNamespaceId() {
+		return namespaceId;
+	}
+	
 	@Override
 	public String toString() {
 		return Objects.toStringHelper(this)

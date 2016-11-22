@@ -106,4 +106,10 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 		return CommitInfo.class;
 	}
 	
+	/**
+	 * @return the next request in the chain, which will be executed
+	 */
+	public Request<TransactionContext, ?> getNext() {
+		return next;
+	}
 }
