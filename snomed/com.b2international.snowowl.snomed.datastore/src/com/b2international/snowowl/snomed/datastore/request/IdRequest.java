@@ -25,10 +25,9 @@ import java.util.Map.Entry;
 
 import com.b2international.index.Hits;
 import com.b2international.index.query.Query;
-import com.b2international.index.revision.RevisionIndex;
-import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.api.ComponentUtils;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.DelegatingBranchContext;
 import com.b2international.snowowl.core.events.DelegatingRequest;
@@ -63,9 +62,12 @@ import com.google.common.collect.Multimap;
  */
 final class IdRequest extends DelegatingRequest<BranchContext, BranchContext, CommitInfo> {
 
+	/** 
+	 * The maximum number of identifier service reservation calls (after which a namespace is known to be completely full). 
+	 */
+	public static final int ID_GENERATION_ATTEMPTS = 9999_9999;
+	
 	private static final long serialVersionUID = 1L;
-
-	private static final int ID_GENERATION_ATTEMPTS = 9999_9999;
 	private static final ImmutableMap<ComponentCategory, Class<? extends SnomedDocument>> CATEGORY_TO_DOC_MAP = ImmutableMap
 			.<ComponentCategory, Class<? extends SnomedDocument>> builder()
 			.put(ComponentCategory.CONCEPT, SnomedConceptDocument.class)
@@ -184,20 +186,21 @@ final class IdRequest extends DelegatingRequest<BranchContext, BranchContext, Co
 				componentCategory.getDisplayName());
 	}
 
-	private Collection<String> getExistingIds(final BranchContext context, final Collection<String> ids,
-			final Class<? extends SnomedDocument> clazz) {
-		return context.service(RevisionIndex.class).read(context.branch().path(), new RevisionIndexRead<Collection<String>>() {
-			@Override
-			public Collection<String> execute(final RevisionSearcher index) throws IOException {
-				final Hits<? extends SnomedDocument> hits = index.searcher()
-						.search(Query.select(clazz)
-								.where(RevisionDocument.Expressions.ids(ids))
-								.limit(ids.size())
-								.build());
-				
-				return ComponentUtils.getIdSet(hits);
-			}
-		});
+	private Collection<String> getExistingIds(final BranchContext context, final Collection<String> ids, final Class<? extends SnomedDocument> clazz) {
+		
+		try {
+			
+			Hits<? extends SnomedDocument> hits = context.service(RevisionSearcher.class).search(Query.select(clazz)
+					.where(RevisionDocument.Expressions.ids(ids))
+					.limit(ids.size())
+					.build());
+			
+			return ComponentUtils.getIdSet(hits);
+			
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(e);
+		}
+		
 	}
 
 	private String getNamespace(final SnomedComponentCreateRequest createRequest) {

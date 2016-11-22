@@ -40,11 +40,6 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(BaseSnomedComponentCreateRequest.class);
 	
-	/** 
-	 * The maximum number of identifier service reservation calls (after which a namespace is known to be completely full). 
-	 */
-	private static final int ID_GENERATION_ATTEMPTS = 9999_9999;
-	
 	@NotNull
 	private IdGenerationStrategy idGenerationStrategy;
 	
@@ -61,7 +56,7 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 	}
 
 	@JsonIgnore
-	public final void setIdGenerationStrategy(final IdGenerationStrategy idGenerationStrategy) {
+	final void setIdGenerationStrategy(final IdGenerationStrategy idGenerationStrategy) {
 		this.idGenerationStrategy = idGenerationStrategy;
 	}
 
@@ -93,7 +88,7 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 			} else if (getIdGenerationStrategy() instanceof ReservingIdStrategy) {
 				String componentId = null;
 				
-				for (int i = 0; i < ID_GENERATION_ATTEMPTS; i++) {
+				for (int i = 0; i < IdRequest.ID_GENERATION_ATTEMPTS; i++) {
 					componentId = getIdGenerationStrategy().generate(context);
 					
 					try {
@@ -106,7 +101,7 @@ public abstract class BaseSnomedComponentCreateRequest extends BaseRequest<Trans
 					LOGGER.warn("SCTID generation returned component id already in use: {}.  Requesting another...", componentId);
 				}
 				
-				throw new BadRequestException("Couldn't generate unique identifier for %s after %d attempts.", type, ID_GENERATION_ATTEMPTS); 
+				throw new BadRequestException("Couldn't generate unique identifier for %s after %d attempts.", type, IdRequest.ID_GENERATION_ATTEMPTS); 
 			} else if (getIdGenerationStrategy() instanceof ConstantIdStrategy) {
 				
 				String componentId = getIdGenerationStrategy().generate(context);
