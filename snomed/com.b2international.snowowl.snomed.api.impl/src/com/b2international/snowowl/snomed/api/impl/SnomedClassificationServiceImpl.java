@@ -46,6 +46,7 @@ import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
@@ -129,27 +130,45 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private static final long BRANCH_LOCK_TIMEOUT = 500L;
 	
 	private final class PersistChangesRunnable implements Runnable {
-		private final UUID uuid;
+		private final String branchPath;
+		private final String classificationId;
 		private final String userId;
-		private final DatastoreLockContext context;
-		private final IOperationLockTarget target;
-		private final Branch branch;
 
-		private PersistChangesRunnable(UUID uuid, String userId, DatastoreLockContext context, IOperationLockTarget target, Branch branch) {
-			this.uuid = uuid;
+		private PersistChangesRunnable(final String branchPath, final String classificationId, final String userId) {
+			this.branchPath = branchPath;
+			this.classificationId = classificationId;
 			this.userId = userId;
-			this.context = context;
-			this.target = target;
-			this.branch = branch;
 		}
 
 		@Override
 		public void run() {
-			final String branchPath = branch.path();
+			final DatastoreLockContext context = new DatastoreLockContext(userId, DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW);
+			final IOperationLockTarget target = new SingleRepositoryAndBranchLockTarget(SnomedDatastoreActivator.REPOSITORY_UUID, BranchPathUtils.createPath(branchPath));
+			lockBranch(branchPath, context, target);
+				
+			final Branch branch = getBranchIfExists(branchPath);
+			final IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId);
+				
+			if (!ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
+				unlockBranch(branchPath, context, target);
+				return;
+			}
+			
+			final UUID uuid = UUID.fromString(classificationId);
+			if (branch.headTimestamp() > classificationRun.getLastCommitDate().getTime()) {
+				try {
+					updateStatus(uuid, ClassificationStatus.STALE);
+					return;
+				} finally {
+					unlockBranch(branchPath, context, target);
+				}
+				
+			} else {
+				updateStatus(uuid, ClassificationStatus.SAVING_IN_PROGRESS);
+			}
 
 			try {
 
-				final String classificationId = uuid.toString();
 				final Stopwatch persistStopwatch = Stopwatch.createStarted();
 				final BulkRequestBuilder<TransactionContext> builder = BulkRequest.create();
 				final String defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
@@ -161,12 +180,12 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				
 				while (offset < relationshipChanges.getTotal()) {
 					final Set<String> sourceIds = getInferredSourceIds(relationshipChanges);
+					final Set<String> removeOrDeactivateIds = Sets.newHashSet();
 
 					sourceIds.removeAll(moduleMap.keySet());
 					populateModuleMap(branchPath, sourceIds, moduleMap);
 					
 					for (IRelationshipChange change : relationshipChanges.getChanges()) {
-						final Set<String> removeOrDeactivateIds = Sets.newHashSet();
 						
 						switch (change.getChangeNature()) {
 							case INFERRED:
@@ -185,7 +204,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 							default:
 								throw new IllegalStateException("Unhandled relationship change value '" + change.getChangeNature() + "'.");
 						}
+					}
 
+					if (!removeOrDeactivateIds.isEmpty()) {
+						
 						// TODO: only remove/inactivate components in the current module?
 						final SnomedRelationships removeOrDeactivateRelationships = SnomedRequests.prepareSearchRelationship()
 								.setComponentIds(removeOrDeactivateIds)
@@ -193,7 +215,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 								.build(branchPath)
 								.execute(bus)
 								.getSync();
-
+	
 						final SnomedReferenceSetMembers referringMembers = SnomedRequests.prepareSearchMember()
 								.all()
 								.filterByActive(true)
@@ -211,7 +233,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				
 				commitChanges(branchPath, userId, builder, persistStopwatch)
 						.then(new Function<CommitInfo, Void>() { @Override public Void apply(final CommitInfo input) { return updateStatus(uuid, ClassificationStatus.SAVED); }})
-						.fail(new Function<Throwable, Void>() { @Override public Void apply(final Throwable input) { return updateStatus(uuid, ClassificationStatus.SAVE_FAILED); }})
+						.fail(new Function<Throwable, Void>() { @Override public Void apply(final Throwable input) {
+							LOG.error("Failed to save classification changes on branch {}.", branchPath, input);
+							return updateStatus(uuid, ClassificationStatus.SAVE_FAILED); 
+						}})
 						.getSync();
 			
 			} finally {
@@ -405,7 +430,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 								indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.FAILED);
 								break;
 							case STALE: 
-								indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.STALE);
+								indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.STALE, result.getChanges());
 								break;
 							case SUCCESS:
 								indexService.updateClassificationRunStatus(remoteJobId, ClassificationStatus.COMPLETED, result.getChanges());
@@ -512,40 +537,30 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final String userId) {
 		
 		final Branch branch = getBranchIfExists(branchPath);
-		final DatastoreLockContext context = new DatastoreLockContext(userId, DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW);
-		final IOperationLockTarget target = new SingleRepositoryAndBranchLockTarget(SnomedDatastoreActivator.REPOSITORY_UUID, branch.branchPath());
+		final ClassificationRequest classificationRequest = new ClassificationRequest(userId, branch.branchPath())
+				.withParentContextDescription(DatastoreLockContextDescriptions.ROOT)
+				.withReasonerId(reasonerId);
 
-		lockBranch(branchPath, context, target);
-		
+		final UUID remoteJobId = classificationRequest.getClassificationId();
+		final RemoteJobCompletionHandler completionHandler = new RemoteJobCompletionHandler(remoteJobId);
+		bus.registerHandler(RemoteJobUtils.getJobSpecificAddress(IRemoteJobManager.ADDRESS_REMOTE_JOB_COMPLETED, remoteJobId), completionHandler);
+
+		final ClassificationRun classificationRun = new ClassificationRun();
+		classificationRun.setId(remoteJobId.toString());
+		classificationRun.setReasonerId(reasonerId);
+		classificationRun.setLastCommitDate(new Date(branch.headTimestamp()));
+		classificationRun.setCreationDate(new Date());
+		classificationRun.setUserId(userId);
+		classificationRun.setStatus(ClassificationStatus.SCHEDULED);
+
 		try {
-			
-			final Branch lockedBranch = getBranchIfExists(branchPath);
-			final ClassificationRequest classificationRequest = new ClassificationRequest(userId, branch.branchPath())
-					.withReasonerId(reasonerId);
-
-			final UUID remoteJobId = classificationRequest.getClassificationId();
-			bus.registerHandler(RemoteJobUtils.getJobSpecificAddress(IRemoteJobManager.ADDRESS_REMOTE_JOB_COMPLETED, remoteJobId), new RemoteJobCompletionHandler(remoteJobId));
-
-			final ClassificationRun classificationRun = new ClassificationRun();
-			classificationRun.setId(remoteJobId.toString());
-			classificationRun.setReasonerId(reasonerId);
-			classificationRun.setLastCommitDate(new Date(lockedBranch.headTimestamp()));
-			classificationRun.setCreationDate(new Date());
-			classificationRun.setUserId(userId);
-			classificationRun.setStatus(ClassificationStatus.SCHEDULED);
-
-			try {
-				indexService.upsertClassificationRun(branch.branchPath(), classificationRun);
-			} catch (final IOException e) {
-				throw new RuntimeException(e);
-			}
-
-			getReasonerService().beginClassification(classificationRequest);				
-			return classificationRun;
-			
-		} finally {
-			unlockBranch(branchPath, context, target);
+			indexService.upsertClassificationRun(branch.branchPath(), classificationRun);
+		} catch (final IOException e) {
+			throw new RuntimeException(e);
 		}
+
+		getReasonerService().beginClassification(classificationRequest);				
+		return classificationRun;
 	}
 
 	private Branch getBranchIfExists(final String branchPath) {
@@ -730,28 +745,10 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public void persistChanges(final String branchPath, final String classificationId, final String userId) {
-		
-		final UUID uuid = UUID.fromString(classificationId);
-		final Branch branch = getBranchIfExists(branchPath);
 		final IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId);
 
-		if (!ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
-			return;
-		}
-		
-		final DatastoreLockContext context = new DatastoreLockContext(userId, DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW);
-		final IOperationLockTarget target = new SingleRepositoryAndBranchLockTarget(SnomedDatastoreActivator.REPOSITORY_UUID, branch.branchPath());
-
-		lockBranch(branchPath, context, target);
-			
-		final Branch lockedBranch = getBranchIfExists(branchPath);
-			
-		if (lockedBranch.headTimestamp() > classificationRun.getLastCommitDate().getTime()) {
-			updateStatus(uuid, ClassificationStatus.STALE);
-			unlockBranch(branchPath, context, target);
-		} else {
-			executorService.submit(new PersistChangesRunnable(uuid, userId, context, target, branch));
-			updateStatus(uuid, ClassificationStatus.SAVING_IN_PROGRESS);
+		if (ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
+			executorService.submit(new PersistChangesRunnable(branchPath, classificationId, userId));
 		}
 	}
 
