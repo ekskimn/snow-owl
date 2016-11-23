@@ -311,7 +311,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					.setUserId(userId)
 					.setCommitComment("Classified ontology.") // Same message in PersistChangesRemoteJob
 					.setPreparationTime(persistStopwatch.elapsed(TimeUnit.MILLISECONDS))
-					.setParentContextDescription(DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW)
+					.setParentLockContextDescription(DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW)
 					.setBody(builder)
 					.setBranch(branchPath)
 					.build()

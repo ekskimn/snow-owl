@@ -35,7 +35,7 @@ public class RepositoryCommitRequestBuilder extends BaseRequestBuilder<Repositor
 	private String commitComment = "";
 	private Request<TransactionContext, ?> body;
 	private long preparationTime = Metrics.SKIP;
-	private String parentContextDescription = DatastoreLockContextDescriptions.ROOT;
+	private String parentLockContextDescription = DatastoreLockContextDescriptions.ROOT;
 
 	protected RepositoryCommitRequestBuilder(String repositoryId) {
 		this.repositoryId = repositoryId;
@@ -75,8 +75,8 @@ public class RepositoryCommitRequestBuilder extends BaseRequestBuilder<Repositor
 		return getSelf();
 	}
 	
-	public final RepositoryCommitRequestBuilder setParentContextDescription(String parentContextDescription) {
-		this.parentContextDescription = parentContextDescription;
+	public final RepositoryCommitRequestBuilder setParentLockContextDescription(String parentLockContextDescription) {
+		this.parentLockContextDescription = parentLockContextDescription;
 		return getSelf();
 	}
 
@@ -85,7 +85,7 @@ public class RepositoryCommitRequestBuilder extends BaseRequestBuilder<Repositor
 		return new RepositoryRequest<>(repositoryId, 
 				new BranchRequest<>(branch,
 					// additional functionality can be extended here after BranchRequest
-					extend(new TransactionalRequest(userId, commitComment, body, preparationTime, parentContextDescription))
+					extend(new TransactionalRequest(userId, commitComment, body, preparationTime, parentLockContextDescription))
 				));
 	}
 	
