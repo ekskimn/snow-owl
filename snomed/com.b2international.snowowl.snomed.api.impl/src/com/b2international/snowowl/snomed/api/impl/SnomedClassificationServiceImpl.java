@@ -316,11 +316,11 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				@Override public String apply(SnomedReferenceSetMember input) { return input.getReferencedComponent().getId(); }
 			});
 
-			for (ISnomedRelationship relationships : removeOrDeactivateRelationships) {
+			for (ISnomedRelationship relationship : removeOrDeactivateRelationships) {
 				
-				if (relationships.isReleased()) {
+				if (relationship.isReleased()) {
 					
-					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationships.getId())) {
+					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
 						SnomedRefSetMemberUpdateRequestBuilder updateMemberBuilder = SnomedRequests.prepareUpdateMember()
 								.setMemberId(snomedReferenceSetMember.getId())
 								.setSource(ImmutableMap.<String, Object>of(SnomedRf2Headers.FIELD_ACTIVE, Boolean.FALSE));
@@ -328,13 +328,13 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 						builder.add(updateMemberBuilder);
 					}
 					
-					SnomedRelationshipUpdateRequestBuilder updateRequestBuilder = SnomedRequests.prepareUpdateRelationship(relationships.getId())
+					SnomedRelationshipUpdateRequestBuilder updateRequestBuilder = SnomedRequests.prepareUpdateRelationship(relationship.getId())
 							.setActive(false);
 
 					builder.add(updateRequestBuilder);
 				} else {
 					
-					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationships.getId())) {
+					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
 						DeleteRequestBuilder deleteMemberBuilder = SnomedRequests.prepareDeleteMember()
 								.setComponentId(snomedReferenceSetMember.getId());
 						
@@ -342,7 +342,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					}
 					
 					DeleteRequestBuilder deleteRelationshipBuilder = SnomedRequests.prepareDeleteRelationship()
-							.setComponentId(relationships.getId());
+							.setComponentId(relationship.getId());
 					
 					builder.add(deleteRelationshipBuilder);
 				}
