@@ -70,7 +70,6 @@ import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
 
 /**
  * Lightweight representation of a SNOMED CT reference set member.
@@ -337,7 +336,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		public static Expression values(DataType type, Collection<? extends Object> values) {
 			switch (type) {
 			case STRING: 
-				return matchAny(Fields.STRING_VALUE, Iterables.filter(values, String.class));
+				return matchAny(Fields.STRING_VALUE, FluentIterable.from(values).filter(String.class).toSet());
 			case INTEGER:
 				return matchAnyInt(Fields.INTEGER_VALUE, FluentIterable.from(values).filter(Integer.class).toSet());
 			case DECIMAL:
