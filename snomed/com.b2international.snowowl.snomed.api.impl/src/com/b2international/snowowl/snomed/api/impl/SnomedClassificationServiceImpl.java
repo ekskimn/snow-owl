@@ -19,6 +19,7 @@ import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.text.MessageFormat;
 import java.util.Date;
 import java.util.List;
@@ -49,6 +50,7 @@ import com.b2international.snowowl.core.exceptions.ConflictException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
+import com.b2international.snowowl.datastore.oplock.OperationLockRunner;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreOperationLockException;
@@ -142,106 +144,94 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 		@Override
 		public void run() {
-			final DatastoreLockContext context = new DatastoreLockContext(userId, DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW);
-			final IOperationLockTarget target = new SingleRepositoryAndBranchLockTarget(SnomedDatastoreActivator.REPOSITORY_UUID, BranchPathUtils.createPath(branchPath));
-			lockBranch(branchPath, context, target);
-				
+			
 			final Branch branch = getBranchIfExists(branchPath);
 			final IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId);
-				
+			
 			if (!ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
-				unlockBranch(branchPath, context, target);
 				return;
 			}
 			
 			final UUID uuid = UUID.fromString(classificationId);
 			if (branch.headTimestamp() > classificationRun.getLastCommitDate().getTime()) {
-				try {
-					updateStatus(uuid, ClassificationStatus.STALE);
-					return;
-				} finally {
-					unlockBranch(branchPath, context, target);
-				}
-				
+				updateStatus(uuid, ClassificationStatus.STALE);
+				return;
 			} else {
 				updateStatus(uuid, ClassificationStatus.SAVING_IN_PROGRESS);
 			}
 
-			try {
+			final Stopwatch persistStopwatch = Stopwatch.createStarted();
+			final BulkRequestBuilder<TransactionContext> builder = BulkRequest.create();
+			final String defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
+			final String defaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY);
+			final Map<String, String> moduleMap = Maps.newHashMap();
+			
+			int offset = 0;
+			IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
+			
+			while (offset < relationshipChanges.getTotal()) {
+				final Set<String> sourceIds = getInferredSourceIds(relationshipChanges);
+				final Set<String> removeOrDeactivateIds = Sets.newHashSet();
 
-				final Stopwatch persistStopwatch = Stopwatch.createStarted();
-				final BulkRequestBuilder<TransactionContext> builder = BulkRequest.create();
-				final String defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
-				final String defaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_REASONER_NAMESPACE_KEY);
-				final Map<String, String> moduleMap = Maps.newHashMap();
+				sourceIds.removeAll(moduleMap.keySet());
+				populateModuleMap(branchPath, sourceIds, moduleMap);
 				
-				int offset = 0;
-				IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
-				
-				while (offset < relationshipChanges.getTotal()) {
-					final Set<String> sourceIds = getInferredSourceIds(relationshipChanges);
-					final Set<String> removeOrDeactivateIds = Sets.newHashSet();
-
-					sourceIds.removeAll(moduleMap.keySet());
-					populateModuleMap(branchPath, sourceIds, moduleMap);
+				for (IRelationshipChange change : relationshipChanges.getChanges()) {
 					
-					for (IRelationshipChange change : relationshipChanges.getChanges()) {
-						
-						switch (change.getChangeNature()) {
-							case INFERRED:
-								final SnomedRelationshipCreateRequestBuilder inferredRelationshipBuilder = createInferredRelationship(change, 
-										moduleMap, 
-										defaultModuleId, 
-										defaultNamespace);
-								
-								builder.add(inferredRelationshipBuilder);
-								break;
+					switch (change.getChangeNature()) {
+						case INFERRED:
+							final SnomedRelationshipCreateRequestBuilder inferredRelationshipBuilder = createInferredRelationship(change, 
+									moduleMap, 
+									defaultModuleId, 
+									defaultNamespace);
+							
+							builder.add(inferredRelationshipBuilder);
+							break;
 
-							case REDUNDANT:
-								removeOrDeactivateIds.add(change.getId());
-								break;
-								
-							default:
-								throw new IllegalStateException("Unhandled relationship change value '" + change.getChangeNature() + "'.");
-						}
+						case REDUNDANT:
+							removeOrDeactivateIds.add(change.getId());
+							break;
+							
+						default:
+							throw new IllegalStateException("Unhandled relationship change value '" + change.getChangeNature() + "'.");
 					}
+				}
 
-					if (!removeOrDeactivateIds.isEmpty()) {
-						
-						// TODO: only remove/inactivate components in the current module?
-						final SnomedRelationships removeOrDeactivateRelationships = SnomedRequests.prepareSearchRelationship()
-								.setComponentIds(removeOrDeactivateIds)
-								.setLimit(removeOrDeactivateIds.size())
-								.build(branchPath)
-								.execute(bus)
-								.getSync();
-	
-						final SnomedReferenceSetMembers referringMembers = SnomedRequests.prepareSearchMember()
-								.all()
-								.filterByActive(true)
-								.filterByReferencedComponent(removeOrDeactivateIds)
-								.build(branchPath)
-								.execute(bus)
-								.getSync();
-						
-						removeOrDeactivate(builder, removeOrDeactivateRelationships, referringMembers);
-					}
+				if (!removeOrDeactivateIds.isEmpty()) {
 					
-					offset += relationshipChanges.getChanges().size();
-					relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
+					// TODO: only remove/inactivate components in the current module?
+					final SnomedRelationships removeOrDeactivateRelationships = SnomedRequests.prepareSearchRelationship()
+							.setComponentIds(removeOrDeactivateIds)
+							.setLimit(removeOrDeactivateIds.size())
+							.build(branchPath)
+							.execute(bus)
+							.getSync();
+
+					final SnomedReferenceSetMembers referringMembers = SnomedRequests.prepareSearchMember()
+							.all()
+							.filterByActive(true)
+							.filterByReferencedComponent(removeOrDeactivateIds)
+							.build(branchPath)
+							.execute(bus)
+							.getSync();
+					
+					removeOrDeactivate(builder, removeOrDeactivateRelationships, referringMembers);
 				}
 				
-				commitChanges(branchPath, userId, builder, persistStopwatch)
-						.then(new Function<CommitInfo, Void>() { @Override public Void apply(final CommitInfo input) { return updateStatus(uuid, ClassificationStatus.SAVED); }})
-						.fail(new Function<Throwable, Void>() { @Override public Void apply(final Throwable input) {
-							LOG.error("Failed to save classification changes on branch {}.", branchPath, input);
-							return updateStatus(uuid, ClassificationStatus.SAVE_FAILED); 
-						}})
-						.getSync();
-			
-			} finally {
-				unlockBranch(branchPath, context, target);
+				offset += relationshipChanges.getChanges().size();
+				relationshipChanges = getRelationshipChanges(branchPath, classificationId, offset, RELATIONSHIP_BLOCK_SIZE);
 			}
+			
+			commitChanges(branchPath, userId, builder, persistStopwatch)
+					.then(new Function<CommitInfo, Void>() { @Override public Void apply(final CommitInfo input) {
+						LOG.info("Classification changes saved on branch {}.", branchPath);
+						return updateStatus(uuid, ClassificationStatus.SAVED); 
+					}})
+					.fail(new Function<Throwable, Void>() { @Override public Void apply(final Throwable input) {
+						LOG.error("Failed to save classification changes on branch {}.", branchPath, input);
+						return updateStatus(uuid, ClassificationStatus.SAVE_FAILED); 
+					}})
+					.getSync();
 		}
 
 		private Set<String> getInferredSourceIds(final IRelationshipChangeList relationshipChanges) {
@@ -748,30 +738,28 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		final IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId);
 
 		if (ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
-			executorService.submit(new PersistChangesRunnable(branchPath, classificationId, userId));
-		}
-	}
+			
+			final DatastoreLockContext context = new DatastoreLockContext(userId, DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW);
+			final IOperationLockTarget target = new SingleRepositoryAndBranchLockTarget(SnomedDatastoreActivator.REPOSITORY_UUID, BranchPathUtils.createPath(branchPath));
 
-	private void lockBranch(final String branchPath, final DatastoreLockContext context, final IOperationLockTarget target) {
-		
-		try {
-			getLockManager().lock(context, BRANCH_LOCK_TIMEOUT, target);
-		} catch (DatastoreOperationLockException e) {
-			final DatastoreLockContext otherContext = e.getContext(target);
-			throw new ConflictException("Failed to acquire lock for branch %s because %s is %s.", branchPath, otherContext.getUserId(), otherContext.getDescription());
-		} catch (OperationLockException e) {
-			throw new ConflictException("Failed to acquire lock for branch %s.", branchPath);
-		} catch (InterruptedException e) {
-			throw new ConflictException("Interrupted while acquiring lock for branch %s.", branchPath);
-		}
-	}
-	
-	private void unlockBranch(final String branchPath, final DatastoreLockContext context, final IOperationLockTarget target) {
-		
-		try {
-			getLockManager().unlock(context, target);
-		} catch (OperationLockException e) {
-			LOG.warn("Failed to release lock for branch {}.", branchPath, e);
+			executorService.execute(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						OperationLockRunner.with(getLockManager()).run(new PersistChangesRunnable(branchPath, classificationId, userId), context, BRANCH_LOCK_TIMEOUT, target);
+					} catch (DatastoreOperationLockException e) {
+						final DatastoreLockContext otherContext = e.getContext(target);
+						throw new ConflictException("Failed to acquire or release lock for branch %s because %s is %s.", branchPath, otherContext.getUserId(), otherContext.getDescription());
+					} catch (OperationLockException e) {
+						throw new ConflictException("Failed to acquire or release lock for branch %s.", branchPath);
+					} catch (InvocationTargetException e) {
+						LOG.error("Caught exception while persisting changes for ID {}.", classificationId, e);
+						updateStatus(UUID.fromString(classificationId), ClassificationStatus.SAVE_FAILED);
+					} catch (InterruptedException e) {
+						throw new ConflictException("Interrupted while acquiring or releasing lock for branch %s.", branchPath);
+					}
+				}
+			});
 		}
 	}
 
