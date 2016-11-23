@@ -37,6 +37,13 @@ public interface IClassificationRun extends IClassificationInput {
 	ClassificationStatus getStatus();
 
 	/**
+	 * Returns the last commit timestamp of the branch this classification run is working on.
+	 * 
+	 * @return the branch head timestamp
+	 */
+	Date getLastCommitDate();
+
+	/**
 	 * Returns the starting date of this classification, or {@code null} if the classification hasn't started yet.
 	 * 
 	 * @return the classification starting date

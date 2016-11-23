@@ -46,12 +46,15 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 
 	private final long preRequestPreparationTime;
 
-	TransactionalRequest(String userId, String commitComment, Request<TransactionContext, ?> next, long preRequestPreparationTime) {
+	private final String parentLockContextDescription;
+
+	TransactionalRequest(String userId, String commitComment, Request<TransactionContext, ?> next, long preRequestPreparationTime, String parentLockContextDescription) {
 		this.next = checkNotNull(next, "next");
 		this.userId = userId;
 		checkArgument(!Strings.isNullOrEmpty(commitComment), "Commit comment may not be null or empty.");
 		this.commitComment = commitComment;
 		this.preRequestPreparationTime = preRequestPreparationTime;
+		this.parentLockContextDescription = parentLockContextDescription;
 	}
 	
 	@Override
@@ -83,7 +86,7 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 			 * FIXME: at this point, the component identifier might have changed even though the input 
 			 * required an exact ID to be assigned. What to do?
 			 */
-			final long commitTimestamp = context.commit(userId, commitComment);
+			final long commitTimestamp = context.commit(userId, commitComment, parentLockContextDescription);
 			return new CommitInfo(commitTimestamp, body);
 		} finally {
 			commitTimer.stop();

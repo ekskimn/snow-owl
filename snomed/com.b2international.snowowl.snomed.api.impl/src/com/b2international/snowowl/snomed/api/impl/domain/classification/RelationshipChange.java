@@ -23,6 +23,7 @@ import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
  */
 public class RelationshipChange implements IRelationshipChange {
 
+	private String id;
 	private ChangeNature changeNature;
 	private String sourceId;
 	private String typeId;
@@ -33,6 +34,11 @@ public class RelationshipChange implements IRelationshipChange {
 	private int unionGroup;
 	private RelationshipModifier modifier;
 
+	@Override
+	public String getId() {
+		return id;
+	}
+	
 	@Override
 	public ChangeNature getChangeNature() {
 		return changeNature;
@@ -76,6 +82,10 @@ public class RelationshipChange implements IRelationshipChange {
 	public RelationshipModifier getModifier() {
 		return modifier;
 	}
+	
+	public void setId(String id) {
+		this.id = id;
+	}
 
 	public void setChangeNature(final ChangeNature changeNature) {
 		this.changeNature = changeNature;
@@ -118,6 +128,8 @@ public class RelationshipChange implements IRelationshipChange {
 		final StringBuilder builder = new StringBuilder();
 		builder.append("RelationshipChange [changeNature=");
 		builder.append(changeNature);
+		builder.append(", id=");
+		builder.append(id);
 		builder.append(", sourceId=");
 		builder.append(sourceId);
 		builder.append(", typeId=");

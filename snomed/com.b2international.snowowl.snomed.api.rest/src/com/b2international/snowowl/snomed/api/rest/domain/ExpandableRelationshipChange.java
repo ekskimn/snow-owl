@@ -43,6 +43,11 @@ public class ExpandableRelationshipChange implements IRelationshipChange {
 	public ChangeNature getChangeNature() {
 		return change.getChangeNature();
 	}
+	
+	@Override
+	public String getId() {
+		return change.getId();
+	}
 
 	@Override
 	public String getSourceId() {

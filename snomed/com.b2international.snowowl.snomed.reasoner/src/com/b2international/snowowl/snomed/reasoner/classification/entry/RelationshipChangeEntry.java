@@ -24,6 +24,9 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 
 	private static final long serialVersionUID = 1L;
 
+	// XXX: not part of equals and hashCode computations
+	private final String id;
+
 	private final int group;
 	private final int unionGroup;
 	private final ChangeConcept modifier;
@@ -33,6 +36,7 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 	 * Creates a new relationship change entry with the specified arguments.
 	 * 
 	 * @param nature the change nature
+	 * @param id the relationship's SCTID (only set if the inferred relationship is redundant) 
 	 * @param source the source component
 	 * @param type the type component
 	 * @param destination the destination component
@@ -41,7 +45,8 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 	 * @param modifier the modifier component
 	 * @param destinationNegated {@code true} if the destination component is to be negated, {@code false} otherwise
 	 */
-	public RelationshipChangeEntry(final Nature nature, 
+	public RelationshipChangeEntry(final Nature nature,
+			final String id,
 			final ChangeConcept source, 
 			final ChangeConcept type,
 			final ChangeConcept destination, 
@@ -52,10 +57,18 @@ public class RelationshipChangeEntry extends RelationshipChangeEntryBase {
 
 		super(nature, source, type, destination);
 
+		this.id = id;
 		this.group = group;
 		this.unionGroup = unionGroup;
 		this.modifier = modifier;
 		this.destinationNegated = destinationNegated;
+	}
+	
+	/**
+	 * @return the relationship's SCTID (only set if the inferred relationship is redundant)
+	 */
+	public String getId() {
+		return id;
 	}
 
 	/**

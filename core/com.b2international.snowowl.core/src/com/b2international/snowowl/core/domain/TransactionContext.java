@@ -57,9 +57,12 @@ public interface TransactionContext extends BranchContext, AutoCloseable {
 	 *            - the owner of the commit
 	 * @param commitComment
 	 *            - a message for the commit
+	 * @param parentLockContextDescription 
+	 *            - the description of the lock context already held, for nested locking
+	 * 
 	 * @return - the timestamp of the successful commit
 	 */
-	long commit(String userId, String commitComment);
+	long commit(String userId, String commitComment, String parentLockContextDescription);
 
 	/**
 	 * Rolls back any changes the underlying transaction has since its creation.
