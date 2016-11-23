@@ -89,10 +89,10 @@ public final class CDOTransactionContext extends DelegatingBranchContext impleme
 	}
 
 	@Override
-	public long commit(String userId, String commitComment, String parentContextDescription) {
+	public long commit(String userId, String commitComment, String parentLockContextDescription) {
 		try {
 			final CDOCommitInfo info = new CDOServerCommitBuilder(userId, commitComment, editingContext.getTransaction())
-					.parentContextDescription(parentContextDescription)
+					.parentContextDescription(parentLockContextDescription)
 					.commitOne();
 			return info.getTimeStamp();
 		} catch (final CommitException e) {

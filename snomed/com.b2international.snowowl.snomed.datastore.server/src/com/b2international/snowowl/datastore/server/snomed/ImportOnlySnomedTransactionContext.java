@@ -114,10 +114,10 @@ public class ImportOnlySnomedTransactionContext implements TransactionContext {
 	}
 
 	@Override
-	public long commit(final String userId, final String commitComment, final String parentContextDescription) {
+	public long commit(final String userId, final String commitComment, final String parentLockContextDescription) {
 		try {
 			final CDOCommitInfo info = new CDOServerCommitBuilder(userId, commitComment, editingContext.getTransaction())
-					.parentContextDescription(parentContextDescription)
+					.parentContextDescription(parentLockContextDescription)
 					.commitOne();
 			return info.getTimeStamp();
 		} catch (final CommitException e) {
