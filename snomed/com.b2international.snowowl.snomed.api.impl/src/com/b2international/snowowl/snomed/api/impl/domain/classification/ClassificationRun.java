@@ -122,6 +122,8 @@ public class ClassificationRun extends ClassificationInput implements IClassific
 		builder.append(status);
 		builder.append(", lastCommitDate=");
 		builder.append(lastCommitDate);
+		builder.append(", creationDate=");
+		builder.append(creationDate);
 		builder.append(", completionDate=");
 		builder.append(completionDate);
 		builder.append(", saveDate=");
