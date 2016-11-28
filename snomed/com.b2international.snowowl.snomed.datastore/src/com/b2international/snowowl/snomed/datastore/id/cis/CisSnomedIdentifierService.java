@@ -211,7 +211,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				
 				try {
 
-					LOGGER.debug("Sending bulk registration request for namespace {} with size {}", namespace, ids.size());
+					LOGGER.debug("Sending bulk registration request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
 
 					bulkRequest = httpPost("sct/bulk/register", createBulkRegistrationData(namespace, ids));
 
@@ -219,7 +219,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 				} catch (IOException e) {
 					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk register IDs for namespace %s with size %s", namespace, ids.size()), e);
+							String.format("Unable to bulk register IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
 				} finally {
 					release(bulkRequest);
 				}
@@ -332,7 +332,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				
 				try {
 
-					LOGGER.debug("Sending bulk deprecation request for namespace {} with size {}", namespace, ids.size());
+					LOGGER.debug("Sending bulk deprecation request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
 
 					bulkRequest = httpPut("sct/bulk/deprecate", createBulkDeprecationData(namespace, ids));
 
@@ -340,7 +340,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 				} catch (IOException e) {
 					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk deprecate IDs for namespace %s with size %s", namespace, ids.size()), e);
+							String.format("Unable to bulk deprecate IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
 				} finally {
 					release(bulkRequest);
 				}
@@ -403,7 +403,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				
 				try {
 
-					LOGGER.debug("Sending bulk release request for namespace {} with size {}", namespace, ids.size());
+					LOGGER.debug("Sending bulk release request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
 
 					bulkRequest = httpPut("sct/bulk/release", createBulkReleaseData(namespace, ids));
 
@@ -411,7 +411,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 				} catch (IOException e) {
 					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk release IDs for namespace %s with size %s", namespace, ids.size()), e);
+							String.format("Unable to bulk release IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
 				} finally {
 					release(bulkRequest);
 				}
@@ -472,7 +472,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				
 				try {
 
-					LOGGER.debug("Sending bulk publish request for namespace {} with size {}", namespace, ids.size());
+					LOGGER.debug("Sending bulk publish request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
 
 					bulkRequest = httpPut("sct/bulk/publish", createBulkPublishData(namespace, ids));
 
@@ -480,7 +480,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 				} catch (IOException e) {
 					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk publish IDs for namespace %s with size %s", namespace, ids.size()), e);
+							String.format("Unable to bulk publish IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
 				} finally {
 					release(bulkRequest);
 				}
@@ -846,7 +846,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		return FluentIterable.from(componentIdsToPublish).index(new Function<String, String>() {
 			@Override
 			public String apply(String id) {
-				return getSafeNamespaceDisplayName(getNamespace(id));
+				return getNamespace(id);
 			}
 		});
 	}
