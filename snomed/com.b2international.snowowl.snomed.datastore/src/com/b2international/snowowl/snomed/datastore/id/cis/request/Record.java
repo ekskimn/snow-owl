@@ -23,11 +23,15 @@ import java.util.UUID;
 public class Record {
 
 	private String sctid;
-	private String systemId = "";
+	private String systemId;
 
 	public Record(final String sctid) {
+		this(sctid, UUID.randomUUID().toString());
+	}
+	
+	public Record(final String sctid, final String systemId) {
 		this.sctid = sctid;
-		this.systemId = UUID.randomUUID().toString();
+		this.systemId = systemId;
 	}
 
 	public String getSctid() {

@@ -17,7 +17,6 @@ package com.b2international.snowowl.snomed.datastore.id.cis;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Lists.partition;
-import static java.util.Collections.emptySet;
 import static java.util.Collections.singleton;
 
 import java.io.IOException;
@@ -120,8 +119,8 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		HttpPost request = null;
 
 		try {
-			LOGGER.debug(String.format("Sending single %s ID generation request for namespace %s", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace)));
+			LOGGER.debug("Sending single {} ID generation request for namespace {}", category.getDisplayName(),
+					getSafeNamespaceDisplayName(namespace));
 			request = httpPost("sct/generate", createGenerationData(namespace, category));
 			return extractSctId(execute(request)).getSctid();
 		} catch (IOException e) {
@@ -140,17 +139,15 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		try {
 
-			LOGGER.debug(String.format("Sending bulk %s ID generation request for namespace %s with size %s", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace), quantity));
+			LOGGER.debug("Sending bulk {} ID generation request for namespace {} with size {}", category.getDisplayName(),
+					getSafeNamespaceDisplayName(namespace), quantity);
 
 			bulkRequest = httpPost("sct/bulk/generate", createBulkGenerationData(namespace, category, quantity));
 			final String jobId = extractJobId(execute(bulkRequest));
 
-			if (waitForJob(jobId)) {
-				return getComponentIdsFromBulkJob(jobId);
-			}
+			waitForJob(jobId);
 
-			return emptySet();
+			return getComponentIdsFromBulkJob(jobId);
 
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException(String.format("Unable to bulk generate %s ID for namespace %s with size %s", category.getDisplayName(),
@@ -181,7 +178,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		
 		try {
 			
-			LOGGER.debug(String.format("Sending single registration request for ID %s", idToRegister));
+			LOGGER.debug("Sending single registration request for ID {}", idToRegister);
 			request = httpPost("sct/register", createRegistrationData(idToRegister));
 			
 			execute(request);
@@ -204,35 +201,28 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToRegister);
 
-		Collection<HttpPost> bulkRequests = newArrayList();
+		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
 
-		try {
+			final String namespace = entry.getKey();
 
-			for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
+			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
 
-				final String namespace = entry.getKey();
+				HttpPost bulkRequest = null;
+				
+				try {
 
-				for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
+					LOGGER.debug("Sending bulk registration request for namespace {} with size {}", namespace, ids.size());
 
-					try {
+					bulkRequest = httpPost("sct/bulk/register", createBulkRegistrationData(namespace, ids));
 
-						LOGGER.debug(String.format("Sending bulk registration request for namespace %s with size %d", namespace, ids.size()));
+					waitForJob(extractJobId(execute(bulkRequest)));
 
-						HttpPost bulkRequest = httpPost("sct/bulk/register", createBulkRegistrationData(namespace, ids));
-						bulkRequests.add(bulkRequest);
-
-						waitForJob(extractJobId(execute(bulkRequest)));
-
-					} catch (IOException e) {
-						throw new SnowowlRuntimeException(
-								String.format("Unable to bulk register IDs for namespace %s with size %s", namespace, ids.size()), e);
-					}
+				} catch (IOException e) {
+					throw new SnowowlRuntimeException(
+							String.format("Unable to bulk register IDs for namespace %s with size %s", namespace, ids.size()), e);
+				} finally {
+					release(bulkRequest);
 				}
-			}
-
-		} finally {
-			for (HttpPost bulkRequest : bulkRequests) {
-				release(bulkRequest);
 			}
 		}
 	}
@@ -246,8 +236,8 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		try {
 
-			LOGGER.debug(String.format("Sending single %s ID reservation request for namespace %s", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace)));
+			LOGGER.debug("Sending single {} ID reservation request for namespace {}", category.getDisplayName(),
+					getSafeNamespaceDisplayName(namespace));
 
 			request = httpPost("sct/reserve", createReservationData(namespace, category));
 
@@ -268,18 +258,16 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		try {
 
-			LOGGER.debug(String.format("Sending bulk %s ID reservation request for namespace %s with size %s", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace), quantity));
+			LOGGER.debug("Sending bulk {} ID reservation request for namespace {} with size {}", category.getDisplayName(),
+					getSafeNamespaceDisplayName(namespace), quantity);
 
 			bulkRequest = httpPost("sct/bulk/reserve", createBulkReservationData(namespace, category, quantity));
 
 			String jobId = extractJobId(execute(bulkRequest));
 
-			if (waitForJob(jobId)) {
-				return getComponentIdsFromBulkJob(jobId);
-			}
+			waitForJob(jobId);
 
-			return emptySet();
+			return getComponentIdsFromBulkJob(jobId);
 
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException(String.format("Unable to bulk reserve %s IDs for namespace %s with size %s", category.getDisplayName(),
@@ -310,7 +298,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		
 		try {
 			
-			LOGGER.debug(String.format("Sending single deprecation request for ID %s", idToDeprecate));
+			LOGGER.debug("Sending single deprecation request for ID {}", idToDeprecate);
 
 			request = httpPut("sct/deprecate", createDeprecationData(idToDeprecate));
 			
@@ -334,35 +322,28 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToDeprecate);
 
-		Collection<HttpPut> bulkRequests = newArrayList();
+		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
 
-		try {
+			String namespace = entry.getKey();
 
-			for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
+			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
 
-				String namespace = entry.getKey();
+				HttpPut bulkRequest = null;
+				
+				try {
 
-				for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
+					LOGGER.debug("Sending bulk deprecation request for namespace {} with size {}", namespace, ids.size());
 
-					try {
+					bulkRequest = httpPut("sct/bulk/deprecate", createBulkDeprecationData(namespace, ids));
 
-						LOGGER.debug(String.format("Sending bulk deprecation request for namespace %s with size %d", namespace, ids.size()));
+					waitForJob(extractJobId(execute(bulkRequest)));
 
-						HttpPut bulkRequest = httpPut("sct/bulk/deprecate", createBulkDeprecationData(namespace, ids));
-						bulkRequests.add(bulkRequest);
-
-						waitForJob(extractJobId(execute(bulkRequest)));
-
-					} catch (IOException e) {
-						throw new SnowowlRuntimeException(
-								String.format("Unable to bulk deprecate IDs for namespace %s with size %s", namespace, ids.size()), e);
-					}
+				} catch (IOException e) {
+					throw new SnowowlRuntimeException(
+							String.format("Unable to bulk deprecate IDs for namespace %s with size %s", namespace, ids.size()), e);
+				} finally {
+					release(bulkRequest);
 				}
-			}
-
-		} finally {
-			for (HttpPut bulkRequest : bulkRequests) {
-				release(bulkRequest);
 			}
 		}
 	}
@@ -388,7 +369,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		
 		try {
 			
-			LOGGER.debug(String.format("Sending single release request for component ID %s", idToRelease));
+			LOGGER.debug("Sending single release request for component ID {}", idToRelease);
 
 			request = httpPut("sct/release", createReleaseData(idToRelease));
 			
@@ -412,35 +393,28 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToRelease);
 
-		Collection<HttpPut> bulkRequests = newArrayList();
+		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
 
-		try {
+			String namespace = entry.getKey();
 
-			for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
+			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
 
-				String namespace = entry.getKey();
+				HttpPut bulkRequest = null;
+				
+				try {
 
-				for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
+					LOGGER.debug("Sending bulk release request for namespace {} with size {}", namespace, ids.size());
 
-					try {
+					bulkRequest = httpPut("sct/bulk/release", createBulkReleaseData(namespace, ids));
 
-						LOGGER.debug(String.format("Sending bulk release request for namespace %s with size %d", namespace, ids.size()));
+					waitForJob(extractJobId(execute(bulkRequest)));
 
-						HttpPut bulkRequest = httpPut("sct/bulk/release", createBulkReleaseData(namespace, ids));
-						bulkRequests.add(bulkRequest);
-
-						waitForJob(extractJobId(execute(bulkRequest)));
-
-					} catch (IOException e) {
-						throw new SnowowlRuntimeException(
-								String.format("Unable to bulk release IDs for namespace %s with size %s", namespace, ids.size()), e);
-					}
+				} catch (IOException e) {
+					throw new SnowowlRuntimeException(
+							String.format("Unable to bulk release IDs for namespace %s with size %s", namespace, ids.size()), e);
+				} finally {
+					release(bulkRequest);
 				}
-			}
-
-		} finally {
-			for (HttpPut bulkRequest : bulkRequests) {
-				release(bulkRequest);
 			}
 		}
 	}
@@ -464,7 +438,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		
 		try {
 			
-			LOGGER.debug(String.format("Sending single publish request for component ID %s", idToPublish));
+			LOGGER.debug("Sending single publish request for component ID {}", idToPublish);
 
 			request = httpPut("sct/publish", createPublishData(idToPublish));
 			
@@ -488,35 +462,28 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToPublish);
 
-		Collection<HttpPut> bulkRequests = newArrayList();
+		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
 
-		try {
+			String namespace = entry.getKey();
 
-			for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
+			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
 
-				String namespace = entry.getKey();
+				HttpPut bulkRequest = null;
+				
+				try {
 
-				for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
+					LOGGER.debug("Sending bulk publish request for namespace {} with size {}", namespace, ids.size());
 
-					try {
+					bulkRequest = httpPut("sct/bulk/publish", createBulkPublishData(namespace, ids));
 
-						LOGGER.debug(String.format("Sending bulk publish request for namespace %s with size %d", namespace, ids.size()));
+					waitForJob(extractJobId(execute(bulkRequest)));
 
-						HttpPut bulkRequest = httpPut("sct/bulk/publish", createBulkPublishData(namespace, ids));
-						bulkRequests.add(bulkRequest);
-
-						waitForJob(extractJobId(execute(bulkRequest)));
-
-					} catch (IOException e) {
-						throw new SnowowlRuntimeException(
-								String.format("Unable to bulk publish IDs for namespace %s with size %s", namespace, ids.size()), e);
-					}
+				} catch (IOException e) {
+					throw new SnowowlRuntimeException(
+							String.format("Unable to bulk publish IDs for namespace %s with size %s", namespace, ids.size()), e);
+				} finally {
+					release(bulkRequest);
 				}
-			}
-
-		} finally {
-			for (HttpPut bulkRequest : bulkRequests) {
-				release(bulkRequest);
 			}
 		}
 	}
@@ -528,7 +495,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		
 		try {
 			
-			LOGGER.debug(String.format("Sending single component ID get request for %s", componentId));
+			LOGGER.debug("Sending single component ID get request for {}", componentId);
 			request = httpGet(String.format("sct/ids/%s", componentId));
 			
 			return extractSctId(execute(request));
@@ -544,33 +511,24 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	@Override
 	public Collection<SctId> getSctIds(final Collection<String> componentIds) {
 		
-		final List<HttpGet> requests = newArrayList();
+		LOGGER.debug("Sending bulk component ID get request.");
 		
-		try {
-			
-			LOGGER.debug("Sending bulk component ID get request.");
-			
-			return FluentIterable
-				.from(partition(newArrayList(componentIds), BULK_GET_LIMIT))
-				.transformAndConcat(new Function<Collection<String>, Collection<SctId>>() {
-					@Override
-					public Collection<SctId> apply(Collection<String> input) {
-						try {
-							HttpGet request = httpGet("sct/bulk/ids/", String.format("&sctids=%s", Joiner.on(",").join(input)));
-							requests.add(request);
-							return extractSctIds(execute(request));
-						} catch (IOException e) {
-							throw new SnowowlRuntimeException("Unable to get bulk component IDs", e);
-						}
+		return FluentIterable
+			.from(partition(newArrayList(componentIds), BULK_GET_LIMIT))
+			.transformAndConcat(new Function<Collection<String>, Collection<SctId>>() {
+				@Override
+				public Collection<SctId> apply(Collection<String> input) {
+					HttpGet request = null;
+					try {
+						request = httpGet("sct/bulk/ids/", String.format("&sctids=%s", Joiner.on(",").join(input)));
+						return extractSctIds(execute(request));
+					} catch (IOException e) {
+						throw new SnowowlRuntimeException("Unable to get bulk component IDs", e);
+					} finally {
+						release(request);
 					}
-			}).toList();
-			
-		} finally {
-			for (HttpGet request : requests) {
-				release(request);
-			}
-		}
-		
+				}
+		}).toList();
 	}
 
 	@Override
@@ -684,7 +642,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		}
 	}
 
-	private boolean waitForJob(final String jobId) {
+	private void waitForJob(final String jobId) {
 		
 		if (Strings.isNullOrEmpty(jobId)) {
 			throw new SnowowlRuntimeException(String.format("Unknown job id: %s", jobId));
@@ -694,7 +652,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 		try {
 			
-			LOGGER.debug(String.format("Polling job with ID: %s", jobId));
+			LOGGER.debug("Polling job with ID: {}", jobId);
 
 			request = httpGet(String.format("bulk/jobs/%s", jobId));
 
@@ -721,8 +679,6 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				throw new SnowowlRuntimeException(String.format("Job with ID: %s did not finish in %s", jobId, getMaxAllowedJobExecutionTime()));
 			}
 			
-			return true;
-			
 		} catch (InterruptedException | IOException e) {
 			throw new SnowowlRuntimeException(String.format("Polling of job with ID: %s was interrupted", jobId), e);
 		} finally {
@@ -740,7 +696,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		
 		try {
 			
-			LOGGER.debug(String.format("Requesting records for bulk job with ID: %s", jobId));
+			LOGGER.debug("Requesting records for bulk job with ID: {}", jobId);
 			
 			recordsRequest = httpGet(String.format("bulk/jobs/%s/records", jobId));
 			final String recordsResponse = execute(recordsRequest);
@@ -761,73 +717,63 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		
 	}
 
+	private Collection<String> getValidatedIdCollection(Collection<SctId> ids, Predicate<SctId> predicate) {
+		return FluentIterable.from(ids).filter(predicate).transform(new Function<SctId, String>() {
+			@Override
+			public String apply(SctId input) {
+				return input.getSctid();
+			}
+		}).toList();
+	}
+	
+	
 	private Collection<String> validateForRegistration(Collection<SctId> ids) {
-		return FluentIterable.from(ids).filter(new Predicate<SctId>() {
+		return getValidatedIdCollection(ids, new Predicate<SctId>() {
 			@Override 
 			public boolean apply(SctId input) {
 				boolean result = input.matches(IdentifierStatus.AVAILABLE, IdentifierStatus.RESERVED);
 				if (!result) {
-					LOGGER.warn(String.format("Cannot register ID %s as it is already present with status %s.", input.getSctid(), input.getStatus()));
+					LOGGER.warn("Cannot register ID {} as it is already present with status {}", input.getSctid(), input.getStatus());
 				}
 				return result;
 			}
-		}).transform(new Function<SctId, String>() {
-			@Override
-			public String apply(SctId input) {
-				return input.getSctid();
-			}
-		}).toList();
+		});
 	}
 	
 	private Collection<String> validateForDeprecation(Collection<SctId> ids) {
-		return FluentIterable.from(ids).filter(new Predicate<SctId>() {
+		return getValidatedIdCollection(ids, new Predicate<SctId>() {
 			@Override 
 			public boolean apply(SctId input) {
 				if (input.isDeprecated()) {
-					LOGGER.warn(String.format("Cannot deprecate ID %s as it has already been deprecated", input.getSctid()));
+					LOGGER.warn("Cannot deprecate ID {} as it is already deprecated", input.getSctid());
 				}
 				return !input.isDeprecated();
 			}
-		}).transform(new Function<SctId, String>() {
-			@Override
-			public String apply(SctId input) {
-				return input.getSctid();
-			}
-		}).toList();
+		});
 	}
 	
 	private Collection<String> validateForReleasing(Collection<SctId> ids) {
-		return FluentIterable.from(ids).filter(new Predicate<SctId>() {
+		return getValidatedIdCollection(ids, new Predicate<SctId>() {
 			@Override 
 			public boolean apply(SctId input) {
 				if (input.isAvailable()) {
-					LOGGER.warn(String.format("Cannot release ID %s as it has already been made available", input.getSctid()));
+					LOGGER.warn("Cannot release ID {} as it is already available", input.getSctid());
 				}
 				return !input.isAvailable();
 			}
-		}).transform(new Function<SctId, String>() {
-			@Override
-			public String apply(SctId input) {
-				return input.getSctid();
-			}
-		}).toList();
+		});
 	}
 	
 	private Collection<String> validateForPublishing(Collection<SctId> ids) {
-		return FluentIterable.from(ids).filter(new Predicate<SctId>() {
+		return getValidatedIdCollection(ids, new Predicate<SctId>() {
 			@Override 
 			public boolean apply(SctId input) {
 				if (input.isPublished()) {
-					LOGGER.warn(String.format("Cannot publish ID %s as it has already been published", input.getSctid()));
+					LOGGER.warn("Cannot publish ID {} as it is already published", input.getSctid());
 				}
 				return !input.isPublished();
 			}
-		}).transform(new Function<SctId, String>() {
-			@Override
-			public String apply(SctId input) {
-				return input.getSctid();
-			}
-		}).toList();
+		});
 	}
 
 	private RequestData createGenerationData(final String namespace, final ComponentCategory category) throws IOException {

@@ -29,6 +29,10 @@ public class RegistrationData extends RequestData {
 	private String systemId;
 
 	public RegistrationData(final String namespace, final String software, final String sctId) {
+		this(namespace, software, sctId, UUID.randomUUID().toString());
+	}
+	
+	public RegistrationData(final String namespace, final String software, final String sctId, final String systemId) {
 		super(namespace, software);
 		this.sctId = sctId;
 		this.systemId = UUID.randomUUID().toString();
