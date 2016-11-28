@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.datastore.id.cis.request;
 
+import java.util.UUID;
+
 /**
  * @since 4.5
  */
@@ -25,6 +27,7 @@ public class Record {
 
 	public Record(final String sctid) {
 		this.sctid = sctid;
+		this.systemId = UUID.randomUUID().toString();
 	}
 
 	public String getSctid() {
