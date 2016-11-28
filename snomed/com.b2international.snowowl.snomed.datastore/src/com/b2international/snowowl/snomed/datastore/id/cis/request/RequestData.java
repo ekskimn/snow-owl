@@ -33,7 +33,7 @@ public class RequestData {
 	}
 
 	public RequestData(final String namespace, final String software) {
-		this.namespace = convertNamesapce(namespace);
+		this.namespace = convertNamespace(namespace);
 		this.software = software;
 		this.comment = String.format("Requested by %s", software);
 	}
@@ -62,7 +62,7 @@ public class RequestData {
 		this.comment = comment;
 	}
 	
-	private int convertNamesapce(final String namespace) {
+	private int convertNamespace(final String namespace) {
 		return StringUtils.isEmpty(namespace) ? 0 : Integer.valueOf(namespace);
 	}
 }

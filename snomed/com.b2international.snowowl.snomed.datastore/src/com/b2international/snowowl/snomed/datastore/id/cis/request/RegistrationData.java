@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.datastore.id.cis.request;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
@@ -26,10 +28,14 @@ public class RegistrationData extends RequestData {
 	private String sctId;
 	private String systemId;
 
+	public RegistrationData(final String namespace, final String software, final String sctId) {
+		this(namespace, software, sctId, UUID.randomUUID().toString());
+	}
+	
 	public RegistrationData(final String namespace, final String software, final String sctId, final String systemId) {
 		super(namespace, software);
 		this.sctId = sctId;
-		this.systemId = systemId;
+		this.systemId = UUID.randomUUID().toString();
 	}
 
 	public String getSctId() {
