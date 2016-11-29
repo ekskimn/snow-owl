@@ -846,7 +846,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		return FluentIterable.from(componentIdsToPublish).index(new Function<String, String>() {
 			@Override
 			public String apply(String id) {
-				return getNamespace(id);
+				return Strings.nullToEmpty(getNamespace(id));
 			}
 		});
 	}
