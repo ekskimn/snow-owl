@@ -16,6 +16,7 @@
 package com.b2international.snowowl.datastore.server.internal.branch;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -273,8 +274,14 @@ public abstract class BranchManagerImpl implements BranchManager {
 	void sendChangeEvent(final String branchPath) {
 	}
 
-	/*package*/ final Collection<? extends Branch> getChildren(BranchImpl branchImpl) {
-		final Collection<InternalBranch> values = search(Query.select(InternalBranch.class).where(Expressions.prefixMatch(DocumentMapping._ID, branchImpl.path() + Branch.SEPARATOR)).limit(Integer.MAX_VALUE).build());
+	/*package*/ final Collection<? extends Branch> getChildren(BranchImpl parentBranch) {
+		final Collection<InternalBranch> values = search(Query.select(InternalBranch.class).where(Expressions.prefixMatch(DocumentMapping._ID, parentBranch.path() + Branch.SEPARATOR)).limit(Integer.MAX_VALUE).build());
+		initialize(values);
+		return values;
+	}
+	
+	final Collection<? extends Branch> getImmediateChildren(BranchImpl parentBranch) {
+		final Collection<InternalBranch> values = search(Query.select(InternalBranch.class).where(Expressions.exactMatch("parentPath", parentBranch.path())).limit(Integer.MAX_VALUE).build());
 		initialize(values);
 		return values;
 	}
