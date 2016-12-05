@@ -117,7 +117,11 @@ public class Expressions {
 	}
 
 	public static Expression matchRange(String fieldName, long from, long to) {
-		return new LongRangePredicate(fieldName, from, to);
+		return new LongRangePredicate(fieldName, from, to, true, true);
+	}
+	
+	public static Expression matchRange(String fieldName, long from, long to, boolean minInclusive, boolean maxInclusive) {
+		return new LongRangePredicate(fieldName, from, to, minInclusive, maxInclusive);
 	}
 	
 	public static Expression matchRange(String fieldName, int from, int to) {
