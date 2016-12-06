@@ -19,15 +19,11 @@ package com.b2international.snowowl.terminologyregistry.core.request;
  * @since 4.7
  */
 public class CodeSystemRequests {
-
-	private final String repositoryId;
-
-	public CodeSystemRequests(final String repositoryId) {
-		this.repositoryId = checkNotNull(repositoryId, "repositoryId");
-	}
-
-	public CodeSystemCreateRequestBuilder prepareNewCodeSystem() {
-		return new CodeSystemCreateRequestBuilder(repositoryId);
+	
+	private CodeSystemRequests() {}
+	
+	public static CodeSystemCreateRequestBuilder prepareNewCodeSystem() {
+		return new CodeSystemCreateRequestBuilder();
 	}
 
 	public static CodeSystemUpdateRequestBuilder prepareUpdateCodeSystem(final String uniqueId) {
@@ -44,9 +40,5 @@ public class CodeSystemRequests {
 
 	public static CodeSystemVersionSearchRequestBuilder prepareSearchCodeSystemVersion() {
 		return new CodeSystemVersionSearchRequestBuilder();
-	}
-	
-	public String getRepositoryId() {
-		return repositoryId;
 	}
 }
