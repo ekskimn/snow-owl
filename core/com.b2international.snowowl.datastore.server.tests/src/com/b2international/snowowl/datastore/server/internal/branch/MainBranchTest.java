@@ -26,6 +26,14 @@ import com.b2international.snowowl.core.branch.Branch.BranchState;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.b2international.snowowl.core.ServiceProvider;
+import com.b2international.snowowl.core.branch.Branch.BranchState;
+import com.b2international.snowowl.core.branch.BranchManager;
+import com.b2international.snowowl.core.domain.RepositoryContext;
+import com.b2international.snowowl.core.domain.RepositoryContextProvider;
+import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
+import com.b2international.snowowl.datastore.review.ReviewManager;
 
 /**
  * @since 4.1

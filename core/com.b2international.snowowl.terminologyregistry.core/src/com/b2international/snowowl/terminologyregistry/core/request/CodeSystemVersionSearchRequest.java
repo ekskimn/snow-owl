@@ -15,7 +15,6 @@
  */
 package com.b2international.snowowl.terminologyregistry.core.request;
 
-
 import java.io.IOException;
 
 import com.b2international.commons.StringUtils;
@@ -28,6 +27,34 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.CodeSystemVersions;
 import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
+import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.VERSION_PARENT_BRANCH_PATH;
+import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.VERSION_SYSTEM_SHORT_NAME;
+import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.VERSION_VERSION_ID;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+
+import com.b2international.commons.StringUtils;
+import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.domain.BranchContext;
+import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
+import com.b2international.snowowl.datastore.CodeSystemVersions;
+import com.b2international.snowowl.datastore.ICodeSystemVersion;
+import com.b2international.snowowl.datastore.request.SearchRequest;
+import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemVersionEntryBuilder;
+import com.google.common.collect.Lists;
 
 /**
  * @since 4.7
@@ -38,6 +65,7 @@ final class CodeSystemVersionSearchRequest extends RevisionSearchRequest<CodeSys
 
 	private String codeSystemShortName;
 	private String versionId;
+	private IBranchPath parentPath;
 	
 	CodeSystemVersionSearchRequest() {
 	}
@@ -48,6 +76,10 @@ final class CodeSystemVersionSearchRequest extends RevisionSearchRequest<CodeSys
 	
 	void setVersionId(String versionId) {
 		this.versionId = versionId;
+	}
+	
+	void setParentPath(IBranchPath parentPath) {
+		this.parentPath = parentPath;
 	}
 
 	@Override
@@ -60,6 +92,10 @@ final class CodeSystemVersionSearchRequest extends RevisionSearchRequest<CodeSys
 		
 		if (!StringUtils.isEmpty(versionId)) {
 			query.must(CodeSystemVersionEntry.Expressions.versionId(versionId));
+		}
+		
+		if (parentPath != null) {
+			query.must(CodeSystemVersionEntry.Expressions.parentPath(parentPath.getPath()));
 		}
 		
 		final Searcher searcher = context.service(Searcher.class);
@@ -77,5 +113,4 @@ final class CodeSystemVersionSearchRequest extends RevisionSearchRequest<CodeSys
 	protected Class<CodeSystemVersions> getReturnType() {
 		return CodeSystemVersions.class;
 	}
-
 }

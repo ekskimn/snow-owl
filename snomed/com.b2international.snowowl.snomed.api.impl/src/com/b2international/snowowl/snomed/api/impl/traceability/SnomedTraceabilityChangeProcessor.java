@@ -75,9 +75,14 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+=======
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
@@ -274,6 +279,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	
 	@Override
 	public void afterCommit() {
+<<<<<<< HEAD
 		final Timer traceabilityTimer = MetricsThreadLocal.get().timer("traceability");
 		try {
 			traceabilityTimer.start();
@@ -288,6 +294,40 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					.setLimit(entry.getChanges().size())
 					.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
 					.build(branch);
+=======
+		
+		if (commitChangeSet != null) {
+			final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
+			final String branch = commitChangeSet.getView().getBranch().getPathName();
+			final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
+			
+			final Request<ServiceProvider, SnomedConcepts> conceptSearchRequest = SnomedRequests.prepareSearchConcept()
+				.setComponentIds(conceptIds)
+				.setOffset(0)
+				.setLimit(entry.getChanges().size())
+				.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
+				.build(branch);
+			
+			final SnomedConcepts concepts = conceptSearchRequest.executeSync(bus);
+			final Set<String> hasChildrenStated = collectNonLeafs(conceptIds, branch, bus, Concepts.STATED_RELATIONSHIP);
+			final Set<String> hasChildrenInferred = collectNonLeafs(conceptIds, branch, bus, Concepts.INFERRED_RELATIONSHIP);
+			
+			for (ISnomedConcept concept : concepts) {
+				SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
+				
+				convertedConcept.setActive(concept.isActive());
+				convertedConcept.setConceptId(concept.getId());
+				convertedConcept.setDefinitionStatus(concept.getDefinitionStatus());
+				convertedConcept.setDescriptions(convertDescriptions(concept.getDescriptions()));
+				convertedConcept.setEffectiveTime(concept.getEffectiveTime());
+				convertedConcept.setModuleId(concept.getModuleId());
+				convertedConcept.setRelationships(convertRelationships(concept.getRelationships()));
+				convertedConcept.setIsLeafStated(!hasChildrenStated.contains(concept.getId()));
+				convertedConcept.setIsLeafInferred(!hasChildrenInferred.contains(concept.getId()));
+				convertedConcept.setFsn(concept.getId());
+				convertedConcept.setInactivationIndicator(concept.getInactivationIndicator());
+				convertedConcept.setAssociationTargets(concept.getAssociationTargets());
+>>>>>>> origin/ms-develop
 				
 				final SnomedConcepts concepts = conceptSearchRequest.executeSync(bus);
 				final Set<String> hasChildrenStated = collectNonLeafs(conceptIds, branch, bus, Concepts.STATED_RELATIONSHIP);

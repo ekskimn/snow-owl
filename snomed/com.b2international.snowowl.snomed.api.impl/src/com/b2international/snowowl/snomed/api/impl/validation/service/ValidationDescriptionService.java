@@ -13,21 +13,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+<<<<<<< HEAD
 import org.ihtsdo.drools.domain.Concept;
 import org.ihtsdo.drools.domain.Constants;
 import org.ihtsdo.drools.domain.Description;
 import org.ihtsdo.drools.domain.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+=======
+import org.ihtsdo.drools.domain.Description;
+>>>>>>> origin/ms-develop
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+=======
+import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
@@ -41,6 +49,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		this.descriptionService = descriptionService;
 		this.branchPath = branchPath;
 		this.bus = bus;
+<<<<<<< HEAD
 	}
 
 	final static Logger logger = LoggerFactory.getLogger(ValidationDescriptionService.class);
@@ -116,6 +125,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		} finally {
 			refsetToLanguageSpecificWordsMap.put(refsetId, words);
 		}
+=======
+>>>>>>> origin/ms-develop
 	}
 
 	// On initial load, retrieve the top-level hierarchy roots for hierarchy
@@ -140,6 +151,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
+<<<<<<< HEAD
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
 				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
 
@@ -156,6 +168,13 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(false)
 				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
+=======
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(exactTerm)
+				.build(branchPath)
+				.executeSync(bus);
+>>>>>>> origin/ms-develop
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -166,6 +185,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return matches;
 	}
 
+<<<<<<< HEAD
 	private void cacheHierarchyRootConcepts() {
 
 		hierarchyRootIds = new HashSet<>();
@@ -399,4 +419,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return result;
 	}
 
+=======
+>>>>>>> origin/ms-develop
 }

@@ -29,17 +29,27 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentCreatedWithStatus;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentNotCreated;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentUpdatedWithStatus;
+<<<<<<< HEAD
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertConceptsBulkJobCompletes;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertConceptsUpdateStartsWithStatus;
+=======
+import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertConceptsUpdateStartsWithStatus;
+import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertConceptsBulkJobCompletes;
+>>>>>>> origin/ms-develop
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.createDescriptions;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.createIsaRelationship;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.generateComponentId;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.givenConceptRequestBody;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
+<<<<<<< HEAD
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
+=======
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
+>>>>>>> origin/ms-develop
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -56,16 +66,22 @@ import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescri
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+=======
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+<<<<<<< HEAD
 import com.google.common.collect.ImmutableMap;
+=======
+>>>>>>> origin/ms-develop
 import com.google.common.collect.ImmutableMultimap;
 import com.jayway.restassured.response.ExtractableResponse;
 import com.jayway.restassured.response.Response;
@@ -123,6 +139,10 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void createConceptWithGeneratedId() {
 		final String conceptId = generateComponentId(null, ComponentCategory.CONCEPT);
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/ms-develop
 		createConcept(conceptId);
 	}
 
@@ -245,7 +265,11 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final Map<String, Object> concept = response.and().extract().jsonPath().get();
 		concept.remove("relationships");
 
+<<<<<<< HEAD
 		// We get a 400, bad request, because at least one is-a relationship is required
+=======
+		// Removing all relationships without leaving at least one stated IS A is not allowed
+>>>>>>> origin/ms-develop
 		assertComponentUpdatedWithStatus(createMainPath(), concept.get("conceptId").toString(), concept, 400);
 	}
 
@@ -260,8 +284,13 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "descriptions.released[0]", false);
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "relationships.released[0]", false);
 
+<<<<<<< HEAD
 		final String effectiveDate = "20160501";
 		whenCreatingVersion("2016-05-01", effectiveDate).then().assertThat().statusCode(201);
+=======
+		final String effectiveDate = "20170131";
+		whenCreatingVersion("2017-01-31", effectiveDate).then().assertThat().statusCode(201);
+>>>>>>> origin/ms-develop
 		
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "effectiveTime", effectiveDate);
 		assertConceptIndexedBrowserPropertyEquals(path, conceptId, "released", true);
@@ -348,6 +377,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 				.and().body("[0].concept.preferredSynonym", equalTo("Circulatory finding context"));
 	}
 	
+<<<<<<< HEAD
 	@Test
 	public void updateConceptWithNewComponents() {
 		final Date creationDate = new Date();
@@ -381,6 +411,8 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		assertEquals(6, updatedRelationships.size());
 	}
 
+=======
+>>>>>>> origin/ms-develop
 	private Map<String, Object> getFsn(final Map<String, Object> conceptOne) {
 		@SuppressWarnings("unchecked")
 		final List<Map<String, Object>> descs = (List<Map<String, Object>>) conceptOne.get("descriptions");
@@ -413,6 +445,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final Map<?, ?> requestBody = givenConceptRequestBody(conceptId, true, fsn, MODULE_SCT_CORE, descriptions, relationships, creationDate);
 		return assertComponentCreatedWithStatus(createMainPath(), requestBody, 200);
 	}
+<<<<<<< HEAD
 	
 	@SuppressWarnings("unchecked")
 	private List<Object> getListElement(Map<String, Object> concept, String elementName) {
@@ -476,4 +509,6 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		return results;
 	}
 	
+=======
+>>>>>>> origin/ms-develop
 }

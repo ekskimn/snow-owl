@@ -28,6 +28,14 @@ public class CodeSystemRequests {
 		this.repositoryId = checkNotNull(repositoryId, "repositoryId");
 	}
 
+	public CodeSystemCreateRequestBuilder prepareNewCodeSystem() {
+		return new CodeSystemCreateRequestBuilder(repositoryId);
+	}
+
+	public CodeSystemUpdateRequestBuilder prepareUpdateCodeSystem(final String uniqueId) {
+		return new CodeSystemUpdateRequestBuilder(repositoryId, uniqueId);
+	}
+
 	public CodeSystemGetRequestBuilder prepareGetCodeSystem() {
 		return new CodeSystemGetRequestBuilder(repositoryId);
 	}
@@ -43,5 +51,4 @@ public class CodeSystemRequests {
 	public String getRepositoryId() {
 		return repositoryId;
 	}
-
 }

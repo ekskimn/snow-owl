@@ -52,6 +52,7 @@ import com.b2international.snowowl.datastore.oplock.IOperationLockTarget;
 import com.b2international.snowowl.datastore.oplock.OperationLockException;
 import com.b2international.snowowl.datastore.oplock.OperationLockRunner;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreOperationLockException;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
@@ -101,6 +102,8 @@ import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberUpdateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUpdateRequestBuilder;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.entry.AbstractChangeEntry.Nature;
@@ -118,6 +121,15 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
+import com.google.common.base.Function;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 
 /**
  */
@@ -159,7 +171,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			} else {
 				updateStatus(uuid, ClassificationStatus.SAVING_IN_PROGRESS);
 			}
-
+	
 			final Stopwatch persistStopwatch = Stopwatch.createStarted();
 			final BulkRequestBuilder<TransactionContext> builder = BulkRequest.create();
 			final String defaultModuleId = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_MODULE_ID_KEY);
@@ -463,13 +475,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		
 		try {
 			indexService.trimIndex(maxReasonerRuns);
-			indexService.invalidateClassificationRuns();
-		} catch (final IOException e) {
-			LOG.error("Failed to run housekeeping tasks for the classification index.", e);
-		}
-
-		try {
-			indexService.trimIndex(MAX_INDEXED_RESULTS);
 			indexService.invalidateClassificationRuns();
 		} catch (final IOException e) {
 			LOG.error("Failed to run housekeeping tasks for the classification index.", e);

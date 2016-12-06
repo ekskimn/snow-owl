@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,6 +31,7 @@ import org.eclipse.emf.cdo.common.commit.CDOCommitInfoHandler;
 import org.eclipse.emf.cdo.transaction.CDOMerger;
 import org.eclipse.emf.cdo.transaction.CDOTransaction;
 import org.eclipse.emf.cdo.util.CommitException;
+import org.eclipse.emf.cdo.view.CDOView;
 import org.eclipse.net4j.util.lifecycle.LifecycleUtil;
 
 import com.b2international.commons.Pair;
@@ -43,7 +45,9 @@ import com.b2international.snowowl.core.MetadataImpl;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.branch.BranchMergeException;
+import com.b2international.snowowl.core.exceptions.MergeConflictException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.core.merge.MergeConflict;
 import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.CDOBranchPath;
@@ -150,7 +154,7 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
 			
 			if (branch.headTimestamp() > branch.baseTimestamp()) {
 				
-				testTransaction = applyChangeSet(branch, onTopOf);
+				testTransaction = applyChangeSet(branch, onTopOf, true);
 				
 				final InternalCDOBasedBranch tmpBranch = (InternalCDOBasedBranch) reopen(onTopOf,
 						String.format(Branch.TEMP_BRANCH_NAME_FORMAT, Branch.TEMP_PREFIX, branch.name(), System.currentTimeMillis()), branch.metadata());
@@ -230,8 +234,8 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
 	}
     
     @Override
-    InternalBranch applyChangeSet(InternalBranch from, InternalBranch to, boolean dryRun, String commitMessage) {
-        final CDOTransaction dirtyTransaction = applyChangeSet(from, to);
+    InternalBranch applyChangeSet(InternalBranch from, InternalBranch to, boolean dryRun, boolean isRebase, String commitMessage) {
+        final CDOTransaction dirtyTransaction = applyChangeSet(from, to, isRebase);
         try {
         	if (dryRun) {
             	return to;
@@ -243,11 +247,11 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
 		}
     }
     
-    private CDOTransaction applyChangeSet(InternalBranch from, InternalBranch to) {
+    private CDOTransaction applyChangeSet(InternalBranch from, InternalBranch to, boolean isRebase) {
     	final CDOBranch sourceBranch = getCDOBranch(from);
     	final CDOBranch targetBranch = getCDOBranch(to);
     	final ICDOConnection connection = repository.getConnection();
-    	final CDOBranchMerger merger = new CDOBranchMerger(repository.getConflictProcessor());
+    	final CDOBranchMerger merger = new CDOBranchMerger(repository.getConflictProcessor(), isRebase);
     	final CDOTransaction targetTransaction = connection.createTransaction(targetBranch);
 
     	try {
@@ -256,8 +260,11 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
     		merger.postProcess(targetTransaction);
     		return targetTransaction;
     	} catch (CDOMerger.ConflictException e) {
+    		CDOView sourceView = connection.createView(sourceBranch);
+    		Collection<MergeConflict> conflicts = merger.handleCDOConflicts(sourceView, targetTransaction);
     		LifecycleUtil.deactivate(targetTransaction);
-    		throw new BranchMergeException("Could not resolve all conflicts while applying changeset on '%s' from '%s'.", to.path(), from.path(), e);
+    		LifecycleUtil.deactivate(sourceView);
+			throw new MergeConflictException(conflicts, String.format("Could not resolve all conflicts while applying changeset on '%s' from '%s'.", to.path(), from.path()));
     	}
     }
     

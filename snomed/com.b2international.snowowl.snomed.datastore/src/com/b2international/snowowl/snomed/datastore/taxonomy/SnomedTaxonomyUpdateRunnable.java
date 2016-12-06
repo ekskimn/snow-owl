@@ -38,7 +38,13 @@ import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+=======
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
+import com.b2international.snowowl.snomed.datastore.index.SnomedIndexService;
+import com.b2international.snowowl.snomed.datastore.index.SnomedRelationshipIndexQueryAdapter;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.taxonomy.ISnomedTaxonomyBuilder.TaxonomyBuilderEdge;
 import com.b2international.snowowl.snomed.datastore.taxonomy.ISnomedTaxonomyBuilder.TaxonomyBuilderNode;
@@ -192,6 +198,7 @@ public class SnomedTaxonomyUpdateRunnable implements Runnable {
 		}
 		
 		for (final Concept dirtyConcept : dirtyConcepts) {
+<<<<<<< HEAD
 			final CDORevisionDelta revisionDelta = commitChangeSet.getRevisionDeltas().get(dirtyConcept.cdoID());
 			if (revisionDelta == null) {
 				continue;
@@ -210,6 +217,14 @@ public class SnomedTaxonomyUpdateRunnable implements Runnable {
 					if (!taxonomyBuilder.containsNode(dirtyConcept.getId())) {
 						taxonomyBuilder.addNode(createNode(dirtyConcept));
 					}
+=======
+			if (!dirtyConcept.isActive()) { //we do not need this concept. either it was deactivated now or sometime earlier.
+				//nothing can be dirty and new at the same time
+				taxonomyBuilder.removeNode(createNode(dirtyConcept.getId(), true));
+			} else { //consider reverting inactivation
+				if (!taxonomyBuilder.containsNode(dirtyConcept.getId())) {
+					taxonomyBuilder.addNode(createNode(dirtyConcept));
+>>>>>>> origin/ms-develop
 				}
 			}
 		}

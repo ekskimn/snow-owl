@@ -54,10 +54,13 @@ public final class SnomedRefSetMemberSearchRequestBuilder extends SnomedSearchRe
 	
 	public SnomedRefSetMemberSearchRequestBuilder filterByRefSetType(final Iterable<SnomedRefSetType> refSetTypes) {
 		return addOption(OptionKey.REFSET_TYPE, Collections3.toImmutableSet(refSetTypes));
+<<<<<<< HEAD
 	}
 	
 	public SnomedRefSetMemberSearchRequestBuilder filterByProps(Options memberProps) {
 		return addOption(OptionKey.PROPS, memberProps);
+=======
+>>>>>>> origin/ms-develop
 	}
 
 	public SnomedRefSetMemberSearchRequestBuilder filterByReferencedComponentType(String type) {

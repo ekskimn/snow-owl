@@ -98,7 +98,13 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 				physicalPath = getMostRecentPhysicalPath(key);
 			}
 			
+<<<<<<< HEAD:core/com.b2international.snowowl.datastore.server.comp46/src/com/b2international/snowowl/datastore/server/index/IndexServerService.java
 			return new IndexBranchService(key, physicalPath, getDirectoryManager());
+=======
+			final IndexBranchService branchService = new IndexBranchService(key, physicalPath, getDirectoryManager());
+			
+			return branchService;
+>>>>>>> origin/ms-develop:core/com.b2international.snowowl.datastore.server/src/com/b2international/snowowl/datastore/server/index/IndexServerService.java
 		}
 	}
 
@@ -212,8 +218,11 @@ public abstract class IndexServerService<E extends IIndexEntry> extends Abstract
 		
 		try {
 			
+<<<<<<< HEAD:core/com.b2international.snowowl.datastore.server.comp46/src/com/b2international/snowowl/datastore/server/index/IndexServerService.java
 			final IndexBranchService baseBranchService = getBranchService(logicalPath.getParent());
 			
+=======
+>>>>>>> origin/ms-develop:core/com.b2international.snowowl.datastore.server/src/com/b2international/snowowl/datastore/server/index/IndexServerService.java
 			synchronized (baseBranchService) {
 				baseBranchService.createIndexCommit(logicalPath, physicalPath);
 				inactiveClose(logicalPath, true);

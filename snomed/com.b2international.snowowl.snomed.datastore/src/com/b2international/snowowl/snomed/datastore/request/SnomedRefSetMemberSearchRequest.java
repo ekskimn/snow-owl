@@ -40,20 +40,30 @@ import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.collect.LongSets;
 import com.b2international.commons.functions.LongToStringFunction;
 import com.b2international.commons.options.Options;
+<<<<<<< HEAD
 import com.b2international.index.Hits;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionSearcher;
+=======
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
 import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.dsl.query.RValue;
+=======
+import com.b2international.snowowl.snomed.datastore.escg.IEscgQueryEvaluatorService;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedQueryBuilder;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.collect.Iterables;
 
@@ -164,11 +174,35 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 			}
 		}
 		
+<<<<<<< HEAD
 		final Query<SnomedRefSetMemberIndexEntry> query = Query.select(SnomedRefSetMemberIndexEntry.class)
 			.where(queryBuilder.build())
 			.offset(offset())
 			.limit(limit())
 			.build();
+=======
+		addFilterClause(filter, new FieldValueFilter(SnomedMappings.memberReferencedComponentType().fieldName()),Occur.MUST);
+	
+		SnomedQueryBuilder queryBuilder = SnomedMappings.newQuery();
+		addActiveClause(queryBuilder);
+		addModuleClause(queryBuilder);
+		addEffectiveTimeClause(queryBuilder);
+		
+		final Query query = createConstantScoreQuery(createFilteredQuery(queryBuilder.isEmpty() 
+				? new MatchAllDocsQuery() 
+				: queryBuilder.matchAll(), filter));
+
+		final int totalHits = getTotalHits(searcher, query);
+
+		if (limit() < 1 || totalHits < 1) {
+			return new SnomedReferenceSetMembers(offset(), limit(), totalHits);
+		}
+		
+		final TopDocs topDocs = searcher.search(query, null, numDocsToRetrieve(searcher, totalHits), Sort.INDEXORDER, false, false);
+		if (topDocs.scoreDocs.length < 1) {
+			return new SnomedReferenceSetMembers(offset(), limit(), topDocs.totalHits);
+		}
+>>>>>>> origin/ms-develop
 
 		final Hits<SnomedRefSetMemberIndexEntry> hits = searcher.search(query);
 		if (limit() < 1 || hits.getTotal() < 1) {

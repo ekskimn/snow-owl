@@ -183,7 +183,15 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 //		
 //		return new Pair<String, IdStorageKeyPair>(preferredMember.getReferencedComponentId(), new IdStorageKeyPair(preferredMember.getId(), preferredMember.getStorageKey()));
 	}
+<<<<<<< HEAD
 
+=======
+	
+	private static SnomedClientIndexService getIndexService() {
+		return ApplicationContext.getInstance().getService(SnomedClientIndexService.class);
+	}
+	
+>>>>>>> origin/ms-develop
 	public Concept buildDraftConceptFromNormalForm(final NormalFormWrapper normalForm) {
 		return buildDraftConceptFromNormalForm(normalForm, null);
 	}
@@ -1176,7 +1184,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		Preconditions.checkState(object instanceof Concept, "CDO object must be a SNOMED CT concept with ID: " + cdoId);
 		return (Concept) object; 
 	}
-	
+
 	@Override
 	public void delete(EObject object, boolean force) {
 		if (object instanceof Concept) {
@@ -1216,7 +1224,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		}
 		return plan;
 	}
-	
+
 	public SnomedDeletionPlan canDelete(Concept concept, SnomedDeletionPlan deletionPlan, boolean force) {
 		
 		if (deletionPlan == null) {

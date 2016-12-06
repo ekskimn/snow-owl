@@ -165,9 +165,13 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		deltaExportEndEffectiveTime = deltaExportEndEffectiveTimeString.equals("") ? null : convertRF2StringToDate(deltaExportEndEffectiveTimeString);
 		releaseType = ContentSubType.getByValue(in.readInt());
 		unsetEffectiveTimeLabel = in.readUTF();
+<<<<<<< HEAD
 		includeUnpublished = in.readBoolean();
 		
 		
+=======
+				
+>>>>>>> origin/ms-develop
 		includeRf1 = in.readBoolean();
 		includeExtendedDescriptionTypes = in.readBoolean();
 
@@ -193,15 +197,23 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		
 		clientNamespace = in.readUTF();
 		
+<<<<<<< HEAD
 		exportContext = new SnomedExportContextImpl(
 				ExportFormat.RF2,
+=======
+		configuration = new SnomedExportConfigurationImpl(
+>>>>>>> origin/ms-develop
 				branchPath, 
 				releaseType, 
 				unsetEffectiveTimeLabel,
 				deltaExportStartEffectiveTime, 
 				deltaExportEndEffectiveTime,
+<<<<<<< HEAD
 				modulesToExport,
 				new Id2Rf1PropertyMapper());
+=======
+				clientNamespace);
+>>>>>>> origin/ms-develop
 		
 		LogUtils.logExportActivity(LOGGER, userId, branchPath, 
 				MessageFormat.format("SNOMED CT export{0}requested.", coreComponentExport ? " with core components " : " "));

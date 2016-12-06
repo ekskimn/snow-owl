@@ -17,17 +17,17 @@ package com.b2international.snowowl.datastore;
 
 import java.util.List;
 
-import com.b2international.snowowl.core.domain.PageableCollectionResource;
+import com.b2international.snowowl.core.domain.CollectionResource;
 
 /**
  * @since 4.7
  */
-public class CodeSystems extends PageableCollectionResource<CodeSystemEntry> {
+public class CodeSystems extends CollectionResource<ICodeSystem> {
 
 	private static final long serialVersionUID = 1L;
 
-	public CodeSystems(List<CodeSystemEntry> items, int offset, int limit, int total) {
-		super(items, offset, limit, total);
+	public CodeSystems(List<ICodeSystem> items) {
+		super(items);
 	}
 
 }

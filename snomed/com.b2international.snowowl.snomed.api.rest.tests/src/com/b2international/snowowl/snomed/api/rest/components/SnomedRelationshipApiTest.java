@@ -251,7 +251,11 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void createRelationshipOnNestedBranch() {
+<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
+=======
+		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
+>>>>>>> origin/ms-develop
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
 		final Map<?, ?> requestBody = givenRelationshipRequestBody(DISEASE, TEMPORAL_CONTEXT, FINDING_CONTEXT, MODULE_SCT_CORE, "New relationship on MAIN");
 		final String relationshipId = assertComponentCreated(nestedBranchPath, SnomedComponentType.RELATIONSHIP, requestBody);		
@@ -264,6 +268,7 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void deleteRelationshipOnNestedBranch() {
+<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
 		
 		List<String> typeIds = newArrayList();
@@ -283,6 +288,9 @@ public class SnomedRelationshipApiTest extends AbstractSnomedApiTest {
 		}
 		
 		// New relationship on nested branch resets the concept's version to 1 again
+=======
+		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
+>>>>>>> origin/ms-develop
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
 		requestBody = givenRelationshipRequestBody(DISEASE, TEMPORAL_CONTEXT, FINDING_CONTEXT, MODULE_SCT_CORE, "New relationship on " + nestedBranchPath.getPath());
 		assertComponentCreated(nestedBranchPath, SnomedComponentType.RELATIONSHIP, requestBody);

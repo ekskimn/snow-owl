@@ -19,13 +19,15 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.jobs.MultiRule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.status.Statuses;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.exceptions.ApiError;
 import com.b2international.snowowl.core.exceptions.ApiException;
-import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.MergeConflictException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.server.remotejobs.BranchExclusiveRule;
@@ -35,16 +37,16 @@ import com.b2international.snowowl.datastore.server.remotejobs.BranchExclusiveRu
  */
 public abstract class AbstractBranchChangeRemoteJob extends Job {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger("merge-job");
+	
 	public static AbstractBranchChangeRemoteJob create(Repository repository, String source, String target, String commitMessage, String reviewId) {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
 		
-		if (sourcePath.getParent().equals(targetPath)) {
-			return new BranchMergeJob(repository, source, target, commitMessage, reviewId);
-		} else if (targetPath.getParent().equals(sourcePath)) {
+		if (targetPath.getParent().equals(sourcePath)) {
 			return new BranchRebaseJob(repository, source, target, commitMessage, reviewId);
 		} else {
-			throw new BadRequestException("Branches '%s' and '%s' can only be merged or rebased if one branch is the direct parent of the other.", source, target);
+			return new BranchMergeJob(repository, source, target, commitMessage, reviewId);
 		}
 	}
 
@@ -64,7 +66,6 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 		
 		setSystem(true);
 		
-		// TODO: Make reasoner remote job rule conflicting and add it as additional items below 
 		setRule(MultiRule.combine(
 				new BranchExclusiveRule(repository.id(), BranchPathUtils.createPath(sourcePath)), 
 				new BranchExclusiveRule(repository.id(), BranchPathUtils.createPath(targetPath))));
@@ -77,9 +78,13 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 		try {
 			applyChanges();
 			merge.completed();
+		} catch (MergeConflictException e) {
+			merge.failedWithConflicts(e.getConflicts(), e.toApiError());
 		} catch (ApiException e) {
+			LOGGER.error("Caught ApiException while applying changes for merge {}.", merge.getId(), e);
 			merge.failed(e.toApiError());
 		} catch (RuntimeException e) {
+			LOGGER.error("Caught RuntimeException while applying changes for merge {}.", merge.getId(), e);
 			merge.failed(ApiError.Builder.of(e.getMessage()).build());
 		}
 		

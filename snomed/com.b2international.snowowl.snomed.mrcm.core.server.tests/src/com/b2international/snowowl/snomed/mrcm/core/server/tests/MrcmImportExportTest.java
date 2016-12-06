@@ -31,12 +31,20 @@ import org.junit.Test;
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
 import com.b2international.snowowl.snomed.datastore.MrcmEditingContext;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
+import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.datastore.MrcmEditingContext;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.SnomedPredicateBrowser;
+import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
 import com.b2international.snowowl.snomed.mrcm.core.io.MrcmExportFormat;
 import com.b2international.snowowl.snomed.mrcm.core.io.MrcmExporter;
 import com.b2international.snowowl.snomed.mrcm.core.io.MrcmImporter;
@@ -54,7 +62,7 @@ public class MrcmImportExportTest {
 		final Path path = Paths.get(PlatformUtil.toAbsolutePath(MrcmImportExportTest.class, "mrcm_defaults.xmi"));
 		
 		try (final InputStream stream = Files.newInputStream(path, StandardOpenOption.READ)) {
-			Services.service(MrcmImporter.class).doImport("test", stream);
+			Services.service(MrcmImporter.class).doImport("MAIN", "test", stream);
 		} 
 		
 		
@@ -72,6 +80,33 @@ public class MrcmImportExportTest {
 	}
 	
 	@Test
+	public void importBranchTest() throws Exception {
+		
+		final Branch childBranch = RepositoryRequests.branching(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.prepareCreate()
+				.setParent("MAIN")
+				.setName("a")
+				.build()
+				.executeSync(Services.service(IEventBus.class));
+		
+		// default/old MRCM import file contains 58 rules
+		final IBranchPath branchPath = childBranch.branchPath();
+		final Path path = Paths.get(PlatformUtil.toAbsolutePath(MrcmImportExportTest.class, "mrcm_defaults.xmi"));
+		
+		try (final InputStream stream = Files.newInputStream(path, StandardOpenOption.READ)) {
+			Services.service(MrcmImporter.class).doImport(childBranch.path(), "test", stream);
+		} 
+		
+		// verify CDO content
+		try (MrcmEditingContext context = new MrcmEditingContext(branchPath)) {
+			assertEquals(58, context.getOrCreateConceptModel().getConstraints().size());
+		}
+		// verify index
+		final Collection<PredicateIndexEntry> allPredicates = ApplicationContext.getServiceForClass(SnomedPredicateBrowser.class).getAllPredicates(branchPath);
+		assertEquals(58, allPredicates.size());
+	}
+	
+	@Test
 	public void exportTest() throws Exception {
 		importTest();
 		
@@ -80,7 +115,7 @@ public class MrcmImportExportTest {
 		Path exportedFile = target.resolve("mrcm_" + Dates.now() + ".xmi");
 		assertFalse(exportedFile.toFile().exists());
 		try (final OutputStream stream = Files.newOutputStream(exportedFile, StandardOpenOption.CREATE_NEW)) {
-			Services.service(MrcmExporter.class).doExport("test", stream, MrcmExportFormat.XMI);
+			Services.service(MrcmExporter.class).doExport("MAIN", "test", stream, MrcmExportFormat.XMI);
 		}
 		assertTrue(exportedFile.toFile().exists());
 		
@@ -89,7 +124,7 @@ public class MrcmImportExportTest {
 		exportedFile = target.resolve("mrcm_" + Dates.now() + ".csv");
 		assertFalse(exportedFile.toFile().exists());
 		try (final OutputStream stream = Files.newOutputStream(exportedFile, StandardOpenOption.CREATE_NEW)) {
-			Services.service(MrcmExporter.class).doExport("test", stream, MrcmExportFormat.CSV);
+			Services.service(MrcmExporter.class).doExport("MAIN", "test", stream, MrcmExportFormat.CSV);
 		}
 		assertTrue(exportedFile.toFile().exists());
 		

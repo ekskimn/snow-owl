@@ -69,11 +69,9 @@ public class MergeServiceImpl implements MergeService {
 		
 		switch (result.getStatus()) {
 			case FAILED:
-				if (ConflictException.CODE == result.getApiError().getCode()) {
-					throw new MergeConflictException(result.getApiError().getAdditionalInfo(), result.getApiError().getMessage()); 
-				} else {
-					throw new InvalidStateException(result.getApiError().getMessage());
-				}
+				throw new InvalidStateException(result.getApiError().getMessage());
+			case CONFLICTS:
+				throw new MergeConflictException(result.getConflicts(), result.getApiError().getMessage()); 
 			default:
 				return result;
 		}

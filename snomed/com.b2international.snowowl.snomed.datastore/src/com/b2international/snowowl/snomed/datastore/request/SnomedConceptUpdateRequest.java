@@ -23,8 +23,13 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.ComponentStatusConflictException;
+<<<<<<< HEAD
 import com.b2international.snowowl.eventbus.IEventBus;
+=======
+import com.b2international.snowowl.core.terminology.ComponentCategory;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -37,9 +42,14 @@ import com.b2international.snowowl.snomed.core.domain.SubclassDefinitionStatus;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAttributeValueRefSetMember;
 import com.google.common.collect.ImmutableList;
+=======
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
+>>>>>>> origin/ms-develop
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 
@@ -98,9 +108,12 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 							.execute(context.service(IEventBus.class))
 							.getSync();
 					
-					if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
-						concept.setEffectiveTime(releasedConcept.getEffectiveTime());
+					if (releasedConcept == null) {
+						throw new ComponentNotFoundException(ComponentCategory.CONCEPT, getComponentId());
+					} else if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
+						concept.setEffectiveTime(EffectiveTimes.parse(releasedConcept.getEffectiveTime()));
 					}
+					
 					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
 			}
@@ -231,6 +244,21 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 		final SnomedEditingContext editingContext = context.service(SnomedEditingContext.class);
 		final SnomedInactivationPlan inactivationPlan = editingContext.inactivateConcept(new NullProgressMonitor(), concept.getId());
 		inactivationPlan.performInactivation(InactivationReason.RETIRED, null);
+		
+		// The inactivation plan places new inactivation reason members on descriptions, even if one is already present. Fix this by running the update on the descriptions again.
+		for (final Description description : concept.getDescriptions()) {
+			// Add "Concept non-current" reason to active descriptions
+			if (description.isActive()) {
+				SnomedInactivationReasonUpdateRequest<Description> descriptionUpdateRequest = new SnomedInactivationReasonUpdateRequest<>(
+						description.getId(), 
+						Description.class, 
+						Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR);
+				
+				// XXX: The only other inactivation reason an active description can have is "Pending move"; not sure what the implications are
+				descriptionUpdateRequest.setInactivationValueId(DescriptionInactivationIndicator.CONCEPT_NON_CURRENT.getConceptId());
+				descriptionUpdateRequest.execute(context);
+			}
+		}
 	}
 
 	private void reactivateConcept(final TransactionContext context, final Concept concept) {
@@ -241,13 +269,15 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 		concept.setActive(true);
 		
 		for (final Description description : concept.getDescriptions()) {
-			// Remove "Concept non-current" reason from active descriptions
+			// Remove "Concept non-current" reason from active descriptions by changing to "no reason given"
 			if (description.isActive()) {
-				for (SnomedAttributeValueRefSetMember attributeValueMember : ImmutableList.copyOf(description.getInactivationIndicatorRefSetMembers())) {
-					if (DescriptionInactivationIndicator.CONCEPT_NON_CURRENT.getConceptId().equals(attributeValueMember.getValueId())) {
-						SnomedModelExtensions.removeOrDeactivate(attributeValueMember);
-					}
-				}
+				SnomedInactivationReasonUpdateRequest<Description> descriptionUpdateRequest = new SnomedInactivationReasonUpdateRequest<>(
+						description.getId(), 
+						Description.class, 
+						Concepts.REFSET_DESCRIPTION_INACTIVITY_INDICATOR);
+				
+				descriptionUpdateRequest.setInactivationValueId(DescriptionInactivationIndicator.RETIRED.getConceptId());
+				descriptionUpdateRequest.execute(context);
 			}
 		}
 	}

@@ -24,7 +24,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
+<<<<<<< HEAD
 import com.b2international.snowowl.eventbus.IEventBus;
+=======
+import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
@@ -87,6 +92,7 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 			} else {
 				if (relationship.isReleased()) {
 					long start = new Date().getTime();
+<<<<<<< HEAD
 					
 					final ISnomedRelationship releasedRelationship = SnomedRequests.prepareGetRelationship()
 							.setComponentId(getComponentId())
@@ -96,7 +102,18 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 					
 					if (!isDifferentToPreviousRelease(relationship, releasedRelationship)) {
 						relationship.setEffectiveTime(releasedRelationship.getEffectiveTime());
+=======
+					final IBranchPath branchPath = getLatestReleaseBranch(context);
+					final SnomedStatementBrowser statementBrowser = context.service(SnomedStatementBrowser.class);
+					final SnomedRelationshipIndexEntry releasedRelationship = statementBrowser.getStatement(branchPath, getComponentId());
+	
+					if (releasedRelationship == null) {
+						throw new ComponentNotFoundException(ComponentCategory.RELATIONSHIP, getComponentId());
+					} else if (!isDifferentToPreviousRelease(relationship, releasedRelationship)) {
+						relationship.setEffectiveTime(EffectiveTimes.parse(releasedRelationship.getEffectiveTime()));
+>>>>>>> origin/ms-develop
 					}
+					
 					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
 			}
@@ -107,10 +124,17 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 	private boolean isDifferentToPreviousRelease(Relationship relationship, ISnomedRelationship releasedRelationship) {
 		if (releasedRelationship.isActive() != relationship.isActive()) return true;
 		if (!releasedRelationship.getModuleId().equals(relationship.getModule().getId())) return true;
+<<<<<<< HEAD
 		if (!releasedRelationship.getDestinationId().equals(relationship.getDestination().getId())) return true;
 		if (releasedRelationship.getGroup() != relationship.getGroup()) return true;
 		if (releasedRelationship.getUnionGroup() != relationship.getUnionGroup()) return true;
 		if (!releasedRelationship.getTypeId().equals(relationship.getType().getId())) return true;
+=======
+		if (!releasedRelationship.getValueId().equals(relationship.getDestination().getId())) return true;
+		if (releasedRelationship.getGroup() != relationship.getGroup()) return true;
+		if (releasedRelationship.getUnionGroup() != relationship.getUnionGroup()) return true;
+		if (!releasedRelationship.getAttributeId().equals(relationship.getType().getId())) return true;
+>>>>>>> origin/ms-develop
 		if (!releasedRelationship.getCharacteristicType().getConceptId().equals(relationship.getCharacteristicType().getId())) return true;
 		if (!releasedRelationship.getModifier().getConceptId().equals(relationship.getModifier().getId())) return true;
 		

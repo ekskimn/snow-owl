@@ -15,7 +15,8 @@
 		<artifact type="bundle" name="com.b2international.index.api" version="0.0.0"/>
 		<artifact type="bundle" name="com.b2international.index.lucene" version="0.0.0"/>
         <artifact type="bundle" name="com.b2international.org.apache.lucene" version="0.0.0"/>
-		
+      	<artifact type="bundle" name="com.b2international.collections.fastutil" version="0.0.0"/>
+        <artifact type="bundle" name="com.b2international.collections.api" version="0.0.0"/>
         <artifact type="bundle" name="com.b2international.snowowl.core" version="0.0.0"/>
         <artifact type="bundle" name="com.b2international.snowowl.authentication" version="0.0.0"/>
 

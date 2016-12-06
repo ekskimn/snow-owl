@@ -22,6 +22,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+<<<<<<< HEAD
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument;
@@ -30,6 +31,13 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Longs;
+=======
+import com.b2international.snowowl.snomed.datastore.SnomedPredicateBrowser;
+import com.b2international.snowowl.snomed.datastore.SnomedTaxonomyService;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
+import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry.PredicateType;
+>>>>>>> origin/ms-develop
 
 public class SnomedMrcmService {
 	

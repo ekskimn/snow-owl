@@ -228,10 +228,14 @@ public class SnomedBrowserApiAssert {
 	}
 	
 	public static Map<String, Object> getConcept(final IBranchPath branchPath, final String conceptId) {
+		return whenRetrievingConcept(branchPath, conceptId)
+				.then().extract().jsonPath().get();
+	}
+
+	public static Response whenRetrievingConcept(final IBranchPath branchPath, final String conceptId) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().contentType(ContentType.JSON)
-				.when().get("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
-				.then().extract().jsonPath().get();
+				.when().get("/browser/{path}/concepts/{conceptId}", branchPath.getPath(), conceptId);
 	}
 	
 }

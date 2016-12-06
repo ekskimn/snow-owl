@@ -15,7 +15,6 @@
  */
 package com.b2international.snowowl.terminologyregistry.core.request;
 
-
 import java.io.IOException;
 
 import com.b2international.index.Searcher;
@@ -28,6 +27,26 @@ import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundExce
 import com.b2international.snowowl.datastore.CodeSystemEntry;
 import com.b2international.snowowl.datastore.request.BaseResourceRequest;
 import com.google.common.collect.Iterables;
+import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.SYSTEM_OID;
+import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.SYSTEM_SHORT_NAME;
+
+import java.io.IOException;
+
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHitCountCollector;
+
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.core.domain.BranchContext;
+import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundException;
+import com.b2international.snowowl.datastore.request.BaseResourceRequest;
+import com.b2international.snowowl.terminologyregistry.core.index.CodeSystemEntry;
 
 /**
  * @since 4.7
@@ -65,7 +84,7 @@ final class CodeSystemGetRequest extends BaseResourceRequest<BranchContext, Code
 				return codeSystem;
 			}
 		} catch (IOException e) {
-			throw new SnowowlRuntimeException(e);
+			throw new SnowowlRuntimeException("Caught exception while executing code system get request.", e);
 		}
 		
 	}
@@ -74,5 +93,4 @@ final class CodeSystemGetRequest extends BaseResourceRequest<BranchContext, Code
 	protected Class<CodeSystemEntry> getReturnType() {
 		return CodeSystemEntry.class;
 	}
-
 }

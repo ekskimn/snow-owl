@@ -24,6 +24,9 @@ import com.b2international.index.query.Expression;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
+import java.io.Serializable;
+
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
@@ -64,7 +67,7 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	}
 	
 	public static Builder builder(CodeSystemVersion version) {
-		final String codeSystemShortName = Iterables.getOnlyElement(version.getCodeSystemVersionGroup().getCodeSystems()).getShortName();
+		final String codeSystemShortName = version.getCodeSystem().getShortName();
 		return builder()
 				.storageKey(CDOIDUtils.asLong(version.cdoID()))
 				.versionId(version.getVersionId())
@@ -72,7 +75,7 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 				.effectiveDate(EffectiveTimes.getEffectiveTime(version.getEffectiveDate()))
 				.importDate(Dates.getTime(version.getImportDate()))
 				.latestUpdateDate(EffectiveTimes.getEffectiveTime(version.getLastUpdateDate()))
-				.repositoryUuid(version.getCodeSystemVersionGroup().getRepositoryUuid())
+				.repositoryUuid(version.getCodeSystem().getRepositoryUuid())
 				.codeSystemShortName(codeSystemShortName);
 	}
 	
@@ -146,14 +149,27 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	private final String description;
 	private final String versionId;
 	private final long latestUpdateDate;
+	private final String parentBranchPath;
 	private boolean patched;
 	private final long storageKey;
 	private final String repositoryUuid;
 	private final String codeSystemShortName;
+
+	public CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate, final String description,
+			final String versionId, final String parentBranchPath, final long storageKey, final String repositoryUuid) {
+		this(importDate, effectiveDate, latestUpdateDate, nullToEmpty(description), checkNotNull(versionId, "versionId"),
+				checkNotNull(parentBranchPath), false, storageKey, checkNotNull(repositoryUuid, "repositoryUuid"), null);
+	}
 	
-	private CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate,
-			final String description, final String versionId, final boolean patched, final long storageKey, final String repositoryUuid, 
-			final String codeSystemShortName) {
+	public CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate, final String description,
+			final String versionId, final String parentBranchPath, final long storageKey, final String repositoryUuid, final String codeSystemShortName) {
+		this(importDate, effectiveDate, latestUpdateDate, nullToEmpty(description), checkNotNull(versionId, "versionId"),
+				checkNotNull(parentBranchPath), false, storageKey, checkNotNull(repositoryUuid, "repositoryUuid"), codeSystemShortName);
+	}
+
+	public CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate, final String description,
+			final String versionId, final String parentBranchPath, final boolean patched, final long storageKey,
+			final String repositoryUuid, final String codeSystemShortName) {
 		this.importDate = importDate;
 		this.effectiveDate = effectiveDate;
 		this.latestUpdateDate = latestUpdateDate;
@@ -161,8 +177,10 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 		this.repositoryUuid = checkNotNull(repositoryUuid, "repositoryUuid");
 		this.description = nullToEmpty(description);
 		this.versionId = checkNotNull(versionId, "versionId");
+		this.parentBranchPath = parentBranchPath;
 		this.patched = patched;
 		this.storageKey = storageKey;
+		this.codeSystemShortName = codeSystemShortName;
 	}
 	
 	@Override
@@ -197,6 +215,11 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	public String getVersionId() {
 		return versionId;
 	}
+	
+	@Override
+	public String getParentBranchPath() {
+		return parentBranchPath;
+	}
 
 	@Override
 	public boolean isPatched() {
@@ -218,6 +241,29 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 		return repositoryUuid;
 	}
 	
+	@Override
+	public String getCodeSystemShortName() {
+		return codeSystemShortName;
+	}
+	
+	/**
+	 * (non-API)
+	 * 
+	 * Sets the patched flag on the code system version to {@code true}.
+	 */
+	public void setPatched() {
+		this.patched = true;
+	}
+	
+	/**
+	 * Returns the full path of this version including the MAIN prefix as well as the version tag.
+	 * @return
+	 */
+	@Override
+	public String getPath() {
+		return parentBranchPath + IBranchPath.SEPARATOR_CHAR + versionId;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -253,6 +299,4 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	public String toString() {
 		return new StringBuilder(versionId).append(patched ? "*" : "").toString();
 	}
-	
-
 }

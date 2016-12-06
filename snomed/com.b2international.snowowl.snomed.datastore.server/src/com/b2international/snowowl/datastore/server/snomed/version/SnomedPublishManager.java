@@ -34,16 +34,26 @@ import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
+<<<<<<< HEAD
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkResponse;
+=======
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.datastore.BranchPathUtils;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.datastore.CDOEditingContext;
+import com.b2international.snowowl.datastore.ICodeSystemVersion;
+import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.snomed.SnomedModuleDependencyCollectorService;
 import com.b2international.snowowl.datastore.server.version.PublishManager;
+<<<<<<< HEAD
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedFactory;
+=======
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
@@ -55,8 +65,17 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedModuleDependencyRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRegularRefSet;
+import com.b2international.snowowl.terminologymetadata.CodeSystem;
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
+<<<<<<< HEAD
 import com.google.common.base.Function;
+=======
+import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+>>>>>>> origin/ms-develop
 
 /**
  * Publish manager for SNOMED&nbsp;CT ontology.
@@ -123,11 +142,6 @@ public class SnomedPublishManager extends PublishManager {
 	}
 
 	@Override
-	protected CodeSystemVersion createCodeSystemVersion() {
-		return SnomedFactory.eINSTANCE.createCodeSystemVersion();
-	}
-	
-	@Override
 	protected CDOEditingContext createEditingContext(IBranchPath branchPath) {
 		return new SnomedEditingContext(branchPath);
 	}
@@ -175,6 +189,69 @@ public class SnomedPublishManager extends PublishManager {
 		LOGGER.info("Collecting module dependency changes successfully finished.");
 	}
 
+<<<<<<< HEAD
+=======
+	private void collectComponentIdsToPublish(final LongSet storageKeys) {
+		LOGGER.info("Collecting component IDs for ID publication...");
+		final Collection<IdStorageKeyPair> idStorageKeyPairs = getIdStorageKeyPairs(storageKeys);
+		
+		for (final IdStorageKeyPair idStorageKeyPair : idStorageKeyPairs) {
+			componentIdsToPublish.add(idStorageKeyPair.getId());
+		}
+		
+		LOGGER.info("Collecting component IDs for ID publication successfully finished.");
+	}
+
+	private Collection<IdStorageKeyPair> getIdStorageKeyPairs(final LongSet storageKeys) {
+		final Collection<IdStorageKeyPair> pairs = Lists.newArrayList();
+		pairs.addAll(componentService.getAllComponentIdStorageKeys(getBranchPathForPublication(),
+				SnomedTerminologyComponentConstants.CONCEPT_NUMBER));
+		pairs.addAll(componentService.getAllComponentIdStorageKeys(getBranchPathForPublication(),
+				SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER));
+		pairs.addAll(componentService.getAllComponentIdStorageKeys(getBranchPathForPublication(),
+				SnomedTerminologyComponentConstants.RELATIONSHIP_NUMBER));
+		
+		final Collection<IdStorageKeyPair> filteredPairs = Collections2.filter(pairs, new Predicate<IdStorageKeyPair>() {
+			@Override
+			public boolean apply(IdStorageKeyPair input) {
+				return storageKeys.contains(input.getStorageKey());
+			}
+		});
+		
+		return filteredPairs;
+	}
+	
+	@Override
+	protected void addCodeSystemVersion(final CodeSystemVersion codeSystemVersion) {
+		final String shortName = getConfiguration().getCodeSystemShortName();
+		if (getEditingContext().getBranch().equals(IBranchPath.MAIN_BRANCH)) {
+			final CodeSystem codeSystem = getEditingContext().lookup(shortName, CodeSystem.class);
+			
+			if (codeSystem == null) {
+				throw new IllegalStateException(String.format("Couldn't find SNOMED release for %s.", shortName));
+			} else {
+				codeSystem.getCodeSystemVersions().add(codeSystemVersion);
+			}
+		} else {
+			try (final SnomedEditingContext ec = new SnomedEditingContext(BranchPathUtils.createMainPath())) {
+				final CodeSystem codeSystem = ec.lookup(shortName, CodeSystem.class);
+				if (codeSystem == null) {
+					throw new IllegalStateException(String.format("Couldn't find SNOMED release for %s.", shortName));
+				} else {
+					codeSystem.getCodeSystemVersions().add(codeSystemVersion);
+					
+					final String commitComment = String.format("New Snomed Version %s was added to Snomed Release %s.",
+							codeSystemVersion.getVersionId(), codeSystem.getShortName());
+					CDOServerUtils.commit(ec, getConfiguration().getUserId(), commitComment, null);
+				}
+			} catch (Exception e) {
+				throw new SnowowlRuntimeException(String.format("An error occurred while adding Snomed Version %s to Snomed Release %s.",
+						codeSystemVersion.getVersionId(), shortName), e);
+			}
+		}
+	}
+	
+>>>>>>> origin/ms-develop
 	@Override
 	protected void postProcess() {
 		LOGGER.info("Adjusting effective time changes on module dependency...");
@@ -245,4 +322,32 @@ public class SnomedPublishManager extends PublishManager {
 		}
 	}
 
+<<<<<<< HEAD
 }
+=======
+	/**Processes the new module dependency reference set member by adding it to the underlying transaction.*/
+	private void processNewModuleDependencyMember(final SnomedModuleDependencyRefSetMember member) {
+		getModuleDependencyRefSet().getMembers().add(member);
+	}
+
+	private SnomedRegularRefSet getModuleDependencyRefSet() {
+		return (SnomedRegularRefSet) new SnomedRefSetLookupService().getComponent(REFSET_MODULE_DEPENDENCY_TYPE, getTransaction());
+	}
+
+	/**Collects all new module dependency reference set members*/
+	private Collection<SnomedModuleDependencyRefSetMember> collectModuleDependecyRefSetMembers(final LongSet storageKeys) {
+		return SnomedModuleDependencyCollectorService.INSTANCE.collectModuleMembers(getTransaction(), storageKeys);
+	}
+	
+	@Override
+	protected Collection<ICodeSystemVersion> getAllVersions(final IBranchPath branchPath) {
+		return new CodeSystemRequests(getRepositoryUuid())
+				.prepareSearchCodeSystemVersion()
+				.setCodeSystemShortName(getConfiguration().getCodeSystemShortName())
+				.build(IBranchPath.MAIN_BRANCH)
+				.executeSync(getEventBus())
+				.getItems();
+	}
+	
+}
+>>>>>>> origin/ms-develop

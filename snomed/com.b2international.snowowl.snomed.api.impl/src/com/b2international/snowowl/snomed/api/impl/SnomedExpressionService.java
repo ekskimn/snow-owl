@@ -55,10 +55,24 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				if (groupNum == 0) {
 					attributes = expression.getAttributes();
 				} else {
+<<<<<<< HEAD
 					if (!groups.containsKey(groupNum)) {
 						final SnomedExpressionGroup group = new SnomedExpressionGroup();
 						groups.put(groupNum, group);
 						expression.addGroup(group);
+=======
+					final int groupNum = relationship.getGroup();
+					List<ISnomedExpressionAttribute> attributes;
+					if (groupNum == 0) {
+						attributes = expression.getAttributes();
+					} else {
+						if (!groups.containsKey(groupNum)) {
+							final SnomedExpressionGroup group = new SnomedExpressionGroup();
+							groups.put(groupNum, group);
+							expression.addGroup(group);
+						}
+						attributes = groups.get(groupNum).getAttributes();
+>>>>>>> origin/ms-develop
 					}
 					attributes = groups.get(groupNum).getAttributes();
 				}

@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.annotation.Resource;
@@ -14,6 +16,8 @@ import org.ihtsdo.drools.exception.BadRequestRuleExecutorException;
 import org.ihtsdo.drools.response.InvalidContent;
 
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -27,6 +31,7 @@ import com.b2international.snowowl.snomed.api.impl.validation.service.Validation
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;

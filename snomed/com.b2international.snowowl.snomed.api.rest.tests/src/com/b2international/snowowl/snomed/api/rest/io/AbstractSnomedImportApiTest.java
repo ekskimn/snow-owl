@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import com.b2international.commons.platform.PlatformUtil;
-import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
@@ -53,11 +52,11 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 		.then().assertThat().statusCode(204);
 	}
 
-	private void assertImportCompletes(final String importId) {
+	protected void assertImportCompletes(final String importId) {
 		assertImportFinishState(importId, "COMPLETED");
 	}
 
-	private void assertImportFails(final String importId) {
+	protected void assertImportFails(final String importId) {
 		assertImportFinishState(importId, "FAILED");
 	}
 
@@ -120,7 +119,6 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 		final Map<?, ?> importConfiguration = ImmutableMap.builder()
 				.put("type", Rf2ReleaseType.DELTA.name())
 				.put("branchPath", testBranchPath.getPath())
-				.put("languageRefSetId", Concepts.REFSET_LANGUAGE_TYPE_UK)
 				.put("patchReleaseVersion", patchReleaseVersion)
 				.build();
 		return importConfiguration;
@@ -130,7 +128,6 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 		final Map<?, ?> importConfiguration = ImmutableMap.builder()
 				.put("type", Rf2ReleaseType.DELTA.name())
 				.put("branchPath", testBranchPath.getPath())
-				.put("languageRefSetId", Concepts.REFSET_LANGUAGE_TYPE_UK)
 				.put("createVersions", true)
 				.build();
 		return importConfiguration;

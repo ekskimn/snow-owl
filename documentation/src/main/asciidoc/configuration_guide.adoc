@@ -739,6 +739,11 @@ authentication:
 |revisionCache
 |`true`
 |Enable CDO revision cache to keep data returned from the database.
+
+|mergeMaxResults
+|`100`
+|The number of most recent merge results to keep.
+
 |===
 
 --------------------------
@@ -1001,12 +1006,6 @@ If omitted, then default strategy will be used.
 |1000
 |Maximum number of attempts any non-CIS ID generator will take to generate a single SNOMED CT identifier, if exceeded it throws an exception.
 |===
-
-
-
-|enforceNamespace
-|
-|A SNOMED CT namespace identifier to use when generating new SNOMED CT component IDs regardless of the user defined namespace. Use INT keyword to enforce international IDs.
 
 --------------------------
 snomed:

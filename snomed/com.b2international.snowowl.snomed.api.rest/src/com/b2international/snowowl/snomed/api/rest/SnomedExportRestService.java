@@ -111,6 +111,11 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 		
 		BeanUtils.copyProperties(configuration, run);
 		run.setId(id);
+		
+		if (Strings.isNullOrEmpty(run.getNamespaceId())) {
+			run.setNamespaceId(exportService.resolveNamespaceId(run.getBranchPath()));
+		}
+		
 		exports.put(id, run);
 		
 		return Responses.created(getExportRunURI(id)).build();

@@ -32,7 +32,6 @@ import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
-
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.inject.Provider;
 

@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.datastore.server.cdo;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.eclipse.emf.cdo.common.id.CDOID;
@@ -22,9 +23,11 @@ import org.eclipse.emf.cdo.common.revision.CDORevision;
 import org.eclipse.emf.cdo.common.revision.delta.CDOFeatureDelta;
 import org.eclipse.emf.cdo.common.revision.delta.CDORevisionDelta;
 import org.eclipse.emf.cdo.transaction.CDOTransaction;
+import org.eclipse.emf.cdo.view.CDOView;
 import org.eclipse.emf.spi.cdo.DefaultCDOMerger.Conflict;
 
 import com.b2international.snowowl.core.exceptions.ConflictException;
+import com.b2international.snowowl.core.merge.MergeConflict;
 
 /**
  * Handles conflicting changes when synchronizing branches.
@@ -98,7 +101,11 @@ public interface ICDOConflictProcessor {
 	 */
 	Object addedInTarget(CDORevision targetRevision, Map<CDOID, Object> sourceMap);
 	
-	void preProcess(Map<CDOID, Object> sourceMap, Map<CDOID, Object> targetMap);
+	Object detachedInSource(CDOID id);
+	
+	Object detachedInTarget(CDOID id);
+	
+	void preProcess(Map<CDOID, Object> sourceMap, Map<CDOID, Object> targetMap, boolean isRebase);
 
 	/**
 	 * Post-processes the resulting change set. This usually removes cross-references from objects queued for removal
@@ -109,4 +116,14 @@ public interface ICDOConflictProcessor {
 	 * terminology, not necessarily tied to a CDO revision or delta)
 	 */
 	void postProcess(CDOTransaction transaction) throws ConflictException;
+	
+	/**
+	 * Handle conflicts detected by CDO during branch merges. Can be used for converting CDO conflicts to {@link MergeConflict}s.
+	 * 
+	 * @param sourceView
+	 * @param targetView
+	 * @param conflicts
+	 * @return
+	 */
+	Collection<MergeConflict> handleCDOConflicts(final CDOView sourceView, final CDOView targetView, final Map<CDOID, Conflict> conflicts);
 }

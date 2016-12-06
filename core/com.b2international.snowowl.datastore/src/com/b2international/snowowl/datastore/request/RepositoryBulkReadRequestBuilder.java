@@ -40,5 +40,4 @@ public class RepositoryBulkReadRequestBuilder extends BaseRevisionIndexReadReque
 	protected Request<BranchContext, BulkResponse> doBuild() {
 		return body;
 	}
-	
 }

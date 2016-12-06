@@ -26,6 +26,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 
 import com.b2international.commons.ZipURLHandler;
+import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedPackage;
@@ -71,7 +72,7 @@ public final class ImportConfiguration {
 	private File languageRefSetFile;
 	private File descriptionType;
 	private File textDefinitionFile;
-	private String languageRefSetId;
+	private final String languageRefSetId;
 	
 	{
 		//set client side's language reference set ID based on the configuration. 
@@ -94,6 +95,9 @@ public final class ImportConfiguration {
 
 	/* Not bound */
 	private ReleaseFileSet releaseFileSet;
+	
+	//the terminology registry entry for the release to be imported
+	private CodeSystem codeSystem;
 	
 	private final Map<String, String> releaseFileNameMappings = Maps.newHashMap();
 
@@ -179,10 +183,6 @@ public final class ImportConfiguration {
 	
 	public String getLanguageRefSetId() {
 		return languageRefSetId;
-	}
-	
-	public void setLanguageRefSetId(final String languageRefSetId) {
-		this.languageRefSetId = languageRefSetId;
 	}
 	
 	public File getDescriptionType() {
@@ -302,4 +302,12 @@ public final class ImportConfiguration {
 		this.patchReleaseVersion = patchReleaseVersion;
 	}
 
+	public CodeSystem getCodeSystem() {
+		return codeSystem;
+	}
+
+	public void setCodeSystem(CodeSystem codeSystem) {
+		this.codeSystem = codeSystem;
+	}
+	
 }

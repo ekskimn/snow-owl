@@ -17,7 +17,6 @@ package com.b2international.snowowl.snomed.importer.rf2.util;
 
 import static com.b2international.commons.CompareUtils.isEmpty;
 import static com.b2international.snowowl.core.users.SpecialUserStore.SYSTEM_USER_NAME;
-import static com.b2international.snowowl.datastore.BranchPathUtils.createMainPath;
 import static com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration.ImportSourceKind.FILES;
 import static com.b2international.snowowl.snomed.importer.release.ReleaseFileSet.ReleaseComponentType.CONCEPT;
 import static com.b2international.snowowl.snomed.importer.release.ReleaseFileSet.ReleaseComponentType.DESCRIPTION;
@@ -63,11 +62,14 @@ import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
+import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.ft.FeatureToggles;
+import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
+import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.oplock.IOperationLockManager;
@@ -87,11 +89,19 @@ import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
+import com.b2international.snowowl.snomed.datastore.ILanguageConfigurationProvider;
 import com.b2international.snowowl.snomed.datastore.ISnomedImportPostProcessor;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
+import com.b2international.snowowl.snomed.datastore.SnomedRefSetLookupService;
+import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedImportResult;
@@ -110,7 +120,7 @@ import com.b2international.snowowl.snomed.importer.rf2.terminology.SnomedConcept
 import com.b2international.snowowl.snomed.importer.rf2.terminology.SnomedDescriptionImporter;
 import com.b2international.snowowl.snomed.importer.rf2.terminology.SnomedRelationshipImporter;
 import com.b2international.snowowl.snomed.importer.rf2.validation.SnomedValidationContext;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -134,32 +144,68 @@ public final class ImportUtil {
 	private static final org.slf4j.Logger IMPORT_LOGGER = org.slf4j.LoggerFactory.getLogger(ImportUtil.class);
 	private static final String SNOMED_IMPORT_POST_PROCESSOR_EXTENSION = "com.b2international.snowowl.snomed.datastore.snomedImportPostProcessor";
 
-	public SnomedImportResult doImport(final IBranchPath branchPath, final String languageRefSetId, 
-			final ContentSubType contentSubType, final File releaseArchive, final boolean shouldCreateVersions, 
-			boolean releasePatch, Date patchReleaseVersion) throws Exception {
-		return doImport(branchPath, languageRefSetId, contentSubType, releaseArchive, shouldCreateVersions, releasePatch, patchReleaseVersion, SYSTEM_USER_NAME, new NullProgressMonitor());
+	public SnomedImportResult doImport(
+			final String requestingUserId,
+			final ImportConfiguration configuration,
+			final IProgressMonitor monitor) throws ImportException {
+		
+		try (SnomedImportContext context = new SnomedImportContext()) {
+			return doImportInternal(context, requestingUserId, configuration, monitor);
+		} catch (Exception e) {
+			throw new ImportException(e);
+		}
 	}
 	
-	public SnomedImportResult doImport(final String userId, final String languageRefSetId, final ContentSubType contentSubType, final File releaseArchive, final IProgressMonitor monitor) throws ImportException {
-		return doImport(createMainPath(), languageRefSetId, contentSubType, releaseArchive, true, false, null, userId, new ConsoleProgressMonitor());
+	public SnomedImportResult doImport(
+			final CodeSystem codeSystem,
+			final ContentSubType contentSubType,
+			final IBranchPath branchPath,
+			final File releaseArchive,
+			final boolean shouldCreateVersions,
+			final boolean releasePatch,
+			final Date patchReleaseVersion) throws Exception {
+		
+		return doImport(codeSystem, branchPath, contentSubType, releaseArchive, shouldCreateVersions, releasePatch, patchReleaseVersion, SYSTEM_USER_NAME, new NullProgressMonitor());
 	}
 
-	private SnomedImportResult doImport(final IBranchPath branchPath, final String languageRefSetId, 
-			final ContentSubType contentSubType, final File releaseArchive, final boolean shouldCreateVersions, 
-			boolean releasePatch, Date patchReleaseVersion, final String userId, final IProgressMonitor monitor) {
+	public SnomedImportResult doImport(
+			final CodeSystem codeSystem,
+			final String userId,
+			final ContentSubType contentSubType,
+			final String branchPathName,
+			final File releaseArchive,
+			final boolean createVersions,
+			final IProgressMonitor monitor) throws ImportException {
+		
+		return doImport(codeSystem, BranchPathUtils.createPath(branchPathName), contentSubType, releaseArchive, createVersions, false, null, userId, monitor);
+	}
+
+	private SnomedImportResult doImport(
+			final CodeSystem codeSystem,
+			final IBranchPath branchPath,
+			final ContentSubType contentSubType,
+			final File releaseArchive,
+			final boolean shouldCreateVersions,
+			final boolean releasePatch, 
+			final Date patchReleaseVersion,
+			final String userId,
+			final IProgressMonitor monitor) {
 		
 		checkNotNull(branchPath, "branchPath");
-		checkNotNull(languageRefSetId, "languageRefSetId");
 		checkNotNull(contentSubType, "contentSubType");
 		checkNotNull(releaseArchive, "releaseArchive");
 		checkArgument(releaseArchive.canRead(), "Cannot read SNOMED CT RF2 release archive content.");
+
 		if (releasePatch) {
 			checkNotNull(patchReleaseVersion, "patchReleaseVersion");
 		}
+
+		checkArgument(BranchPathUtils.exists(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath()));
+		ApiValidation.checkInput(codeSystem);
 		
 		final ImportConfiguration config = new ImportConfiguration();
+		config.setCodeSystem(codeSystem);
 		config.setVersion(contentSubType);
-		config.setLanguageRefSetId(languageRefSetId);
 		config.setBranchPath(branchPath.getPath());
 		config.setCreateVersions(shouldCreateVersions);
 		config.setArchiveFile(releaseArchive);
@@ -179,18 +225,10 @@ public final class ImportUtil {
 			config.addRefSetSource(refSetUrl);
 		}
 		
-		boolean languageRefSetFound = SnomedRequests.prepareSearchRefSet()
-				.setLimit(0)
-				.setComponentIds(Collections.singleton(languageRefSetId))
-				.filterByType(SnomedRefSetType.LANGUAGE)
-				.build(branchPath.getPath())
-				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-				.getSync().getTotal() > 0;
+		String languageRefsetId = ApplicationContext.getServiceForClass(ILanguageConfigurationProvider.class).getLanguageConfiguration().getLanguageRefSetId();
 		
-		if (!languageRefSetFound) {
-
-			final SnomedRefSetNameCollector provider = new SnomedRefSetNameCollector(config, new ConsoleProgressMonitor(), 
-					"Searching for language reference sets");
+		if (!new SnomedRefSetLookupService().exists(branchPath, languageRefsetId)) {
+			final SnomedRefSetNameCollector provider = new SnomedRefSetNameCollector(config, new ConsoleProgressMonitor(), "Searching for language reference sets");
 	
 			try {
 				for (String relativeLanguageRefSetPath : archiveFileSet.getAllFileName(zipFiles, LANGUAGE_REFERENCE_SET, contentSubType)) {
@@ -200,8 +238,8 @@ public final class ImportUtil {
 				throw new ImportException(e);
 			}
 	
-			if (!provider.getAvailableLabels().containsKey(languageRefSetId)) {
-				throw new ImportException("No language reference set with identifier '" + languageRefSetId + "' could be found in release archive.");
+			if (!provider.getAvailableLabels().containsKey(languageRefsetId)) {
+				throw new ImportException("No language reference set with identifier '" + languageRefsetId + "' could be found in release archive.");
 			}
 		}
 
@@ -224,7 +262,6 @@ public final class ImportUtil {
 		}
 
 		return doImport(userId, config, monitor);
-		
 	}
 	
 	private File createTemporaryFile(final File tmpDir, final ZipFile archive, final String entryPath) throws IOException {
@@ -298,14 +335,15 @@ public final class ImportUtil {
 			LogUtils.logImportActivity(IMPORT_LOGGER, requestingUserId, branchPath, "SNOMED CT import failed due to invalid RF2 release file(s).");
 			return result;
 		}
-
+		
+		createCodeSystemIfNotExists(configuration.getCodeSystem(), requestingUserId);
+		
 		final Set<URL> patchedRefSetURLs = Sets.newHashSet(configuration.getRefSetUrls());
 		final Set<String> patchedExcludedRefSetIDs = Sets.newHashSet(configuration.getExcludedRefSetIds());
 		final List<Importer> importers = Lists.newArrayList();
 
 		final File stagingDirectoryRoot = new File(System.getProperty("java.io.tmpdir"));
 
-		context.setLanguageRefSetId(configuration.getLanguageRefSetId());
 		context.setVersionCreationEnabled(configuration.isCreateVersions());
 		context.setLogger(IMPORT_LOGGER);
 		context.setStagingDirectory(stagingDirectoryRoot);
@@ -313,6 +351,8 @@ public final class ImportUtil {
 		context.setIgnoredRefSetIds(patchedExcludedRefSetIDs);
 		context.setReleasePatch(configuration.isReleasePatch());
 		context.setPatchReleaseVersion(configuration.getPatchReleaseVersion());
+		context.setCodeSystemShortName(configuration.getCodeSystem().getShortName());
+		context.setCodeSystemOID(configuration.getCodeSystem().getOid());
 
 		try {
 
@@ -414,6 +454,29 @@ public final class ImportUtil {
 		}
 		
 		return resultHolder[0];
+	}
+	
+	private void createCodeSystemIfNotExists(final CodeSystem codeSystem, final String userId) {
+		try {
+			new CodeSystemRequests(codeSystem.getRepositoryUuid())
+				.prepareNewCodeSystem()
+				.setBranchPath(codeSystem.getBranchPath())
+				.setName(codeSystem.getName())
+				.setShortName(codeSystem.getShortName())
+				.setLanguage(codeSystem.getPrimaryLanguage())
+				.setLink(codeSystem.getOrganizationLink())
+				.setOid(codeSystem.getOid())
+				.setCitation(codeSystem.getCitation())
+				.setIconPath(codeSystem.getIconPath())
+				.setTerminologyId(codeSystem.getTerminologyId())
+				.setRepositoryUuid(codeSystem.getRepositoryUuid())
+				.setExtensionOf(codeSystem.getExtensionOf())
+				.build(userId, IBranchPath.MAIN_BRANCH, String.format("Created SNOMED CT code system '%s' (OID: %s)",
+					codeSystem.getShortName(), codeSystem.getOid()))
+				.executeSync(getEventBus());
+		} catch (AlreadyExistsException e) {
+			// ignore and continue import
+		}
 	}
 
 	private SnomedImportResult doImportLocked(final String requestingUserId, final ImportConfiguration configuration,

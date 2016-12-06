@@ -78,4 +78,5 @@ public abstract class AbstractSnomedApiTest {
 
 		return currentBranchPath;
 	}
+	
 }

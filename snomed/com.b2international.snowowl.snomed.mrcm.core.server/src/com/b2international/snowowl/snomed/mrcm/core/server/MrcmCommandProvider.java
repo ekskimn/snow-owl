@@ -33,6 +33,7 @@ import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.server.console.CommandLineAuthenticator;
 import com.b2international.snowowl.snomed.mrcm.core.io.MrcmExportFormat;
+import com.google.common.base.Optional;
 import com.google.common.collect.Sets;
 
 /**
@@ -65,14 +66,14 @@ public class MrcmCommandProvider implements CommandProvider {
 	public synchronized void _import(final CommandInterpreter interpreter) {
 		
 		final String filePath = interpreter.nextArgument();
-		
 		if (StringUtils.isEmpty(filePath)) {
 			interpreter.println("MRCM import file path should be specified.");
 			return;
 		}
 		
-		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
+		final String targetPath = Optional.fromNullable(interpreter.nextArgument()).or("MAIN");
 		
+		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
 		if (!authenticator.authenticate(interpreter)) {
 			interpreter.println("Authentication failed.");
 			return;
@@ -80,7 +81,7 @@ public class MrcmCommandProvider implements CommandProvider {
 		
 		final Path file = Paths.get(filePath);
 		try (final InputStream content = Files.newInputStream(file, StandardOpenOption.READ)) {
-			new XMIMrcmImporter().doImport(authenticator.getUsername(), content);
+			new XMIMrcmImporter().doImport(targetPath, authenticator.getUsername(), content);
 		} catch (IOException e) {
 			interpreter.printStackTrace(e);
 		}
@@ -94,6 +95,7 @@ public class MrcmCommandProvider implements CommandProvider {
 			interpreter.println("Format needs to be specified.");
 			return;
 		}
+		
 		
 		MrcmExportFormat selectedFormat = null;
 		try {
@@ -110,6 +112,7 @@ public class MrcmCommandProvider implements CommandProvider {
 			return;
 		}
 		
+		final String sourcePath = Optional.fromNullable(interpreter.nextArgument()).or("MAIN");
 		final CommandLineAuthenticator authenticator = new CommandLineAuthenticator();
 		if (!authenticator.authenticate(interpreter)) {
 			interpreter.println("Authentication failed.");
@@ -127,9 +130,9 @@ public class MrcmCommandProvider implements CommandProvider {
 		
 		try (final OutputStream stream = Files.newOutputStream(exportPath, StandardOpenOption.CREATE)) {
 			if (selectedFormat == MrcmExportFormat.XMI) {
-				new XMIMrcmExporter().doExport(user, stream);
+				new XMIMrcmExporter().doExport(sourcePath, user, stream);
 			} else if (selectedFormat == MrcmExportFormat.CSV) {
-				new CsvMrcmExporter().doExport(user, stream);
+				new CsvMrcmExporter().doExport(sourcePath, user, stream);
 			}
 			interpreter.println("Exported MRCM rules to " + exportPath + " in " 
 			+ selectedFormat.name() + " format.");
@@ -151,10 +154,9 @@ public class MrcmCommandProvider implements CommandProvider {
 	@Override
 	public String getHelp() {
 		return new StringBuilder("--- MRCM commands ---\n")
-		.append("\tmrcm import [importFileAbsolutePath] - Imports the MRCM rules from the given XMI source file.\n")
-		.append("\tmrcm export ")
-		.append(exportFormatsString)
-		.append(" [destinationDirectoryPath] - Exports the MRCM rules in the given format to the destination folder.\n").toString();
+		.append("\tmrcm import [importFileAbsolutePath] [targetBranch] - Imports the MRCM rules from the given XMI source file.\n")
+		.append("\tmrcm export ").append(exportFormatsString).append(" [destinationDirectoryPath] [sourceBranch] - Exports the MRCM rules in the given format to the destination folder.\n")
+		.toString();
 	}
 
 }

@@ -41,7 +41,9 @@ public class SnomedRfFileNameBuilder {
 				.append(String.valueOf(type))
 				.append("s_")
 				.append(ComponentExportType.DESCRIPTION.equals(type) ? getLanguageCode() : "Core")
-				.append("_INT_")
+				.append("_")
+				.append(configuration.getClientNamespace())
+				.append("_")
 				.append(getReleaseDate(configuration))
 				.append(".txt")
 				.toString();
@@ -54,7 +56,9 @@ public class SnomedRfFileNameBuilder {
 				.append(String.valueOf(configuration.getContentSubType()))
 				.append(ComponentExportType.DESCRIPTION.equals(type) ? "-" : "")
 				.append(ComponentExportType.DESCRIPTION.equals(type) ? getLanguageCode() : "")
-				.append("_INT_")
+				.append("_")
+				.append(configuration.getClientNamespace())
+				.append("_")
 				.append(getReleaseDate(configuration))
 				.append(".txt")
 				.toString();
@@ -63,7 +67,11 @@ public class SnomedRfFileNameBuilder {
 	/*
 	 * return the transient effective time if set, otherwise today's date
 	 */
+<<<<<<< HEAD
 	private static String getReleaseDate(final SnomedExportContext config) {
+=======
+	public static String getReleaseDate(final SnomedExportConfiguration config) {
+>>>>>>> origin/ms-develop
 		String releaseDate = getExportTime();
 		if (!config.getUnsetEffectiveTimeLabel().isEmpty() && !config.getUnsetEffectiveTimeLabel().equals(EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL)) {
 			releaseDate = config.getUnsetEffectiveTimeLabel();
@@ -83,7 +91,9 @@ public class SnomedRfFileNameBuilder {
 				.append(String.valueOf(configuration.getContentSubType()))
 				.append(isLanguageType(refSet) ? "-" : "")
 				.append(isLanguageType(refSet) ? getLanguageCode(refSet) : "")
-				.append("_INT_")
+				.append("_")
+				.append(configuration.getClientNamespace())
+				.append("_")
 				.append(getReleaseDate(configuration))
 				.append(".txt")
 				.toString();

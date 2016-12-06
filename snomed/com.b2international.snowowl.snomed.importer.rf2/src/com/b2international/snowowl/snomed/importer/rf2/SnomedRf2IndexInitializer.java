@@ -50,11 +50,16 @@ import com.b2international.commons.csv.CsvLexer.EOL;
 import com.b2international.commons.csv.CsvParser;
 import com.b2international.commons.csv.CsvSettings;
 import com.b2international.commons.csv.RecordParserCallback;
+<<<<<<< HEAD
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.Revision;
 import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexWrite;
 import com.b2international.index.revision.RevisionWriter;
+=======
+import com.b2international.commons.functions.LongToStringFunction;
+import com.b2international.snowowl.core.ApplicationContext;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
@@ -144,6 +149,7 @@ public class SnomedRf2IndexInitializer extends Job {
 	private ISnomedTaxonomyBuilder statedTaxonomyBuilder;
 	private boolean loggedReferenceSetImport = false;
 
+<<<<<<< HEAD
 	public SnomedRf2IndexInitializer(final RevisionIndex index,
 			final SnomedImportContext context,
 			final String lastUnitEffectiveTimeKey, 
@@ -151,6 +157,9 @@ public class SnomedRf2IndexInitializer extends Job {
 			final String languageRefSetId, 
 			final ISnomedTaxonomyBuilder inferredTaxonomyBuilder, 
 			final ISnomedTaxonomyBuilder statedTaxonomyBuilder) {
+=======
+	public SnomedRf2IndexInitializer(final IBranchPath branchPath, final String lastUnitEffectiveTimeKey, final List<ComponentImportUnit> importUnits, ISnomedTaxonomyBuilder inferredTaxonomyBuilder, ISnomedTaxonomyBuilder statedTaxonomyBuilder) {
+>>>>>>> origin/ms-develop
 		super("SNOMED CT RF2 based index initializer...");
 		this.index = index;
 		this.context = context;

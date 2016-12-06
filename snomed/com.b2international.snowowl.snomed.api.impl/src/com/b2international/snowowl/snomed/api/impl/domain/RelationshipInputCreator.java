@@ -66,7 +66,7 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 	public boolean canCreateInput(Class<? extends BaseSnomedComponentCreateRequest> inputType) {
 		return SnomedRelationshipCreateRequest.class.isAssignableFrom(inputType);
 	}
-
+	
 	@Override
 	public boolean canCreateUpdate(Class<? extends BaseSnomedComponentUpdateRequest> updateType) {
 		return SnomedRelationshipUpdateRequest.class.isAssignableFrom(updateType);

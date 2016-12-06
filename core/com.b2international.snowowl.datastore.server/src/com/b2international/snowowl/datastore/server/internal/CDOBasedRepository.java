@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -56,6 +57,8 @@ import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.datastore.CodeSystemEntry;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
+import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.datastore.CDOEditingContext;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
@@ -69,6 +72,8 @@ import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
+import com.b2international.snowowl.datastore.server.EditingContextFactory;
+import com.b2international.snowowl.datastore.server.EditingContextFactoryProvider;
 import com.b2international.snowowl.datastore.server.RepositoryClassLoaderProviderRegistry;
 import com.b2international.snowowl.datastore.server.ReviewConfiguration;
 import com.b2international.snowowl.datastore.server.cdo.CDOConflictProcessorBroker;
@@ -89,6 +94,10 @@ import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.eventbus.EventBusUtil;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
+import com.b2international.snowowl.terminologymetadata.CodeSystem;
+import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
+import com.b2international.snowowl.terminologyregistry.core.index.CodeSystemIndexMappingStrategy;
+import com.b2international.snowowl.terminologyregistry.core.index.CodeSystemVersionIndexMappingStrategy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Ordering;
@@ -98,6 +107,8 @@ import com.google.inject.Provider;
  * @since 4.1
  */
 public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, RepositoryContextProvider {
+	
+	private static final String REINDEX_KEY = "snowowl.reindex";
 
 	private final String toolingId;
 	private final String repositoryId;
@@ -118,6 +129,8 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		initializeRequestSupport(numberOfWorkers);
 		bind(Repository.class, this);
 		bind(ObjectMapper.class, mapper);
+
+		reindex();
 	}
 
 	@Override
@@ -338,6 +351,33 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	@Override
 	protected Environment getDelegate() {
 		return (Environment) super.getDelegate();
+	}
+	
+	private void reindex() {
+		final boolean reindex = Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
+		if (reindex) {
+			reindexCodeSystems();
+		}
+	}
+	
+	// FIXME
+	private void reindexCodeSystems() {
+		final EditingContextFactoryProvider contextFactoryProvider = env.service(EditingContextFactoryProvider.class);
+		final EditingContextFactory contextFactory = contextFactoryProvider.get(repositoryId);
+		
+		try (final CDOEditingContext editingContext = contextFactory.createEditingContext(BranchPathUtils.createMainPath())) {
+			final List<CodeSystem> codeSystems = editingContext.getCodeSystems();
+			
+			for (final CodeSystem codeSystem : codeSystems) {
+				getIndexUpdater().index(BranchPathUtils.createMainPath(), new CodeSystemIndexMappingStrategy(codeSystem));
+				
+				for (final CodeSystemVersion codeSystemVersion : codeSystem.getCodeSystemVersions()) {
+					getIndexUpdater().index(BranchPathUtils.createMainPath(), new CodeSystemVersionIndexMappingStrategy(codeSystemVersion));
+				}
+			}
+			
+			getIndexUpdater().commit(BranchPathUtils.createMainPath());
+		}
 	}
 	
 }

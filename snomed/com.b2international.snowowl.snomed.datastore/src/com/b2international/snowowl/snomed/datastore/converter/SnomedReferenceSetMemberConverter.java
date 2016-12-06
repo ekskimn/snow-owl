@@ -41,6 +41,10 @@ import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetM
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
+<<<<<<< HEAD
+=======
+import com.b2international.snowowl.snomed.datastore.index.mapping.SnomedMappings;
+>>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
@@ -207,14 +211,59 @@ final class SnomedReferenceSetMemberConverter extends BaseSnomedComponentConvert
 		// convert ID to resources where possible to override value with nested object in JSON
 		switch (entry.getReferenceSetType()) {
 			case ASSOCIATION:
+<<<<<<< HEAD
 				props.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT, convertToResource(entry.getTargetComponent()));
 				break;
 			default:
+=======
+				props.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT, convertToResource(entry.getTargetComponentId()));
 				break;
+			case EXTENDED_MAP:
+				props.put(SnomedRf2Headers.FIELD_MAP_CATEGORY_ID, entry.getMapCategoryId());
+			case COMPLEX_MAP:
+				props.put(SnomedRf2Headers.FIELD_MAP_GROUP, entry.getMapGroup());
+				props.put(SnomedRf2Headers.FIELD_MAP_PRIORITY, entry.getMapPriority());
+				props.put(SnomedRf2Headers.FIELD_MAP_RULE, entry.getMapRule());
+				props.put(SnomedRf2Headers.FIELD_MAP_ADVICE, entry.getMapAdvice());
+				props.put(SnomedRf2Headers.FIELD_CORRELATION_ID, entry.getCorrelationId());
+			case SIMPLE_MAP:
+					props.put(SnomedRf2Headers.FIELD_MAP_TARGET, entry.getMapTargetComponentId());
+					props.put(SnomedMappings.memberMapTargetComponentType().fieldName(), entry.getMapTargetComponentTypeAsShort());
+					break;
+			case CONCRETE_DATA_TYPE:
+				props.put(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, entry.getAttributeLabel());
+				props.put(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, entry.getCharacteristicTypeId());
+				props.put(SnomedRf2Headers.FIELD_VALUE, entry.getSerializedValue());
+				props.put(SnomedRf2Headers.FIELD_UNIT_ID, entry.getUomComponentId());
+				props.put(SnomedRf2Headers.FIELD_OPERATOR_ID, entry.getOperatorComponentId());
+				break;
+			case LANGUAGE:
+				props.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, entry.getAcceptabilityId());
+				break;
+			case DESCRIPTION_TYPE:
+				props.put(SnomedRf2Headers.FIELD_DESCRIPTION_FORMAT, entry.getDescriptionFormatId());
+				props.put(SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH, entry.getDescriptionLength());
+				break;
+			case MODULE_DEPENDENCY:
+				props.put(SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME, entry.getSourceEffectiveTime());
+				props.put(SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME, entry.getTargetEffectiveTime());
+				break;
+			case SIMPLE:
+				// No additional fields on simple type reference set member
+>>>>>>> origin/ms-develop
+				break;
+			default:
+				throw new IllegalStateException("Unexpected type '" + entry.getRefSetType() + "'.");
 		}
+<<<<<<< HEAD
 		member.setProperties(props);
 		
 		setReferencedComponent(member, entry.getReferencedComponentId(), entry.getReferencedComponentTypeAsString());
+=======
+		
+		member.setProperties(props.build());
+		setReferencedComponent(member, entry.getReferencedComponentId(), entry.getReferencedComponentType());
+>>>>>>> origin/ms-develop
 		return member;
 	}
 	

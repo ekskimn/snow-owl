@@ -22,19 +22,17 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequest;
-import com.b2international.snowowl.datastore.ICodeSystemVersion;
-import com.b2international.snowowl.datastore.TerminologyRegistryService;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Inactivatable;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
@@ -94,11 +92,7 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 	private final Function<TransactionContext, String> referenceBranchFunction = CacheBuilder.newBuilder().build(new CacheLoader<TransactionContext, String>() {
 		@Override
 		public String load(TransactionContext context) throws Exception {
-			final TerminologyRegistryService registryService = context.service(TerminologyRegistryService.class);
-			final List<ICodeSystemVersion> allVersions = registryService.getAllVersion().get(context.id());
-			final ICodeSystemVersion systemVersion = allVersions.get(1);
-			final IBranchPath branchPath = ICodeSystemVersion.TO_BRANCH_PATH_FUNC.apply(systemVersion);
-			return branchPath.getPath();
+			return BaseSnomedComponentUpdateRequest.getLatestReleaseBranch(context).getPath();
 		}
 	});
 	

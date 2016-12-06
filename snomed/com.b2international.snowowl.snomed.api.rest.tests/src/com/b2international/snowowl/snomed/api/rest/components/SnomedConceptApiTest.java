@@ -29,6 +29,14 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenDeletingBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreatedWithStatus;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.either;
@@ -48,7 +56,6 @@ import java.util.Map;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -63,6 +70,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.jayway.restassured.response.ResponseBodyExtractionOptions;
+import com.jayway.restassured.response.ValidatableResponse;
 
 /**
  * @since 2.0
@@ -252,15 +260,14 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 				.build();
 		
 		assertComponentCanBeUpdated(testBranchPath, SnomedComponentType.CONCEPT, INACTIVE_CONCEPT_ID, inactivationBody);
-		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, INACTIVE_CONCEPT_ID);
 		
-		final ResponseBodyExtractionOptions componentMembers = getComponentMembers(testBranchPath, INACTIVE_CONCEPT_ID);
-		final Collection<String> memberIds = componentMembers.path("items.id");
+		final ValidatableResponse conceptResponse = assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, INACTIVE_CONCEPT_ID, "members()");
+		final Collection<String> memberIds = conceptResponse.and().extract().body().path("members.items.id");
 		assertEquals(4, memberIds.size());
 
-		final Collection<Boolean> statuses = componentMembers.path("items.active");
+		final Collection<Boolean> statuses = conceptResponse.and().extract().body().path("members.items.active");
 		assertThat(statuses, everyItem(is(true)));
-		final Collection<String> effectiveTimes = componentMembers.path("items.effectiveTime");
+		final Collection<String> effectiveTimes = conceptResponse.and().extract().body().path("members.items.effectiveTime");
 		assertThat(effectiveTimes, everyItem(either(is("20050131")).or(is("20050731"))));
 	}
 	
@@ -324,12 +331,12 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		
 		assertComponentCanBeUpdated(testBranchPath, SnomedComponentType.CONCEPT, duplicateComponentId, inactivationBody);
 		// check if inactivation went through properly
-		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, duplicateComponentId)
+		final Collection<String> memberIds = assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, duplicateComponentId, "members()")
 				.body("active", equalTo(false))
 				.body("inactivationIndicator", equalTo(InactivationIndicator.DUPLICATE.toString()))
-				.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(componentId));
-		
-		final Collection<String> memberIds = getComponentMembers(testBranchPath, duplicateComponentId).path("items.id");
+				.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(componentId))
+				.extract()
+				.body().path("members.items.id");
 
 		// retrieve association member and store its UUID
 		assertEquals(2, memberIds.size());
@@ -346,14 +353,15 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		assertComponentCanBeUpdated(testBranchPath, SnomedComponentType.CONCEPT, duplicateComponentId, associationTargetUpdateBody);
 		
 		// verify association target and inactivation indicator update
-		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, duplicateComponentId)
+		final Collection<String> updatedMemberIds = assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, duplicateComponentId, "members()")
 				.body("active", equalTo(false))
 				.body("inactivationIndicator", equalTo(InactivationIndicator.AMBIGUOUS.toString()))
 				.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(componentId))
 				.body("associationTargets." + AssociationType.POSSIBLY_EQUIVALENT_TO.name(), hasItem(DISEASE))
-				.body("associationTargets." + AssociationType.REPLACED_BY.name(), hasItem(componentId));
+				.body("associationTargets." + AssociationType.REPLACED_BY.name(), hasItem(componentId))
+				.extract()
+				.body().path("members.items.id");
 		
-		final Collection<String> updatedMemberIds = getComponentMembers(testBranchPath, duplicateComponentId).path("items.id");
 		// check that the member UUIDs have not been cycled
 		assertEquals(4, updatedMemberIds.size());
 		assertTrue(updatedMemberIds.containsAll(memberIds));

@@ -39,8 +39,8 @@ public class XMIMrcmExporter {
 
 	private static final Logger LOG = LoggerFactory.getLogger(XMIMrcmExporter.class);
 	
-	public void doExport(String user, OutputStream stream) {
-		final IBranchPath branch = BranchPathUtils.createMainPath();
+	public void doExport(String sourcePath, String user, OutputStream stream) {
+		final IBranchPath branch = BranchPathUtils.createPath(sourcePath);
 		try (MrcmEditingContext context = new MrcmEditingContext(branch)) {
 			LogUtils.logExportActivity(LOG, user, branch, "Exporting MRCM rules...");
 

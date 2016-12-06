@@ -76,6 +76,7 @@ public interface SnomedExportContext {
 	String getUnsetEffectiveTimeLabel();
 	
 	/**
+<<<<<<< HEAD:snomed/com.b2international.snowowl.snomed.exporter.server/src/com/b2international/snowowl/snomed/exporter/server/SnomedExportContext.java
 	 * In case of SIMPLE MAP reference sets include or not the map target description column.
 	 * @return
 	 */
@@ -93,4 +94,11 @@ public interface SnomedExportContext {
 	 */
 	Id2Rf1PropertyMapper getId2Rf1PropertyMapper();
 
+=======
+	 * Returns INT or the country-code and namespace identifier. This is used in the directory name and filenames of the exported files.
+	 * @return namespace for directory and file names.
+	 */
+	String getClientNamespace();
+	
+>>>>>>> origin/ms-develop:snomed/com.b2international.snowowl.snomed.exporter.server/src/com/b2international/snowowl/snomed/exporter/server/sandbox/SnomedExportConfiguration.java
 }
