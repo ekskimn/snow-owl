@@ -105,7 +105,7 @@ public class CDOBranchManagerTest {
 	
 	@Test
 	public void updateMetadataShouldReturnNewInstanceWithProperType() throws Exception {
-		final InternalBranch newMain = main.withMetadata(new MetadataImpl());
+		final Branch newMain = manager.getMainBranch().withMetadata(new MetadataImpl());
 		assertTrue(newMain instanceof CDOMainBranchImpl);
 	}
 	
