@@ -30,14 +30,6 @@ public final class Branching {
 		return new BranchSearchRequestBuilder();
 	}
 	
-	public Request<ServiceProvider, Branch> prepareGet(String path) {
-		return RepositoryRequests.wrap(repositoryId, new ReadBranchRequest(path, false));
-	}
-	
-	public Request<ServiceProvider, Branch> prepareGetWithLocks(String path) {
-		return RepositoryRequests.wrap(repositoryId, new ReadBranchRequest(path, true));
-	}
-	
 	public BranchGetRequestBuilder prepareGet(String path) {
 		return new BranchGetRequestBuilder(path);
 	}
