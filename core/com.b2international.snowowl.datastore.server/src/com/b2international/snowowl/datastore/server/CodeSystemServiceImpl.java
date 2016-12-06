@@ -157,12 +157,10 @@ public class CodeSystemServiceImpl implements CodeSystemService {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends ICodeSystemVersion> Collection<T> decorateWithPatchedFlag(final String repositoryUuid, final Collection<? extends T> versions) {
-		forEach(versions, new Procedure<ICodeSystemVersion>() {
-			@Override protected void doApply(final ICodeSystemVersion version) {
-				if (version instanceof CodeSystemVersionEntry) {
-					if (isPatched(repositoryUuid, BranchPathUtils.createPath(version.getPath()))) {
-						((CodeSystemVersionEntry) version).setPatched();
-					}
+		for (T version : versions) {
+			if (version instanceof CodeSystemVersionEntry) {
+				if (isPatched(repositoryUuid, BranchPathUtils.createPath(version.getPath()))) {
+					((CodeSystemVersionEntry) version).setPatched(true);
 				}
 			}
 		}

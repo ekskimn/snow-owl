@@ -18,9 +18,7 @@ package com.b2international.snowowl.datastore.server.internal;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.Sets.newHashSet;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -58,10 +56,10 @@ import com.b2international.snowowl.core.events.RepositoryEvent;
 import com.b2international.snowowl.core.events.util.ApiRequestHandler;
 import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.core.setup.Environment;
-import com.b2international.snowowl.datastore.CodeSystemEntry;
-import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CDOEditingContext;
+import com.b2international.snowowl.datastore.CodeSystemEntry;
+import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
@@ -72,6 +70,7 @@ import com.b2international.snowowl.datastore.events.RepositoryCommitNotification
 import com.b2international.snowowl.datastore.index.MappingProvider;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
+import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewManager;
@@ -93,8 +92,6 @@ import com.b2international.snowowl.datastore.server.internal.review.MergeReviewI
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
-import com.b2international.snowowl.datastore.store.IndexStore;
-import com.b2international.snowowl.datastore.store.Store;
 import com.b2international.snowowl.eventbus.EventBusUtil;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
@@ -248,10 +245,9 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		final ReviewConfiguration reviewConfiguration = getDelegate().service(SnowOwlConfiguration.class).getModuleConfig(ReviewConfiguration.class);
 		final ReviewManagerImpl reviewManager = new ReviewManagerImpl(this, reviewConfiguration);
 		bind(ReviewManager.class, reviewManager);
-		
-		// TODO migrate merge-reviews to new index API
-		final Store<MergeReviewImpl> mergeReviews = createIndex("merge-reviews", mapper, MergeReviewImpl.class);
-		bind(MergeReviewManager.class, new MergeReviewManagerImpl(mergeReviews, reviewManager));
+
+		final MergeReviewManager mergeReviewManager = new MergeReviewManagerImpl(this, reviewManager);
+		bind(MergeReviewManager.class, mergeReviewManager);
 
 		events().registerHandler(String.format(RepositoryEvent.ADDRESS_TEMPLATE, repositoryId), reviewManager.getStaleHandler());
 		
@@ -266,6 +262,8 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		types.add(InternalBranch.class);
 		types.add(Review.class);
 		types.add(ReviewImpl.class);
+		types.add(MergeReview.class);
+		types.add(MergeReviewImpl.class);
 		types.add(ConceptChanges.class);
 		types.add(ConceptChangesImpl.class);
 		types.add(CodeSystemEntry.class);
@@ -348,18 +346,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		getIndex().admin().close();
 	}
 	
-	/**
-	 * @deprecated - as of 5.0, {@link Store} API is deprecated, use the new index API instead 
-	 */
-	private <T> IndexStore<T> createIndex(final String name, ObjectMapper mapper, Class<T> type) {
-		// TODO consider moving from index layout /feature/repositoryId to /repositoryId/feature
-		final File dir = getDelegate().getDataDirectory()
-				.toPath()
-				.resolve(Paths.get("indexes", name, repositoryId))
-				.toFile();
-		return new IndexStore<>(dir, mapper, type);
-	}
-	
 	@Override
 	protected Environment getDelegate() {
 		return (Environment) super.getDelegate();
@@ -400,11 +386,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	}
 	
 	@Override
-	protected Environment getDelegate() {
-		return (Environment) super.getDelegate();
-	}
-	
-	@Override
 	@SuppressWarnings("restriction")
 	public void handleCommitInfo(CDOCommitInfo commitInfo) {
 		if (!(commitInfo instanceof org.eclipse.emf.cdo.internal.common.commit.FailureCommitInfo)) {
@@ -418,5 +399,4 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 			}
         }
 	}
-	
 }

@@ -17,10 +17,16 @@ package com.b2international.snowowl.datastore.server.internal.review;
 
 import static com.google.common.collect.Sets.newHashSet;
 
-import java.util.HashSet;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 
+import com.b2international.index.Index;
+import com.b2international.index.IndexRead;
+import com.b2international.index.IndexWrite;
+import com.b2international.index.Searcher;
+import com.b2international.index.Writer;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
@@ -28,18 +34,19 @@ import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
-import com.b2international.snowowl.datastore.store.Store;
+import com.b2international.snowowl.datastore.server.internal.InternalRepository;
+import com.google.common.collect.ImmutableMap;
 
 /**
- * TODO migrate to new index api
+ * 
  */
 public class MergeReviewManagerImpl implements MergeReviewManager {
 
 	private final ReviewManagerImpl reviews;
-	private final Store<MergeReviewImpl> mergeReviewStore;
+	private final Index index;
 
-	public MergeReviewManagerImpl(Store<MergeReviewImpl> mergeReviewStore, ReviewManagerImpl reviews) {
-		this.mergeReviewStore = mergeReviewStore;
+	public MergeReviewManagerImpl(InternalRepository repository, ReviewManagerImpl reviews) {
+		this.index = repository.getIndex();
 		this.reviews = reviews;
 	}
 	
@@ -52,19 +59,14 @@ public class MergeReviewManagerImpl implements MergeReviewManager {
 		mergeReview.setMergeReviewManager(this);
 		mergeReview.setReviewManager(reviews);
 
-		synchronized (mergeReviewStore) {
-			mergeReviewStore.put(mergeReview.id(), mergeReview);
-		}
+		put(mergeReview);
 		
 		return mergeReview;
 	}
 
 	@Override
 	public MergeReview getMergeReview(String id) {
-		final MergeReviewImpl mergeReview;
-		synchronized (mergeReviewStore) {
-			mergeReview = mergeReviewStore.get(id);
-		}
+		final MergeReviewImpl mergeReview = get(id);
 
 		if (mergeReview == null) {
 			throw new NotFoundException(MergeReview.class.getSimpleName(), id);
@@ -102,11 +104,39 @@ public class MergeReviewManagerImpl implements MergeReviewManager {
 		sourceToTargetReview.delete();
 		targetToSourceReview.delete();
 		
-		synchronized (mergeReviewStore) {
-			mergeReviewStore.remove(mergeReview.id());
-		}
+		remove(mergeReview.id());
 		
 		return mergeReview;
 	}
 
+	private void put(final MergeReviewImpl newMergeReview) {
+		index.write(new IndexWrite<Void>() {
+			@Override
+			public Void execute(Writer index) throws IOException {
+				index.put(newMergeReview.id(), newMergeReview);
+				index.commit();
+				return null;
+			}
+		});
+	}
+	
+	private MergeReviewImpl get(final String id) {
+		return index.read(new IndexRead<MergeReviewImpl>() {
+			@Override
+			public MergeReviewImpl execute(Searcher index) throws IOException {
+				return index.get(MergeReviewImpl.class, id);
+			}
+		});
+	}
+	
+	private void remove(final String id) {
+		index.write(new IndexWrite<Void>() {
+			@Override
+			public Void execute(Writer index) throws IOException {
+				index.removeAll(ImmutableMap.<Class<?>, Set<String>>of(MergeReviewImpl.class, Collections.singleton(id)));
+				index.commit();
+				return null;
+			}
+		});
+	}
 }

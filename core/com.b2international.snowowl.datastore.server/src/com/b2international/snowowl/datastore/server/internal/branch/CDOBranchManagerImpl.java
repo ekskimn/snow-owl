@@ -121,6 +121,7 @@ public class CDOBranchManagerImpl extends BranchManagerImpl implements BranchRep
 				final long baseTimestamp = repository.getBaseTimestamp(branch);
 				final long headTimestamp = repository.getHeadTimestamp(branch);
 				doReopen(parent.path(), name, existingBranch == null ? new MetadataImpl() : existingBranch.metadata(), baseTimestamp, headTimestamp, cdoBranchId);
+			}
 		}
     }
 
