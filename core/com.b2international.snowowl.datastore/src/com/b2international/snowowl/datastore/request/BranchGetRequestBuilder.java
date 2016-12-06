@@ -26,14 +26,19 @@ import com.b2international.snowowl.datastore.events.ReadBranchRequest;
 public final class BranchGetRequestBuilder extends BaseRepositoryRequestBuilder<BranchGetRequestBuilder, Branch> {
 
 	private final String path;
+	private boolean expandLock;
 
 	BranchGetRequestBuilder(String path) {
 		this.path = path;
 	}
 	
+	public BranchGetRequestBuilder withLock() {
+		this.expandLock = true;
+		return this;
+	}
+	
 	@Override
 	protected Request<RepositoryContext, Branch> doBuild() {
-		return new ReadBranchRequest(path);
+		return new ReadBranchRequest(path, expandLock);
 	}
-
 }

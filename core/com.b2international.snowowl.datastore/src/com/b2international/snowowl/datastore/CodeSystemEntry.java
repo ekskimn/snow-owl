@@ -16,8 +16,10 @@
 package com.b2international.snowowl.datastore;
 
 import static com.b2international.index.query.Expressions.*;
+
 import com.b2international.index.Doc;
 import com.b2international.index.query.Expression;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.cdo.CDOUtils;
 import com.b2international.snowowl.terminologymetadata.CodeSystem;
@@ -92,6 +94,8 @@ public class CodeSystemEntry implements ICodeSystem {
 		private String iconPath; 
 		private String terminologyComponentId;
 		private String repositoryUuid;
+		private String branchPath = Branch.MAIN_PATH;
+		private String extensionOf;
 		
 		Builder() {
 		}
@@ -146,8 +150,18 @@ public class CodeSystemEntry implements ICodeSystem {
 			return this;
 		}
 		
+		public Builder branchPath(final String branchPath) {
+			this.branchPath = branchPath;
+			return this;
+		}
+		
+		public Builder extensionOf(final String extensionOf) {
+			this.extensionOf = extensionOf;
+			return this;
+		}
+		
 		public CodeSystemEntry build() {
-			return new CodeSystemEntry(oid, name, shortName, orgLink, language, citation, iconPath, terminologyComponentId, storageKey, repositoryUuid);
+			return new CodeSystemEntry(oid, name, shortName, orgLink, language, citation, iconPath, terminologyComponentId, storageKey, repositoryUuid, branchPath, extensionOf);
 		}
 		
 		
@@ -163,11 +177,13 @@ public class CodeSystemEntry implements ICodeSystem {
 	private final String iconPath; 
 	private final String terminologyComponentId;
 	private final String repositoryUuid;
+	private final String branchPath;
+	private final String extensionOf;
 	
 	private CodeSystemEntry(final String oid, final String name, final String shortName, final String orgLink, 
-			final String language, final String citation, final String iconPath, final String terminologyComponentId, final long storageKey, final String repositoryUuid) {
+			final String language, final String citation, final String iconPath, final String terminologyComponentId, final long storageKey, final String repositoryUuid,
+			final String branchPath, final String extensionOf) {
 		this.storageKey = storageKey;
-		this.repositoryUuid = repositoryUuid;
 		this.oid = Strings.nullToEmpty(oid);
 		this.name = Strings.nullToEmpty(name);
 		this.shortName = Strings.nullToEmpty(shortName);
@@ -176,6 +192,9 @@ public class CodeSystemEntry implements ICodeSystem {
 		this.citation = Strings.nullToEmpty(citation);
 		this.iconPath = Strings.nullToEmpty(iconPath);
 		this.terminologyComponentId = terminologyComponentId;
+		this.repositoryUuid = repositoryUuid;
+		this.branchPath = branchPath;
+		this.extensionOf = extensionOf;
 	}
 
 	@Override
@@ -225,6 +244,16 @@ public class CodeSystemEntry implements ICodeSystem {
 	
 	public long getStorageKey() {
 		return  storageKey;
+	}
+	
+	@Override
+	public String getBranchPath() {
+		return branchPath;
+	}
+	
+	@Override
+	public String getExtensionOf() {
+		return extensionOf;
 	}
 
 	@Override

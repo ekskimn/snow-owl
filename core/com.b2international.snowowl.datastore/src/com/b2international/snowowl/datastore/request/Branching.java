@@ -38,14 +38,6 @@ public final class Branching {
 		return new BranchGetChildrenRequestBuilder(path);
 	}
 	
-	public BranchMergeRequestBuilder prepareMerge() {
-		return new BranchMergeRequestBuilder(repositoryId);
-	}
-
-	public BranchUpdateRequestBuilder prepareUpdate(String path) {
-		return new BranchUpdateRequestBuilder(repositoryId, path);
-	}
-	
 	public BranchDeleteRequestBuilder prepareDelete(String branchPath) {
 		return new BranchDeleteRequestBuilder(branchPath);
 	}

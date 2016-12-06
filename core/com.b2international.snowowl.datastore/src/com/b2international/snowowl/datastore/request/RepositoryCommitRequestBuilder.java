@@ -72,12 +72,8 @@ public class RepositoryCommitRequestBuilder extends BaseBranchRequestBuilder<Rep
 	}
 
 	@Override
-	protected final Request<ServiceProvider, CommitInfo> doBuild() {
-		return new RepositoryRequest<>(repositoryId, 
-				new BranchRequest<>(branch,
-					// additional functionality can be extended here after BranchRequest
-					extend(new TransactionalRequest(userId, commitComment, body, preparationTime, parentLockContextDescription))
-				));
+	protected final Request<BranchContext, CommitInfo> doBuild() {
+		return new TransactionalRequest(userId, commitComment, body, preparationTime, parentLockContextDescription);
 	}
 	
 	@Override

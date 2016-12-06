@@ -38,11 +38,6 @@ public final class BranchChangedEvent extends RepositoryEvent {
 	}
 
 	@Override
-	protected String getPath() {
-		return "/branches/changes";
-	}
-
-	@Override
 	public String toString() {
 		return "BranchChangedEvent " + branch; 
 	}

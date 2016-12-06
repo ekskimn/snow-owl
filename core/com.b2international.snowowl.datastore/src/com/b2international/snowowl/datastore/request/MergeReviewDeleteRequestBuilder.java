@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,28 +17,22 @@ package com.b2international.snowowl.datastore.request;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.Request;
-import com.b2international.snowowl.datastore.events.CreateMergeReviewRequest;
+import com.b2international.snowowl.datastore.events.DeleteMergeReviewRequest;
 import com.b2international.snowowl.datastore.review.MergeReview;
 
-public final class MergeReviewCreateRequestBuilder extends BaseRepositoryRequestBuilder<MergeReviewCreateRequestBuilder, MergeReview> {
-	
-	private String sourceBranch;
-	private String targetBranch;
-	
-	MergeReviewCreateRequestBuilder() {	}
-	
-	public MergeReviewCreateRequestBuilder setSource(String source) {
-		this.sourceBranch = source;
-		return this;
-	}
-	
-	public MergeReviewCreateRequestBuilder setTarget(String target) {
-		this.targetBranch = target;
-		return this;
+/**
+ * @since 5.0
+ */
+public final class MergeReviewDeleteRequestBuilder extends BaseRepositoryRequestBuilder<MergeReviewDeleteRequestBuilder, MergeReview> {
+
+	private final String reviewId;
+
+	MergeReviewDeleteRequestBuilder(String reviewId) {
+		this.reviewId = reviewId;
 	}
 	
 	@Override
 	protected Request<RepositoryContext, MergeReview> doBuild() {
-		return new CreateMergeReviewRequest(sourceBranch, targetBranch);
+		return new DeleteMergeReviewRequest(reviewId);
 	}
 }

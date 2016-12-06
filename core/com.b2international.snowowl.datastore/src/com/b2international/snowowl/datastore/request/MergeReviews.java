@@ -15,30 +15,19 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import com.b2international.snowowl.core.ServiceProvider;
-import com.b2international.snowowl.core.events.Request;
-import com.b2international.snowowl.datastore.events.DeleteMergeReviewRequest;
-import com.b2international.snowowl.datastore.events.ReadMergeReviewRequest;
-import com.b2international.snowowl.datastore.review.MergeReview;
-
 public final class MergeReviews {
 
-	private String repositoryId;
-
-	MergeReviews(String repositoryId) {
-		this.repositoryId = repositoryId;
-	}
+	MergeReviews() { }
 	
 	public MergeReviewCreateRequestBuilder prepareCreate() {
-		return new MergeReviewCreateRequestBuilder(repositoryId);
+		return new MergeReviewCreateRequestBuilder();
 	}
 
-	public Request<ServiceProvider, MergeReview> prepareGet(String reviewId) {
-		return RepositoryRequests.wrap(repositoryId, new ReadMergeReviewRequest(reviewId));
+	public MergeReviewGetRequestBuilder prepareGet(String reviewId) {
+		return new MergeReviewGetRequestBuilder(reviewId);
 	}
 
-	public Request<ServiceProvider, MergeReview> prepareDelete(String reviewId) {
-		return RepositoryRequests.wrap(repositoryId, new DeleteMergeReviewRequest(reviewId));
+	public MergeReviewDeleteRequestBuilder prepareDelete(String reviewId) {
+		return new MergeReviewDeleteRequestBuilder(reviewId);
 	}
-	
 }

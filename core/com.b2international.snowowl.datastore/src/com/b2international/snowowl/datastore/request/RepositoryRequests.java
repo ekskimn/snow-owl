@@ -34,11 +34,7 @@ public final class RepositoryRequests {
 		return new Reviews();
 	}
 
-	public static MergeReviews mergeReviews(String repositoryId) {
-		return new MergeReviews(repositoryId);
-	}
-	
-	public static DeleteRequestBuilder prepareDelete(String repositoryId) {
-		return new DeleteRequestBuilder(repositoryId);
+	public static MergeReviews mergeReviews() {
+		return new MergeReviews();
 	}
 }
