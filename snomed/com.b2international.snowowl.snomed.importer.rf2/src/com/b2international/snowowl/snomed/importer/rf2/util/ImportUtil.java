@@ -66,9 +66,9 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
+import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.oplock.IOperationLockManager;
@@ -91,15 +91,6 @@ import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.ISnomedImportPostProcessor;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
-import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
-import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
-import com.b2international.snowowl.snomed.datastore.SnomedRefSetLookupService;
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -144,18 +135,6 @@ public final class ImportUtil {
 	private static final org.slf4j.Logger IMPORT_LOGGER = org.slf4j.LoggerFactory.getLogger(ImportUtil.class);
 	private static final String SNOMED_IMPORT_POST_PROCESSOR_EXTENSION = "com.b2international.snowowl.snomed.datastore.snomedImportPostProcessor";
 
-	public SnomedImportResult doImport(
-			final String requestingUserId,
-			final ImportConfiguration configuration,
-			final IProgressMonitor monitor) throws ImportException {
-		
-		try (SnomedImportContext context = new SnomedImportContext()) {
-			return doImportInternal(context, requestingUserId, configuration, monitor);
-		} catch (Exception e) {
-			throw new ImportException(e);
-		}
-	}
-	
 	public SnomedImportResult doImport(
 			final CodeSystem codeSystem,
 			final ContentSubType contentSubType,

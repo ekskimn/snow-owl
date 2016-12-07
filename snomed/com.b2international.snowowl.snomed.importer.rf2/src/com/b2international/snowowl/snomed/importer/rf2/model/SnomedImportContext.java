@@ -72,16 +72,14 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	private final LongSet visitedConcepts = PrimitiveSets.newLongOpenHashSet();
 	private final LongSet visitedRefSets = PrimitiveSets.newLongOpenHashSet();
 
-<<<<<<< HEAD
 	private final RevisionIndex index;
+
+	private String codeSystemShortName;
+	private String codeSystemOID;
 
 	public SnomedImportContext(RevisionIndex index) {
 		this.index = index;
 	}
-=======
-	private String codeSystemShortName;
-	private String codeSystemOID;
->>>>>>> origin/ms-develop
 
 	@Override
 	public void close() throws Exception {

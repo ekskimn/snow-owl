@@ -31,14 +31,9 @@ import org.eclipse.net4j.util.om.monitor.OMMonitor.Async;
 import com.b2international.commons.ConsoleProgressMonitor;
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
 import com.b2international.snowowl.snomed.common.ContentSubType;
-<<<<<<< HEAD
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
-=======
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetIndexEntry;
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration.ImportSourceKind;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedImportProtocolConstants;

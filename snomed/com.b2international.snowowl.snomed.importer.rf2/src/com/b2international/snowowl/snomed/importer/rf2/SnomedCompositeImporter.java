@@ -62,8 +62,6 @@ import com.b2international.snowowl.importer.ImportException;
 import com.b2international.snowowl.importer.Importer;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.ContentSubType;
-import com.b2international.snowowl.snomed.datastore.SnomedCodeSystemFactory;
-import com.b2international.snowowl.snomed.datastore.IsAStatementWithId;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
@@ -213,7 +211,7 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 
 	@Override
 	public void doImport(final SubMonitor subMonitor, final AbstractImportUnit unit) {
-<<<<<<< HEAD
+
 		final IBranchPath branchPath = getImportBranchPath();
 		
 		final SnomedCompositeImportUnit compositeUnit = (SnomedCompositeImportUnit) unit;
@@ -224,57 +222,28 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 		subMonitor.setWorkRemaining(units.size() + 1);
 
 		if (isRefSetImport(units)) {
-			// enable commit notifications in case of refset import
+			// Reference set imports only, enable commit notifications
+			
 			importContext.setCommitNotificationEnabled(true);
 			String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
-=======
-		try {
-			final IBranchPath branchPath = getImportBranchPath();
-			
-			final SnomedCompositeImportUnit compositeUnit = (SnomedCompositeImportUnit) unit;
-			final UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit> castFunction = new UncheckedCastFunction<AbstractImportUnit, ComponentImportUnit>(ComponentImportUnit.class);
-			final List<ComponentImportUnit> units = Lists.newArrayList(Iterables.transform(compositeUnit.getUnits(), castFunction));
-			Preconditions.checkArgument(!units.isEmpty(), "Archive contains no importable content.");
-			
-			subMonitor.setWorkRemaining(units.size() + 1);
-
-			if (isRefSetImport(units)) {
->>>>>>> origin/ms-develop
-			
 			for (final ComponentImportUnit subUnit : units) {
 				
-<<<<<<< HEAD
 				final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
 				
 				if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
-					updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
+					createSnomedVersionFor(lastUnitEffectiveTimeKey);
 					lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
 				}
-=======
-				for (final ComponentImportUnit subUnit : units) {
 					
-					final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
-					
-					if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
-						createSnomedVersionFor(lastUnitEffectiveTimeKey);
-						lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
-					}
-					
-					subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
-				}
-				
-				createSnomedVersionFor(lastUnitEffectiveTimeKey);
->>>>>>> origin/ms-develop
-				
 				subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
 			}
-			
-			updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
+				
+			createSnomedVersionFor(lastUnitEffectiveTimeKey);
 			
 		} else {
-		
-			String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
+			// Core components import, index is initialized after each effective time layer has been imported
 			
+			String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
 			for (final ComponentImportUnit subUnit : units) {
 				
 				/*
@@ -287,43 +256,16 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 				 */
 				final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
 				
-<<<<<<< HEAD
 				if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
 					updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
-					updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
 					lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
 				}
 					
 				subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
-=======
-				for (final ComponentImportUnit subUnit : units) {
-					
-					/*
-					 * First import unit seen with an effective time different from the previous set of import units;
-					 * initialize taxonomy builder and update import index server service, then perform tagging if
-					 * required.
-					 * 
-					 * Note that different effective times should only be seen in FULL or DELTA import, and the 
-					 * collected values can be used as is.
-					 */
-					final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
-					
-					if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
-						updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
-						createSnomedVersionFor(lastUnitEffectiveTimeKey);
-						lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
-					}
-						
-					subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
-				}
-				
-				updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
-				createSnomedVersionFor(lastUnitEffectiveTimeKey);
->>>>>>> origin/ms-develop
 			}
 			
 			updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
-			updateCodeSystemMetadata(lastUnitEffectiveTimeKey, importContext.isVersionCreationEnabled());
+			createSnomedVersionFor(lastUnitEffectiveTimeKey);
 		}
 	}
 
@@ -475,7 +417,7 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 	}
 	
 	private void initializeIndex(final SnomedImportContext context, final String lastUnitEffectiveTimeKey, final List<ComponentImportUnit> units) {
-		final SnomedRf2IndexInitializer snomedRf2IndexInitializer = new SnomedRf2IndexInitializer(getIndex(), context, lastUnitEffectiveTimeKey, units, importContext.getLanguageRefSetId(), inferredTaxonomyBuilder, statedTaxonomyBuilder);
+		final SnomedRf2IndexInitializer snomedRf2IndexInitializer = new SnomedRf2IndexInitializer(getIndex(), context, lastUnitEffectiveTimeKey, units, inferredTaxonomyBuilder, statedTaxonomyBuilder);
 		snomedRf2IndexInitializer.run(new NullProgressMonitor());
 	}
 
