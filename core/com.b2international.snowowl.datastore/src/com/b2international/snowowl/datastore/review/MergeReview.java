@@ -17,10 +17,13 @@ package com.b2international.snowowl.datastore.review;
 
 import java.util.Set;
 
+import com.b2international.index.Doc;
+
 
 /**
  * Represents a terminology review comparing bidirectional changes on branches while catering for manual merges.
  */
+@Doc(type="merge_review")
 public interface MergeReview {
 
 	/**
