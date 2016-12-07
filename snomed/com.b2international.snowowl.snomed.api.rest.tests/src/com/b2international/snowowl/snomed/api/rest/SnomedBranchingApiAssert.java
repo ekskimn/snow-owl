@@ -112,13 +112,13 @@ public abstract class SnomedBranchingApiAssert {
 	}
 	
 	/**
-	 * Asserts that setting the given metadata on the existing branch with the given path returns a 200 response.
+	 * Asserts that setting the given metadata on the existing branch with the given path returns a 204 response.
 	 * 
 	 * @param branchPath the branch path to test
 	 * @param metadata the metadata to set on the existing branch
 	 */
 	public static void whenUpdatingBranchWithPathAndMetadata(final IBranchPath branchPath, final Map<?, ?> metadata) {
-		assertBranchUpdatedWithStatus(branchPath, metadata, 200);
+		assertBranchUpdatedWithStatus(branchPath, metadata, 204);
 	}
 
 	/**

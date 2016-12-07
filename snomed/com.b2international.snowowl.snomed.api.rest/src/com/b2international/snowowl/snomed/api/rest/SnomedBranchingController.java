@@ -39,7 +39,6 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchUpdateRestRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.CreateBranchRestRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
-import com.b2international.snowowl.snomed.api.rest.domain.UpdateBranchRestRequest;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -131,27 +130,6 @@ public class SnomedBranchingController extends AbstractRestService {
 					.branching()
 					.prepareGet(branchPath)
 					.withLocks()
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-					.execute(bus));
-	}
-
-	@ApiOperation(
-		value = "Update a branch", 
-		notes = "Updates the metadata of a branch. Returns the updated branch."
-				+ "<p>"
-				+ "The API will return <strong>HTTP 400</strong> responses, if clients send requests to <strong>deleted</strong> branches."
-				+ "</p>")
-	@ApiResponses({
-		@ApiResponse(code = 200, message = "OK"),
-		@ApiResponse(code = 404, message = "Not Found", response=RestApiError.class),
-	})
-	@RequestMapping(value="/{path:**}", method=RequestMethod.PUT)
-	public DeferredResult<Boolean> updateBranch(@PathVariable("path") String branchPath, @RequestBody UpdateBranchRestRequest request) {
-		return DeferredResults.wrap(
-				SnomedRequests
-					.branching()
-					.prepareUpdate(branchPath)
-					.setMetadata(request.metadata())
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 					.execute(bus));
 	}
