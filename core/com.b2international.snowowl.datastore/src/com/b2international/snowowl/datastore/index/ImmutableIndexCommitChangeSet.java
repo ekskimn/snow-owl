@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.b2international.index.revision.Revision;
 import com.b2international.index.revision.RevisionWriter;
@@ -112,8 +113,9 @@ public final class ImmutableIndexCommitChangeSet implements IndexCommitChangeSet
 	 */
 	@Override
 	public void apply(RevisionWriter index) throws IOException {
-		for (Entry<String, Object> doc : rawMappings.entrySet()) {
-			index.writer().put(doc.getKey(), doc.getValue());
+		for (final Class<?> type : rawDeletions.keySet()) {
+			final Map<Class<?>, Set<String>> map = ImmutableMap.<Class<?>, Set<String>>of(type, ImmutableSet.copyOf(rawDeletions.get(type)));
+			index.writer().removeAll(map);
 		}
 		
 		for (Entry<String, Object> doc : rawMappings.entrySet()) {
