@@ -26,6 +26,7 @@ import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
@@ -64,6 +65,7 @@ public class RelationshipPersister extends OntologyChangeProcessor<StatementFrag
 		final IEventBus eventBus = ApplicationContext.getServiceForClass(IEventBus.class);
 		final Branch editingContextBranch = SnomedRequests.branching()
 				.prepareGet(context.getBranch())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(eventBus)
 				.getSync();
 		

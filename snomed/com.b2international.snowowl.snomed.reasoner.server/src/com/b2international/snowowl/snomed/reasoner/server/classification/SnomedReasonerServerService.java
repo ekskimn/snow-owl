@@ -422,7 +422,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 			} else {
 				concept = SnomedRequests.prepareGetConcept()
 						.setComponentId(Long.toString(id))
-						.build(branchPath.getPath())
+						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 						.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 						.then(new Function<ISnomedConcept, ChangeConcept>() {
 							@Override
