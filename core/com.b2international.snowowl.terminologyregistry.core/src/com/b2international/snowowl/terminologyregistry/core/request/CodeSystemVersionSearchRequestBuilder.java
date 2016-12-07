@@ -15,11 +15,9 @@
  */
 package com.b2international.snowowl.terminologyregistry.core.request;
 
-import com.b2international.snowowl.datastore.CodeSystemVersions;
-import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.CodeSystemVersions;
-import com.b2international.snowowl.datastore.request.SearchRequest;
+import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
 import com.b2international.snowowl.datastore.request.SearchRequestBuilder;
 
 /**

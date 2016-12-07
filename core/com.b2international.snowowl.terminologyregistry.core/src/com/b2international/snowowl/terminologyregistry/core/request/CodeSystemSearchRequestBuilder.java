@@ -17,7 +17,6 @@ package com.b2international.snowowl.terminologyregistry.core.request;
 
 import com.b2international.snowowl.datastore.CodeSystems;
 import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
-import com.b2international.snowowl.datastore.request.SearchRequest;
 import com.b2international.snowowl.datastore.request.SearchRequestBuilder;
 
 /**

@@ -27,31 +27,6 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.CodeSystemEntry;
 import com.b2international.snowowl.datastore.CodeSystems;
 import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
-import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.SYSTEM_OID;
-import static com.b2international.snowowl.terminologyregistry.core.index.TerminologyRegistryIndexConstants.SYSTEM_SHORT_NAME;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-
-import org.apache.lucene.document.Document;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopDocs;
-
-import com.b2international.commons.StringUtils;
-import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.datastore.CodeSystems;
-import com.b2international.snowowl.datastore.ICodeSystem;
-import com.b2international.snowowl.datastore.request.SearchRequest;
-import com.b2international.snowowl.terminologyregistry.core.index.CodeSystemEntry;
-import com.google.common.collect.Lists;
 
 /**
  * @since 4.7

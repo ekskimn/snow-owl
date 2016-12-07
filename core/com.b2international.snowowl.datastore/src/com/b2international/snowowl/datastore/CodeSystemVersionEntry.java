@@ -48,6 +48,7 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 		public static final String STORAGE_KEY = "storageKey";
 		public static final String REPOSITORY_UUID = "repositoryUuid";
 		public static final String CODE_SYSTEM_SHORT_NAME = "codeSystemShortName";
+		public static final String PARENT_PATH = "parentBranchPath";
 	}
 
 	public static class Expressions {
@@ -58,6 +59,10 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 
 		public static Expression shortName(String shortName) {
 			return exactMatch(Fields.CODE_SYSTEM_SHORT_NAME, shortName);
+		}
+		
+		public static Expression parentPath(String parentPath) {
+			return exactMatch(Fields.PARENT_PATH, parentPath);
 		}
 		
 	}
