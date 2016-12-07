@@ -46,6 +46,7 @@ public class SnomedExportContextImpl implements SnomedExportContext {
 	
 	private Id2Rf1PropertyMapper id2Rf1PropertyMapper;
 	private ExportFormat exportFormat;
+	private String namespaceId;
 	
 	public SnomedExportContextImpl(final ExportFormat exportFormat, 
 			final IBranchPath currentBranchPath,
@@ -53,6 +54,7 @@ public class SnomedExportContextImpl implements SnomedExportContext {
 			final String unsetEffectiveTimeLabel,
 			@Nullable final Date deltaExportStartEffectiveTime, 
 			@Nullable final Date deltaExportEndEffectiveTime,
+			final String namespaceId,
 			final Set<String> moduleIds,
 			final Id2Rf1PropertyMapper id2Rf1PropertyMapper) {
 
@@ -62,6 +64,7 @@ public class SnomedExportContextImpl implements SnomedExportContext {
 		this.unsetEffectiveTimeLabel = checkNotNull(unsetEffectiveTimeLabel, "unsetEffectiveTimeLabel");
 		this.deltaExportStartEffectiveTime = deltaExportStartEffectiveTime;
 		this.deltaExportEndEffectiveTime = deltaExportEndEffectiveTime;
+		this.namespaceId = namespaceId;
 		this.moduleIds = moduleIds;
 		this.id2Rf1PropertyMapper = id2Rf1PropertyMapper;
 	}
@@ -116,4 +119,8 @@ public class SnomedExportContextImpl implements SnomedExportContext {
 		return id2Rf1PropertyMapper;
 	}
 
+	@Override
+	public String getNamespaceId() {
+		return namespaceId;
+	}
 }
