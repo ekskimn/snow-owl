@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.exporter.server.rf2;
 
+import static com.google.common.base.Strings.nullToEmpty;
+
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
@@ -22,27 +24,37 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemb
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 
 /**
- * SNOMED CT module dependency reference set exporter.
+ * SNOMED CT extended map type reference set exporter.
  */
-public class SnomedModuleDependencyRefSetExporter extends SnomedRefSetExporter {
+public class SnomedExtendedMapRefSetExporter extends SnomedRefSetExporter {
 
-	public SnomedModuleDependencyRefSetExporter(final SnomedExportContext exportContext, SnomedReferenceSet refset, final RevisionSearcher revisionSearcher) {
+	public SnomedExtendedMapRefSetExporter(final SnomedExportContext exportContext, SnomedReferenceSet refset, final RevisionSearcher revisionSearcher) {
 		super(exportContext, refset, revisionSearcher);
 	}
-	
+
 	@Override
-	public String convertToString(SnomedRefSetMemberIndexEntry doc) {
+	public String convertToString(final SnomedRefSetMemberIndexEntry doc) {
 		final StringBuilder sb = new StringBuilder();
 		sb.append(super.convertToString(doc));
 		sb.append(HT);
-		sb.append(formatEffectiveTime(doc.getSourceEffectiveTime())); 
+		sb.append(doc.getMapGroup());
 		sb.append(HT);
-		sb.append(formatEffectiveTime(doc.getTargetEffectiveTime()));
+		sb.append(doc.getMapPriority());
+		sb.append(HT);
+		sb.append(nullToEmpty(doc.getMapRule()));
+		sb.append(HT);
+		sb.append(nullToEmpty(doc.getMapAdvice()));
+		sb.append(HT);
+		sb.append(nullToEmpty(doc.getMapTarget()));
+		sb.append(HT);
+		sb.append(doc.getCorrelationId());
+		sb.append(HT);
+		sb.append(nullToEmpty(doc.getMapCategoryId()));
 		return sb.toString();
 	}
-	
+
 	@Override
 	public String[] getColumnHeaders() {
-		return SnomedRf2Headers.MODULE_DEPENDENCY_HEADER;
+		return SnomedRf2Headers.EXTENDED_MAP_TYPE_HEADER;
 	}
 }
