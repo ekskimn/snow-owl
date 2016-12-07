@@ -27,14 +27,8 @@ import org.eclipse.net4j.util.io.ExtendedDataOutputStream;
 import org.eclipse.net4j.util.io.IOUtil;
 import org.eclipse.net4j.util.om.monitor.OMMonitor;
 
-<<<<<<< HEAD
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
-import com.google.common.io.Closeables;
-=======
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptIndexEntry;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetIndexEntry;
->>>>>>> origin/ms-develop
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 
 /**
  * 

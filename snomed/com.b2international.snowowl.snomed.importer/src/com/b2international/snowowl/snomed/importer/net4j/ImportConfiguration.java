@@ -267,10 +267,6 @@ public final class ImportConfiguration {
 		return branchPath;
 	}
 	
-	public void setBranchPath(String branchPath) {
-		this.branchPath = branchPath;
-	}
-
 	public boolean isReleasePatch() {
 		return releasePatch;
 	}
