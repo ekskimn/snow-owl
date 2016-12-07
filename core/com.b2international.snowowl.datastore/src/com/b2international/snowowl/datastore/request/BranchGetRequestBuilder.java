@@ -32,7 +32,7 @@ public final class BranchGetRequestBuilder extends BaseRepositoryRequestBuilder<
 		this.path = path;
 	}
 	
-	public BranchGetRequestBuilder withLock() {
+	public BranchGetRequestBuilder withLocks() {
 		this.expandLock = true;
 		return this;
 	}
