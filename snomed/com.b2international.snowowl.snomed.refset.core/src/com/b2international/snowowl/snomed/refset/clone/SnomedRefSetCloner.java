@@ -96,26 +96,13 @@ public class SnomedRefSetCloner {
 				newRefSetMember = editingContext.createSimpleTypeRefSetMember(identifierPair, originalMember.getModuleId(), cloneRefSet);
 				break;
 			case COMPLEX_MAP:
-<<<<<<< HEAD
 				String mapTargetId = (String) originalMember.getProperties().get(SnomedRf2Headers.FIELD_MAP_TARGET);
 				SnomedComplexMapRefSetMember newComplexMapRefSetMember = editingContext.createComplexMapRefSetMember(identifierPair, mapTargetId, originalMember.getModuleId(), (SnomedMappingRefSet) cloneRefSet);
 				newComplexMapRefSetMember.setCorrelationId((String) originalMember.getProperties().get(Fields.CORRELATION_ID));
 				newComplexMapRefSetMember.setMapAdvice((String) originalMember.getProperties().get(Fields.MAP_ADVICE));
-				newComplexMapRefSetMember.setMapGroup(((Integer) originalMember.getProperties().get(Fields.MAP_GROUP)).byteValue());
-				newComplexMapRefSetMember.setMapPriority(((Integer)originalMember.getProperties().get(Fields.MAP_PRIORITY)).byteValue());
+				newComplexMapRefSetMember.setMapGroup(SignedBytes.checkedCast(((Integer) originalMember.getProperties().get(Fields.MAP_GROUP))));
+				newComplexMapRefSetMember.setMapPriority(SignedBytes.checkedCast(((Integer)originalMember.getProperties().get(Fields.MAP_PRIORITY))));
 				newComplexMapRefSetMember.setMapRule((String) originalMember.getProperties().get(Fields.MAP_RULE));
-=======
-				String mapTargetId = originalMemberIndexEntry.getMapTargetComponentId();
-				String mapTargetComponentType = originalMemberIndexEntry.getMapTargetComponentType();
-				specialFieldPair = ComponentIdentifierPair.<String>createWithUncheckedComponentId(mapTargetComponentType, mapTargetId);
-				SnomedComplexMapRefSetMember newComplexMapRefSetMember = editingContext.createComplexMapRefSetMember(identifierPair, specialFieldPair, originalMemberIndexEntry.getModuleId(), (SnomedMappingRefSet) cloneRefSet);
-				SnomedRefSetMemberIndexEntry complexMapRefSetMemberIndexEntry = (SnomedRefSetMemberIndexEntry) originalMemberIndexEntry;
-				newComplexMapRefSetMember.setCorrelationId(complexMapRefSetMemberIndexEntry.getCorrelationId());
-				newComplexMapRefSetMember.setMapAdvice(complexMapRefSetMemberIndexEntry.getMapAdvice());
-				newComplexMapRefSetMember.setMapGroup(SignedBytes.checkedCast(complexMapRefSetMemberIndexEntry.getMapGroup()));
-				newComplexMapRefSetMember.setMapPriority(SignedBytes.checkedCast(complexMapRefSetMemberIndexEntry.getMapPriority()));
-				newComplexMapRefSetMember.setMapRule(complexMapRefSetMemberIndexEntry.getMapRule());
->>>>>>> origin/ms-develop
 				newRefSetMember = newComplexMapRefSetMember;
 				break;
 			case SIMPLE_MAP:
