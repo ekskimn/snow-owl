@@ -15,42 +15,33 @@
  */
 package com.b2international.snowowl.datastore.server.snomed.index;
 
-import static com.google.common.collect.Sets.newHashSet;
-
 import java.io.IOException;
 import java.util.Collection;
-<<<<<<< HEAD
-import java.util.Date;
-import java.util.Map;
-=======
->>>>>>> [snomed] track index changes properly in SNOMED CT change processors
 import java.util.Set;
 
+import org.eclipse.emf.cdo.common.id.CDOID;
 import org.eclipse.emf.cdo.server.IStoreAccessor;
 import org.eclipse.emf.cdo.server.StoreThreadLocal;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongSet;
-import com.b2international.commons.StringUtils;
 import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
-import com.b2international.index.revision.Revision;
+import com.b2international.index.query.Expressions;
+import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionIndex;
-import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.ComponentUtils;
 import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
+import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.index.BaseCDOChangeProcessor;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessor;
-import com.b2international.snowowl.datastore.index.IndexCommitChangeSet;
-import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
+import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
+import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedIconProvider;
@@ -60,16 +51,12 @@ import com.b2international.snowowl.snomed.datastore.index.change.DescriptionChan
 import com.b2international.snowowl.snomed.datastore.index.change.RefSetMemberChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.RelationshipChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomies;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomy;
-import com.b2international.snowowl.terminologymetadata.CodeSystem;
-import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
-import com.b2international.snowowl.terminologymetadata.TerminologymetadataPackage;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 
 /**
  * Change processor implementation for SNOMED&nbsp;CT ontology.
@@ -78,81 +65,15 @@ import com.google.common.collect.Multimap;
  */
 public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 
-<<<<<<< HEAD
-	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedCDOChangeProcessor.class);
-	
-	private final Set<CodeSystem> newCodeSystems = newHashSet();
-	private final Set<CodeSystemVersion> newCodeSystemVersions = newHashSet();
-	private final Set<CodeSystemVersion> dirtyCodeSystemVersions = newHashSet();
-	
-	private final IBranchPath branchPath;
-	private final RevisionIndex index;
-=======
-	private final ISnomedIdentifierService identifierService;
->>>>>>> [core] extract BaseCDOChangeProcessor from SnomedCDOChangeProcessor
-	
 	private Taxonomy inferredTaxonomy;
 	private Taxonomy statedTaxonomy;
 	
-<<<<<<< HEAD
-	/**Represents the change set.*/
-	private ICDOCommitChangeSet commitChangeSet;
-
-	private Map<String, Object> rawMappings = newHashMap();
-	private Map<Long, Revision> revisionMappings = newHashMap();
-	
-	private Multimap<Class<? extends Revision>, Long> deletions = HashMultimap.create();
-
 	SnomedCDOChangeProcessor(final IBranchPath branchPath, final RevisionIndex index) {
-		this.index = index;
-		this.branchPath = Preconditions.checkNotNull(branchPath, "Branch path argument cannot be null.");
-=======
-	SnomedCDOChangeProcessor(final IBranchPath branchPath, final RevisionIndex index, final ISnomedIdentifierService identifierService) {
 		super(branchPath, index);
-		this.identifierService = identifierService;
->>>>>>> [core] extract BaseCDOChangeProcessor from SnomedCDOChangeProcessor
 	}
 	
-	/*updates the documents in the indexes based on the dirty, detached and new components.*/
-	
 	@Override
-<<<<<<< HEAD
-	public IBranchPath getBranchPath() {
-		return branchPath;
-	}
-
-	@Override
-	public void rollback() throws SnowowlServiceException {
-		// XXX nothing to do, just don't commit the writer
-	}
-
-	@Override
-	public String getName() {
-		return "SNOMED CT Terminology";
-	}
-
-	/*updates the documents in the indexes based on the dirty, detached and new components.*/
-	private void updateDocuments(RevisionSearcher searcher) throws IOException {
-		LOGGER.info("Processing and updating changes...");
-		
-		for (final CodeSystem newCodeSystem : newCodeSystems) {
-			final CodeSystemEntry entry = CodeSystemEntry.builder(newCodeSystem).build();
-			rawMappings.put(Long.toString(entry.getStorageKey()), entry);
-		}
-		
-		for (final CodeSystemVersion newCodeSystemVersion : newCodeSystemVersions) {
-			final CodeSystemVersionEntry entry = CodeSystemVersionEntry.builder(newCodeSystemVersion).build();
-			rawMappings.put(Long.toString(entry.getStorageKey()), entry);
-		}
-		
-		for (final CodeSystemVersion dirtyCodeSystemVersion : dirtyCodeSystemVersions) {
-			final CodeSystemVersionEntry entry = CodeSystemVersionEntry.builder(dirtyCodeSystemVersion).build();
-			rawMappings.put(Long.toString(entry.getStorageKey()), entry);
-		}
-		
-=======
 	protected void preUpdateDocuments(ICDOCommitChangeSet commitChangeSet, RevisionSearcher index) throws IOException {
->>>>>>> [core] extract BaseCDOChangeProcessor from SnomedCDOChangeProcessor
 		final Set<String> statedSourceIds = Sets.newHashSet();
 		final Set<String> statedDestinationIds = Sets.newHashSet();
 		final Set<String> inferredSourceIds = Sets.newHashSet();
@@ -246,49 +167,7 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 			inferredConceptIds.add(longId);
 		}
 		
-<<<<<<< HEAD
-		prepareTaxonomyBuilders(searcher, statedConceptIds, inferredConceptIds);
-		
-		final Collection<ChangeSetProcessor> changeSetProcessors = newArrayList();
-		changeSetProcessors.add(new ConceptChangeProcessor(SnomedIconProvider.getInstance().getAvailableIconIds(), statedTaxonomy, inferredTaxonomy));
-		changeSetProcessors.add(new DescriptionChangeProcessor());
-		changeSetProcessors.add(new RelationshipChangeProcessor());
-		changeSetProcessors.add(new RefSetMemberChangeProcessor());
-		changeSetProcessors.add(new ConstraintChangeProcessor());
-		
-		for (ChangeSetProcessor processor : changeSetProcessors) {
-			LOGGER.info("Collecting {}...", processor.description());
-			processor.process(commitChangeSet, searcher);
-			// register additions, deletions from the sub processor
-			revisionMappings.putAll(processor.getMappings());
-			deletions.putAll(processor.getDeletions());
-		}
-
-		LOGGER.info("Updating indexes...");
-
-		LOGGER.info("Processing and updating index changes successfully finished.");
-=======
 		prepareTaxonomyBuilders(commitChangeSet, index, statedConceptIds, inferredConceptIds);	
-	}
-	
-	@Override
-	protected Collection<ChangeSetProcessor> getChangeSetProcessors() {
-		return ImmutableList.<ChangeSetProcessor>builder()
-				.add(new ConceptChangeProcessor(SnomedIconProvider.getInstance().getAvailableIconIds(), statedTaxonomy, inferredTaxonomy))
-				.add(new DescriptionChangeProcessor())
-				.add(new RelationshipChangeProcessor())
-				.add(new RefSetMemberChangeProcessor())
-				.add(new ConstraintChangeProcessor())
-				.build();
-	}
-	
-	@Override
-	protected void postUpdateDocuments(IndexCommitChangeSet commitChangeSet) {
-		final Collection<String> releasableComponentIds = getReleasableComponentIds(commitChangeSet.getRevisionDeletions());
-		if (!releasableComponentIds.isEmpty()) {
-			identifierService.release(releasableComponentIds);
-		}
->>>>>>> [core] extract BaseCDOChangeProcessor from SnomedCDOChangeProcessor
 	}
 	
 	private void collectIds(final Set<String> sourceIds, final Set<String> destinationIds, Iterable<Relationship> newRelationships, CharacteristicType characteristicType) {
@@ -299,50 +178,18 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 			}
 		}
 	}
-
-<<<<<<< HEAD
-=======
-	private Collection<String> getReleasableComponentIds(Multimap<Class<? extends Revision>, Long> deletions) {
-		final Collection<String> releasableComponentIds = newHashSet();
-		for (Class<? extends Revision> type : deletions.keySet()) {
-			if (isCoreComponent(type)) {
-				releasableComponentIds.addAll(getReleasableComponentIds((Class<? extends RevisionDocument>) type, deletions.get(type)));
-			}
-		}
-		return releasableComponentIds;
+	
+	@Override
+	protected Collection<ChangeSetProcessor> getChangeSetProcessors() {
+		return ImmutableList.<ChangeSetProcessor>builder()
+				.add(new ConceptChangeProcessor(DoiDataProvider.INSTANCE, SnomedIconProvider.getInstance().getAvailableIconIds(), statedTaxonomy, inferredTaxonomy))
+				.add(new DescriptionChangeProcessor())
+				.add(new RelationshipChangeProcessor())
+				.add(new RefSetMemberChangeProcessor())
+				.add(new ConstraintChangeProcessor())
+				.build();
 	}
 
-	private boolean isCoreComponent(Class<? extends Revision> type) {
-		return SnomedConceptDocument.class == type || SnomedDescriptionIndexEntry.class == type || SnomedRelationshipIndexEntry.class == type;
-	}
-
-	private Collection<String> getReleasableComponentIds(final Class<? extends RevisionDocument> type, final Iterable<Long> storageKeys) {
-		return ImmutableSet.copyOf(ComponentUtils.<String>getIds(getReleasableComponents(type, storageKeys)));
-	}
-
-	private <T extends RevisionDocument> Iterable<T> getReleasableComponents(final Class<T> type, final Iterable<Long> storageKeys) {
-		IBranchPath currentBranchPath = getBranchPath();
-		final Set<Long> releasableStorageKeys = newHashSet(storageKeys);
-
-		while (!StringUtils.isEmpty(currentBranchPath.getParentPath())) {
-			currentBranchPath = currentBranchPath.getParent();
-			final Iterable<T> hits = index().read(currentBranchPath.getPath(), new RevisionIndexRead<Iterable<T>>() {
-				@Override
-				public Iterable<T> execute(RevisionSearcher index) throws IOException {
-					return index.get(type, releasableStorageKeys);
-				}
-			});
-			for (T hit : hits) {
-				// the ID of this component cannot be released because it is being used on an ancestor branch
-				releasableStorageKeys.remove(hit.getStorageKey());
-			}
-		}
-		
-		// the remaining storageKeys can be removed, since they are not in use on any ancestor branch
-		return getRevisions(type, releasableStorageKeys);
-	}
-
->>>>>>> [core] extract BaseCDOChangeProcessor from SnomedCDOChangeProcessor
 	/**
 	 * Prepares the taxonomy builder. One for representing the previous state of the ontology.
 	 * One for the new state.   
@@ -372,19 +219,4 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 		
 		ForkJoinUtils.runInParallel(inferredRunnable, statedRunnable);
 	}
-	
-<<<<<<< HEAD
-	@SuppressWarnings("restriction")
-	private void checkAndSetCodeSystemLastUpdateTime(final CDOObject component) {
-		final CodeSystemVersion codeSystemVersion = (CodeSystemVersion) component;
-		final CDOFeatureDelta lastUpdateFeatureDelta = commitChangeSet.getRevisionDeltas().get(component.cdoID()).getFeatureDelta(TerminologymetadataPackage.eINSTANCE.getCodeSystemVersion_LastUpdateDate());
-		if (lastUpdateFeatureDelta instanceof org.eclipse.emf.cdo.internal.common.revision.delta.CDOSetFeatureDeltaImpl) {
-			((org.eclipse.emf.cdo.internal.common.revision.delta.CDOSetFeatureDeltaImpl) lastUpdateFeatureDelta).setValue(new Date(commitChangeSet.getTimestamp()));
-			((InternalCDORevision) component.cdoRevision()).set(TerminologymetadataPackage.eINSTANCE.getCodeSystemVersion_LastUpdateDate(), CDOStore.NO_INDEX, new Date(commitChangeSet.getTimestamp()));
-			dirtyCodeSystemVersions.add(codeSystemVersion);
-		}		
-	}
-
-=======
->>>>>>> [core] extract BaseCDOChangeProcessor from SnomedCDOChangeProcessor
 }
