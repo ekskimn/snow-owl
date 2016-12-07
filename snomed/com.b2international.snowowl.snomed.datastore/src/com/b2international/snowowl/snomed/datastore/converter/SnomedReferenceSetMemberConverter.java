@@ -205,6 +205,12 @@ final class SnomedReferenceSetMemberConverter extends BaseResourceConverter<Snom
 		final Map<String, Object> props = newHashMap(entry.getAdditionalFields());
 		// convert ID to resources where possible to override value with nested object in JSON
 		switch (entry.getReferenceSetType()) {
+			case QUERY:
+				props.put(SnomedRf2Headers.FIELD_QUERY, entry.getQuery());
+				break;
+			case ATTRIBUTE_VALUE:
+				props.put(SnomedRf2Headers.FIELD_VALUE_ID, entry.getValueId());
+				break;
 			case ASSOCIATION:
 				props.put(SnomedRf2Headers.FIELD_TARGET_COMPONENT, convertToResource(entry.getTargetComponent()));
 				break;
