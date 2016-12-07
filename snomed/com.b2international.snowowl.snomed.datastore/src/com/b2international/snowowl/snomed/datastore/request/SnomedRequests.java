@@ -150,7 +150,7 @@ public abstract class SnomedRequests {
 	}
 	
 	public static MergeReviews mergeReview() {
-		return RepositoryRequests.mergeReviews(REPOSITORY_ID);
+		return RepositoryRequests.mergeReviews();
 	}
 
 	public static QueryRefSetEvaluationRequestBuilder prepareQueryRefSetEvaluation(String referenceSetId) {

@@ -152,7 +152,6 @@ public class SnomedIdentifierConfiguration {
 	public void setMaxIdGenerationAttempts(int maxIdGenerationAttempts) {
 		this.maxIdGenerationAttempts = maxIdGenerationAttempts;
 	}
-<<<<<<< HEAD
 
 	public void setCisNumberOfReauthTries(int cisNumberOfReauthTries) {
 		this.cisNumberOfReauthTries = cisNumberOfReauthTries;
@@ -161,6 +160,4 @@ public class SnomedIdentifierConfiguration {
 	public int getCisNumberOfReauthTries() {
 		return cisNumberOfReauthTries;
 	}
-=======
->>>>>>> origin/ms-develop
 }

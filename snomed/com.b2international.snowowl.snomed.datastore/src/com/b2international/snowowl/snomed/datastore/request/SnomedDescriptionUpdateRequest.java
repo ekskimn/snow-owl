@@ -92,7 +92,7 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 					final ISnomedDescription releasedDescription = SnomedRequests
 						.prepareGetDescription()
 						.setComponentId(getComponentId())
-						.build(getLatestReleaseBranch(context))
+						.build(SnomedDatastoreActivator.REPOSITORY_UUID, getLatestReleaseBranch(context))
 						.execute(bus)
 						.getSync();
 

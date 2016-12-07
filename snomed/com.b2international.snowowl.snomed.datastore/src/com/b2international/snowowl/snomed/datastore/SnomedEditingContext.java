@@ -167,15 +167,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 //		
 //		return new Pair<String, IdStorageKeyPair>(preferredMember.getReferencedComponentId(), new IdStorageKeyPair(preferredMember.getId(), preferredMember.getStorageKey()));
 	}
-<<<<<<< HEAD
 
-=======
-	
-	private static SnomedClientIndexService getIndexService() {
-		return ApplicationContext.getInstance().getService(SnomedClientIndexService.class);
-	}
-	
->>>>>>> origin/ms-develop
 	public Concept buildDraftConceptFromNormalForm(final NormalFormWrapper normalForm) {
 		return buildDraftConceptFromNormalForm(normalForm, null);
 	}

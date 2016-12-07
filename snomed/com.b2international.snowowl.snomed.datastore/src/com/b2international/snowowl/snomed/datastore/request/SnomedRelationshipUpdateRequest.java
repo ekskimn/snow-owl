@@ -23,7 +23,6 @@ import javax.validation.constraints.Min;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
@@ -33,6 +32,7 @@ import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 
 /**
  * @since 4.5
@@ -90,11 +90,11 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 			} else {
 				if (relationship.isReleased()) {
 					long start = new Date().getTime();
-					
+					final IEventBus bus = context.service(IEventBus.class);
 					final ISnomedRelationship releasedRelationship = SnomedRequests.prepareGetRelationship()
 							.setComponentId(getComponentId())
-							.build(getLatestReleaseBranch(context))
-							.execute(context.service(IEventBus.class))
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, getLatestReleaseBranch(context))
+							.execute(bus)
 							.getSync();
 					
 					if (releasedRelationship == null) {

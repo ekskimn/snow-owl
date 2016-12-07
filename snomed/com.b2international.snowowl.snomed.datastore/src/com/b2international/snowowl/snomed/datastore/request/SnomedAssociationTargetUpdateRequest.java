@@ -32,7 +32,6 @@ import com.b2international.snowowl.snomed.Inactivatable;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -93,7 +92,7 @@ final class SnomedAssociationTargetUpdateRequest<C extends Inactivatable & Compo
 	private final Function<TransactionContext, String> referenceBranchFunction = CacheBuilder.newBuilder().build(new CacheLoader<TransactionContext, String>() {
 		@Override
 		public String load(TransactionContext context) throws Exception {
-			return BaseSnomedComponentUpdateRequest.getLatestReleaseBranch(context).getPath();
+			return BaseSnomedComponentUpdateRequest.getLatestReleaseBranch(context);
 		}
 	});
 	

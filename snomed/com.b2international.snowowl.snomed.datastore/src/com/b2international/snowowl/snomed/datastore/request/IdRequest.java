@@ -67,7 +67,6 @@ final class IdRequest extends DelegatingRequest<BranchContext, BranchContext, Co
 	 */
 	public static final int ID_GENERATION_ATTEMPTS = 9999_9999;
 	
-	private static final long serialVersionUID = 1L;
 	private static final ImmutableMap<ComponentCategory, Class<? extends SnomedDocument>> CATEGORY_TO_DOC_MAP = ImmutableMap
 			.<ComponentCategory, Class<? extends SnomedDocument>> builder()
 			.put(ComponentCategory.CONCEPT, SnomedConceptDocument.class)

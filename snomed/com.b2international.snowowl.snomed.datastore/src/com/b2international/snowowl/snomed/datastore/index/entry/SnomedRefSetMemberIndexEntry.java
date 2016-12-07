@@ -15,18 +15,14 @@
  */
 package com.b2international.snowowl.snomed.datastore.index.entry;
 
-import static com.b2international.index.query.Expressions.exactMatch;
-import static com.b2international.index.query.Expressions.matchAny;
+import static com.b2international.index.query.Expressions.*;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.CONCEPT_NUMBER;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.RELATIONSHIP_NUMBER;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-<<<<<<< HEAD
-=======
-import java.io.Serializable;
->>>>>>> origin/ms-develop
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,10 +31,6 @@ import com.b2international.commons.StringUtils;
 import com.b2international.index.Doc;
 import com.b2international.index.query.Expression;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
-<<<<<<< HEAD
-=======
-import com.b2international.snowowl.core.api.IComponent;
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
@@ -51,7 +43,6 @@ import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
-import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
 import com.b2international.snowowl.snomed.snomedrefset.DataType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAssociationRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedAttributeValueRefSetMember;
@@ -67,15 +58,11 @@ import com.b2international.snowowl.snomed.snomedrefset.SnomedSimpleMapRefSetMemb
 import com.b2international.snowowl.snomed.snomedrefset.util.SnomedRefSetSwitch;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.base.Function;
-<<<<<<< HEAD
 import com.google.common.base.Objects.ToStringHelper;
-=======
-import com.google.common.base.Functions;
-import com.google.common.base.Optional;
->>>>>>> origin/ms-develop
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
@@ -83,7 +70,6 @@ import com.google.common.collect.ImmutableMap;
 /**
  * Lightweight representation of a SNOMED CT reference set member.
  */
-<<<<<<< HEAD
 @Doc
 @JsonDeserialize(builder = SnomedRefSetMemberIndexEntry.Builder.class)
 public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
@@ -113,60 +99,17 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		public static final String CHARACTERISTIC_TYPE_ID = SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID;
 		public static final String SOURCE_EFFECTIVE_TIME = SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME;
 		public static final String TARGET_EFFECTIVE_TIME = SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME;
-		public static final String DATA_VALUE = SnomedRf2Headers.FIELD_VALUE;
+		private static final String DATA_VALUE = SnomedRf2Headers.FIELD_VALUE;
 		public static final String ATTRIBUTE_NAME = SnomedRf2Headers.FIELD_ATTRIBUTE_NAME;
 		// extra index fields to store datatype and map target type
 		public static final String DATA_TYPE = "dataType";
 		public static final String REFSET_TYPE = "referenceSetType";
 		public static final String REFERENCED_COMPONENT_TYPE = "referencedComponentType";
-=======
-public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IComponent<String>, Serializable {
-
-	private static final String EMPTY_STRING = "";
-	
-	private static final Set<String> ADDITIONAL_FIELDS = SnomedMappings.fieldsToLoad()
-			// Simple type: 
-			// (no additional fields)
-			// Language type:
-			.memberAcceptabilityId()				// long
-			// Attribute value type:
-			.memberValueId()						// String
-			// Association type:
-			.memberTargetComponentId()				// String
-			// Simple map type:
-			.memberMapTargetComponentId()			// String
-			.memberMapTargetComponentDescription()	// String	(optional)
-			// Complex/Extended map type:
-			.memberMapGroup()						// int
-			.memberMapPriority()					// int
-			.memberMapRule()						// String	(optional)
-			.memberMapAdvice()						// String	(optional)
-			.memberCorrelationId()					// long
-			.memberMapCategoryId()					// long		(extended map type only)
-			// Description format type:
-			.memberDescriptionFormatId()			// long
-			.memberDescriptionLength()				// int
-			// Concrete domain type:
-			.memberOperatorId()						// long
-			.memberUomId()							// long		(optional)
-			.memberDataTypeLabel()					// String
-			.memberDataTypeOrdinal()				// int
-			.memberSerializedValue()				// String
-			.memberCharacteristicTypeId()			// long		(optional)
-			// Query type:
-			.memberQuery()							// String
-			// Module dependency type:
-			.memberSourceEffectiveTime()			// long
-			.memberTargetEffectiveTime()			// long
-			.build();
-
-	/**
-	 * @param name the field name to check
-	 * @return {@code true} if the specified field name is valid as an additional {@code String} or {@link Number} value, {@code false} otherwise
-	 */
-	public static boolean isAdditionalField(final String name) {
-		return ADDITIONAL_FIELDS.contains(name);
->>>>>>> origin/ms-develop
+		// CD value fields per type
+		public static final String BOOLEAN_VALUE = "booleanValue";
+		public static final String STRING_VALUE = "stringValue";
+		public static final String INTEGER_VALUE = "integerValue";
+		public static final String DECIMAL_VALUE = "decimalValue";
 	}
 	
 		public static Builder builder() {
@@ -241,7 +184,6 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 		return new SnomedRefSetSwitch<Builder>() {
 
 			@Override
-<<<<<<< HEAD
 			public Builder caseSnomedAssociationRefSetMember(final SnomedAssociationRefSetMember associationMember) {
 				return builder.targetComponent(associationMember.getTargetComponentId());
 			}
@@ -269,19 +211,11 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 			}
 
 			@Override
-=======
-			public Builder caseSnomedRefSetMember(SnomedRefSetMember object) {
-				return builder;
-			}
-
-			@Override
->>>>>>> origin/ms-develop
 			public Builder caseSnomedLanguageRefSetMember(final SnomedLanguageRefSetMember languageMember) {
 				return builder.field(Fields.ACCEPTABILITY_ID, languageMember.getAcceptabilityId());
 			}
 
 			@Override
-<<<<<<< HEAD
 			public Builder caseSnomedModuleDependencyRefSetMember(final SnomedModuleDependencyRefSetMember moduleDependencyMember) {
 				return builder
 						.field(Fields.SOURCE_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(moduleDependencyMember.getSourceEffectiveTime()))
@@ -291,61 +225,16 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 			@Override
 			public Builder caseSnomedQueryRefSetMember(final SnomedQueryRefSetMember queryMember) {
 				return builder.field(Fields.QUERY, queryMember.getQuery());
-=======
-			public Builder caseSnomedAttributeValueRefSetMember(final SnomedAttributeValueRefSetMember attributeValueMember) {
-				return builder.additionalField(SnomedMappings.memberValueId().fieldName(), attributeValueMember.getValueId());
-			}
-
-			@Override
-			public Builder caseSnomedAssociationRefSetMember(final SnomedAssociationRefSetMember associationMember) {
-				return builder.additionalField(SnomedMappings.memberTargetComponentId().fieldName(), associationMember.getTargetComponentId());
->>>>>>> origin/ms-develop
 			}
 
 			@Override
 			public Builder caseSnomedSimpleMapRefSetMember(final SnomedSimpleMapRefSetMember mapRefSetMember) {
-<<<<<<< HEAD
 				return builder
 						.field(Fields.MAP_TARGET, mapRefSetMember.getMapTargetComponentId())
 						.field(Fields.MAP_TARGET_DESCRIPTION, Strings.nullToEmpty(mapRefSetMember.getMapTargetComponentDescription()));
-=======
-				builder.mapTargetComponentType(mapRefSetMember.getMapTargetComponentType());
-				builder.additionalField(SnomedMappings.memberMapTargetComponentId().fieldName(), mapRefSetMember.getMapTargetComponentId());
-			
-				if (mapRefSetMember.getMapTargetComponentDescription() != null) {
-					builder.additionalField(SnomedMappings.memberMapTargetComponentDescription().fieldName(), mapRefSetMember.getMapTargetComponentDescription());
-				}
-			
-				return builder;
 			}
-
+			
 			@Override
-			public Builder caseSnomedComplexMapRefSetMember(final SnomedComplexMapRefSetMember complexMapRefSetMember) {
-				builder.mapTargetComponentType(complexMapRefSetMember.getMapTargetComponentType());
-				builder.additionalField(SnomedMappings.memberMapTargetComponentId().fieldName(), complexMapRefSetMember.getMapTargetComponentId());
-				
-				builder.additionalField(SnomedMappings.memberMapGroup().fieldName(), Integer.valueOf(complexMapRefSetMember.getMapGroup()));
-				builder.additionalField(SnomedMappings.memberMapPriority().fieldName(), Integer.valueOf(complexMapRefSetMember.getMapPriority()));
-				builder.additionalField(SnomedMappings.memberCorrelationId().fieldName(), Long.valueOf(complexMapRefSetMember.getCorrelationId()));
-				
-				if (complexMapRefSetMember.getMapRule() != null) {
-					builder.additionalField(SnomedMappings.memberMapRule().fieldName(), complexMapRefSetMember.getMapRule());
-				}
-				
-				if (complexMapRefSetMember.getMapAdvice() != null) {
-					builder.additionalField(SnomedMappings.memberMapAdvice().fieldName(), complexMapRefSetMember.getMapAdvice());
-				}
-				
-				if (complexMapRefSetMember.getMapCategoryId() != null) {
-					builder.additionalField(SnomedMappings.memberMapCategoryId().fieldName(), Long.valueOf(complexMapRefSetMember.getMapCategoryId()));	
-				}
-				
-				return builder;
->>>>>>> origin/ms-develop
-			}
-
-			@Override
-<<<<<<< HEAD
 			public Builder caseSnomedComplexMapRefSetMember(final SnomedComplexMapRefSetMember mapRefSetMember) {
 				return builder
 						.field(Fields.MAP_TARGET, mapRefSetMember.getMapTargetComponentId())
@@ -356,89 +245,18 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 						.field(Fields.MAP_RULE, Strings.nullToEmpty(mapRefSetMember.getMapRule()))
 						// extended refset
 						.field(Fields.MAP_CATEGORY_ID, Strings.nullToEmpty(mapRefSetMember.getMapCategoryId()));
-=======
-			public Builder caseSnomedDescriptionTypeRefSetMember(final SnomedDescriptionTypeRefSetMember descriptionTypeMember) {
-				return builder
-						.additionalField(SnomedMappings.memberDescriptionFormatId().fieldName(), Long.valueOf(descriptionTypeMember.getDescriptionFormat()))
-						.additionalField(SnomedMappings.memberDescriptionLength().fieldName(), Integer.valueOf(descriptionTypeMember.getDescriptionLength()));
 			}
-
+			
 			@Override
-			public Builder caseSnomedConcreteDataTypeRefSetMember(final SnomedConcreteDataTypeRefSetMember concreteDataTypeMember) {
-				builder.additionalField(SnomedMappings.memberDataTypeLabel().fieldName(), concreteDataTypeMember.getLabel())
-						.additionalField(SnomedMappings.memberDataTypeOrdinal().fieldName(), concreteDataTypeMember.getDataType().ordinal())
-						.additionalField(SnomedMappings.memberSerializedValue().fieldName(), concreteDataTypeMember.getSerializedValue())
-						.additionalField(SnomedMappings.memberOperatorId().fieldName(), Long.valueOf(concreteDataTypeMember.getOperatorComponentId()));
-
-				if (null != concreteDataTypeMember.getCharacteristicTypeId()) {
-					builder.additionalField(SnomedMappings.memberCharacteristicTypeId().fieldName(), Long.valueOf(concreteDataTypeMember.getCharacteristicTypeId()));
-				}
-				
-				if (!Strings.isNullOrEmpty(concreteDataTypeMember.getUomComponentId())) {
-					builder.additionalField(SnomedMappings.memberUomId().fieldName(), Long.valueOf(concreteDataTypeMember.getUomComponentId()));
-				}
-
+			public Builder caseSnomedRefSetMember(SnomedRefSetMember object) {
 				return builder;
->>>>>>> origin/ms-develop
-			}
-
-			@Override
-			public Builder caseSnomedQueryRefSetMember(final SnomedQueryRefSetMember queryMember) {
-				return builder.additionalField(SnomedMappings.memberQuery().fieldName(), queryMember.getQuery());
-			}
-
-			@Override
-			public Builder caseSnomedModuleDependencyRefSetMember(final SnomedModuleDependencyRefSetMember moduleDependencyMember) {
-				return builder
-						.additionalField(SnomedMappings.memberSourceEffectiveTime().fieldName(), EffectiveTimes.getEffectiveTime(moduleDependencyMember.getSourceEffectiveTime()))
-						.additionalField(SnomedMappings.memberTargetEffectiveTime().fieldName(), EffectiveTimes.getEffectiveTime(moduleDependencyMember.getTargetEffectiveTime()));
 			};
 
 		}.doSwitch(refSetMember);
 	}
 	
-<<<<<<< HEAD
 	private static Object convertValue(String rf2Field, Object value) {
 		switch (rf2Field) {
-=======
-	/*Converts RF2 field names to their index field equivalents*/
-	private static String getIndexFieldName(String rf2Field) {
-		switch (rf2Field) {
-		case SnomedRf2Headers.FIELD_ACCEPTABILITY_ID: return SnomedMappings.memberAcceptabilityId().fieldName();
-		case SnomedRf2Headers.FIELD_ATTRIBUTE_NAME: return SnomedMappings.memberDataTypeLabel().fieldName();
-		case SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID: return SnomedMappings.memberCharacteristicTypeId().fieldName();
-		case SnomedRf2Headers.FIELD_CORRELATION_ID: return SnomedMappings.memberCorrelationId().fieldName();
-		case SnomedRf2Headers.FIELD_DESCRIPTION_FORMAT: return SnomedMappings.memberDescriptionFormatId().fieldName();
-		case SnomedRf2Headers.FIELD_DESCRIPTION_LENGTH: return SnomedMappings.memberDescriptionLength().fieldName();
-		case SnomedRf2Headers.FIELD_MAP_ADVICE: return SnomedMappings.memberMapAdvice().fieldName();
-		case SnomedRf2Headers.FIELD_MAP_CATEGORY_ID: return SnomedMappings.memberMapCategoryId().fieldName();
-		case SnomedRf2Headers.FIELD_MAP_GROUP: return SnomedMappings.memberMapGroup().fieldName();
-		case SnomedRf2Headers.FIELD_MAP_PRIORITY: return SnomedMappings.memberMapPriority().fieldName();
-		case SnomedRf2Headers.FIELD_MAP_RULE: return SnomedMappings.memberMapRule().fieldName();
-		case SnomedRf2Headers.FIELD_MAP_TARGET: return SnomedMappings.memberMapTargetComponentId().fieldName();
-		case SnomedRf2Headers.FIELD_MAP_TARGET_DESCRIPTION: return SnomedMappings.memberMapTargetComponentDescription().fieldName();
-		case SnomedRf2Headers.FIELD_OPERATOR_ID: return SnomedMappings.memberOperatorId().fieldName();
-		case SnomedRf2Headers.FIELD_QUERY: return SnomedMappings.memberQuery().fieldName();
-		case SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME: return SnomedMappings.memberSourceEffectiveTime().fieldName();
-		case SnomedRf2Headers.FIELD_TARGET_COMPONENT: return SnomedMappings.memberTargetComponentId().fieldName();
-		case SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME: return SnomedMappings.memberTargetEffectiveTime().fieldName();
-		case SnomedRf2Headers.FIELD_UNIT_ID: return SnomedMappings.memberUomId().fieldName();
-		case SnomedRf2Headers.FIELD_VALUE: return SnomedMappings.memberSerializedValue().fieldName();
-		case SnomedRf2Headers.FIELD_VALUE_ID: return SnomedMappings.memberValueId().fieldName();
-		default: return rf2Field;
-		}
-	}
-	
-	private static Object convertValue(String rf2Field, Object value) {
-		switch (rf2Field) {
-		case SnomedRf2Headers.FIELD_ACCEPTABILITY_ID:
-		case SnomedRf2Headers.FIELD_CORRELATION_ID:
-		case SnomedRf2Headers.FIELD_MAP_CATEGORY_ID:
-		case SnomedRf2Headers.FIELD_DESCRIPTION_FORMAT:
-		case SnomedRf2Headers.FIELD_OPERATOR_ID:
-		case SnomedRf2Headers.FIELD_UNIT_ID:
-		case SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID:
->>>>>>> origin/ms-develop
 		case SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME:
 		case SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME:
 			if (value instanceof String && !StringUtils.isEmpty((String) value)) {
@@ -511,6 +329,45 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 			return matchAny(Fields.VALUE_ID, valueIds);
 		}
 		
+		public static Expression values(DataType type, Collection<? extends Object> values) {
+			switch (type) {
+			case STRING: 
+				return matchAny(Fields.STRING_VALUE, FluentIterable.from(values).filter(String.class).toSet());
+			case INTEGER:
+				return matchAnyInt(Fields.INTEGER_VALUE, FluentIterable.from(values).filter(Integer.class).toSet());
+			case DECIMAL:
+				return matchAnyDecimal(Fields.DECIMAL_VALUE, FluentIterable.from(values).filter(BigDecimal.class).toSet());
+			default:
+				throw new UnsupportedOperationException("Unsupported data type when filtering by values, " + type);
+			}
+		}
+		
+		public static Expression valueRange(DataType type, final Object lower, final Object upper, boolean includeLower, boolean includeUpper) {
+			switch (type) {
+			case STRING: 
+				return matchRange(Fields.STRING_VALUE, (String) lower, (String) upper, includeLower, includeUpper);
+			case INTEGER:
+				return matchRange(Fields.INTEGER_VALUE, (Integer) lower, (Integer) upper, includeLower, includeUpper);
+			case DECIMAL:
+				return matchRange(Fields.DECIMAL_VALUE, (BigDecimal) lower, (BigDecimal) upper, includeLower, includeUpper);
+			default:
+				throw new UnsupportedOperationException("Unsupported data type when filtering by values, " + type);
+			}
+		}
+		
+		public static Expression dataTypes(Collection<DataType> dataTypes) {
+			return matchAny(Fields.DATA_TYPE, FluentIterable.from(dataTypes).transform(new Function<DataType, String>() {
+				@Override
+				public String apply(DataType input) {
+					return input.name();
+				}
+			}).toSet());
+		}
+		
+		public static Expression attributeNames(Collection<String> attributeNames) {
+			return matchAny(Fields.ATTRIBUTE_NAME, attributeNames);
+		}
+		
 		public static Expression sourceEffectiveTime(long effectiveTime) {
 			return exactMatch(Fields.SOURCE_EFFECTIVE_TIME, effectiveTime);
 		}
@@ -547,7 +404,7 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 		// CONCRETE DOMAIN reference set members
 		private DataType dataType;
 		private String attributeName;
-		private String value;
+		private Object value;
 		private String operatorId;
 		private String characteristicTypeId;
 		private String unitId;
@@ -577,21 +434,21 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 			// Disallow instantiation outside static method
 		}
 
-		Builder fields(Map<String, Object> fields) {
+		public Builder fields(Map<String, Object> fields) {
 			for (Entry<String, Object> entry : fields.entrySet()) {
 				field(entry.getKey(), entry.getValue());
 			}
 			return this;
 		}
 		
-		Builder field(String fieldName, Object value) {
+		public Builder field(String fieldName, Object value) {
 			switch (fieldName) {
 			case Fields.ACCEPTABILITY_ID: this.acceptabilityId = (String) value; break;
 			case Fields.ATTRIBUTE_NAME: this.attributeName = (String) value; break;
 			case Fields.CHARACTERISTIC_TYPE_ID: this.characteristicTypeId = (String) value; break;
 			case Fields.CORRELATION_ID: this.correlationId = (String) value; break;
 			case Fields.DATA_TYPE: this.dataType = (DataType) value; break;
-			case Fields.DATA_VALUE: this.value = (String) value; break;
+			case Fields.DATA_VALUE: this.value = value; break;
 			case Fields.DESCRIPTION_FORMAT: this.descriptionFormat = (String) value; break;
 			case Fields.DESCRIPTION_LENGTH: this.descriptionLength = (Integer) value; break;
 			case Fields.MAP_ADVICE: this.mapAdvice = (String) value; break;
@@ -738,7 +595,30 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 			return getSelf();
 		}
 		
-		Builder value(final String value) {
+		/**
+		 * @deprecated - this is no longer a valid refset member index field, but required to make pre-5.4 dataset work with 5.4 without migration
+		 */
+		Builder value(final Object value) {
+			this.value = value;
+			return getSelf();
+		}
+		
+		Builder decimalValue(final BigDecimal value) {
+			this.value = value;
+			return getSelf();
+		}
+		
+		Builder booleanValue(final Boolean value) {
+			this.value = value;
+			return getSelf();
+		}
+		
+		Builder integerValue(final Integer value) {
+			this.value = value;
+			return getSelf();
+		}
+		
+		Builder stringValue(final String value) {
 			this.value = value;
 			return getSelf();
 		}
@@ -766,7 +646,23 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 			// concrete domain members
 			doc.dataType = dataType;
 			doc.attributeName = attributeName;
-			doc.value = value;
+			if (dataType != null) {
+				switch (dataType) {
+				case BOOLEAN:
+					doc.booleanValue = (Boolean) value;
+					break;
+				case DECIMAL:
+					doc.decimalValue = (BigDecimal) value;
+					break;
+				case INTEGER:
+					doc.integerValue = (Integer) value;
+					break;
+				case STRING:
+					doc.stringValue = (String) value;
+					break;
+				default: throw new UnsupportedOperationException("Unsupported concrete domain data type: " + dataType);
+				}
+			}
 			doc.characteristicTypeId = characteristicTypeId;
 			doc.operatorId = operatorId;
 			doc.unitId = unitId;
@@ -815,7 +711,13 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 	// CONCRETE DOMAIN reference set members
 	private DataType dataType;
 	private String attributeName;
-	private String value;
+	
+	// only one of these value fields should be set when this represents a concrete domain member
+	private String stringValue;
+	private Boolean booleanValue;
+	private Integer integerValue;
+	private BigDecimal decimalValue;
+	
 	private String operatorId;
 	private String characteristicTypeId;
 	private String unitId;
@@ -866,7 +768,6 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 		this.referenceSetId = checkNotNull(referenceSetId, "Reference set identifier may not be null.");
 		this.referenceSetType = checkNotNull(referenceSetType, "Reference set type may not be null.");
 		this.referencedComponentType = referencedComponentType;
-<<<<<<< HEAD
 	}
 
 	@Override
@@ -884,62 +785,6 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 	 */
 	public String getReferencedComponentId() {
 		return referencedComponentId;
-=======
-		this.mapTargetComponentType = mapTargetComponentType;
-	}
-
-	/**
-	 * @return the referenced component identifier
-	 */
-	public String getReferencedComponentId() {
-		return referencedComponentId;
-	}
-
-	/**
-	 * @param fieldName the name of the additional field
-	 * @return the {@code String} value stored for the field
-	 * @throws IllegalStateException if no value was set for the field
-	 * @throws ClassCastException if the value is not of type {@code String}
-	 */
-	public String getStringField(final String fieldName) {
-		return getRequiredField(fieldName, String.class);
-	}
-
-	/**
-	 * @param fieldName the name of the additional field
-	 * @return the {@code Integer} value stored for the field
-	 * @throws IllegalStateException if no value was set for the field
-	 * @throws ClassCastException if the value is not of type {@code Integer}
-	 */
-	private Integer getIntegerField(final String fieldName) {
-		return getRequiredField(fieldName, Integer.class);
-	}
-	
-	/**
-	 * @param fieldName the name of the additional field
-	 * @return the {@code Long} value stored for the field
-	 * @throws IllegalStateException if no value was set for the field
-	 * @throws ClassCastException if the value is not of type {@code Long}
-	 */	
-	private Long getLongField(final String fieldName) {
-		return getRequiredField(fieldName, Long.class);
-	}
-
-	public Optional<Object> getOptionalField(final String fieldName) {
-		return Optional.fromNullable(additionalFields.get(fieldName));
-	}
-
-	private <T> Optional<T> getOptionalField(final String fieldName, Function<Object, T> transformFunction) {
-		return getOptionalField(fieldName).transform(transformFunction);
-	}
-	
-	private <T> Optional<T> getOptionalField(final String fieldName, final Class<T> type) {
-		return getOptionalField(fieldName, new UncheckedCastFunction<Object, T>(type));
-	}
-
-	private <T> T getRequiredField(final String fieldName, final Class<T> type) {
-		return getOptionalField(fieldName, type).get();
->>>>>>> origin/ms-develop
 	}
 
 	/**
@@ -959,19 +804,48 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 	@JsonIgnore
 	@SuppressWarnings("unchecked")
 	public <T> T getValueAs() {
-		final DataType dataType = getDataType();
-		return (T) (dataType == null ? null : SnomedRefSetUtil.deserializeValue(dataType, getValue()));
+		return (T) getValue();
 	}
 	
-	public String getValue() {
-		return value;
+	@JsonIgnore
+	public Object getValue() {
+		if (dataType == null) {
+			return null;
+		} else {
+			switch (dataType) {
+			case BOOLEAN: return booleanValue;
+			case DECIMAL: return decimalValue;
+			case INTEGER: return integerValue;
+			case STRING: return stringValue;
+			default: throw new UnsupportedOperationException("Unsupported concrete domain data type: " + dataType);
+			}
+		}
+	}
+	
+	@JsonProperty
+	BigDecimal getDecimalValue() {
+		return decimalValue;
+	}
+	
+	@JsonProperty
+	Boolean getBooleanValue() {
+		return booleanValue;
+	}
+	
+	@JsonProperty
+	Integer getIntegerValue() {
+		return integerValue;
+	}
+	
+	@JsonProperty
+	String getStringValue() {
+		return stringValue;
 	}
 
 	public DataType getDataType() {
 		return dataType;
 	}
 
-<<<<<<< HEAD
 	public String getUnitId() {
 		return unitId;
 	}
@@ -1018,62 +892,9 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 
 	public String getMapAdvice() {
 		return mapAdvice;
-=======
-	public String getAcceptabilityId() {
-		return getLongField(SnomedMappings.memberAcceptabilityId().fieldName()).toString();
 	}
-
-	public Acceptability getAcceptability() {
-		return Acceptability.getByConceptId(getAcceptabilityId());
-	}
-
-	public String getValueId() {
-		return getStringField(SnomedMappings.memberValueId().fieldName());
-	}
-
-	public RelationshipRefinability getRefinability() {
-		return RelationshipRefinability.getByConceptId(getValueId());
-	}
-
-	public InactivationIndicator getInactivationIndicator() {
-		return InactivationIndicator.getByConceptId(getValueId());
-	}
-
-	public String getTargetComponentId() {
-		return getStringField(SnomedMappings.memberTargetComponentId().fieldName());
-	}
-
-	public String getMapTargetComponentId() {
-		return getStringField(SnomedMappings.memberMapTargetComponentId().fieldName());
-	}
-
-	public String getMapTargetDescription() {
-		return getOptionalField(SnomedMappings.memberMapTargetComponentDescription().fieldName(), String.class).or(EMPTY_STRING);
-	}
-
-	public Integer getMapGroup() {
-		return getIntegerField(SnomedMappings.memberMapGroup().fieldName());
-	}
-
-	public Integer getMapPriority() {
-		return getIntegerField(SnomedMappings.memberMapPriority().fieldName());
-	}
-
-	public String getMapRule() {
-		return getOptionalField(SnomedMappings.memberMapRule().fieldName(), String.class).or(EMPTY_STRING);
-	}
-
-	public String getMapAdvice() {
-		return getOptionalField(SnomedMappings.memberMapAdvice().fieldName(), String.class).or(EMPTY_STRING);
->>>>>>> origin/ms-develop
-	}
-
-	public String getCorrelationId() {
-		return getLongField(SnomedMappings.memberCorrelationId().fieldName()).toString();
-	}
-
+	
 	public String getMapCategoryId() {
-<<<<<<< HEAD
 		return mapCategoryId;
 	}
 	
@@ -1202,7 +1023,7 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 				.add("valueId", valueId)
 				.add("dataType", dataType)
 				.add("attributeName", attributeName)
-				.add("value", value)
+				.add("value", getValue())
 				.add("operatorId", operatorId)
 				.add("characteristicTypeId", characteristicTypeId)
 				.add("unitId", unitId)
@@ -1220,62 +1041,5 @@ public class SnomedRefSetMemberIndexEntry extends SnomedIndexEntry implements IC
 				.add("mapGroup", mapGroup)
 				.add("mapPriority", mapPriority)
 				.add("query", query);
-=======
-		return getOptionalField(SnomedMappings.memberMapCategoryId().fieldName(), Long.class).transform(Functions.toStringFunction()).or(EMPTY_STRING);
-	}
-
-	public String getDescriptionFormatId() {
-		return getLongField(SnomedMappings.memberDescriptionFormatId().fieldName()).toString();
-	}
-
-	public Integer getDescriptionLength() {
-		return getIntegerField(SnomedMappings.memberDescriptionLength().fieldName());
-	}
-
-	public String getOperatorComponentId() {
-		return getLongField(SnomedMappings.memberOperatorId().fieldName()).toString();
-	}
-
-	public String getUomComponentId() {
-		return getOptionalField(SnomedMappings.memberUomId().fieldName(), Long.class).transform(Functions.toStringFunction()).or(EMPTY_STRING);
-	}
-
-	public String getAttributeLabel() {
-		return getStringField(SnomedMappings.memberDataTypeLabel().fieldName());
-	}
-
-	public DataType getRefSetPackageDataType() {
-		return DataType.get(getIntegerField(SnomedMappings.memberDataTypeOrdinal().fieldName()));
-	}
-
-	@SuppressWarnings("unchecked")
-	public <T> T getValue() {
-		return (T) SnomedRefSetUtil.deserializeValue(getRefSetPackageDataType(), getStringField(SnomedMappings.memberSerializedValue().fieldName())); 
-	}
-	
-	public String getSerializedValue() {
-		return getStringField(SnomedMappings.memberSerializedValue().fieldName());
-	}
-
-	public String getCharacteristicTypeId() {
-		return getOptionalField(SnomedMappings.memberCharacteristicTypeId().fieldName(), Long.class).transform(Functions.toStringFunction()).or(EMPTY_STRING);
-	}	
-
-	public String getQuery() {
-		return getStringField(SnomedMappings.memberQuery().fieldName());
-	}
-	
-	public String getSourceEffectiveTime() {
-		return EffectiveTimes.format(getLongField(SnomedMappings.memberSourceEffectiveTime().fieldName()), DateFormats.SHORT);
-	}
-
-	public String getTargetEffectiveTime() {
-		return EffectiveTimes.format(getLongField(SnomedMappings.memberTargetEffectiveTime().fieldName()), DateFormats.SHORT);
-	}
-	
-	@Deprecated
-	public String getSpecialFieldLabel() {
-		throw new UnsupportedOperationException("Special field label needs to be computed separately.");
->>>>>>> origin/ms-develop
 	}
 }

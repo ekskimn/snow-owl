@@ -56,7 +56,7 @@ final class SnomedDescriptionAcceptabilityUpdateRequest extends BaseRequest<Tran
 	private final Function<TransactionContext, String> referenceBranchFunction = CacheBuilder.newBuilder().build(new CacheLoader<TransactionContext, String>() {
 		@Override
 		public String load(TransactionContext context) throws Exception {
-			return BaseSnomedComponentUpdateRequest.getLatestReleaseBranch(context).getPath();
+			return BaseSnomedComponentUpdateRequest.getLatestReleaseBranch(context);
 		}
 	});
 	

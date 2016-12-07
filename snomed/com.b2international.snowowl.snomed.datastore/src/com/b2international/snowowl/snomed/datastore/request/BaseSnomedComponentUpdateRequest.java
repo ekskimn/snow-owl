@@ -19,9 +19,9 @@ import org.eclipse.xtext.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequest;
-import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CodeSystemVersions;
 import com.b2international.snowowl.datastore.ICodeSystemVersion;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -29,6 +29,7 @@ import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 
 /** 
@@ -77,14 +78,14 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 		return Void.class;
 	}
 	
-	public static IBranchPath getLatestReleaseBranch(TransactionContext context) {
+	public static String getLatestReleaseBranch(TransactionContext context) {
 		String codeSystemShortName = BranchMetadataResolver.getEffectiveBranchMetadataValue(context.branch(), "codeSystemShortName");
 		codeSystemShortName = Strings.isEmpty(codeSystemShortName) ? SnomedTerminologyComponentConstants.SNOMED_INT_SHORT_NAME : codeSystemShortName;
 
-		final CodeSystemVersions versions = new CodeSystemRequests(context.id())
-				.prepareSearchCodeSystemVersion()
-				.setCodeSystemShortName(codeSystemShortName)
-				.build(IBranchPath.MAIN_BRANCH)
+		final CodeSystemVersions versions = CodeSystemRequests.prepareSearchCodeSystemVersion()
+				.all()
+				.filterByCodeSystemShortName(codeSystemShortName)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, Branch.MAIN_PATH)
 				.execute(context.service(IEventBus.class))
 				.getSync();
 
@@ -96,10 +97,10 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 		}
 
 		if (latestReleaseVersion != null) {
-			return BranchPathUtils.createPath(latestReleaseVersion.getPath());
+			return latestReleaseVersion.getPath();
 		} else {
 			LOG.warn("No releases found for codesystem {}.", codeSystemShortName);
-			return BranchPathUtils.createMainPath();
+			return Branch.MAIN_PATH;
 		}
 	}
 

@@ -23,7 +23,10 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.ComponentStatusConflictException;
+import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -33,6 +36,7 @@ import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationInd
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.SubclassDefinitionStatus;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
@@ -87,10 +91,11 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 			} else {
 				if (concept.isReleased()) {
 					long start = new Date().getTime();
+					final IEventBus bus = context.service(IEventBus.class);
 					final ISnomedConcept releasedConcept = SnomedRequests.prepareGetConcept()
 							.setComponentId(getComponentId())
-							.build(getLatestReleaseBranch(context))
-							.execute(context.service(IEventBus.class))
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, getLatestReleaseBranch(context))
+							.execute(bus)
 							.getSync();
 					
 					if (releasedConcept == null) {

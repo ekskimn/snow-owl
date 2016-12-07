@@ -49,7 +49,7 @@ public class ReservingIdStrategy implements IdGenerationStrategy {
 		return componentId;
 	}
 
-	private String getNamespaceIdOrDefault(Branch branch) {
+	public String getNamespaceIdOrDefault(Branch branch) {
 		// XXX: an empty namespace string for INT component IDs must be supported here
 		if (null != namespaceId) {
 			return namespaceId;
@@ -63,6 +63,11 @@ public class ReservingIdStrategy implements IdGenerationStrategy {
 		}
 	}
 
+	// TODO: Check that this property should be exposed to IdRequest, not the above one
+	public String getNamespaceId() {
+		return namespaceId;
+	}
+	
 	@Override
 	public String toString() {
 		return Objects.toStringHelper(this)

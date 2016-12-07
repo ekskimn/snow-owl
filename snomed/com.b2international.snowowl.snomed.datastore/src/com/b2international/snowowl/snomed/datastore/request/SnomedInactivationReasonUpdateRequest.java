@@ -90,15 +90,7 @@ final class SnomedInactivationReasonUpdateRequest<C extends Inactivatable & Comp
 	private final Function<TransactionContext, String> referenceBranchFunction = CacheBuilder.newBuilder().build(new CacheLoader<TransactionContext, String>() {
 		@Override
 		public String load(final TransactionContext context) throws Exception {
-<<<<<<< HEAD:snomed/com.b2international.snowowl.snomed.datastore/src/com/b2international/snowowl/snomed/datastore/request/SnomedInactivationReasonUpdateRequest.java
-			final TerminologyRegistryService registryService = context.service(TerminologyRegistryService.class);
-			final List<ICodeSystemVersion> allVersions = registryService.getAllVersion().get(context.id());
-			final ICodeSystemVersion systemVersion = allVersions.get(1);
-			final IBranchPath branchPath = ICodeSystemVersion.TO_BRANCH_PATH_FUNC.apply(systemVersion);
-			return branchPath.getPath();
-=======
-			return BaseSnomedComponentUpdateRequest.getLatestReleaseBranch(context).getPath();
->>>>>>> origin/ms-develop:snomed/com.b2international.snowowl.snomed.datastore/src/com/b2international/snowowl/snomed/datastore/request/SnomedInactivationReasonUpdateRequest.java
+			return BaseSnomedComponentUpdateRequest.getLatestReleaseBranch(context);
 		}
 	});
 
