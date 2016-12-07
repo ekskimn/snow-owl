@@ -3,6 +3,7 @@ package com.b2international.snowowl.snomed.api.impl.validation.service;
 import org.ihtsdo.drools.service.ConceptService;
 
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationConceptService implements ConceptService {
@@ -19,7 +20,7 @@ public class ValidationConceptService implements ConceptService {
 	public boolean isActive(String conceptId) {
 		return SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
-				.build(branchPath)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync()
 				.isActive();

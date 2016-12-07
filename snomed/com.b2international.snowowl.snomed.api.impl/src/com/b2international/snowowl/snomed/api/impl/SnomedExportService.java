@@ -46,17 +46,12 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.ISnomedExportService;
 import com.b2international.snowowl.snomed.api.exception.SnomedExportException;
-import com.b2international.snowowl.snomed.api.impl.domain.SnomedExportConfiguration;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.core.domain.ISnomedExportConfiguration;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-<<<<<<< HEAD
-=======
-import com.b2international.snowowl.snomed.datastore.SnomedTerminologyBrowser;
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.exporter.model.SnomedRf2ExportModel;
 import com.google.common.base.Function;
@@ -80,7 +75,12 @@ public class SnomedExportService implements ISnomedExportService {
 	@Override
 	public String resolveNamespaceId(String branchPath) {
 		String namespace = "INT";
-		Branch branch = SnomedRequests.branching().prepareGet(branchPath).executeSync(bus);
+		Branch branch = SnomedRequests.branching()
+				.prepareGet(branchPath)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.execute(bus)
+				.getSync();
+		
 		String branchMetaShortname = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "shortname");
 		String branchMetaDefaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "defaultNamespace");
 		if (!Strings.isEmpty(branchMetaShortname) && !Strings.isEmpty(branchMetaDefaultNamespace)) {

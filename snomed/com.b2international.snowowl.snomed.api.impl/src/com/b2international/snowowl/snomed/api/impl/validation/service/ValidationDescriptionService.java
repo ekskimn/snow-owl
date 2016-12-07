@@ -13,30 +13,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-<<<<<<< HEAD
 import org.ihtsdo.drools.domain.Concept;
 import org.ihtsdo.drools.domain.Constants;
 import org.ihtsdo.drools.domain.Description;
 import org.ihtsdo.drools.domain.Relationship;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-=======
-import org.ihtsdo.drools.domain.Description;
->>>>>>> origin/ms-develop
 
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
-<<<<<<< HEAD
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-=======
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationDescriptionService implements org.ihtsdo.drools.service.DescriptionService {
@@ -49,7 +43,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		this.descriptionService = descriptionService;
 		this.branchPath = branchPath;
 		this.bus = bus;
-<<<<<<< HEAD
 	}
 
 	final static Logger logger = LoggerFactory.getLogger(ValidationDescriptionService.class);
@@ -125,8 +118,6 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		} finally {
 			refsetToLanguageSpecificWordsMap.put(refsetId, words);
 		}
-=======
->>>>>>> origin/ms-develop
 	}
 
 	// On initial load, retrieve the top-level hierarchy roots for hierarchy
@@ -151,9 +142,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findActiveDescriptionByExactTerm(String exactTerm) {
-<<<<<<< HEAD
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
-				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
+		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
+				.filterByActive(true)
+				.filterByTerm(exactTerm)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync();
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -166,15 +160,12 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 	@Override
 	public Set<Description> findInactiveDescriptionByExactTerm(String exactTerm) {
-		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(false)
-				.filterByTerm(exactTerm).build(branchPath).executeSync(bus);
-=======
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
-				.filterByActive(true)
+				.filterByActive(false)
 				.filterByTerm(exactTerm)
-				.build(branchPath)
-				.executeSync(bus);
->>>>>>> origin/ms-develop
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync();
 
 		Set<Description> matches = new HashSet<>();
 		for (ISnomedDescription iSnomedDescription : descriptions) {
@@ -185,14 +176,17 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		return matches;
 	}
 
-<<<<<<< HEAD
 	private void cacheHierarchyRootConcepts() {
 
 		hierarchyRootIds = new HashSet<>();
 
 		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
-				.setComponentIds(Arrays.asList("138875005")).setExpand("descendants(form:\"inferred\",direct:true)").build(branchPath)
-				.executeSync(bus);
+				.setComponentIds(Arrays.asList(Concepts.ROOT_CONCEPT))
+				.setExpand("descendants(form:\"inferred\",direct:true)")
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync();
+		
 		for (ISnomedConcept rootConcept : rootConcepts) {
 			for (ISnomedConcept childConcept : rootConcept.getDescendants()) {
 				hierarchyRootIds.add(childConcept.getId());
@@ -247,8 +241,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		// retrieve partially-matching descriptions
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription().filterByActive(true)
-				.filterByTerm(description.getTerm()).filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
-				.build(branchPath).executeSync(bus);
+				.filterByTerm(description.getTerm())
+				.filterByLanguageCodes(Arrays.asList(description.getLanguageCode()))
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync();
 
 		// filter by exact match and save concept ids
 		Set<String> matchingConceptIds = new HashSet<>();
@@ -294,7 +291,9 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			try {
 				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
 						.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
-						.build(branchPath).executeSync(bus);
+						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+						.execute(bus)
+						.getSync();
 
 				// back out if cannot determine hierarchy
 				if (hierarchyConcept == null || getHierarchyIdForConcept(hierarchyConcept) == null) {
@@ -311,7 +310,10 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				for (String conceptId : matchingConceptIds) {
 					ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
 							.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
-							.build(branchPath).executeSync(bus);
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+							.execute(bus)
+							.getSync();
+					
 					conceptsWithAncestors.add(iSnomedConcept);
 				}
 
@@ -418,7 +420,4 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 		return result;
 	}
-
-=======
->>>>>>> origin/ms-develop
 }

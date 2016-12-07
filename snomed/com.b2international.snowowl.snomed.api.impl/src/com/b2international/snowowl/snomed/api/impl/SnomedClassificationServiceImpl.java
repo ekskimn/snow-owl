@@ -126,7 +126,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedClassificationServiceImpl.class);
 
-	private static final int MAX_INDEXED_RESULTS = 1000;
 	private static final int RELATIONSHIP_BLOCK_SIZE = 100;
 
 	private static final long BRANCH_READ_TIMEOUT = 5000L;
@@ -204,7 +203,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					final SnomedRelationships removeOrDeactivateRelationships = SnomedRequests.prepareSearchRelationship()
 							.setComponentIds(removeOrDeactivateIds)
 							.setLimit(removeOrDeactivateIds.size())
-							.build(branchPath)
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 							.execute(bus)
 							.getSync();
 
@@ -212,7 +211,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 							.all()
 							.filterByActive(true)
 							.filterByReferencedComponent(removeOrDeactivateIds)
-							.build(branchPath)
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 							.execute(bus)
 							.getSync();
 					
@@ -249,7 +248,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			SnomedRequests.prepareSearchConcept()
 					.setComponentIds(conceptIds)
 					.setLimit(conceptIds.size())
-					.build(branchPath)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 					.execute(bus)
 					.then(new Function<SnomedConcepts, Void>() {
 						@Override
@@ -304,8 +303,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					.setPreparationTime(persistStopwatch.elapsed(TimeUnit.MILLISECONDS))
 					.setParentLockContextDescription(DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW)
 					.setBody(builder)
-					.setBranch(branchPath)
-					.build()
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 					.execute(bus);
 		}
 
@@ -550,6 +548,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private Branch getBranchIfExists(final String branchPath) {
 		final Branch branch = SnomedRequests.branching()
 				.prepareGet(branchPath)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)
 				.getSync(BRANCH_READ_TIMEOUT, TimeUnit.MILLISECONDS);
 		
@@ -658,8 +657,9 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				.setComponentIds(relatedIds)
 				.setLocales(locales)
 				.setExpand("fsn()")
-				.build(branchPath)
-				.executeSync(bus);
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync();
 		
 		final Map<String, ISnomedConcept> relatedConceptsById = Maps.uniqueIndex(relatedConcepts, new Function<ISnomedConcept, String>() {
 			@Override public String apply(ISnomedConcept input) { return input.getId(); }
@@ -687,15 +687,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					// XXX: Default and/or not populated values are shown as commented lines below
 					inferred.setType(new SnomedBrowserRelationshipType(relationshipChange.getTypeId()));
 					inferred.setSourceId(relationshipChange.getSourceId());
-
-					final ISnomedConcept targetConcept = SnomedRequests.prepareGetConcept()
-							.setComponentId(relationshipChange.getDestinationId())
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-							.execute(bus)
-							.getSync();
-					final SnomedBrowserRelationshipTarget relationshipTarget = browserService.getSnomedBrowserRelationshipTarget(targetConcept, branchPath, locales);
-					inferred.setTarget(relationshipTarget);
-
 					inferred.setGroupId(relationshipChange.getGroup());
 					inferred.setModifier(relationshipChange.getModifier());
 					inferred.setActive(true);

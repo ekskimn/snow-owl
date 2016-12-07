@@ -25,6 +25,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpre
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
@@ -55,24 +56,10 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				if (groupNum == 0) {
 					attributes = expression.getAttributes();
 				} else {
-<<<<<<< HEAD
 					if (!groups.containsKey(groupNum)) {
 						final SnomedExpressionGroup group = new SnomedExpressionGroup();
 						groups.put(groupNum, group);
 						expression.addGroup(group);
-=======
-					final int groupNum = relationship.getGroup();
-					List<ISnomedExpressionAttribute> attributes;
-					if (groupNum == 0) {
-						attributes = expression.getAttributes();
-					} else {
-						if (!groups.containsKey(groupNum)) {
-							final SnomedExpressionGroup group = new SnomedExpressionGroup();
-							groups.put(groupNum, group);
-							expression.addGroup(group);
-						}
-						attributes = groups.get(groupNum).getAttributes();
->>>>>>> origin/ms-develop
 					}
 					attributes = groups.get(groupNum).getAttributes();
 				}
@@ -99,7 +86,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				.filterBySource(conceptId)
 				.filterByCharacteristicType(Concepts.INFERRED_RELATIONSHIP)
 				.setExpand("destination(),type()")
-				.build(branchPath)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync();
 	}

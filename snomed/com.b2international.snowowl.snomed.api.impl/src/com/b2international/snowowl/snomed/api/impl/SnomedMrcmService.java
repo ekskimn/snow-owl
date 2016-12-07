@@ -22,8 +22,8 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
-<<<<<<< HEAD
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument;
 import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.PredicateType;
@@ -31,13 +31,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Longs;
-=======
-import com.b2international.snowowl.snomed.datastore.SnomedPredicateBrowser;
-import com.b2international.snowowl.snomed.datastore.SnomedTaxonomyService;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry;
-import com.b2international.snowowl.snomed.datastore.snor.PredicateIndexEntry.PredicateType;
->>>>>>> origin/ms-develop
 
 public class SnomedMrcmService {
 	
@@ -54,7 +47,7 @@ public class SnomedMrcmService {
 		final Set<String> refSetIds = Collections.emptySet();
 		final Set<String> parentIds = SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
-				.build(branch)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.then(ISnomedConcept.GET_ANCESTORS) // XXX: includes inferred and stated concepts
 				.getSync();
@@ -114,8 +107,9 @@ public class SnomedMrcmService {
 			.filterByActive(true)
 			.setExpand(expand)
 			.setLocales(locales)
-			.build(branchPath)
-			.executeSync(bus);
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+			.execute(bus)
+			.getSync();
 	}
 
 	public SnomedConcepts getAttributeValues(String branchPath, String attributeId, String termPrefix, 
@@ -123,7 +117,7 @@ public class SnomedMrcmService {
 		
 		final Collection<String> ancestorIds = SnomedRequests.prepareGetConcept()
 				.setComponentId(attributeId)
-				.build(branchPath)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.then(new Function<ISnomedConcept, Collection<String>>() {
 					@Override
@@ -142,7 +136,7 @@ public class SnomedMrcmService {
 		SnomedConstraints constraints = SnomedRequests.prepareSearchConstraint()
 				.all()
 				.filterByType(PredicateType.RELATIONSHIP)
-				.build(branchPath)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync();
 		
@@ -176,7 +170,8 @@ public class SnomedMrcmService {
 				.filterByActive(true)
 				.setExpand(expand)
 				.setLocales(locales)
-				.build(branchPath)
-				.executeSync(bus);
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync();
 	}
 }

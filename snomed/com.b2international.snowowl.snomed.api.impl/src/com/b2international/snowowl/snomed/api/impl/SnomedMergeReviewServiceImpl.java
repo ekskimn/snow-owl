@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
+import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.MergeReview;
@@ -55,10 +56,8 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
-<<<<<<< HEAD
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
-=======
->>>>>>> origin/ms-develop
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
@@ -192,8 +191,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		private ISnomedConcept getConcept(final String path, final String conceptId) {
 			return SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
-				.build(path)
-				.executeSync(bus);
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
+				.execute(bus)
+				.getSync();
 		}
 		
 		private boolean hasConceptChanges(final ISnomedConcept sourceConcept, final ISnomedConcept targetConcept) {
@@ -204,8 +204,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			return SnomedRequests.prepareSearchDescription()
 				.all()
 				.filterByConceptId(conceptId)
-				.build(path)
-				.executeSync(bus);
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
+				.execute(bus)
+				.getSync();
 		}
 		
 		private boolean hasDescriptionChanges(final List<ISnomedDescription> sourceDescriptions, final List<ISnomedDescription> targetDescriptions) {
@@ -244,8 +245,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				.all()
 				.filterBySource(conceptId)
 				.filterByEffectiveTime(EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL)
-				.build(path)
-				.executeSync(bus);
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
+				.execute(bus)
+				.getSync();
 		}
 		
 		private boolean hasNonInferredRelationshipChanges(final List<ISnomedRelationship> sourceRelationships, final List<ISnomedRelationship> targetRelationships) {
@@ -305,13 +307,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		    	Object sourceValue = sourceMap.get(key);
 		    	Object targetValue = targetMap.get(key);
 		        
-<<<<<<< HEAD
-		    	// Skip multi-valued properties (but arrays are not checked)
-		    	if (sourceValue instanceof Iterable || sourceValue instanceof long[]) {
-=======
 		    	// Skip multi-valued properties
-		    	if (sourceValue instanceof Iterable) {
->>>>>>> origin/ms-develop
+		    	if (sourceValue instanceof Iterable || sourceValue instanceof long[]) {
 		    		continue;
 		    	}
 		    	
@@ -494,7 +491,11 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final Set<String> sourceDescriptionIds = Sets.newHashSet();
 		final Set<String> sourceRelationshipIds = Sets.newHashSet();
 		
-		ConceptChanges sourceChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.sourceToTargetReviewId()).execute(bus).getSync();
+		ConceptChanges sourceChanges = SnomedRequests.review()
+				.prepareGetConceptChanges(mergeReview.sourceToTargetReviewId())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.execute(bus)
+				.getSync();
 		
 		for (String id : sourceChanges.changedConcepts()) {
 			ComponentCategory componentCategory = SnomedIdentifiers.getComponentCategory(id);
@@ -514,7 +515,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			sourceConceptIds.addAll(SnomedRequests.prepareSearchDescription()
 				.setComponentIds(sourceDescriptionIds)
 				.setLimit(sourceDescriptionIds.size())
-				.build(mergeReview.sourcePath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.sourcePath())
 				.execute(bus)
 				.then(new Function<SnomedDescriptions, Set<String>>() {
 					@Override
@@ -536,7 +537,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			sourceConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
 				.setComponentIds(sourceRelationshipIds)
 				.setLimit(sourceRelationshipIds.size())
-				.build(mergeReview.sourcePath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.sourcePath())
 				.execute(bus)
 				.then(new Function<SnomedRelationships, Set<String>>() {
 					@Override
@@ -554,7 +555,11 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		
 		sourceConceptIds.removeAll(sourceChanges.deletedConcepts());
 		
-		ConceptChanges targetChanges = SnomedRequests.review().prepareGetConceptChanges(mergeReview.targetToSourceReviewId()).execute(bus).getSync();
+		ConceptChanges targetChanges = SnomedRequests.review()
+				.prepareGetConceptChanges(mergeReview.targetToSourceReviewId())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.execute(bus)
+				.getSync();
 		
 		final Set<String> targetConceptIds = Sets.newHashSet();
 		final Set<String> targetDescriptionIds = Sets.newHashSet();
@@ -578,7 +583,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			targetConceptIds.addAll(SnomedRequests.prepareSearchDescription()
 				.setComponentIds(targetDescriptionIds)
 				.setLimit(targetDescriptionIds.size())
-				.build(mergeReview.targetPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.targetPath())
 				.execute(bus)
 				.then(new Function<SnomedDescriptions, Set<String>>() {
 					@Override
@@ -600,7 +605,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			targetConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
 				.setComponentIds(targetRelationshipIds)
 				.setLimit(targetRelationshipIds.size())
-				.build(mergeReview.targetPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.targetPath())
 				.execute(bus)
 				.then(new Function<SnomedRelationships, Set<String>>() {
 					@Override
@@ -653,21 +658,29 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 
 		// Auto merge branches
 		SnomedRequests
-			.branching()
-			.prepareMerge()
+			.merging()
+			.prepareCreate()
 			.setSource(sourcePath)
 			.setTarget(targetPath)
 			.setReviewId(mergeReview.sourceToTargetReviewId())
 			.setCommitComment("Auto merging branches before applying manually merged concepts. " + sourcePath + " > " + targetPath)
-			.build()
-			.executeSync(bus);
-		
-		// Apply manually merged concepts
-		browserService.update(targetPath, conceptUpdates, userId, extendedLocales);
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+			.execute(bus)
+			.then(new Function<Merge, Void>() {
+				@Override
+				public Void apply(Merge input) {
+					
+					// Apply manually merged concepts
+					browserService.update(targetPath, conceptUpdates, userId, extendedLocales);
+					
+					// Clean up
+					mergeReview.delete();
+					manualConceptMergeService.deleteAll(targetPath, mergeReviewId);
 
-		// Clean up
-		mergeReview.delete();
-		manualConceptMergeService.deleteAll(targetPath, mergeReviewId);
+					return null;
+				};
+			})
+			.getSync();
 	}
 
 	@Override
@@ -676,6 +689,10 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	}
 	
 	private MergeReview getMergeReview(final String mergeReviewId) {
-		return SnomedRequests.mergeReview().prepareGet(mergeReviewId).executeSync(bus);
+		return SnomedRequests.mergeReview()
+				.prepareGet(mergeReviewId)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.execute(bus)
+				.getSync();
 	}
 }

@@ -4,6 +4,7 @@ import org.ihtsdo.drools.service.RelationshipService;
 
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 
 public class ValidationRelationshipService implements RelationshipService {
@@ -30,8 +31,9 @@ public class ValidationRelationshipService implements RelationshipService {
 				.filterByType(relationshipTypeId)
 				.setOffset(0)
 				.setLimit(0)
-				.build(branchPath)
-				.executeSync(bus)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync()
 				.getTotal();
 		
 		int totalInboundInferred = SnomedRequests
@@ -42,8 +44,9 @@ public class ValidationRelationshipService implements RelationshipService {
 				.filterByCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP.getConceptId())
 				.setOffset(0)
 				.setLimit(0)
-				.build(branchPath)
-				.executeSync(bus)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus)
+				.getSync()
 				.getTotal();
 		
 		// This covers all types of relationship other than inferred.
