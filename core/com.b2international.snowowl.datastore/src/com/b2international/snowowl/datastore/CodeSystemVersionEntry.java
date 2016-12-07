@@ -248,7 +248,6 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 		return repositoryUuid;
 	}
 
-	@JsonIgnore
 	@Override
 	public String getCodeSystemShortName() {
 		return codeSystemShortName;
@@ -267,6 +266,7 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	 * Returns the full path of this version including the MAIN prefix as well as the version tag.
 	 * @return
 	 */
+	@JsonIgnore
 	@Override
 	public String getPath() {
 		return parentBranchPath + IBranchPath.SEPARATOR_CHAR + versionId;
