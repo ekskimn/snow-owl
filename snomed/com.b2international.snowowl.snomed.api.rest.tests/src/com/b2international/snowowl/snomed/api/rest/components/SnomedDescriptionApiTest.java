@@ -29,7 +29,6 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionNotExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertPreferredTermEquals;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -66,10 +65,6 @@ import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSet;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetFactory;
-import com.b2international.snowowl.test.commons.rest.RestExtensions;
-import com.google.common.base.Function;
-import com.google.common.collect.FluentIterable;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Iterables;
@@ -340,55 +335,23 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.body().path("id");
 
 		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
-<<<<<<< HEAD
-		final String newPtId = assertComponentCreated(createMainPath(), SnomedComponentType.DESCRIPTION, createRequestBody);
-		final Map<String, Object> newPtMember = Iterables.getOnlyElement(getDescriptionMembers(createMainPath(), newPtId));
-		final Map<String, Object> oldPtMember = Iterables.getOnlyElement(getDescriptionMembers(createMainPath(), oldPtId));
-=======
+
 		final String descriptionId = assertComponentCreated(createMainPath(), SnomedComponentType.DESCRIPTION, createRequestBody);
 		final Collection<Map<String, Object>> members = assertDescriptionExists(createMainPath(), descriptionId, "members()").extract().body().path("members.items");
 		final Map<String, Object> member = Iterables.getOnlyElement(members);
->>>>>>> origin/ms-develop
 		
-		final Map<String, Object> newPtRequest = ImmutableMap.<String, Object>builder()
-				.put("action", "update")
-				.put("memberId", newPtMember.get("id"))
-				.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED)
+		final Map<?, ?> updateRequestBody = ImmutableMap.builder()
+				.put("acceptability", SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP)
+				.put("commitComment", "Changed description acceptability")
 				.build();
 		
-		final Map<String, Object> oldPtRequest = ImmutableMap.<String, Object>builder()
-				.put("action", "update")
-				.put("memberId", oldPtMember.get("id"))
-				.put(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID, Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE)
-				.build();
-
-<<<<<<< HEAD
-		final List<Map<String, Object>> bulkRequests = ImmutableList.<Map<String, Object>>builder()
-				.add(newPtRequest)
-				.add(oldPtRequest)
-				.build();
-		
-		final Map<String, Object> bulk = ImmutableMap.<String, Object>of("requests", bulkRequests, "commitComment", "Update preferred acceptability");
-=======
 		assertDescriptionCanBeUpdated(createMainPath(), descriptionId, updateRequestBody);
+		
 		final Collection<Map<String, Object>> updatedMembers = assertDescriptionExists(createMainPath(), descriptionId, "members()").extract().body().path("members.items");
 		final Map<String, Object> updatedMember = Iterables.getOnlyElement(updatedMembers);
 		// changing acceptability should change the acceptabilityId of the same member and not create a new one
 		assertEquals(member.get("id"), updatedMember.get("id"));
 		assertEquals(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED, updatedMember.get("acceptabilityId"));
->>>>>>> origin/ms-develop
-		
-		RestExtensions
-			.givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-			.accept(ContentType.JSON)
-			.contentType(ContentType.JSON)
-			.body(bulk)
-			.put("/{path}/refsets/{id}/members", createMainPath(), Concepts.REFSET_LANGUAGE_TYPE_UK)
-			.then()
-			.log().ifValidationFails()
-			.statusCode(204);
-
-		assertPreferredTermEquals(createMainPath(), DISEASE, newPtId);
 	}
 	
 	@Test
@@ -413,11 +376,8 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void createDescriptionOnNestedBranch() {
-<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
-=======
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
->>>>>>> origin/ms-develop
+		
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
 		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
 		final String descriptionId = assertComponentCreated(nestedBranchPath, SnomedComponentType.DESCRIPTION, createRequestBody);		
@@ -430,7 +390,6 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void deleteDescriptionOnNestedBranch() {
-<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
 		
 		List<String> descriptionIds = newArrayList();
@@ -443,9 +402,6 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		}
 		
 		// New description on nested branch resets the concept's version to 1 again
-=======
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
->>>>>>> origin/ms-develop
 		final IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "a", "b");
 		requestBody = createRequestBody(DISEASE, "Rare disease 9000", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on " + nestedBranchPath.getPath());
 		assertComponentCreated(nestedBranchPath, SnomedComponentType.DESCRIPTION, requestBody);
@@ -487,12 +443,14 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void reactivateDescription() throws Exception {
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
+		givenBranchWithPath(testBranchPath);
+		
 		final Map<?, ?> updateRequestBody = ImmutableMap.builder()
 				.put("active", true)
 				.put("acceptability", ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.ACCEPTABLE))
 				.put("commitComment", "Reactivate released description")
 				.build();
+		
 		assertDescriptionCanBeUpdated(testBranchPath, INACTIVE_DISEASE_DESCRIPTION, updateRequestBody);
 		
 		final ValidatableResponse getDescriptionResponse = assertDescriptionExists(testBranchPath, INACTIVE_DISEASE_DESCRIPTION, "members()");
@@ -550,7 +508,8 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void issue_fixingDuplicateLanguageMemberInRefSetClearsAcceptabilityMapOnDescription() throws Exception {
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
+		givenBranchWithPath(testBranchPath);
+		
 		// create description
 		final Map<?, ?> createRequestBody = createRequestBuilder(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN", SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP).build();
 		final String descriptionId = assertComponentCreated(testBranchPath, SnomedComponentType.DESCRIPTION, createRequestBody);
@@ -606,15 +565,13 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		assertEquals(true, updatedMember.get(SnomedRf2Headers.FIELD_ACTIVE));
 		assertEquals(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED, updatedMember.get(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID));
 	}
-<<<<<<< HEAD
-=======
 	
+	// TODO: Use description member expansion here
 	private Collection<Map<String, Object>> getDescriptionMembers(IBranchPath branchPath, String descriptionId) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 			.when().get("/{path}/{componentType}?referencedComponentId={componentId}", branchPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), descriptionId)
 			.then().log().ifValidationFails().extract().body().path("items");
 	}
->>>>>>> origin/ms-develop
 
 	@Test
 	public void findUtf8Term() {

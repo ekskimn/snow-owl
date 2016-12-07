@@ -169,11 +169,7 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void reviewBeforeMerge() {
-<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
-=======
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
->>>>>>> origin/ms-develop
 		final IBranchPath setupBranch = createNestedBranch(testBranchPath, "a", "b");
 		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
 
@@ -211,11 +207,7 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void reviewBeforeRebase() {
 		// Open the setup branch
-<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
-=======
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
->>>>>>> origin/ms-develop
 		IBranchPath setupBranchPath = createNestedBranch(testBranchPath, "A");
 		
 		// Create a new concept on the setup branch so that it can be deleted on the test branch
@@ -368,11 +360,7 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void reviewAfterParentRebase() {
 		// Open the setup branch
-<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
-=======
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
->>>>>>> origin/ms-develop
 		IBranchPath setupBranchPath = createNestedBranch(testBranchPath, "A");
 		
 		// Create a new concept on the setup branch so that it can be deleted on the test branch
@@ -417,11 +405,7 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void reviewAfterParentMerge() {
 		// Open the setup branch
-<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
-=======
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
->>>>>>> origin/ms-develop
 		IBranchPath setupBranchPath = createNestedBranch(testBranchPath, "A");
 		
 		// Create a new concept on the setup branch so that it can be deleted on the test branch
@@ -506,11 +490,7 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void setReviewStaleAfterParentRebase() {
 		// Create all branches down to MAIN/test/A
-<<<<<<< HEAD
 		givenBranchWithPath(testBranchPath);
-=======
-		SnomedBranchingApiAssert.givenBranchWithPath(testBranchPath);
->>>>>>> origin/ms-develop
 		IBranchPath nestedBranchPath = createNestedBranch(testBranchPath, "A");
 		
 		// Create a new concept on MAIN

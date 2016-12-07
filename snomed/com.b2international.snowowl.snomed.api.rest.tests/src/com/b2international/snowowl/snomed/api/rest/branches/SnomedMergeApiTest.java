@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.api.IBranchPath;

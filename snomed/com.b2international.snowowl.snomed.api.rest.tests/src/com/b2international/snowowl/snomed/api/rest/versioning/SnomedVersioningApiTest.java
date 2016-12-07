@@ -22,45 +22,32 @@ import static com.b2international.snowowl.snomed.api.rest.CodeSystemApiAssert.as
 import static com.b2international.snowowl.snomed.api.rest.CodeSystemApiAssert.newCodeSystemRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
-<<<<<<< HEAD
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenCreatingVersion;
-=======
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
->>>>>>> origin/ms-develop
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 
-<<<<<<< HEAD
-=======
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
->>>>>>> origin/ms-develop
 import org.junit.Test;
 
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
-<<<<<<< HEAD
-=======
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.google.common.collect.ImmutableMap;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
->>>>>>> origin/ms-develop
 
 /**
  * @since 2.0
  */
 public class SnomedVersioningApiTest extends AbstractSnomedApiTest {
-<<<<<<< HEAD
-=======
 	
 	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
->>>>>>> origin/ms-develop
 
 	@Test
 	public void getNonExistentVersion() {
@@ -105,9 +92,6 @@ public class SnomedVersioningApiTest extends AbstractSnomedApiTest {
 		.then().assertThat().statusCode(status);
 	}
 
-<<<<<<< HEAD
-
-=======
 	private Response whenCreatingVersion(final String version, final String effectiveDate) {
 		return whenCreatingVersion(version, effectiveDate, "SNOMEDCT");
 	}
@@ -196,6 +180,4 @@ public class SnomedVersioningApiTest extends AbstractSnomedApiTest {
 			.then().body("released", equalTo(true))
 			.and().body("effectiveTime", equalTo(versionDate));
 	}
-	
->>>>>>> origin/ms-develop
 }

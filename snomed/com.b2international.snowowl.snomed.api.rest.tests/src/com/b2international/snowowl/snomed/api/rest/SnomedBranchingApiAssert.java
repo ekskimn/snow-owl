@@ -304,7 +304,7 @@ public abstract class SnomedBranchingApiAssert {
 		return mergeResponse;
 	}
 	
-	private static Response waitForMergeJob(String id) {
+	public static Response waitForMergeJob(String id) {
 		
 		final long endTime = System.currentTimeMillis() + POLL_TIMEOUT;
 
@@ -334,19 +334,6 @@ public abstract class SnomedBranchingApiAssert {
 		assertNotNull(response);
 		
 		return response;
-	}
-	
-	public static Response whenCreatingVersion(final String version, final String effectiveDate) {
-		final Map<?, ?> requestBody = ImmutableMap.builder()
-				.put("version", version)
-				.put("description", version)
-				.put("effectiveDate", effectiveDate)
-				.build();
-
-		return givenAuthenticatedRequest(ADMIN_API)
-				.and().contentType(ContentType.JSON)
-				.and().body(requestBody)
-				.when().post("/codesystems/SNOMEDCT/versions");
 	}
 	
 	public static Response whenCreatingVersion(final String version, final String effectiveDate) {

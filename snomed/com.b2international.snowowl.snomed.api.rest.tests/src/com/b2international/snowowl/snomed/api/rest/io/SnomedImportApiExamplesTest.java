@@ -29,12 +29,9 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertRelationshipExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertRelationshipNotExists;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-<<<<<<< HEAD
-=======
 
 import java.io.File;
 import java.util.Map;
->>>>>>> origin/ms-develop
 
 import org.hamcrest.CoreMatchers;
 import org.junit.FixMethodOrder;

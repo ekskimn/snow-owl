@@ -15,27 +15,48 @@
  */
 package com.b2international.snowowl.snomed.api.japi.branches;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.UUID;
 
+import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchManager;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.events.AsyncRequest;
 import com.b2international.snowowl.core.events.util.Promise;
+import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.datastore.request.Branching;
+import com.b2international.snowowl.datastore.request.CommitInfo;
+import com.b2international.snowowl.datastore.request.Merging;
+import com.b2international.snowowl.datastore.server.internal.CDOBasedRepository;
+import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert;
+import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
+import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 
 /**
  * @since 4.7
@@ -91,13 +112,13 @@ public class SnomedBranchRequestTest {
 		final String branchA = UUID.randomUUID().toString();
 		final String branchB = UUID.randomUUID().toString();
 
-		final Promise<Branch> first = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchA).build().execute(bus);
-		final Promise<Branch> second = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchB).build().execute(bus);
+		final Promise<Branch> first = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchA).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus);
+		final Promise<Branch> second = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchB).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus);
 		
 		Promise.all(first, second).then(new Function<List<Object>, String>() {
 			@Override
 			public String apply(List<Object> input) {
-				final InternalCDOBasedBranch main = (InternalCDOBasedBranch) branches.prepareGet(Branch.MAIN_PATH).executeSync(bus);
+				final InternalCDOBasedBranch main = (InternalCDOBasedBranch) branches.prepareGet(Branch.MAIN_PATH).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
 				final InternalCDOBasedBranch createdFirst;
 				final InternalCDOBasedBranch createdSecond;
 				
@@ -120,6 +141,7 @@ public class SnomedBranchRequestTest {
 	@Test
 	public void createBranchAndCommitToParent() throws Exception {
 		final Branching branches = SnomedRequests.branching();
+		final Merging merges = SnomedRequests.merging();
 		
 		final String branchA = UUID.randomUUID().toString();
 		final String branchB = UUID.randomUUID().toString();
@@ -127,7 +149,7 @@ public class SnomedBranchRequestTest {
 		final Branch first = branches.prepareCreate()
 				.setParent(Branch.MAIN_PATH)
 				.setName(branchA)
-				.build()
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)
 				.getSync();
 		
@@ -143,57 +165,60 @@ public class SnomedBranchRequestTest {
 				.setTypeId(Concepts.SYNONYM)
 				.setAcceptability(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED));
 		
-		final Request<ServiceProvider, CommitInfo> conceptRequest = SnomedRequests.prepareNewConcept()
+		final AsyncRequest<CommitInfo> conceptRequest = SnomedRequests.prepareNewConcept()
 				.setParent(Concepts.ROOT_CONCEPT)
 				.setModuleId(Concepts.MODULE_ROOT)
 				.addDescription(fsnBuilder)
 				.addDescription(ptBuilder)
-				.build("user", first.path(), "Created new concept");
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, "user", first.path(), "Created new concept");
 		
 		final CommitInfo info = conceptRequest.execute(bus).getSync();
 		final String conceptId = info.getResultAs(String.class);
-		final Promise<Merge> merge = branches.prepareMerge()
+		
+		final Promise<Merge> mergePromise = merges.prepareCreate()
 				.setSource(first.path())
 				.setTarget(first.parentPath())
 				.setCommitComment("Merging changes")
-				.build()
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus);
 		
-		final Promise<Branch> second = branches.prepareCreate()
+		final Promise<Branch> secondPromise = branches.prepareCreate()
 				.setParent(first.parentPath())
 				.setName(branchB)
-				.build()
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus);
 		
-		Promise.all(merge, second).then(new Function<List<Object>, Void>() {
-			@Override
-			public Void apply(final List<Object> input) {
-				final Merge merge = (Merge) input.get(0);
-
-				final InternalCDOBasedBranch target = (InternalCDOBasedBranch) branches.prepareGet(merge.getTarget()).executeSync(bus);
-				final InternalCDOBasedBranch first = (InternalCDOBasedBranch) branches.prepareGet(merge.getSource()).executeSync(bus);
-				final InternalCDOBasedBranch second = (InternalCDOBasedBranch) input.get(1);
-				
-				final InternalCDOBasedBranch createdFirst;
-				final InternalCDOBasedBranch createdSecond;
-				
-				if (first.headTimestamp() > second.headTimestamp()) {
-					createdFirst = second;
-					createdSecond = first;
-				} else {
-					createdFirst = first;
-					createdSecond = second;
-				}
-				
-				assertBranchesCreated(branchA, branchB, first, second);
-				assertBranchSegmentsValid(target, createdFirst, createdSecond);
-				return null;
-			}
-		})
-		.getSync();
+		Merge merge = mergePromise.getSync();
+		
+		SnomedBranchingApiAssert.waitForMergeJob(merge.getId().toString())
+				.then()
+				.assertThat()
+				.body("status", equalTo(Merge.Status.COMPLETED.name()));
+		
+		final InternalCDOBasedBranch target = (InternalCDOBasedBranch) branches.prepareGet(first.parentPath()).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
+		final InternalCDOBasedBranch firstAfterMerge = (InternalCDOBasedBranch) branches.prepareGet(first.path()).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
+		final InternalCDOBasedBranch secondAfterCreate = (InternalCDOBasedBranch) secondPromise.getSync();
+		
+		final InternalCDOBasedBranch createdFirst;
+		final InternalCDOBasedBranch createdSecond;
+		
+		if (firstAfterMerge.headTimestamp() > secondAfterCreate.headTimestamp()) {
+			createdFirst = secondAfterCreate;
+			createdSecond = firstAfterMerge;
+		} else {
+			createdFirst = firstAfterMerge;
+			createdSecond = secondAfterCreate;
+		}
+		
+		assertBranchesCreated(branchA, branchB, firstAfterMerge, secondAfterCreate);
+		assertBranchSegmentsValid(target, createdFirst, createdSecond);
 		
 		// Check that the concept is visible on parent
-		SnomedRequests.prepareGetConcept().setComponentId(conceptId).build(first.parentPath()).executeSync(bus);
+		SnomedRequests.prepareGetConcept()
+				.setComponentId(conceptId)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, firstAfterMerge.parentPath())
+				.execute(bus)
+				.getSync();
 	}
 
 	private void assertBranchesCreated(final String branchA, final String branchB, final Branch first, final Branch second) {
