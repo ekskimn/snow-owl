@@ -113,5 +113,4 @@ Bundle-ClassPath: .,
  WEB-INF/lib/jackson-jaxrs-json-provider-2.4.5.jar,
  WEB-INF/lib/jackson-module-jaxb-annotations-2.4.5.jar,
  WEB-INF/lib/jackson-module-jsonSchema-2.4.5.jar,
- WEB-INF/lib/jackson-dataformat-csv-2.4.5.jar,
  WEB-INF/lib/jackson-module-scala_2.10-2.4.5.jar

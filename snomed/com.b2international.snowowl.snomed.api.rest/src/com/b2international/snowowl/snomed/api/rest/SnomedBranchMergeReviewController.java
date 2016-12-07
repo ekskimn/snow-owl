@@ -52,6 +52,7 @@ import com.b2international.snowowl.snomed.api.rest.domain.CreateReviewRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -92,7 +93,7 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 			.prepareCreate()
 			.setSource(request.getSource())
 			.setTarget(request.getTarget())
-			.build()
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(bus)
 			.then(new Procedure<MergeReview>() { @Override protected void doApply(final MergeReview mergeReview) {
 				result.setResult(Responses.created(getLocationHeader(linkTo, mergeReview)).build());
@@ -115,6 +116,7 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 		return DeferredResults.wrap(SnomedRequests
 				.mergeReview()
 				.prepareGet(mergeReviewId)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus));
 	}
 
@@ -156,7 +158,9 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 		MergeReview mergeReview = SnomedRequests
 				.mergeReview()
 				.prepareGet(mergeReviewId)
-				.executeSync(bus);
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.execute(bus)
+				.getSync();
 		
 		//We need to pass that information back down the BrowserService as it can't be called directly.
 		final ReviewStatus status = mergeReview.status();

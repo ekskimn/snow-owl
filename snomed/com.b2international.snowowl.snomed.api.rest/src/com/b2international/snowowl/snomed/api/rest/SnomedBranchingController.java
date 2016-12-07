@@ -42,6 +42,7 @@ import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.domain.UpdateBranchRestRequest;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
@@ -128,8 +129,9 @@ public class SnomedBranchingController extends AbstractRestService {
 		return DeferredResults.wrap(
 				SnomedRequests
 					.branching()
-					.prepareGetWithLocks(branchPath)
-					.build()
+					.prepareGet(branchPath)
+					.withLocks()
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 					.execute(bus));
 	}
 
@@ -144,13 +146,13 @@ public class SnomedBranchingController extends AbstractRestService {
 		@ApiResponse(code = 404, message = "Not Found", response=RestApiError.class),
 	})
 	@RequestMapping(value="/{path:**}", method=RequestMethod.PUT)
-	public DeferredResult<Branch> updateBranch(@PathVariable("path") String branchPath, @RequestBody UpdateBranchRestRequest request) {
+	public DeferredResult<Boolean> updateBranch(@PathVariable("path") String branchPath, @RequestBody UpdateBranchRestRequest request) {
 		return DeferredResults.wrap(
 				SnomedRequests
 					.branching()
 					.prepareUpdate(branchPath)
 					.setMetadata(request.metadata())
-					.build()
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 					.execute(bus));
 	}
 

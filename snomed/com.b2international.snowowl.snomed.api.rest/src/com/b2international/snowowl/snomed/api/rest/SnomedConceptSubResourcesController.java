@@ -49,6 +49,7 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
@@ -282,7 +283,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				.setComponentId(conceptId)
 				.setExpand(String.format("descendants(form:\"%s\",direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", form, direct, offset, limit))
 				.setLocales(getExtendedLocales(acceptLanguage))
-				.build(branchPath)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.then(new Function<ISnomedConcept, SnomedConcepts>() {
 					@Override
