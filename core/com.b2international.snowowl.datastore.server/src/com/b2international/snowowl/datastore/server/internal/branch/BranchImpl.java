@@ -21,6 +21,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.util.Collection;
+import java.util.Objects;
 
 import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataHolderImpl;
@@ -127,7 +128,7 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 	
 	@Override
 	public final void update(final Metadata metadata) {
-		if (!metadata().equals(metadata)) {
+		if (!Objects.equals(metadata(), metadata)) {
 			branchManager.commit(branchManager.update(getClass(), path(), new Function<InternalBranch, InternalBranch>() {
 				@Override
 				public InternalBranch apply(InternalBranch input) {
@@ -289,7 +290,6 @@ public class BranchImpl extends MetadataHolderImpl implements Branch, InternalBr
 		if (headTimestamp != other.headTimestamp) { return false; }
 		if (!name.equals(other.name)) { return false; }
 		if (!parentPath.equals(other.parentPath)) { return false; }
-		if (!metadata().equals(other.metadata())) { return false; }
 		
 		return true;
 	}

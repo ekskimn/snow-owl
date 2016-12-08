@@ -36,6 +36,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import com.b2international.index.Index;
 import com.b2international.index.Indexes;
 import com.b2international.index.mapping.Mappings;
+import com.b2international.snowowl.core.MetadataHolder;
 import com.b2international.snowowl.core.MetadataImpl;
 import com.b2international.snowowl.core.ServiceProvider;
 import com.b2international.snowowl.core.branch.Branch;
@@ -105,7 +106,7 @@ public class CDOBranchManagerTest {
 	
 	@Test
 	public void updateMetadataShouldReturnNewInstanceWithProperType() throws Exception {
-		final Branch newMain = manager.getMainBranch().withMetadata(new MetadataImpl());
+		final MetadataHolder newMain = manager.getMainBranch().withMetadata(new MetadataImpl());
 		assertTrue(newMain instanceof CDOMainBranchImpl);
 	}
 	
@@ -205,7 +206,7 @@ public class CDOBranchManagerTest {
 
 	@Test
 	public void whenCreatingBranch_ThenMetadataOnMainShouldBePreserved() throws Exception {
-		manager.updateBranchMetadata("MAIN", new MetadataImpl(ImmutableMap.<String, Object>of("key", "value")));
+		manager.getMainBranch().update(new MetadataImpl(ImmutableMap.<String, Object>of("key", "value")));
 		final Branch a = manager.getMainBranch().createChild("a");
 		assertEquals(ImmutableMap.<String, Object>of("key", "value"), a.parent().metadata());
 	}
@@ -213,7 +214,7 @@ public class CDOBranchManagerTest {
 	@Test
 	public void whenCreatingNestedBranch_ThenMetadataOnParentShouldBePreserved() throws Exception {
 		manager.getMainBranch().createChild("a");
-		manager.updateBranchMetadata("MAIN/a", new MetadataImpl(ImmutableMap.<String, Object>of("key", "value")));	
+		manager.getBranch("MAIN/a").update(new MetadataImpl(ImmutableMap.<String, Object>of("key", "value")));	
 		final Branch b = manager.getBranch("MAIN/a").createChild("b");
 		assertEquals(ImmutableMap.<String, Object>of("key", "value"), b.parent().metadata());
 	}

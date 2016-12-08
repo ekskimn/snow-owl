@@ -262,15 +262,6 @@ public interface Branch extends Deletable, MetadataHolder, Serializable {
 	IBranchPath branchPath();
 
 	/**
-	 * Returns a new version of this branch with updated {@link Metadata}.
-	 * 
-	 * @param metadata
-	 * @return
-	 */
-	@Override
-	Branch withMetadata(Metadata metadata);
-
-	/**
 	 * Updates the branch with the specified properties. Currently {@link Metadata} supported only.
 	 * 
 	 * @param metadata

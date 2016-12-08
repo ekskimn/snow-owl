@@ -17,7 +17,6 @@ package com.b2international.snowowl.core.branch;
 
 import java.util.Collection;
 
-import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 
 /**
@@ -48,15 +47,4 @@ public interface BranchManager {
 	 * @return
 	 */
 	Collection<? extends Branch> getBranches();
-
-	/**
-	 * Updates the {@link Metadata} of the {@link Branch} represented with the given path.
-	 * @param branch
-	 * @param metadata
-	 * @return
-	 * @throws NotFoundException
-	 *             - if the branch does not exists with the given path
-	 */
-	Branch updateBranchMetadata(String path, Metadata metadata);
-	
 }
