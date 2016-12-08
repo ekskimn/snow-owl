@@ -170,7 +170,7 @@ public class SnomedBranchRequestTest {
 				.setModuleId(Concepts.MODULE_ROOT)
 				.addDescription(fsnBuilder)
 				.addDescription(ptBuilder)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, "user", first.path(), "Created new concept");
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, first.path(), "user", "Created new concept");
 		
 		final CommitInfo info = conceptRequest.execute(bus).getSync();
 		final String conceptId = info.getResultAs(String.class);
