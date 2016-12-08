@@ -11,6 +11,15 @@
     <version>5.0.6-SNAPSHOT</version>
 	</parent>
 
+	<dependencies>
+		<dependency>
+			<groupId>org.semanticweb.elk</groupId>
+			<artifactId>elk-protege</artifactId>
+			<version>0.4.2</version>
+			<scope>provided</scope>
+		</dependency>
+	</dependencies>
+	
 	<build>
 		<plugins>
 			<plugin>
@@ -91,18 +100,5 @@
 			</plugin>
 		</plugins>
 	</build>
-	
-	<profiles>
-		<profile>
-      		<id>so_server_site</id>
-      		<repositories>
-      			<repository>
-        			<id>so_server_site</id>
-        			<url>http://jenkins:8081/nexus/content/repositories/snapshots.unzip/com/b2international/snowowl/com.b2international.snowowl.server.update/${project.version}/com.b2international.snowowl.server.update-${project.version}.zip-unzip/</url>
-        			<layout>p2</layout>
-     			</repository>
-      		</repositories>
-    	</profile>
-	</profiles>
 
 </project>
