@@ -13,7 +13,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>dependencies-parent</artifactId>
-    <version>4.6.18-SNAPSHOT</version>
+    <version>5.0.6-SNAPSHOT</version>
 	</parent>
 
 	<groupId>org.eclipse.equinox.bundles</groupId>
