@@ -559,7 +559,7 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertEquals(acceptabilityIds.size(), 1);
 		String acceptabilityId = acceptabilityIds.get(0);
 		
-		assertDescriptionCreated(testBranchPath.getParent(), "D2", PREFERRED_ACCEPTABILITY_MAP);
+		assertDescriptionCreated(testBranchPath.getParent(), "D2", ACCEPTABLE_ACCEPTABILITY_MAP);
 		assertDescriptionExists(testBranchPath.getParent(), "D2");
 		assertDescriptionNotExists(testBranchPath,"D2");
 
