@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.snomed.api.rest.ext;
+package com.b2international.snowowl.snomed.api.rest.extension;
 
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE_SCT_CORE;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;

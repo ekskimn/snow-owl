@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.snomed.api.rest;
+package com.b2international.snowowl.snomed.api.rest.extension;
 
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.SNOMED_INT_CITATION;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.SNOMED_INT_ICON_PATH;
@@ -32,9 +32,6 @@ import org.junit.runners.Suite.SuiteClasses;
 
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
-import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionDowngradeTest;
-import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionUpgradeTest;
-import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionVersioningTest;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.SnomedReleases;
 import com.b2international.snowowl.test.commons.BundleStartRule;
