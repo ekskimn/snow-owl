@@ -48,6 +48,7 @@ import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert;
@@ -339,7 +340,7 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 			.when().get("/codesystems/SNOMEDCT/versions/{id}", versionName)
 			.then().assertThat().statusCode(200);
 		
-		IBranchPath versionPath = BranchPathUtils.createVersionPath(versionName);
+		IBranchPath versionPath = BranchPathUtils.createPath(BranchPathUtils.createMainPath(), versionName);
 		String testBranchName = "Fix01";
 		IBranchPath taskBranch = BranchPathUtils.createPath(versionPath, testBranchName);
 		
@@ -460,7 +461,7 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 			.when().get("/codesystems/SNOMEDCT/versions/{id}", versionName)
 			.then().assertThat().statusCode(200);
 		
-		IBranchPath versionPath = BranchPathUtils.createVersionPath(versionName);
+		IBranchPath versionPath = BranchPathUtils.createPath(BranchPathUtils.createMainPath(), versionName);
 		String testBranchName = "Fix01";
 		IBranchPath taskBranch = BranchPathUtils.createPath(versionPath, testBranchName);
 		

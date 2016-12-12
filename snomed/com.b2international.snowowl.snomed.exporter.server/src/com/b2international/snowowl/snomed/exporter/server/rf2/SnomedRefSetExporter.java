@@ -25,13 +25,16 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 import com.b2international.snowowl.snomed.exporter.server.SnomedRfFileNameBuilder;
+import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 
@@ -109,21 +112,29 @@ public class SnomedRefSetExporter extends AbstractSnomedRf2CoreExporter<SnomedRe
 
 	protected String getRefsetName() {
 		
-		ISnomedDescription pt = Iterables.getOnlyElement(SnomedRequests.prepareSearchDescription()
+		return SnomedRequests.prepareSearchDescription()
 			.one()
 			.filterByActive(true)
 			.filterByConceptId(refset.getId())
 			.filterByType("<<" + Concepts.SYNONYM)
 			.filterByAcceptability(Acceptability.PREFERRED)
 			.filterByExtendedLocales(ApplicationContext.getServiceForClass(LanguageSetting.class).getLanguagePreference())
-			.build(getExportContext().getCurrentBranchPath().getPath())
-			.executeSync(ApplicationContext.getServiceForClass(IEventBus.class)), null);
-		
-		return pt != null ? !Strings.isNullOrEmpty(pt.getTerm()) ? pt.getTerm() : refset.getId() : refset.getId();
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID, getExportContext().getCurrentBranchPath().getPath())
+			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+			.then(new Function<SnomedDescriptions, String>() {
+				@Override public String apply(SnomedDescriptions input) {
+					ISnomedDescription pt = Iterables.getOnlyElement(input, null);
+					if (pt == null || Strings.isNullOrEmpty(pt.getTerm())) { 
+						return refset.getId(); 
+					} else { 
+						return pt.getTerm(); 
+					}
+				};
+			})
+			.getSync();
 	}
 	
 	protected SnomedReferenceSet getRefset() {
 		return refset;
 	}
-
 }

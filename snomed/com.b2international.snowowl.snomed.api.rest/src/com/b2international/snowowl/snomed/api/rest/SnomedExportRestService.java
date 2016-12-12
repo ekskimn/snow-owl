@@ -55,6 +55,7 @@ import com.b2international.snowowl.snomed.api.rest.domain.SnomedExportRestConfig
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedExportRestRun;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Strings;
 import com.google.common.collect.MapMaker;
@@ -105,7 +106,9 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 
 		Branch branch = SnomedRequests.branching()
 			.prepareGet(configuration.getBranchPath())
-			.executeSync(bus);
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+			.execute(bus)
+			.getSync();
 		
 		if (branch == null) {
 			throw new BadRequestException("The specified branch (%s) does not exists", configuration.getBranchPath()); 

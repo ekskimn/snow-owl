@@ -134,6 +134,11 @@ public final class BranchData implements Branch {
 	public Collection<? extends Branch> children() {
 		throw new UnsupportedOperationException();
 	}
+	
+	@Override
+	public Collection<? extends Branch> immediateChildren() {
+		throw new UnsupportedOperationException();
+	}
 
 	@Override
 	public Branch reopen() {
