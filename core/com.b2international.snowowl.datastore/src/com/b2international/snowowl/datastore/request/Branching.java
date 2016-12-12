@@ -41,7 +41,7 @@ public final class Branching {
 	public BranchDeleteRequestBuilder prepareDelete(String branchPath) {
 		return new BranchDeleteRequestBuilder(branchPath);
 	}
-
+	
 	public BranchReopenRequestBuilder prepareReopen(String branchPath) {
 		return new BranchReopenRequestBuilder(branchPath);
 	}

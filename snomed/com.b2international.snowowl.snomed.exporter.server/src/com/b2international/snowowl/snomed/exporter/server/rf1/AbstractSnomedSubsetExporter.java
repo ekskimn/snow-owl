@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.exporter.server.rf1;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 
 import com.b2international.index.revision.RevisionSearcher;
@@ -28,6 +29,7 @@ import com.b2international.snowowl.snomed.datastore.SnomedRefSetLookupService;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedConceptNameProvider;
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
+import com.b2international.snowowl.snomed.exporter.server.SnomedExportExecutor;
 import com.b2international.snowowl.snomed.exporter.server.SnomedRfFileNameBuilder;
 import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedExporter;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
@@ -66,12 +68,12 @@ public abstract class AbstractSnomedSubsetExporter implements SnomedExporter {
 	private final String folderName;
 	private String label;
 	private int referencedComponentType;
-	private SnomedExportContext configuration;
+	private SnomedExportContext exportContext;
 	private String refSetId;
 	protected RevisionSearcher revisionSearcher;
 
-	protected AbstractSnomedSubsetExporter(final SnomedExportContext configuration, final String refSetId, final RevisionSearcher revisionSearcher) {
-		this.configuration = configuration;
+	protected AbstractSnomedSubsetExporter(final SnomedExportContext exportContext, final String refSetId, final RevisionSearcher revisionSearcher) {
+		this.exportContext = exportContext;
 		this.refSetId = refSetId;
 		this.revisionSearcher = revisionSearcher;
 		referencedComponentType = getReferencedComponentType(refSetId);
@@ -83,8 +85,13 @@ public abstract class AbstractSnomedSubsetExporter implements SnomedExporter {
 		}
 	}
 
+	@Override
+	public void remove() {
+		throw new UnsupportedOperationException();
+	}
+	
 	protected IBranchPath getBranchPath() {
-		return this.configuration.getCurrentBranchPath();
+		return this.exportContext.getCurrentBranchPath();
 	}
 
 	protected String getRefSetId() {
@@ -93,7 +100,12 @@ public abstract class AbstractSnomedSubsetExporter implements SnomedExporter {
 	
 	@Override
 	public SnomedExportContext getExportContext() {
-		return configuration;
+		return exportContext;
+	}
+	
+	@Override
+	public void execute() throws IOException {
+		new SnomedExportExecutor(this).execute();
 	}
 	
 	/*

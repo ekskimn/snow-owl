@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,26 +18,27 @@ package com.b2international.snowowl.snomed.exporter.server.rf2;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
 import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 
 /**
- * RF2 exporter for SNOMED CT stated relationships only.
+ *
  */
-public class SnomedStatedRelationshipExporter extends SnomedRf2RelationshipExporter {
+public class SnomedTextDefinitionExporter extends SnomedRf2DescriptionExporter {
 
-	public SnomedStatedRelationshipExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher) {
+	public SnomedTextDefinitionExporter(SnomedExportContext exportContext, RevisionSearcher revisionSearcher) {
 		super(exportContext, revisionSearcher);
 	}
 	
 	@Override
 	public ComponentExportType getType() {
-		return ComponentExportType.STATED_RELATIONSHIP;
+		return ComponentExportType.TEXT_DEFINITION;
 	}
 	
 	@Override
 	protected void appendExpressionConstraint(ExpressionBuilder builder) {
-		builder.must(SnomedRelationshipIndexEntry.Expressions.characteristicTypeId(Concepts.STATED_RELATIONSHIP));
+		builder.must(SnomedDescriptionIndexEntry.Expressions.type(Concepts.TEXT_DEFINITION));
 	}
+
 }

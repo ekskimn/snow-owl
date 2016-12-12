@@ -23,5 +23,4 @@ public final class LongRangePredicate extends RangePredicate<Long> {
 	LongRangePredicate(String field, Long lower, Long upper, boolean includeLower, boolean includeUpper) {
 		super(field, lower, upper, includeLower, includeUpper);
 	}
-	
 }

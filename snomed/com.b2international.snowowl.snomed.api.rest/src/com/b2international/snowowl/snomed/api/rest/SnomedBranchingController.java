@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -107,11 +108,14 @@ public class SnomedBranchingController extends AbstractRestService {
 		@ApiResponse(code = 404, message = "Not Found", response=RestApiError.class),
 	})
 	@RequestMapping(value="/{path:**}/children", method=RequestMethod.GET)
-	public DeferredResult<Branches> getChildren(@PathVariable("path") String branchPath) {
+	public DeferredResult<Branches> getChildren(
+			@PathVariable("path") String branchPath,
+			@RequestParam(value="immediateChildren", required=false, defaultValue="false") boolean immediateChildren) {
 		return DeferredResults.wrap(
 				SnomedRequests
 					.branching()
 					.prepareGetChildren(branchPath)
+					.filterImmediate(immediateChildren)
 					.build(repositoryId)
 					.execute(bus));
 	}

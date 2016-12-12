@@ -39,8 +39,8 @@ public class SnomedExportRestConfiguration {
 	
 	private String namespaceId;
 	private Collection<String> moduleIds;
-	private Date deltaStartEffectiveTime;
-	private Date deltaEndEffectiveTime;
+	private Date startEffectiveTime;
+	private Date endEffectiveTime;
 	private String transientEffectiveTime;
 	
 	private boolean includeUnpublished;
@@ -70,31 +70,27 @@ public class SnomedExportRestConfiguration {
 	}
 	
 	/**
-	 * Returns with the delta export start effective time.
-	 * <br>Can be {@code null} even 
-	 * if the {@link Rf2ReleaseType release type} is {@link Rf2ReleaseType#DELTA delta}.
+	 * Returns with a restricting export start effective time. Can be {@code null}.
 	 */
 	@JsonFormat(shape=Shape.STRING, pattern="yyyyMMdd")
-	public Date getDeltaStartEffectiveTime() {
-		return deltaStartEffectiveTime;
+	public Date getStartEffectiveTime() {
+		return startEffectiveTime;
 	}
 	
-	public void setDeltaStartEffectiveTime(Date deltaStartEffectiveTime) {
-		this.deltaStartEffectiveTime = deltaStartEffectiveTime;
+	public void setStartEffectiveTime(Date startEffectiveTime) {
+		this.startEffectiveTime = startEffectiveTime;
 	}
 
 	/**
-	 * Returns with the delta export end effective time.
-	 * <br>May return with {@code null} even 
-	 * if the {@link Rf2ReleaseType release type} is {@link Rf2ReleaseType#DELTA delta}.
+	 * Returns with a restricting export end effective time.May return with {@code null}.
 	 */
 	@JsonFormat(shape=Shape.STRING, pattern="yyyyMMdd")
-	public Date getDeltaEndEffectiveTime() {
-		return deltaEndEffectiveTime;
+	public Date getEndEffectiveTime() {
+		return endEffectiveTime;
 	}
 	
-	public void setDeltaEndEffectiveTime(Date deltaEndEffectiveTime) {
-		this.deltaEndEffectiveTime = deltaEndEffectiveTime;
+	public void setEndEffectiveTime(Date endEffectiveTime) {
+		this.endEffectiveTime = endEffectiveTime;
 	}
 	
 	/**

@@ -15,7 +15,9 @@
  */
 package com.b2international.snowowl.snomed.exporter.server.rf2;
 
+import com.b2international.index.query.Expressions.ExpressionBuilder;
 import com.b2international.index.revision.RevisionSearcher;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.exporter.server.ComponentExportType;
@@ -28,8 +30,8 @@ import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 public class SnomedRf2DescriptionExporter extends AbstractSnomedRf2CoreExporter<SnomedDescriptionIndexEntry> {
 
 	
-	public SnomedRf2DescriptionExporter(final SnomedExportContext configuration, final RevisionSearcher revisionSearcher, final boolean unpublished) {
-		super(configuration, SnomedDescriptionIndexEntry.class, revisionSearcher, unpublished);
+	public SnomedRf2DescriptionExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher) {
+		super(exportContext, SnomedDescriptionIndexEntry.class, revisionSearcher);
 		
 	}
 	
@@ -40,7 +42,7 @@ public class SnomedRf2DescriptionExporter extends AbstractSnomedRf2CoreExporter<
 		sb.append(HT);
 		sb.append(formatEffectiveTime(doc.getEffectiveTime()));
 		sb.append(HT);
-		sb.append(doc.isActive() ? "1" : "0");
+		sb.append(formatStatus(doc.isActive()));
 		sb.append(HT);
 		sb.append(doc.getModuleId());
 		sb.append(HT);
@@ -64,6 +66,11 @@ public class SnomedRf2DescriptionExporter extends AbstractSnomedRf2CoreExporter<
 	@Override
 	public String[] getColumnHeaders() {
 		return SnomedRf2Headers.DESCRIPTION_HEADER;
+	}
+	
+	@Override
+	protected void appendExpressionConstraint(ExpressionBuilder builder) {
+		builder.mustNot(SnomedDescriptionIndexEntry.Expressions.type(Concepts.TEXT_DEFINITION));
 	}
 	
 }

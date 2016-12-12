@@ -25,14 +25,20 @@ import com.google.common.collect.ImmutableList;
  * @since 4.1
  */
 public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
-
-	public ReadBranchChildrenRequest(String branchPath) {
+	
+	private boolean immediateChildrenOnly;
+	
+	public ReadBranchChildrenRequest(String branchPath, boolean immediateChildrenOnly) {
 		super(branchPath);
+		this.immediateChildrenOnly = immediateChildrenOnly;
 	}
 
 	@Override
 	public Branches execute(RepositoryContext context) {
 		final Branch branch = context.service(BranchManager.class).getBranch(getBranchPath());
+		if (immediateChildrenOnly) {
+			return new Branches(ImmutableList.copyOf(branch.immediateChildren()));
+		}
 		return new Branches(ImmutableList.copyOf(branch.children()));
 	}
 
@@ -40,5 +46,4 @@ public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
 	protected Class<Branches> getReturnType() {
 		return Branches.class;
 	}
-	
 }

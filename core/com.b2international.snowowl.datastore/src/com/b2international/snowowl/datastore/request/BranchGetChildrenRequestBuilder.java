@@ -26,14 +26,19 @@ import com.b2international.snowowl.datastore.events.ReadBranchChildrenRequest;
 public final class BranchGetChildrenRequestBuilder extends BaseRepositoryRequestBuilder<BranchGetChildrenRequestBuilder, Branches> {
 
 	private final String path;
-
+	private boolean immediate;
+	
 	BranchGetChildrenRequestBuilder(String path) {
 		this.path = path;
 	}
 	
+	public BranchGetChildrenRequestBuilder filterImmediate(boolean immediate) {
+		this.immediate = immediate;
+		return this;
+	}
+	
 	@Override
 	protected Request<RepositoryContext, Branches> doBuild() {
-		return new ReadBranchChildrenRequest(path);
+		return new ReadBranchChildrenRequest(path, immediate);
 	}
-
 }
