@@ -337,7 +337,7 @@ public final class LuceneQueryBuilder {
 	}
 	
 	private void visit(LongRangePredicate range) {
-		final Query filter = NumericRangeQuery.newLongRange(range.getField(), range.from(), range.to(), true, true);
+		final Query filter = NumericRangeQuery.newLongRange(range.getField(), range.from(), range.to(), range.isMinInclusive(), range.isMaxInclusive());
 		deque.push(filter);
 	}
 	

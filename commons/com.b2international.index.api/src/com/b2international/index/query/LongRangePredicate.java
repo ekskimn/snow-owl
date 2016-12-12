@@ -22,11 +22,15 @@ public class LongRangePredicate extends Predicate {
 
 	private final long from;
 	private final long to;
+	private boolean minInclusive;
+	private boolean maxInclusive;
 
-	LongRangePredicate(String field, long from, long to) {
+	LongRangePredicate(String field, long from, long to, boolean minInclusive, boolean maxInclusive) {
 		super(field);
 		this.from = from;
 		this.to = to;
+		this.minInclusive = minInclusive;
+		this.maxInclusive = maxInclusive;
 	}
 	
 	public long from() {
@@ -37,9 +41,17 @@ public class LongRangePredicate extends Predicate {
 		return to;
 	}
 	
+	public boolean isMinInclusive() {
+		return minInclusive;
+	}
+	
+	public boolean isMaxInclusive() {
+		return maxInclusive;
+	}
+	
 	@Override
 	public String toString() {
-		return String.format("%s is gte(%s) and lte(%s)", getField(), from, to);
+		return String.format("%s is %s(%s) and %s(%s)", getField(), isMinInclusive() ? "gte" : "gt", from, isMaxInclusive() ? "lte" : "lt", to);
 	}
 
 }
