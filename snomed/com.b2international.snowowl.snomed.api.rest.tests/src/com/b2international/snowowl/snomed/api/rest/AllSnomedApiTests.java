@@ -63,7 +63,6 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	SnomedVersioningApiTest.class,
 	SnomedImportApiTest.class,
 	SnomedImportApiExamplesTest.class,
-	SnomedExportApiTest.class,
 	SnomedIdentifierApiTest.class,
 	SnomedConceptApiTest.class,
 	SnomedReleasedConceptApiTest.class,
