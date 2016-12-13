@@ -35,10 +35,10 @@ Workflow {
     
     component = Generator {
     	pathRtProject = runtimeProject
-    	pathUiProject = "${runtimeProject}.ui"
-    	pathTestProject = "${runtimeProject}.tests"
+//    	pathUiProject = "${runtimeProject}.ui"
+//    	pathTestProject = "${runtimeProject}.tests"
     	projectNameRt = projectName
-    	projectNameUi = "${projectName}.ui"
+//    	projectNameUi = "${projectName}.ui"
     	encoding = encoding
     	language = auto-inject {
     		uri = grammarURI
@@ -89,29 +89,29 @@ Workflow {
     		fragment = formatting.FormatterFragment auto-inject {}
     
     		// labeling API
-    		fragment = labeling.LabelProviderFragment auto-inject {}
+//    		fragment = labeling.LabelProviderFragment auto-inject {}
     
     		// outline API
-    		fragment = outline.OutlineTreeProviderFragment auto-inject {}
-    		fragment = outline.QuickOutlineFragment auto-inject {}
+//    		fragment = outline.OutlineTreeProviderFragment auto-inject {}
+//    		fragment = outline.QuickOutlineFragment auto-inject {}
     
     		// quickfix API
-    		fragment = quickfix.QuickfixProviderFragment auto-inject {}
+//    		fragment = quickfix.QuickfixProviderFragment auto-inject {}
     
     		// content assist API
-    		fragment = contentAssist.ContentAssistFragment auto-inject {}
+//    		fragment = contentAssist.ContentAssistFragment auto-inject {}
     
     		// generates a more lightweight Antlr parser and lexer tailored for content assist
-    		fragment = parser.antlr.XtextAntlrUiGeneratorFragment auto-inject {}
+//    		fragment = parser.antlr.XtextAntlrUiGeneratorFragment auto-inject {}
     
     		// generates junit test support classes into Generator#pathTestProject
-    		fragment = junit.Junit4Fragment auto-inject {}
+//    		fragment = junit.Junit4Fragment auto-inject {}
     
     		// provides a preference page for template proposals
-    		fragment = templates.CodetemplatesGeneratorFragment auto-inject {}
+//    		fragment = templates.CodetemplatesGeneratorFragment auto-inject {}
     
     		// provides a compare view
-    		fragment = compare.CompareFragment auto-inject {}
+//    		fragment = compare.CompareFragment auto-inject {}
     	}
     }
 }
