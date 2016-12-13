@@ -18,7 +18,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 
 /**
  * @since 5.3
@@ -35,8 +35,8 @@ public abstract class SnomedComponentSearchRequest<R> extends SnomedSearchReques
 		if (containsKey(OptionKey.ACTIVE_MEMBER_OF)) {
 			final String refSetId = getString(OptionKey.ACTIVE_MEMBER_OF);
 			
-			final Expression referringRefSetExpression = SnomedComponentDocument.Expressions.referringRefSet(refSetId);
-			final Expression referringMappingRefSetExpression = SnomedComponentDocument.Expressions.referringMappingRefSet(refSetId);
+			final Expression referringRefSetExpression = SnomedConceptDocument.Expressions.referringRefSet(refSetId);
+			final Expression referringMappingRefSetExpression = SnomedConceptDocument.Expressions.referringMappingRefSet(refSetId);
 			
 			final Expression expression = Expressions
 					.builder()

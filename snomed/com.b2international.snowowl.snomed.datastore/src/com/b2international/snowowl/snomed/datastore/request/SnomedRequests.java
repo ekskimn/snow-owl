@@ -141,7 +141,7 @@ public abstract class SnomedRequests {
 	}
 	
 	public static SnomedEclEvaluationRequestBuilder prepareEclEvaluation(String expression) {
-		return new SnomedEclEvaluationRequestBuilder(expression);
+		return new SnomedEclEvaluationRequestBuilder(REPOSITORY_ID, expression);
 	}
 	
 	public static Branching branching() {

@@ -29,6 +29,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDoc
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.ecl.Ecl;
 import com.google.common.base.Function;
+import com.google.common.base.Functions;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 
@@ -61,7 +62,7 @@ final class EclExpression {
 					.all()
 					.setFields(ImmutableSet.of(SnomedConceptDocument.Fields.ID))
 					.filterByEcl(ecl)
-					.build(context.id(), context.branch().path())
+					.build(context.branch().path())
 					.execute(context.service(IEventBus.class))
 					.then(new Function<SnomedConcepts, Set<String>>() {
 						@Override
@@ -78,7 +79,7 @@ final class EclExpression {
 			conceptPromise = SnomedRequests.prepareSearchConcept()
 					.all()
 					.filterByEcl(ecl)
-					.build(context.id(), context.branch().path())
+					.build(context.branch().path())
 					.execute(context.service(IEventBus.class));
 		}
 		return conceptPromise;
@@ -87,9 +88,9 @@ final class EclExpression {
 	public Promise<Expression> resolveToExpression(final BranchContext context) {
 		if (expressionPromise == null) {
 			expressionPromise = SnomedRequests.prepareEclEvaluation(ecl)
-					.build(context.id(), context.branch().path())
+					.build(context.branch().path())
 					.execute(context.service(IEventBus.class))
-					.thenWith(result -> result);
+					.thenWith(Functions.<Promise<Expression>>identity());
 		}
 		return expressionPromise;
 	}

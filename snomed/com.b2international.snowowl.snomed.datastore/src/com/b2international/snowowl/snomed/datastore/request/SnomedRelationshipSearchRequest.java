@@ -20,8 +20,10 @@ import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRel
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry.Expressions.unionGroup;
 
 import java.io.IOException;
+import java.util.Collection;
 
 import com.b2international.index.Hits;
+import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
 import com.b2international.index.query.Query;
@@ -30,6 +32,7 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.google.common.base.Function;
 
 /**
  * @since 4.5
@@ -58,11 +61,36 @@ final class SnomedRelationshipSearchRequest extends SnomedSearchRequest<SnomedRe
 		addModuleClause(queryBuilder);
 		addComponentIdFilter(queryBuilder);
 		addEffectiveTimeClause(queryBuilder);
-		addEclFilter(context, queryBuilder, OptionKey.SOURCE, SnomedRelationshipIndexEntry.Expressions::sourceIds);
-		addEclFilter(context, queryBuilder, OptionKey.TYPE, SnomedRelationshipIndexEntry.Expressions::typeIds);
-		addEclFilter(context, queryBuilder, OptionKey.DESTINATION, SnomedRelationshipIndexEntry.Expressions::destinationIds);
-		addEclFilter(context, queryBuilder, OptionKey.CHARACTERISTIC_TYPE, SnomedRelationshipIndexEntry.Expressions::characteristicTypeIds);
-		addEclFilter(context, queryBuilder, OptionKey.MODIFIER, SnomedRelationshipIndexEntry.Expressions::modifierIds);
+		addEclFilter(context, queryBuilder, OptionKey.SOURCE, new Function<Collection<String>, Expression>() {
+			@Override
+			public Expression apply(Collection<String> input) {
+				return SnomedRelationshipIndexEntry.Expressions.sourceIds(input);
+			}
+		});
+		addEclFilter(context, queryBuilder, OptionKey.TYPE, new Function<Collection<String>, Expression>() {
+			@Override
+			public Expression apply(Collection<String> input) {
+				return SnomedRelationshipIndexEntry.Expressions.typeIds(input);
+			}
+		});
+		addEclFilter(context, queryBuilder, OptionKey.DESTINATION, new Function<Collection<String>, Expression>() {
+			@Override
+			public Expression apply(Collection<String> input) {
+				return SnomedRelationshipIndexEntry.Expressions.destinationIds(input);
+			}
+		});
+		addEclFilter(context, queryBuilder, OptionKey.CHARACTERISTIC_TYPE, new Function<Collection<String>, Expression>() {
+			@Override
+			public Expression apply(Collection<String> input) {
+				return SnomedRelationshipIndexEntry.Expressions.characteristicTypeIds(input);
+			}
+		});
+		addEclFilter(context, queryBuilder, OptionKey.MODIFIER, new Function<Collection<String>, Expression>() {
+			@Override
+			public Expression apply(Collection<String> input) {
+				return SnomedRelationshipIndexEntry.Expressions.modifierIds(input);
+			}
+		});
 		
 		if (containsKey(OptionKey.GROUP_MIN) || containsKey(OptionKey.GROUP_MAX)) {
 			final int from = containsKey(OptionKey.GROUP_MIN) ? get(OptionKey.GROUP_MIN, Integer.class) : 0;

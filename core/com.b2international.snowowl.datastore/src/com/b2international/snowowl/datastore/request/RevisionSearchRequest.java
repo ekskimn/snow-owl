@@ -38,6 +38,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<BranchContext, B> {
 
+	public static class NoResultException extends RuntimeException {
+		private static final long serialVersionUID = -1248540856283437736L;
+	}
+
 	enum OptionKey {
 		EXPAND
 	}
@@ -160,10 +164,14 @@ public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<Branc
 	public final B execute(BranchContext context) {
 		try {
 			return doExecute(context);
+		} catch (NoResultException e) {
+			return createEmptyResult(offset(), limit());
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException("Caught exception while executing search request.", e);
 		}
 	}
+
+	protected abstract B createEmptyResult(int offset, int limit);
 
 	protected abstract B doExecute(BranchContext context) throws IOException;
 	

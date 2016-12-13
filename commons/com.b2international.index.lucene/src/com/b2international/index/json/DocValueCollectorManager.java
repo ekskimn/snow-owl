@@ -32,6 +32,7 @@ import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.SimpleCollector;
 
 import com.b2international.index.json.DocValueCollectorManager.DocValueCollector;
+import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Sets;
 
@@ -53,7 +54,12 @@ public final class DocValueCollectorManager implements CollectorManager<DocValue
 
 	@Override
 	public List<Map<String, Object>> reduce(Collection<DocValueCollector> collectors) throws IOException {
-		return FluentIterable.from(collectors).transformAndConcat(DocValueCollector::getHits).toList();
+		return FluentIterable.from(collectors).transformAndConcat(new Function<DocValueCollector, Collection<Map<String, Object>>>() {
+			@Override
+			public Collection<Map<String, Object>> apply(DocValueCollector input) {
+				return input.getHits();
+			}
+		}).toList();
 	}
 	
 	/**

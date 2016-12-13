@@ -76,7 +76,7 @@ final class CodeSystemSearchRequest extends RevisionSearchRequest<CodeSystems> {
 	
 	@Override
 	protected CodeSystems createEmptyResult(int offset, int limit) {
-		return new CodeSystems(Collections.emptyList(), offset, limit, 0);
+		return new CodeSystems(Collections.<CodeSystemEntry>emptyList(), offset, limit, 0);
 	}
 
 	@Override

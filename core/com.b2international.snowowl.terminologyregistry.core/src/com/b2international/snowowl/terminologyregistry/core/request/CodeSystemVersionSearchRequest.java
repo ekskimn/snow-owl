@@ -76,7 +76,7 @@ final class CodeSystemVersionSearchRequest extends RevisionSearchRequest<CodeSys
 	
 	@Override
 	protected CodeSystemVersions createEmptyResult(int offset, int limit) {
-		return new CodeSystemVersions(Collections.emptyList(), offset, limit, 0);
+		return new CodeSystemVersions(Collections.<CodeSystemVersionEntry>emptyList(), offset, limit, 0);
 	}
 
 	@Override

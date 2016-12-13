@@ -25,7 +25,6 @@ import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
-import com.b2international.snowowl.datastore.request.BaseSearchRequest;
 import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
@@ -160,7 +159,7 @@ public abstract class SnomedSearchRequest<R> extends RevisionSearchRequest<R> {
 					.execute(context);
 				idFilter = FluentIterable.from(matchingConcepts).transform(IComponent.ID_FUNCTION).toSet();
 				if (idFilter.isEmpty()) {
-					throw new BaseSearchRequest.NoResultException();
+					throw new RevisionSearchRequest.NoResultException();
 				}
 			}
 		}

@@ -18,10 +18,10 @@ package com.b2international.snowowl.snomed.core.ecl;
 import static com.b2international.snowowl.datastore.index.RevisionDocument.Expressions.id;
 import static com.b2international.snowowl.datastore.index.RevisionDocument.Expressions.ids;
 import static com.b2international.snowowl.datastore.index.RevisionDocument.Fields.ID;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringMappingRefSet;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Expressions.referringRefSet;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Fields.REFERRING_MAPPING_REFSETS;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedComponentDocument.Fields.REFERRING_REFSETS;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.referringMappingRefSet;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.referringRefSet;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Fields.REFERRING_MAPPING_REFSETS;
+import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Fields.REFERRING_REFSETS;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.ancestors;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument.Expressions.parents;
 import static com.google.common.collect.Sets.newHashSet;
@@ -49,6 +49,7 @@ import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.ecl.SnomedEclRefinementEvaluator.Property;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.ecl.ecl.AncestorOf;
 import com.b2international.snowowl.snomed.ecl.ecl.AncestorOrSelfOf;
@@ -375,11 +376,16 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 		final EclSerializer serializer = context.service(EclSerializer.class);
 		final Collection<String> sourceFilter = Collections.singleton(serializer.serialize(dotted.getConstraint()));
 		final Collection<String> typeFilter = Collections.singleton(serializer.serialize(dotted.getAttribute()));
-		return SnomedEclRefinementEvaluator.evalRelationships(context, sourceFilter, typeFilter, Collections.emptySet(), false)
+		return SnomedEclRefinementEvaluator.evalRelationships(context, sourceFilter, typeFilter, Collections.<String>emptySet(), false)
 				.then(new Function<Collection<SnomedEclRefinementEvaluator.Property>, Set<String>>() {
 					@Override
 					public Set<String> apply(Collection<SnomedEclRefinementEvaluator.Property> input) {
-						return FluentIterable.from(input).transform(SnomedEclRefinementEvaluator.Property::getValue).filter(String.class).toSet();
+						return FluentIterable.from(input).transform(new Function<SnomedEclRefinementEvaluator.Property, Object>() {
+							@Override
+							public Object apply(Property input) {
+								return input.getValue();
+							}
+						}).filter(String.class).toSet();
 					}
 				})
 				.then(matchIdsOrNone());
@@ -416,7 +422,7 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 	 * Otherwise it will try to evaluate the ecl completely without using the first returned expression.
 	 * @param ecl - the original ECL which will resolve to the returned function parameter as {@link Expression}
 	 */
-	private static Function<Expression, Promise<Set<String>>> resolveIds(BranchContext context, ExpressionConstraint ecl) {
+	private static Function<Expression, Promise<Set<String>>> resolveIds(final BranchContext context, final ExpressionConstraint ecl) {
 		return new Function<Expression, Promise<Set<String>>>() {
 			@Override
 			public Promise<Set<String>> apply(Expression expression) {
@@ -438,7 +444,7 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 				return SnomedRequests.prepareSearchConcept()
 						.setLimit(ids.size())
 						.setComponentIds(ids)
-						.build(context.id(), context.branch().path())
+						.build(context.branch().path())
 						.execute(context.service(IEventBus.class));
 			}
 		};

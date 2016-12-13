@@ -118,7 +118,7 @@ public class JsonDocumentSearcher implements Searcher {
 			
 			if (limit < 1) {
 				final int totalHits = searcher.count(lq);
-				return new Hits<>(Collections.emptyList(), offset, limit, totalHits);
+				return new Hits<>(Collections.<T>emptyList(), offset, limit, totalHits);
 			} else {
 				if (limit == Integer.MAX_VALUE || limit == Integer.MAX_VALUE - 1 /*SearchRequest max value*/) {
 					// if all values required, or clients expect all values to be returned reduce limit to total hits
@@ -126,7 +126,7 @@ public class JsonDocumentSearcher implements Searcher {
 				} 
 				int maxDoc = searcher.getIndexReader().maxDoc();
 				if (maxDoc <= 0 || limit < 1) {
-					return new Hits<>(Collections.emptyList(), offset, limit, 0);
+					return new Hits<>(Collections.<T>emptyList(), offset, limit, 0);
 				} else {
 					final Set<String> fields = query.getFields();
 					final List<Map<String, Object>> rawHits = searcher.search(lq, new DocValueCollectorManager(fields));

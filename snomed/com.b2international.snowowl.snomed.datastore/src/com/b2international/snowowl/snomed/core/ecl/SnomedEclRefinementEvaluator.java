@@ -27,11 +27,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BinaryOperator;
 
 import org.eclipse.xtext.util.PolymorphicDispatcher;
 
 import com.b2international.commons.options.Options;
+import com.b2international.commons.options.OptionsBuilder;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
@@ -98,6 +98,12 @@ import com.google.common.collect.Sets;
  */
 final class SnomedEclRefinementEvaluator {
 
+	private static interface BinaryOperator<E> {
+		
+		E apply(E left, E right);
+		
+	}
+	
 	private static final Set<String> ALLOWED_CHARACTERISTIC_TYPES = ImmutableSet.of(Concepts.INFERRED_RELATIONSHIP, Concepts.ADDITIONAL_RELATIONSHIP);
 	private static final int UNBOUNDED_CARDINALITY = -1;
 	private static final Range<Long> ANY_GROUP = Range.closed(0L, Long.MAX_VALUE);
@@ -131,7 +137,7 @@ final class SnomedEclRefinementEvaluator {
 				.thenWith(new Function<Collection<Property>, Promise<Expression>>() {
 					@Override
 					public Promise<Expression> apply(Collection<Property> input) {
-						final Function<Property, Object> idProvider = refinement.isReversed() ? Property::getValue : Property::getObjectId;
+						final Function<Property, Object> idProvider = (Function<Property, Object>) (refinement.isReversed() ? Property.GET_VALUE : Property.GET_OBJECTID);
 						final Set<String> matchingIds = FluentIterable.from(input).transform(idProvider).filter(String.class).toSet();
 						// two cases here, one is the [1..x] the other is [0..x]
 						final Cardinality cardinality = refinement.getCardinality();
@@ -217,7 +223,7 @@ final class SnomedEclRefinementEvaluator {
 						.thenWith(new Function<Collection<Property>, Promise<Expression>>() {
 							@Override
 							public Promise<Expression> apply(Collection<Property> input) {
-								final Set<String> excludedMatches = FluentIterable.from(input).transform(Property::getObjectId).toSet();
+								final Set<String> excludedMatches = FluentIterable.from(input).transform(Property.GET_OBJECTID).toSet();
 								return focusConcepts.resolveToExclusionExpression(context, excludedMatches);
 							}
 						});
@@ -227,7 +233,7 @@ final class SnomedEclRefinementEvaluator {
 					.then(new Function<Collection<Property>, Set<String>>() {
 						@Override
 						public Set<String> apply(Collection<Property> input) {
-							return FluentIterable.from(input).transform(Property::getObjectId).toSet();
+							return FluentIterable.from(input).transform(Property.GET_OBJECTID).toSet();
 						}
 					})
 					.then(SnomedEclEvaluationRequest.matchIdsOrNone());
@@ -280,7 +286,12 @@ final class SnomedEclRefinementEvaluator {
 	 */
 	protected Promise<Collection<Property>> evalGroup(final BranchContext context, final Range<Long> groupCardinality, final AndRefinement and) {
 		return Promise.all(evaluateGroup(context, groupCardinality, and.getLeft()), evaluateGroup(context, groupCardinality, and.getRight()))
-				.then(evalParts(groupCardinality, Sets::intersection));
+				.then(evalParts(groupCardinality, new BinaryOperator<Set<Integer>>() {
+					@Override
+					public Set<Integer> apply(Set<Integer> left, Set<Integer> right) {
+						return Sets.intersection(left, right);
+					}
+				}));
 	}
 	
 	/**
@@ -288,7 +299,12 @@ final class SnomedEclRefinementEvaluator {
 	 */
 	protected Promise<Collection<Property>> evalGroup(final BranchContext context, final Range<Long> groupCardinality, final OrRefinement or) {
 		return Promise.all(evaluateGroup(context, groupCardinality, or.getLeft()), evaluateGroup(context, groupCardinality, or.getRight()))
-				.then(evalParts(groupCardinality, Sets::union));
+				.then(evalParts(groupCardinality, new BinaryOperator<Set<Integer>>() {
+					@Override
+					public Set<Integer> apply(Set<Integer> left, Set<Integer> right) {
+						return Sets.union(left, right);
+					}
+				}));
 	}
 	
 	/**
@@ -304,7 +320,7 @@ final class SnomedEclRefinementEvaluator {
 	 * @param groupOperator - the operator to use (AND or OR, aka {@link Sets#intersection(Set, Set)} or {@link Sets#union(Set, Set)})
 	 * @return a function that will can be chained via {@link Promise#then(Function)} to evaluate partial results when they are available
 	 */
-	private Function<List<Object>, Collection<Property>> evalParts(final Range<Long> groupCardinality, BinaryOperator<Set<Integer>> groupOperator) {
+	private Function<List<Object>, Collection<Property>> evalParts(final Range<Long> groupCardinality, final BinaryOperator<Set<Integer>> groupOperator) {
 		return new Function<List<Object>, Collection<Property>>() {
 			@Override
 			public Collection<Property> apply(List<Object> input) {
@@ -314,8 +330,8 @@ final class SnomedEclRefinementEvaluator {
 				final Collection<Property> matchingAttributes = newHashSet();
 				
 				// group left and right side by source ID
-				final Multimap<String, Property> leftRelationshipsBySource = Multimaps.index(left, Property::getObjectId);
-				final Multimap<String, Property> rightRelationshipsBySource = Multimaps.index(right, Property::getObjectId);
+				final Multimap<String, Property> leftRelationshipsBySource = Multimaps.index(left, Property.GET_OBJECTID);
+				final Multimap<String, Property> rightRelationshipsBySource = Multimaps.index(right, Property.GET_OBJECTID);
 				
 				// check that each ID has the required number of groups with left and right relationships
 				for (String sourceConcept : Iterables.concat(leftRelationshipsBySource.keySet(), rightRelationshipsBySource.keySet())) {
@@ -324,8 +340,8 @@ final class SnomedEclRefinementEvaluator {
 					final Collection<Property> leftSourceRelationships = leftRelationshipsBySource.get(sourceConcept);
 					final Collection<Property> rightSourceRelationships = rightRelationshipsBySource.get(sourceConcept);
 				
-					final Multimap<Integer, Property> leftRelationshipsByGroup = Multimaps.index(leftSourceRelationships, Property::getGroup);
-					final Multimap<Integer, Property> rightRelationshipsByGroup = Multimaps.index(rightSourceRelationships, Property::getGroup);
+					final Multimap<Integer, Property> leftRelationshipsByGroup = Multimaps.index(leftSourceRelationships, Property.GET_GROUP);
+					final Multimap<Integer, Property> rightRelationshipsByGroup = Multimaps.index(rightSourceRelationships, Property.GET_GROUP);
 					
 					for (Integer group : groupOperator.apply(leftRelationshipsByGroup.keySet(), rightRelationshipsByGroup.keySet())) {
 						validGroups.get(group).addAll(leftRelationshipsByGroup.get(group));
@@ -369,15 +385,15 @@ final class SnomedEclRefinementEvaluator {
 			// use cardinality range specified in the syntax
 			propertyCardinality = Range.closed(min, max);
 		}
-		final Function<Property, Object> idProvider = refinement.isReversed() ? Property::getValue : Property::getObjectId;
-		final Promise<Set<String>> focusConceptIds = focusConcepts.isAnyExpression() ? Promise.immediate(Collections.emptySet()) : focusConcepts.resolve(context);
+		final Function<Property, Object> idProvider = (Function<Property, Object>) (refinement.isReversed() ? Property.GET_VALUE : Property.GET_OBJECTID);
+		final Promise<Set<String>> focusConceptIds = focusConcepts.isAnyExpression() ? Promise.<Set<String>>immediate(Collections.<String>emptySet()) : focusConcepts.resolve(context);
 		return focusConceptIds
 				.thenWith(new Function<Set<String>, Promise<Collection<Property>>>() {
 					@Override
 					public Promise<Collection<Property>> apply(Set<String> focusConceptIds) {
 						// if resolved IDs are empty in case of non-* expression return empty props
 						if (focusConceptIds.isEmpty() && !focusConcepts.isAnyExpression()) {
-							return Promise.immediate(Collections.emptySet());
+							return Promise.<Collection<Property>>immediate(Collections.<Property>emptySet());
 						}
 						return evalRefinement(context, focusConceptIds, refinement, grouped)
 								.then(filterByCardinality(grouped, groupCardinality, propertyCardinality, idProvider));
@@ -498,7 +514,7 @@ final class SnomedEclRefinementEvaluator {
 
 	private Promise<SnomedReferenceSetMembers> evalMembers(final BranchContext context, final Collection<String> referencedComponents, 
 			final Collection<String> attributeNames, final DataType type, final Object value, RevisionSearchRequest.Operator operator) {
-		final Options propFilter = Options.builder()
+		final Options propFilter = OptionsBuilder.newBuilder()
 				.put(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, ALLOWED_CHARACTERISTIC_TYPES)
 				.put(SnomedRf2Headers.FIELD_ATTRIBUTE_NAME, attributeNames)
 				.put(SnomedRefSetMemberIndexEntry.Fields.DATA_TYPE, type)
@@ -511,7 +527,7 @@ final class SnomedEclRefinementEvaluator {
 			.filterByReferencedComponent(referencedComponents)
 			.filterByRefSetType(Collections.singleton(SnomedRefSetType.CONCRETE_DATA_TYPE))
 			.filterByProps(propFilter)
-			.build(context.id(), context.branch().path())
+			.build(context.branch().path())
 			.execute(context.service(IEventBus.class));
 	}
 
@@ -550,7 +566,7 @@ final class SnomedEclRefinementEvaluator {
 					final Collection<Property> propertiesOfConcept = propertiesByMatchingIds.get(matchingConceptId);
 					if (allowedRelationshipCardinality.contains((long) propertiesOfConcept.size())) {
 						if (grouped) {
-							final Multimap<Integer, Property> indexedByGroup = FluentIterable.from(propertiesOfConcept).index(Property::getGroup);
+							final Multimap<Integer, Property> indexedByGroup = FluentIterable.from(propertiesOfConcept).index(Property.GET_GROUP);
 							// if groups should be considered as well, then check group numbers in the matching sets
 							// check that the concept has at least the right amount of groups
 							final Multimap<Integer, Property> validGroups = ArrayListMultimap.create();
@@ -613,7 +629,7 @@ final class SnomedEclRefinementEvaluator {
 		}
 		
 		return req
-				.build(context.id(), context.branch().path())
+				.build(context.branch().path())
 				.execute(context.service(IEventBus.class))
 				.then(new Function<SnomedRelationships, Collection<Property>>() {
 					@Override
@@ -648,6 +664,27 @@ final class SnomedEclRefinementEvaluator {
 	
 	/*Property data class which can represent both relationships and concrete domain members with all relevant properties required for ECL refinement evaluation*/
 	static final class Property {
+		
+		private static final Function<Property, Integer> GET_GROUP = new Function<Property, Integer>() {
+			@Override
+			public Integer apply(Property input) {
+				return input.getGroup();
+			}
+		};
+		
+		private static final Function<Property, String> GET_OBJECTID = new Function<Property, String>() {
+			@Override
+			public String apply(Property input) {
+				return input.getObjectId();
+			}
+		};
+		
+		private static final Function<Property, Object> GET_VALUE = new Function<Property, Object>() {
+			@Override
+			public Object apply(Property input) {
+				return input.getValue();
+			}
+		};
 		
 		private final String id;
 		private final String objectId;
