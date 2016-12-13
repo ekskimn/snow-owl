@@ -39,6 +39,7 @@ import com.b2international.snowowl.eventbus.EventBusUtil;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.IHandler;
 import com.b2international.snowowl.eventbus.IMessage;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 
 /**
  * @since 5.4
@@ -83,7 +84,7 @@ public final class TestBranchContext extends DelegatingServiceProvider implement
 		private TestBranchContext context;
 		
 		Builder(String branch) {
-			final String repositoryId = UUID.randomUUID().toString();
+			final String repositoryId = SnomedDatastoreActivator.REPOSITORY_UUID;
 			final Branch mockBranch = Mockito.mock(Branch.class);
 			when(mockBranch.path()).thenReturn(branch);
 			context = new TestBranchContext(repositoryId, mockBranch);
