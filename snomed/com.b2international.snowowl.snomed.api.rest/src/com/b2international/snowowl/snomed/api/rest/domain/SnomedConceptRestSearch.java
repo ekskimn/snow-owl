@@ -21,6 +21,7 @@ public class SnomedConceptRestSearch {
 
 	private String termFilter;
 	private String escgFilter;
+	private String eclFilter;
 	private Set<String> conceptIds;
 	private String moduleFilter;
 	private String expand;
@@ -42,6 +43,14 @@ public class SnomedConceptRestSearch {
 
 	public void setEscgFilter(String escgFilter) {
 		this.escgFilter = escgFilter;
+	}
+	
+	public String getEclFilter() {
+		return eclFilter;
+	}
+	
+	public void setEclFilter(String eclFilter) {
+		this.eclFilter = eclFilter;
 	}
 
 	public Set<String> getConceptIds() {
