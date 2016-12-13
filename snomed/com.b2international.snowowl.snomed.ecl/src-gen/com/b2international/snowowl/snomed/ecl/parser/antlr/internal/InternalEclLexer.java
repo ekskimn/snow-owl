@@ -12,46 +12,46 @@ import java.util.ArrayList;
 
 @SuppressWarnings("all")
 public class InternalEclLexer extends Lexer {
-    public static final int RULE_LTE=30;
-    public static final int RULE_CURLY_OPEN=19;
-    public static final int RULE_DIGIT_NONZERO=31;
-    public static final int RULE_DBL_GT=13;
-    public static final int RULE_ROUND_CLOSE=18;
-    public static final int RULE_TO=23;
-    public static final int RULE_GT=12;
-    public static final int RULE_STRING=27;
-    public static final int RULE_NOT=35;
-    public static final int RULE_REVERSED=21;
-    public static final int RULE_AND=34;
-    public static final int RULE_GTE=29;
-    public static final int RULE_SL_COMMENT=42;
-    public static final int RULE_HASH=28;
-    public static final int RULE_ROUND_OPEN=17;
-    public static final int RULE_DASH=39;
     public static final int RULE_OTHER_CHARACTER=40;
-    public static final int RULE_DBL_LT=10;
+    public static final int RULE_ZERO=32;
+    public static final int RULE_REVERSED=21;
+    public static final int RULE_CARET=14;
+    public static final int RULE_GTE=29;
     public static final int RULE_PLUS=37;
     public static final int RULE_NOT_EQUAL=26;
     public static final int RULE_OR=4;
-    public static final int RULE_DOT=7;
-    public static final int EOF=-1;
-    public static final int RULE_SQUARE_CLOSE=24;
-    public static final int RULE_SQUARE_OPEN=22;
-    public static final int RULE_EQUAL=25;
-    public static final int RULE_LT_EM=8;
-    public static final int RULE_GT_EM=11;
-    public static final int RULE_WS=33;
+    public static final int RULE_LTE=30;
+    public static final int RULE_DBL_GT=13;
     public static final int RULE_COMMA=38;
-    public static final int RULE_CURLY_CLOSE=20;
-    public static final int RULE_ZERO=32;
-    public static final int RULE_COLON=6;
-    public static final int RULE_MINUS=5;
+    public static final int RULE_HASH=28;
+    public static final int RULE_AND=34;
+    public static final int RULE_EQUAL=25;
+    public static final int RULE_DIGIT_NONZERO=31;
+    public static final int RULE_SL_COMMENT=42;
+    public static final int EOF=-1;
+    public static final int RULE_ROUND_OPEN=17;
+    public static final int RULE_NOT=35;
+    public static final int RULE_SQUARE_OPEN=22;
     public static final int RULE_LETTER=36;
-    public static final int RULE_LT=9;
-    public static final int RULE_CARET=14;
-    public static final int RULE_PIPE=15;
     public static final int RULE_ML_COMMENT=41;
     public static final int RULE_WILDCARD=16;
+    public static final int RULE_LT=9;
+    public static final int RULE_TO=23;
+    public static final int RULE_MINUS=5;
+    public static final int RULE_COLON=6;
+    public static final int RULE_STRING=27;
+    public static final int RULE_GT_EM=11;
+    public static final int RULE_DOT=7;
+    public static final int RULE_PIPE=15;
+    public static final int RULE_LT_EM=8;
+    public static final int RULE_SQUARE_CLOSE=24;
+    public static final int RULE_CURLY_OPEN=19;
+    public static final int RULE_GT=12;
+    public static final int RULE_CURLY_CLOSE=20;
+    public static final int RULE_DBL_LT=10;
+    public static final int RULE_WS=33;
+    public static final int RULE_ROUND_CLOSE=18;
+    public static final int RULE_DASH=39;
 
     // delegates
     // delegators
@@ -1410,7 +1410,7 @@ public class InternalEclLexer extends Lexer {
     static final String DFA8_acceptS =
         "\1\uffff\1\1\4\uffff\1\6\1\7\1\10\1\11\1\12\1\13\1\14\1\15\1\16\1\17\1\20\1\21\1\22\1\23\1\24\1\uffff\1\27\1\30\2\uffff\1\42\1\43\3\uffff\1\46\1\1\1\2\1\26\1\3\1\10\1\4\1\5\1\6\1\7\1\12\1\13\1\14\1\15\1\16\1\17\1\20\1\21\1\22\1\23\1\24\1\31\1\25\1\27\1\30\1\34\1\36\1\41\1\32\1\35\1\37\1\40\1\33\1\42\1\43\1\44\1\45\1\47";
     static final String DFA8_specialS =
-        "\1\0\34\uffff\1\1\1\2\46\uffff}>";
+        "\1\0\34\uffff\1\2\1\1\46\uffff}>";
     static final String[] DFA8_transitionS = {
             "\11\37\2\33\2\37\1\33\22\37\1\33\1\25\1\35\1\32\3\37\1\36\1\16\1\17\1\26\1\22\1\15\1\23\1\2\1\34\1\6\11\7\1\12\1\37\1\30\1\27\1\31\2\37\1\3\13\10\1\5\1\10\1\4\2\10\1\1\10\10\1\20\1\37\1\21\1\24\2\37\32\10\1\13\1\11\1\14\uff82\37",
             "",
@@ -1588,20 +1588,20 @@ public class InternalEclLexer extends Lexer {
                         if ( s>=0 ) return s;
                         break;
                     case 1 : 
-                        int LA8_29 = input.LA(1);
+                        int LA8_30 = input.LA(1);
 
                         s = -1;
-                        if ( ((LA8_29>='\u0000' && LA8_29<='\uFFFF')) ) {s = 68;}
+                        if ( ((LA8_30>='\u0000' && LA8_30<='\uFFFF')) ) {s = 68;}
 
                         else s = 31;
 
                         if ( s>=0 ) return s;
                         break;
                     case 2 : 
-                        int LA8_30 = input.LA(1);
+                        int LA8_29 = input.LA(1);
 
                         s = -1;
-                        if ( ((LA8_30>='\u0000' && LA8_30<='\uFFFF')) ) {s = 68;}
+                        if ( ((LA8_29>='\u0000' && LA8_29<='\uFFFF')) ) {s = 68;}
 
                         else s = 31;
 

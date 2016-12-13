@@ -24,46 +24,46 @@ public class InternalEclParser extends AbstractInternalAntlrParser {
     public static final String[] tokenNames = new String[] {
         "<invalid>", "<EOR>", "<DOWN>", "<UP>", "RULE_OR", "RULE_MINUS", "RULE_COLON", "RULE_DOT", "RULE_LT_EM", "RULE_LT", "RULE_DBL_LT", "RULE_GT_EM", "RULE_GT", "RULE_DBL_GT", "RULE_CARET", "RULE_PIPE", "RULE_WILDCARD", "RULE_ROUND_OPEN", "RULE_ROUND_CLOSE", "RULE_CURLY_OPEN", "RULE_CURLY_CLOSE", "RULE_REVERSED", "RULE_SQUARE_OPEN", "RULE_TO", "RULE_SQUARE_CLOSE", "RULE_EQUAL", "RULE_NOT_EQUAL", "RULE_STRING", "RULE_HASH", "RULE_GTE", "RULE_LTE", "RULE_DIGIT_NONZERO", "RULE_ZERO", "RULE_WS", "RULE_AND", "RULE_NOT", "RULE_LETTER", "RULE_PLUS", "RULE_COMMA", "RULE_DASH", "RULE_OTHER_CHARACTER", "RULE_ML_COMMENT", "RULE_SL_COMMENT"
     };
-    public static final int RULE_LTE=30;
-    public static final int RULE_CURLY_OPEN=19;
-    public static final int RULE_DIGIT_NONZERO=31;
-    public static final int RULE_DBL_GT=13;
-    public static final int RULE_ROUND_CLOSE=18;
-    public static final int RULE_TO=23;
-    public static final int RULE_GT=12;
-    public static final int RULE_STRING=27;
-    public static final int RULE_NOT=35;
-    public static final int RULE_REVERSED=21;
-    public static final int RULE_AND=34;
-    public static final int RULE_GTE=29;
-    public static final int RULE_SL_COMMENT=42;
-    public static final int RULE_HASH=28;
-    public static final int RULE_ROUND_OPEN=17;
-    public static final int RULE_DASH=39;
     public static final int RULE_OTHER_CHARACTER=40;
-    public static final int RULE_DBL_LT=10;
+    public static final int RULE_ZERO=32;
+    public static final int RULE_REVERSED=21;
+    public static final int RULE_CARET=14;
+    public static final int RULE_GTE=29;
     public static final int RULE_PLUS=37;
     public static final int RULE_NOT_EQUAL=26;
     public static final int RULE_OR=4;
-    public static final int RULE_DOT=7;
-    public static final int EOF=-1;
-    public static final int RULE_SQUARE_CLOSE=24;
-    public static final int RULE_SQUARE_OPEN=22;
-    public static final int RULE_EQUAL=25;
-    public static final int RULE_LT_EM=8;
-    public static final int RULE_GT_EM=11;
-    public static final int RULE_WS=33;
+    public static final int RULE_LTE=30;
+    public static final int RULE_DBL_GT=13;
     public static final int RULE_COMMA=38;
-    public static final int RULE_CURLY_CLOSE=20;
-    public static final int RULE_ZERO=32;
+    public static final int RULE_HASH=28;
+    public static final int RULE_AND=34;
+    public static final int RULE_EQUAL=25;
+    public static final int RULE_DIGIT_NONZERO=31;
+    public static final int RULE_SL_COMMENT=42;
+    public static final int EOF=-1;
+    public static final int RULE_NOT=35;
+    public static final int RULE_ROUND_OPEN=17;
+    public static final int RULE_SQUARE_OPEN=22;
+    public static final int RULE_LETTER=36;
+    public static final int RULE_ML_COMMENT=41;
+    public static final int RULE_TO=23;
+    public static final int RULE_LT=9;
+    public static final int RULE_WILDCARD=16;
     public static final int RULE_COLON=6;
     public static final int RULE_MINUS=5;
-    public static final int RULE_LETTER=36;
-    public static final int RULE_LT=9;
-    public static final int RULE_CARET=14;
+    public static final int RULE_STRING=27;
+    public static final int RULE_DOT=7;
+    public static final int RULE_GT_EM=11;
     public static final int RULE_PIPE=15;
-    public static final int RULE_ML_COMMENT=41;
-    public static final int RULE_WILDCARD=16;
+    public static final int RULE_LT_EM=8;
+    public static final int RULE_SQUARE_CLOSE=24;
+    public static final int RULE_CURLY_OPEN=19;
+    public static final int RULE_CURLY_CLOSE=20;
+    public static final int RULE_GT=12;
+    public static final int RULE_DBL_LT=10;
+    public static final int RULE_WS=33;
+    public static final int RULE_DASH=39;
+    public static final int RULE_ROUND_CLOSE=18;
 
     // delegates
     // delegators
@@ -5452,11 +5452,11 @@ public class InternalEclParser extends AbstractInternalAntlrParser {
                 {
                 int LA22_2 = input.LA(2);
 
-                if ( ((LA22_2>=RULE_LT_EM && LA22_2<=RULE_CARET)||(LA22_2>=RULE_WILDCARD && LA22_2<=RULE_ROUND_OPEN)||LA22_2==RULE_DIGIT_NONZERO) ) {
-                    alt22=1;
-                }
-                else if ( ((LA22_2>=RULE_STRING && LA22_2<=RULE_HASH)) ) {
+                if ( ((LA22_2>=RULE_STRING && LA22_2<=RULE_HASH)) ) {
                     alt22=2;
+                }
+                else if ( ((LA22_2>=RULE_LT_EM && LA22_2<=RULE_CARET)||(LA22_2>=RULE_WILDCARD && LA22_2<=RULE_ROUND_OPEN)||LA22_2==RULE_DIGIT_NONZERO) ) {
+                    alt22=1;
                 }
                 else {
                     if (state.backtracking>0) {state.failed=true; return current;}
@@ -10780,11 +10780,11 @@ public class InternalEclParser extends AbstractInternalAntlrParser {
 
     // Delegated rules
 
-    public final boolean synpred2_InternalEcl() {
+    public final boolean synpred1_InternalEcl() {
         state.backtracking++;
         int start = input.mark();
         try {
-            synpred2_InternalEcl_fragment(); // can never throw exception
+            synpred1_InternalEcl_fragment(); // can never throw exception
         } catch (RecognitionException re) {
             System.err.println("impossible: "+re);
         }
@@ -10794,11 +10794,11 @@ public class InternalEclParser extends AbstractInternalAntlrParser {
         state.failed=false;
         return success;
     }
-    public final boolean synpred1_InternalEcl() {
+    public final boolean synpred2_InternalEcl() {
         state.backtracking++;
         int start = input.mark();
         try {
-            synpred1_InternalEcl_fragment(); // can never throw exception
+            synpred2_InternalEcl_fragment(); // can never throw exception
         } catch (RecognitionException re) {
             System.err.println("impossible: "+re);
         }
@@ -10879,27 +10879,27 @@ public class InternalEclParser extends AbstractInternalAntlrParser {
     static final String DFA24_eotS =
         "\77\uffff";
     static final String DFA24_eofS =
-        "\21\uffff\2\47\2\uffff\2\54\2\uffff\2\57\2\uffff\2\63\2\uffff\2\70\2\uffff\2\74\2\uffff\2\47\2\uffff\2\54\2\uffff\2\57\2\uffff\2\63\2\uffff\2\70\2\uffff\2\74";
+        "\21\uffff\2\47\2\uffff\2\54\2\uffff\2\60\2\uffff\2\63\2\uffff\2\67\2\uffff\2\74\2\uffff\2\47\2\uffff\2\54\2\uffff\2\60\2\uffff\2\63\2\uffff\2\67\2\uffff\2\74";
     static final String DFA24_minS =
-        "\1\11\2\33\4\34\1\37\2\uffff\7\37\2\4\2\37\2\4\2\37\2\4\2\37\2\4\2\37\2\4\2\37\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4";
+        "\1\11\2\33\4\34\1\37\1\uffff\1\37\1\uffff\6\37\2\4\2\37\2\4\2\37\2\4\2\37\2\4\2\37\2\4\2\37\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4\2\uffff\2\4";
     static final String DFA24_maxS =
-        "\1\36\6\34\1\47\2\uffff\5\47\2\40\2\46\2\40\2\46\2\40\2\46\2\40\2\46\2\40\2\46\2\40\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46";
+        "\1\36\6\34\1\47\1\uffff\1\47\1\uffff\4\47\2\40\2\46\2\40\2\46\2\40\2\46\2\40\2\46\2\40\2\46\2\40\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46\2\uffff\2\46";
     static final String DFA24_acceptS =
-        "\10\uffff\1\1\1\2\35\uffff\1\3\1\11\2\uffff\1\12\1\4\2\uffff\1\5\1\13\2\uffff\1\6\1\14\2\uffff\1\15\1\7\2\uffff\1\16\1\10\2\uffff";
+        "\10\uffff\1\1\1\uffff\1\2\34\uffff\1\3\1\11\2\uffff\1\12\1\4\2\uffff\1\13\1\5\2\uffff\1\6\1\14\2\uffff\1\7\1\15\2\uffff\1\16\1\10\2\uffff";
     static final String DFA24_specialS =
         "\77\uffff}>";
     static final String[] DFA24_transitionS = {
             "\1\5\2\uffff\1\3\14\uffff\1\1\1\2\2\uffff\1\4\1\6",
             "\1\10\1\7",
-            "\1\11\1\12",
+            "\1\12\1\11",
             "\1\13",
             "\1\14",
             "\1\15",
             "\1\16",
             "\1\22\1\21\4\uffff\1\17\1\uffff\1\20",
             "",
-            "",
             "\1\26\1\25\4\uffff\1\23\1\uffff\1\24",
+            "",
             "\1\32\1\31\4\uffff\1\27\1\uffff\1\30",
             "\1\36\1\35\4\uffff\1\33\1\uffff\1\34",
             "\1\42\1\41\4\uffff\1\37\1\uffff\1\40",
@@ -10914,16 +10914,16 @@ public class InternalEclParser extends AbstractInternalAntlrParser {
             "\2\54\1\uffff\1\53\12\uffff\1\54\1\uffff\1\54\12\uffff\1\55\1\56\1\uffff\1\54\3\uffff\1\54",
             "\1\32\1\31",
             "\1\32\1\31",
-            "\2\57\1\uffff\1\60\12\uffff\1\57\1\uffff\1\57\15\uffff\1\57\3\uffff\1\57",
-            "\2\57\1\uffff\1\60\12\uffff\1\57\1\uffff\1\57\12\uffff\1\61\1\62\1\uffff\1\57\3\uffff\1\57",
+            "\2\60\1\uffff\1\57\12\uffff\1\60\1\uffff\1\60\15\uffff\1\60\3\uffff\1\60",
+            "\2\60\1\uffff\1\57\12\uffff\1\60\1\uffff\1\60\12\uffff\1\61\1\62\1\uffff\1\60\3\uffff\1\60",
             "\1\36\1\35",
             "\1\36\1\35",
             "\2\63\1\uffff\1\64\12\uffff\1\63\1\uffff\1\63\15\uffff\1\63\3\uffff\1\63",
             "\2\63\1\uffff\1\64\12\uffff\1\63\1\uffff\1\63\12\uffff\1\65\1\66\1\uffff\1\63\3\uffff\1\63",
             "\1\42\1\41",
             "\1\42\1\41",
-            "\2\70\1\uffff\1\67\12\uffff\1\70\1\uffff\1\70\15\uffff\1\70\3\uffff\1\70",
-            "\2\70\1\uffff\1\67\12\uffff\1\70\1\uffff\1\70\12\uffff\1\71\1\72\1\uffff\1\70\3\uffff\1\70",
+            "\2\67\1\uffff\1\70\12\uffff\1\67\1\uffff\1\67\15\uffff\1\67\3\uffff\1\67",
+            "\2\67\1\uffff\1\70\12\uffff\1\67\1\uffff\1\67\12\uffff\1\71\1\72\1\uffff\1\67\3\uffff\1\67",
             "\1\46\1\45",
             "\1\46\1\45",
             "\2\74\1\uffff\1\73\12\uffff\1\74\1\uffff\1\74\15\uffff\1\74\3\uffff\1\74",
@@ -10938,16 +10938,16 @@ public class InternalEclParser extends AbstractInternalAntlrParser {
             "\2\54\1\uffff\1\53\12\uffff\1\54\1\uffff\1\54\12\uffff\1\55\1\56\1\uffff\1\54\3\uffff\1\54",
             "",
             "",
-            "\2\57\1\uffff\1\60\12\uffff\1\57\1\uffff\1\57\12\uffff\1\61\1\62\1\uffff\1\57\3\uffff\1\57",
-            "\2\57\1\uffff\1\60\12\uffff\1\57\1\uffff\1\57\12\uffff\1\61\1\62\1\uffff\1\57\3\uffff\1\57",
+            "\2\60\1\uffff\1\57\12\uffff\1\60\1\uffff\1\60\12\uffff\1\61\1\62\1\uffff\1\60\3\uffff\1\60",
+            "\2\60\1\uffff\1\57\12\uffff\1\60\1\uffff\1\60\12\uffff\1\61\1\62\1\uffff\1\60\3\uffff\1\60",
             "",
             "",
             "\2\63\1\uffff\1\64\12\uffff\1\63\1\uffff\1\63\12\uffff\1\65\1\66\1\uffff\1\63\3\uffff\1\63",
             "\2\63\1\uffff\1\64\12\uffff\1\63\1\uffff\1\63\12\uffff\1\65\1\66\1\uffff\1\63\3\uffff\1\63",
             "",
             "",
-            "\2\70\1\uffff\1\67\12\uffff\1\70\1\uffff\1\70\12\uffff\1\71\1\72\1\uffff\1\70\3\uffff\1\70",
-            "\2\70\1\uffff\1\67\12\uffff\1\70\1\uffff\1\70\12\uffff\1\71\1\72\1\uffff\1\70\3\uffff\1\70",
+            "\2\67\1\uffff\1\70\12\uffff\1\67\1\uffff\1\67\12\uffff\1\71\1\72\1\uffff\1\67\3\uffff\1\67",
+            "\2\67\1\uffff\1\70\12\uffff\1\67\1\uffff\1\67\12\uffff\1\71\1\72\1\uffff\1\67\3\uffff\1\67",
             "",
             "",
             "\2\74\1\uffff\1\73\12\uffff\1\74\1\uffff\1\74\12\uffff\1\75\1\76\1\uffff\1\74\3\uffff\1\74",
