@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.server.internal.merge;
 
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,14 +37,14 @@ import com.google.common.base.Strings;
 /**
  * @since 4.6
  */
-public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
+public class BranchRebaseJob extends AbstractBranchChangeJob {
 
 	private static class SyncRebaseRequest extends AbstractBranchChangeRequest<Branch> {
 
 		private static final Logger LOG = LoggerFactory.getLogger(SyncRebaseRequest.class);
 		
 		SyncRebaseRequest(final Merge merge, final String commitMessage, String reviewId) {
-			super(Branch.class, merge.getSource(), merge.getTarget(), commitMessage, reviewId);
+			super(Branch.class, merge.getId(), merge.getSource(), merge.getTarget(), commitMessage, reviewId);
 		}
 
 		@Override
@@ -73,8 +75,8 @@ public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 		}
 	}
 	
-	public BranchRebaseJob(Repository repository, String source, String target, String commitMessage, String reviewId) {
-		super(repository, source, target, commitMessage, reviewId);
+	public BranchRebaseJob(Repository repository, UUID id, String source, String target, String commitMessage, String reviewId) {
+		super(repository, id, source, target, commitMessage, reviewId);
 	}
 
 	@Override

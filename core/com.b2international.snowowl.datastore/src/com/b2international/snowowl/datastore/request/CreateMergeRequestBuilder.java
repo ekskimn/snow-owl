@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.request;
 
+import java.util.UUID;
+
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.Request;
@@ -26,6 +28,7 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
  */
 public final class CreateMergeRequestBuilder extends BaseRepositoryRequestBuilder<CreateMergeRequestBuilder, Merge> {
 	
+	private UUID id = UUID.randomUUID();
 	private String source;
 	private String target;
 	private String commitComment;
@@ -52,18 +55,20 @@ public final class CreateMergeRequestBuilder extends BaseRepositoryRequestBuilde
 		this.reviewId = reviewId;
 		return this;
 	}
+	
+	public CreateMergeRequestBuilder setId(UUID id) {
+		this.id = id;
+		return this;
+	}
 
 	@Override
 	protected Request<RepositoryContext, Merge> doBuild() {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
 		if (targetPath.getParent().equals(sourcePath)) {
-			return new BranchRebaseRequest(source, target, commitComment, reviewId);
+			return new BranchRebaseRequest(id, source, target, commitComment, reviewId);
 		} else {
-			return new BranchMergeRequest(source, target, commitComment, reviewId);
+			return new BranchMergeRequest(id, source, target, commitComment, reviewId);
 		}
 	}
-
-	
-	
 }

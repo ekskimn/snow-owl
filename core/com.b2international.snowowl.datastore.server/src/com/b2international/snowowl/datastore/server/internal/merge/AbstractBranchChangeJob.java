@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.server.internal.merge;
 
+import java.util.UUID;
+
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.jobs.Job;
@@ -35,18 +37,18 @@ import com.b2international.snowowl.datastore.server.remotejobs.BranchExclusiveRu
 /**
  * @since 4.6
  */
-public abstract class AbstractBranchChangeRemoteJob extends Job {
+public abstract class AbstractBranchChangeJob extends Job {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger("merge-job");
 	
-	public static AbstractBranchChangeRemoteJob create(Repository repository, String source, String target, String commitMessage, String reviewId) {
+	public static AbstractBranchChangeJob create(Repository repository, UUID id, String source, String target, String commitMessage, String reviewId) {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
 		
 		if (targetPath.getParent().equals(sourcePath)) {
-			return new BranchRebaseJob(repository, source, target, commitMessage, reviewId);
+			return new BranchRebaseJob(repository, id, source, target, commitMessage, reviewId);
 		} else {
-			return new BranchMergeJob(repository, source, target, commitMessage, reviewId);
+			return new BranchMergeJob(repository, id, source, target, commitMessage, reviewId);
 		}
 	}
 
@@ -56,11 +58,11 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 	protected String commitComment;
 	protected String reviewId;
 
-	protected AbstractBranchChangeRemoteJob(final Repository repository, final String sourcePath, final String targetPath, final String commitComment, final String reviewId) {
+	protected AbstractBranchChangeJob(final Repository repository, UUID id, final String sourcePath, final String targetPath, final String commitComment, final String reviewId) {
 		super(commitComment);
 		
 		this.repository = repository;
-		this.merge = new MergeImpl(sourcePath, targetPath);
+		this.merge = new MergeImpl(id, sourcePath, targetPath);
 		this.commitComment = commitComment;
 		this.reviewId = reviewId;
 		
@@ -73,8 +75,8 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 	
 	@Override
 	protected IStatus run(IProgressMonitor monitor) {
-		
 		merge.start();
+		
 		try {
 			applyChanges();
 			merge.completed();
@@ -86,6 +88,9 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 		} catch (RuntimeException e) {
 			LOGGER.error("Caught RuntimeException while applying changes for merge {}.", merge.getId(), e);
 			merge.failed(ApiError.Builder.of(e.getMessage()).build());
+		} finally {
+			// Send a notification event with the final state to the global event bus
+			repository.events().publish(String.format(Merge.ADDRESS_TEMPLATE, repository.id(), merge.getId()), merge);
 		}
 		
 		return Statuses.ok();

@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.request;
 
+import java.util.UUID;
+
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.merge.Merge;
@@ -41,12 +43,12 @@ public class BranchRebaseRequest extends AbstractBranchChangeRequest<Merge> {
 				: String.format("Rebase branch '%s' on '%s'", targetPath, sourcePath);
 	}
 
-	BranchRebaseRequest(final String sourcePath, final String targetPath, final String commitMessage, String reviewId) {
-		super(Merge.class, sourcePath, targetPath, commitMessageOrDefault(sourcePath, targetPath, commitMessage), reviewId);
+	BranchRebaseRequest(UUID id, final String sourcePath, final String targetPath, final String commitMessage, String reviewId) {
+		super(Merge.class, id, sourcePath, targetPath, commitMessageOrDefault(sourcePath, targetPath, commitMessage), reviewId);
 	}
 	
 	@Override
 	protected Merge execute(RepositoryContext context, Branch source, Branch target) {
-		return context.service(MergeService.class).enqueue(sourcePath, targetPath, commitMessage, reviewId);
+		return context.service(MergeService.class).enqueue(id, sourcePath, targetPath, commitMessage, reviewId);
 	}
 }

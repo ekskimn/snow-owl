@@ -34,6 +34,14 @@ public interface Merge {
 		FAILED, 
 		CANCEL_REQUESTED;
 	}
+
+	/** 
+	 * Address template for the global event bus to which final Merge statuses will be sent.
+	 * <p>
+	 * The first template parameter is the repository ID ("snomedStore"), while the second is the
+	 * merge UUID.
+	 */
+	public static final String ADDRESS_TEMPLATE = "/merges/%s/%s";
 	
 	UUID getId();
 	

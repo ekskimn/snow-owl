@@ -18,11 +18,7 @@ package com.b2international.snowowl.datastore.server.internal.merge;
 import java.util.List;
 import java.util.UUID;
 
-import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
 import com.b2international.snowowl.core.Repository;
-import com.b2international.snowowl.core.exceptions.ConflictException;
-import com.b2international.snowowl.core.exceptions.InvalidStateException;
-import com.b2international.snowowl.core.exceptions.MergeConflictException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.merge.MergeCollection;
@@ -39,7 +35,7 @@ import com.google.common.collect.FluentIterable;
 public class MergeServiceImpl implements MergeService {
 
 	private final Repository repository;
-	private final Cache<UUID, AbstractBranchChangeRemoteJob> merges;
+	private final Cache<UUID, AbstractBranchChangeJob> merges;
 	
 	public MergeServiceImpl(Repository repository, int mergeMaxResults) {
 		this.repository = repository;
@@ -48,38 +44,22 @@ public class MergeServiceImpl implements MergeService {
 				.build();
 	}
 
-	private AbstractBranchChangeRemoteJob registerJob(String source, String target, String commitMessage, String reviewId) {
-		AbstractBranchChangeRemoteJob job = AbstractBranchChangeRemoteJob.create(repository, source, target, commitMessage, reviewId);
-		merges.put(job.getMerge().getId(), job);
+	private AbstractBranchChangeJob registerJob(UUID id, String source, String target, String commitMessage, String reviewId) {
+		AbstractBranchChangeJob job = AbstractBranchChangeJob.create(repository, id, source, target, commitMessage, reviewId);
+		merges.put(id, job);
 		return job;
 	}
 	
 	@Override
-	public Merge enqueue(String source, String target, String commitMessage, String reviewId) {
-		AbstractBranchChangeRemoteJob job = registerJob(source, target, commitMessage, reviewId);
+	public Merge enqueue(UUID id, String source, String target, String commitMessage, String reviewId) {
+		AbstractBranchChangeJob job = registerJob(id, source, target, commitMessage, reviewId);
 		job.schedule();
 		return job.getMerge();
 	}
 
 	@Override
-	public Merge executeBlocking(String source, String target, String commitMessage, String reviewId) {
-		AbstractBranchChangeRemoteJob job = registerJob(source, target, commitMessage, reviewId);
-		ForkJoinUtils.runJobsInParallel(job);
-		Merge result = job.getMerge();
-		
-		switch (result.getStatus()) {
-			case FAILED:
-				throw new InvalidStateException(result.getApiError().getMessage());
-			case CONFLICTS:
-				throw new MergeConflictException(result.getConflicts(), result.getApiError().getMessage()); 
-			default:
-				return result;
-		}
-	}
-
-	@Override
 	public Merge getMerge(UUID id) {
-		AbstractBranchChangeRemoteJob job = merges.getIfPresent(id);
+		AbstractBranchChangeJob job = merges.getIfPresent(id);
 		
 		if (job != null) {
 			return job.getMerge();
@@ -92,9 +72,9 @@ public class MergeServiceImpl implements MergeService {
 	public MergeCollection search(Predicate<Merge> query) {
 		List<Merge> results = FluentIterable
 				.from(merges.asMap().values())
-				.transform(new Function<AbstractBranchChangeRemoteJob, Merge>() {
+				.transform(new Function<AbstractBranchChangeJob, Merge>() {
 					@Override
-					public Merge apply(AbstractBranchChangeRemoteJob input) {
+					public Merge apply(AbstractBranchChangeJob input) {
 						return input.getMerge();
 					}
 				})
@@ -106,7 +86,7 @@ public class MergeServiceImpl implements MergeService {
 
 	@Override
 	public void deleteMerge(UUID id) {
-		AbstractBranchChangeRemoteJob job = merges.asMap().remove(id);
+		AbstractBranchChangeJob job = merges.asMap().remove(id);
 		
 		if (job != null) {
 			job.cancel();

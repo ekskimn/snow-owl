@@ -28,9 +28,10 @@ import com.b2international.snowowl.core.merge.MergeConflict;
  */
 public class MergeImpl implements Merge {
 
-	private UUID id = UUID.randomUUID();
-	private String source;
-	private String target;
+	private final UUID id;
+	private final String source;
+	private final String target;
+	
 	private Status status = Status.SCHEDULED;
 	private Date scheduledDate = new Date();
 	private Date startDate;
@@ -38,7 +39,8 @@ public class MergeImpl implements Merge {
 	private ApiError apiError;
 	private Collection<MergeConflict> conflicts;
 
-	public MergeImpl(String source, String target) {
+	public MergeImpl(UUID id, String source, String target) {
+		this.id = id;
 		this.source = source;
 		this.target = target;
 	}

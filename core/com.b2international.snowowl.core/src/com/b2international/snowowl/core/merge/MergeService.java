@@ -24,11 +24,8 @@ import com.google.common.base.Predicate;
  */
 public interface MergeService {
 
-	Merge enqueue(String source, String target, String commitMessage, String reviewId);
+	Merge enqueue(UUID id, String source, String target, String commitMessage, String reviewId);
 	
-	@Deprecated
-	Merge executeBlocking(String source, String target, String commitMessage, String reviewId);
-
 	Merge getMerge(UUID id);
 	
 	MergeCollection search(Predicate<Merge> query);

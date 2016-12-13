@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -41,6 +42,8 @@ import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.eventbus.IHandler;
+import com.b2international.snowowl.eventbus.IMessage;
 import com.b2international.snowowl.snomed.api.ISnomedMergeReviewService;
 import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
@@ -86,6 +89,96 @@ import com.google.common.util.concurrent.MoreExecutors;
  * @since 4.5
  */
 public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
+
+	protected abstract static class MergeReviewCompletionHandler implements IHandler<IMessage> {
+
+		private final String address;
+		private final IEventBus bus;
+		
+		protected MergeReviewCompletionHandler(final String address, final IEventBus bus) {
+			this.address = address;
+			this.bus = bus;
+		}
+		
+		public void register() {
+			bus.registerHandler(address, this);
+		}
+		
+		@Override
+		public void handle(IMessage message) {
+			Merge merge = message.body(Merge.class);
+			
+			try {
+				
+				if (Merge.Status.COMPLETED.equals(merge.getStatus())) {
+					onCompleted(merge);
+				}
+				
+			} finally {
+				bus.unregisterHandler(address, this);
+			}
+		}
+			
+		protected abstract void onCompleted(Merge merge);
+	}
+	
+	protected static class ConceptUpdateHandler extends MergeReviewCompletionHandler {
+		
+		private final List<ISnomedBrowserConcept> updates;
+		private final String userId;
+		private final List<ExtendedLocale> extendedLocales;
+		private final ISnomedBrowserService browserService;
+		
+		private ConceptUpdateHandler(String address, IEventBus bus, 
+				List<ISnomedBrowserConcept> updates,
+				String userId, 
+				List<ExtendedLocale> extendedLocales, 
+				ISnomedBrowserService browserService) {
+				
+			super(address, bus);
+			this.updates = updates;
+			this.userId = userId;
+			this.extendedLocales = extendedLocales;
+			this.browserService = browserService;
+		}
+		
+		@Override
+		protected void onCompleted(Merge merge) {
+			browserService.update(merge.getTarget(), updates, userId, extendedLocales);
+		}
+	}
+	
+	protected static class ManualMergeDeleteHandler extends MergeReviewCompletionHandler {
+		
+		private final SnomedManualConceptMergeServiceImpl manualMergeService;
+		private final String mergeReviewId;
+		
+		private ManualMergeDeleteHandler(String address, IEventBus bus, SnomedManualConceptMergeServiceImpl manualMergeService, String mergeReviewId) {
+			super(address, bus);
+			this.manualMergeService = manualMergeService;
+			this.mergeReviewId = mergeReviewId;
+		}
+		
+		@Override
+		protected void onCompleted(Merge merge) {
+			manualMergeService.deleteAll(merge.getTarget(), mergeReviewId);
+		}
+	}
+	
+	protected static class MergeReviewDeleteHandler extends MergeReviewCompletionHandler {
+		
+		private final MergeReview mergeReview;
+		
+		private MergeReviewDeleteHandler(String address, IEventBus bus, MergeReview mergeReview) {
+			super(address, bus);
+			this.mergeReview = mergeReview;
+		}
+		
+		@Override
+		protected void onCompleted(Merge merge) {
+			mergeReview.delete();
+		}
+	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(SnomedMergeReviewServiceImpl.class);
 	
@@ -628,7 +721,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	}
 	
 	@Override
-	public void mergeAndReplayConceptUpdates(final String mergeReviewId, final String userId, final List<ExtendedLocale> extendedLocales) throws IOException, InterruptedException, ExecutionException {
+	public Merge mergeAndReplayConceptUpdates(final String mergeReviewId, final String userId, final List<ExtendedLocale> extendedLocales) throws IOException, InterruptedException, ExecutionException {
 		final MergeReview mergeReview = getMergeReview(mergeReviewId);
 		final String sourcePath = mergeReview.sourcePath();
 		final String targetPath = mergeReview.targetPath();
@@ -656,30 +749,24 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			}
 		}
 
-		// Auto merge branches
-		SnomedRequests
+		final UUID mergeId = UUID.randomUUID();
+		final String address = String.format(Merge.ADDRESS_TEMPLATE, SnomedDatastoreActivator.REPOSITORY_UUID, mergeId);
+
+		// Set up one-shot handlers that will be notified when the merge completes successfully
+		new ConceptUpdateHandler(address, bus, conceptUpdates, userId, extendedLocales, browserService).register();
+		new MergeReviewDeleteHandler(address, bus, mergeReview).register();
+		new ManualMergeDeleteHandler(address, bus, manualConceptMergeService, mergeReviewId).register();
+		
+		return SnomedRequests
 			.merging()
 			.prepareCreate()
+			.setId(mergeId)
 			.setSource(sourcePath)
 			.setTarget(targetPath)
 			.setReviewId(mergeReview.sourceToTargetReviewId())
 			.setCommitComment("Auto merging branches before applying manually merged concepts. " + sourcePath + " > " + targetPath)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(bus)
-			.then(new Function<Merge, Void>() {
-				@Override
-				public Void apply(Merge input) {
-					
-					// Apply manually merged concepts
-					browserService.update(targetPath, conceptUpdates, userId, extendedLocales);
-					
-					// Clean up
-					mergeReview.delete();
-					manualConceptMergeService.deleteAll(targetPath, mergeReviewId);
-
-					return null;
-				};
-			})
 			.getSync();
 	}
 
