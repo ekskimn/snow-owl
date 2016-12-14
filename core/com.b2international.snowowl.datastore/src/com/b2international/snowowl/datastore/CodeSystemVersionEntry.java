@@ -254,15 +254,6 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	}
 	
 	/**
-	 * (non-API)
-	 * 
-	 * Sets the patched flag on the code system version to {@code true}.
-	 */
-	public void setPatched() {
-		this.patched = true;
-	}
-	
-	/**
 	 * Returns the full path of this version including the MAIN prefix as well as the version tag.
 	 * @return
 	 */
