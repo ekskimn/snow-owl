@@ -47,6 +47,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberSearchRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipSearchRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.ecl.ecl.AndRefinement;
@@ -496,9 +497,9 @@ final class SnomedEclRefinementEvaluator {
 			return SnomedEclEvaluationRequest.throwUnsupported(comparison);
 		}
 		return evalMembers(context, focusConceptIds, attributeNames, type, value, operator)
-				.then(new Function<SnomedReferenceSetMembers, Collection<Property>>() {
+				.then(new Function<Iterable<SnomedReferenceSetMember>, Collection<Property>>() {
 					@Override
-					public Collection<Property> apply(SnomedReferenceSetMembers matchingMembers) {
+					public Collection<Property> apply(Iterable<SnomedReferenceSetMember> matchingMembers) {
 						return FluentIterable.from(matchingMembers).transform(new Function<SnomedReferenceSetMember, Property>() {
 							@Override
 							public Property apply(SnomedReferenceSetMember input) {
@@ -513,7 +514,7 @@ final class SnomedEclRefinementEvaluator {
 				});
 	}
 
-	private Promise<SnomedReferenceSetMembers> evalMembers(final BranchContext context, final Collection<String> referencedComponents, 
+	private Promise<Iterable<SnomedReferenceSetMember>> evalMembers(final BranchContext context, final Collection<String> referencedComponents, 
 			final Collection<String> attributeNames, final DataType type, final Object value, RevisionSearchRequest.Operator operator) {
 		final Options propFilter = OptionsBuilder.newBuilder()
 				.put(SnomedRf2Headers.FIELD_CHARACTERISTIC_TYPE_ID, ALLOWED_CHARACTERISTIC_TYPES)
@@ -522,14 +523,38 @@ final class SnomedEclRefinementEvaluator {
 				.put(SnomedRf2Headers.FIELD_VALUE, value)
 				.put(RevisionSearchRequest.operator(SnomedRf2Headers.FIELD_VALUE), operator)
 				.build();
-		return SnomedRequests.prepareSearchMember()
+		final SnomedRefSetMemberSearchRequestBuilder req = SnomedRequests.prepareSearchMember()
 			.all()
+			.setFields(ImmutableSet.of(
+					SnomedRefSetMemberIndexEntry.Fields.ID, 
+					SnomedRefSetMemberIndexEntry.Fields.ATTRIBUTE_NAME,
+					SnomedRefSetMemberIndexEntry.Fields.REFERENCED_COMPONENT_ID,
+					SnomedRefSetMemberIndexEntry.Fields.REFERENCED_COMPONENT_TYPE))
 			.filterByActive(true)
-			.filterByReferencedComponent(referencedComponents)
 			.filterByRefSetType(Collections.singleton(SnomedRefSetType.CONCRETE_DATA_TYPE))
-			.filterByProps(propFilter)
-			.build(context.branch().path())
-			.execute(context.service(IEventBus.class));
+			.filterByProps(propFilter);
+
+		final Predicate<SnomedReferenceSetMember> referencedComponentFilter;
+		if (referencedComponents.size() < 1000) {
+			req.filterByReferencedComponent(referencedComponents);
+			referencedComponentFilter = Predicates.alwaysTrue();
+		} else {
+			referencedComponentFilter = new Predicate<SnomedReferenceSetMember>() {
+				@Override
+				public boolean apply(SnomedReferenceSetMember input) {
+					return referencedComponents.contains(input.getReferencedComponent().getId());
+				}
+			};
+		}
+		
+		return req.build(context.branch().path()) 
+			.execute(context.service(IEventBus.class))
+			.then(new Function<SnomedReferenceSetMembers, Iterable<SnomedReferenceSetMember>>() {
+				@Override
+				public Iterable<SnomedReferenceSetMember> apply(SnomedReferenceSetMembers input) {
+					return FluentIterable.from(input).filter(referencedComponentFilter);
+				}
+			});
 	}
 
 	/*package*/ static Function<Collection<Property>, Collection<Property>> filterByCardinality(final boolean grouped, final Range<Long> groupCardinality, final Range<Long> cardinality, final Function<Property, Object> idProvider) {

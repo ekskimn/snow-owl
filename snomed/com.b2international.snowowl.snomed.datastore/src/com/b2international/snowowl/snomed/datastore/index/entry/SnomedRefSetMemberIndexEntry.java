@@ -80,7 +80,7 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 
 	private static final long serialVersionUID = 5198766293865046258L;
 
-	public static class Fields {
+	public static class Fields extends SnomedDocument.Fields {
 		// known RF2 fields
 		public static final String REFERENCE_SET_ID = "referenceSetId"; // XXX different than the RF2 header field name
 		public static final String REFERENCED_COMPONENT_ID = SnomedRf2Headers.FIELD_REFERENCED_COMPONENT_ID;
@@ -608,22 +608,30 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		}
 		
 		Builder decimalValue(final BigDecimal value) {
-			this.value = value;
+			if (value != null) {
+				this.value = value;
+			}
 			return getSelf();
 		}
 		
 		Builder booleanValue(final Boolean value) {
-			this.value = value;
+			if (value != null) {
+				this.value = value;
+			}
 			return getSelf();
 		}
 		
 		Builder integerValue(final Integer value) {
-			this.value = value;
+			if (value != null) {
+				this.value = value;
+			}
 			return getSelf();
 		}
 		
 		Builder stringValue(final String value) {
-			this.value = value;
+			if (value != null) {
+				this.value = value;
+			}
 			return getSelf();
 		}
 		
@@ -767,9 +775,9 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 
 		checkArgument(referencedComponentType >= CoreTerminologyBroker.UNSPECIFIED_NUMBER_SHORT, "Referenced component type '%s' is invalid.", referencedComponentType);
 
-		this.referencedComponentId = checkNotNull(referencedComponentId, "Reference component identifier may not be null.");
-		this.referenceSetId = checkNotNull(referenceSetId, "Reference set identifier may not be null.");
-		this.referenceSetType = checkNotNull(referenceSetType, "Reference set type may not be null.");
+		this.referencedComponentId = referencedComponentId;
+		this.referenceSetId = referenceSetId;
+		this.referenceSetType = referenceSetType;
 		this.referencedComponentType = referencedComponentType;
 	}
 

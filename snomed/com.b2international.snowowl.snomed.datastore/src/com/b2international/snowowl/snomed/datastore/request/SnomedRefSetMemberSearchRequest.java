@@ -227,7 +227,7 @@ final class SnomedRefSetMemberSearchRequest extends SnomedSearchRequest<SnomedRe
 			}
 		}
 		
-		final Query<SnomedRefSetMemberIndexEntry> query = Query.select(SnomedRefSetMemberIndexEntry.class)
+		final Query<SnomedRefSetMemberIndexEntry> query = Query.selectPartial(SnomedRefSetMemberIndexEntry.class, fields())
 			.where(queryBuilder.build())
 			.offset(offset())
 			.limit(limit())
