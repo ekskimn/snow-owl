@@ -123,7 +123,7 @@ public class Expressions {
 	public static Expression matchNone() {
 		return new MatchNone();
 	}
-	
+
 	public static Expression hasParent(Class<?> parentType, Expression expression) {
 		return new HasParentPredicate(parentType, expression);
 	}
