@@ -94,6 +94,10 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			@RequestParam(value="type", required=false) 
 			final String typeFilter,
 			
+			@ApiParam(value="The language reference set membership to match")
+			@RequestParam(value="languageRefSetIds", required=false) 
+			final List<String> languageRefSetIds,
+			
 			@ApiParam(value="The acceptability to match")
 			@RequestParam(value="acceptability", required=false) 
 			final Acceptability acceptabilityFilter,
@@ -141,7 +145,8 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 					.filterByAcceptability(acceptabilityFilter)
 					.filterByModule(moduleFilter)
 					.filterByActive(activeFilter)
-					.filterByExtendedLocales(extendedLocales)
+					.filterByLanguageRefSetIds(languageRefSetIds)
+					.setLocales(extendedLocales)
 					.setLimit(limit)
 					.setOffset(offset)
 					.setExpand(expand)

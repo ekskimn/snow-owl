@@ -107,6 +107,7 @@ public class SnomedConceptQuickSearchContentProvider extends AbstractQuickSearch
 			.filterByActive(true)
 			.filterByTerm(queryExpression)
 			.filterByExtendedLocales(locales)
+			.setLocales(locales)
 			.filterByDescriptionType("<<" + Concepts.SYNONYM)
 			.withSearchProfile(userId)
 			.withDoi()

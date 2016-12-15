@@ -191,7 +191,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByModule(moduleFilter)
 					.filterByActive(activeFilter)
 					.setExpand(expand)
-					.filterByExtendedLocales(extendedLocales)
+					.setLocales(extendedLocales)
 					.build(repositoryId, branch)
 					.execute(bus));
 	}
