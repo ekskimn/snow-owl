@@ -62,6 +62,16 @@ public abstract class SnomedSearchRequestBuilder<B extends SnomedSearchRequestBu
 		return addOption(OptionKey.EFFECTIVE_TIME_START, from).addOption(OptionKey.EFFECTIVE_TIME_END, to);
 	}
 	
+	/**
+	 * Restricts the response set to SNOMED CT resources that match any of the specified locales.
+	 * <p>
+	 * Note that this is different from localizing the response where alternative translations/dialects 
+	 * exist; use {@link #setLocales(List)} to specify the order of preference in which display locales
+	 * should be considered.
+	 * 
+	 * @param locales
+	 * @return
+	 */
 	public final B filterByExtendedLocales(List<ExtendedLocale> locales) {
 		final List<String> languageRefSetIds = newArrayList();
 		final List<ExtendedLocale> unconvertableLocales = new ArrayList<>();
@@ -85,6 +95,6 @@ public abstract class SnomedSearchRequestBuilder<B extends SnomedSearchRequestBu
 			throw new BadRequestException("Don't know how to convert extended locale " + unconvertableLocales.get(0).toString() + " to a language reference set identifier.");
 		}
 		
-		return filterByLanguageRefSetIds(languageRefSetIds).setLocales(locales);
+		return filterByLanguageRefSetIds(languageRefSetIds);
 	}
 }

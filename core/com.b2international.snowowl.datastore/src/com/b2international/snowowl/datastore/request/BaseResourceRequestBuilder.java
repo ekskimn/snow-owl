@@ -33,6 +33,15 @@ public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBu
 	private Options expand = OptionsBuilder.newBuilder().build();
 	private List<ExtendedLocale> locales = Collections.emptyList();
 	
+	/**
+	 * Sets response locales, in order of preference.
+	 * <p>
+	 * If localizable alternatives (eg. preferred synonym) should be added to resource response, the 
+	 * returned value will be the chosen based on the specified list, if possible. 
+	 * 
+	 * @param locales the locales to consider when returning content
+	 * @return this builder instance (for fluent API)
+	 */
 	public final B setLocales(List<ExtendedLocale> locales) {
 		if (!CompareUtils.isEmpty(locales)) {
 			this.locales = locales;
