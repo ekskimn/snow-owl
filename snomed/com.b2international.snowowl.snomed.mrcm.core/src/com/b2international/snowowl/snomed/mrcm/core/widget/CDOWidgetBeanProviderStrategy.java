@@ -190,7 +190,7 @@ public class CDOWidgetBeanProviderStrategy extends WidgetBeanProviderStrategy {
 				if (includeUnsanctioned) {
 					beans.add(widgetBean);
 				} else {
-					if (!StringUtils.isEmpty(widgetBean.getSelectedLabel()) && !StringUtils.isEmpty(widgetBean.getSelectedValue())) {
+					if (!StringUtils.isEmpty(widgetBean.getSelectedLabel()) && !StringUtils.isEmpty((String) widgetBean.getSelectedValue())) {
 						beans.add(widgetBean);
 					}
 				}

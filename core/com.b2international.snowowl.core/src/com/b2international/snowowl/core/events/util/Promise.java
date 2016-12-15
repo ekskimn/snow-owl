@@ -110,6 +110,33 @@ public final class Promise<T> extends AbstractFuture<T> {
 		});
 		return promise;
 	}
+	
+	/**
+	 * Define what to do when the promise becomes rejected. The given {@link Function} should return another {@link Promise} which will be used to evaluate this {@link Promise}.
+	 * @param fail
+	 * @return
+	 */
+	public final Promise<T> failWith(final Function<Throwable, Promise<T>> fail) {
+		final Promise<T> promise = new Promise<>();
+		Futures.addCallback(this, new FutureCallback<T>() {
+
+			@Override
+			public void onSuccess(T result) {
+				promise.resolve(result);
+			}
+
+			@Override
+			public void onFailure(Throwable t) {
+				try {
+					promise.resolveWith(fail.apply(t));
+				} catch (Throwable e) {
+					promise.reject(e);
+				}
+			}
+
+		});
+		return promise;
+	}
 
 	/**
 	 * Define what to do when the promise becomes resolved.
@@ -136,6 +163,26 @@ public final class Promise<T> extends AbstractFuture<T> {
 		});
 		return transformed;
 	}
+	
+	public final <U> Promise<U> thenWith(final Function<T, Promise<U>> func) {
+		final Promise<U> transformed = new Promise<>();
+		Futures.addCallback(this, new FutureCallback<T>() {
+			@Override
+			public void onSuccess(T result) {
+				try {
+					transformed.resolveWith(func.apply(result));
+				} catch (Throwable t) {
+					onFailure(t);
+				}
+			}
+
+			@Override
+			public void onFailure(Throwable t) {
+				transformed.reject(t);
+			}
+		});
+		return transformed;
+	}
 
 	/**
 	 * Resolves the promise by sending the given result object to all then listeners.
@@ -145,6 +192,23 @@ public final class Promise<T> extends AbstractFuture<T> {
 	 */
 	public final void resolve(T t) {
 		set(t);
+	}
+	
+	final void resolveWith(Promise<T> t) {
+		t.then(new Function<T, Void>() {
+			@Override
+			public Void apply(T input) {
+				resolve(input);
+				return null;
+			}
+		})
+		.fail(new Function<Throwable, Void>() {
+			@Override
+			public Void apply(Throwable input) {
+				reject(input);
+				return null;
+			}
+		});
 	}
 
 	/**
@@ -213,6 +277,17 @@ public final class Promise<T> extends AbstractFuture<T> {
 	public static final <T> Promise<T> immediate(T value) {
 		final Promise<T> promise = new Promise<>();
 		promise.resolve(value);
+		return promise;
+	}
+	
+	/**
+	 * Returns a {@link Promise} that will always fail with the given {@link Throwable}.
+	 * @param throwable
+	 * @return
+	 */
+	public static final <T> Promise<T> fail(Throwable throwable) {
+		final Promise<T> promise = new Promise<>();
+		promise.reject(throwable);
 		return promise;
 	}
 

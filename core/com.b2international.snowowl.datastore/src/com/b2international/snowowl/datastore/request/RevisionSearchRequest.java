@@ -38,6 +38,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<BranchContext, B> {
 
+	public static class NoResultException extends RuntimeException {
+		private static final long serialVersionUID = -1248540856283437736L;
+	}
+
 	enum OptionKey {
 		EXPAND
 	}
@@ -50,6 +54,20 @@ public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<Branc
 	
 	@NotNull
 	private Options options;
+	
+	/**
+	 * Operator that can be used to specify more fine-grained value filtering.
+	 * 
+	 * @since 5.4
+	 */
+	public enum Operator {
+		EQUALS,
+		NOT_EQUALS,
+		GREATER_THAN,
+		GREATER_THAN_EQUALS,
+		LESS_THAN,
+		LESS_THAN_EQUALS,
+	}
 	
 	@NotNull
 	private Collection<String> componentIds;
@@ -132,15 +150,28 @@ public abstract class RevisionSearchRequest<B> extends BaseResourceRequest<Branc
 	protected String getIdField() {
 		return DocumentMapping._ID;
 	}
+	
+	/**
+	 * Constructs the operator property name for the given property name.
+	 * @param property
+	 * @return
+	 */
+	public static String operator(String property) {
+		return String.format("%sOperator", property);
+	}
 
 	@Override
 	public final B execute(BranchContext context) {
 		try {
 			return doExecute(context);
+		} catch (NoResultException e) {
+			return createEmptyResult(offset(), limit());
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException("Caught exception while executing search request.", e);
 		}
 	}
+
+	protected abstract B createEmptyResult(int offset, int limit);
 
 	protected abstract B doExecute(BranchContext context) throws IOException;
 	

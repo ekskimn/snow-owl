@@ -18,40 +18,10 @@ package com.b2international.index.query;
 /**
  * @since 4.7
  */
-public class LongRangePredicate extends Predicate {
+public final class LongRangePredicate extends RangePredicate<Long> {
 
-	private final long from;
-	private final long to;
-	private boolean minInclusive;
-	private boolean maxInclusive;
-
-	LongRangePredicate(String field, long from, long to, boolean minInclusive, boolean maxInclusive) {
-		super(field);
-		this.from = from;
-		this.to = to;
-		this.minInclusive = minInclusive;
-		this.maxInclusive = maxInclusive;
+	LongRangePredicate(String field, Long lower, Long upper, boolean includeLower, boolean includeUpper) {
+		super(field, lower, upper, includeLower, includeUpper);
 	}
 	
-	public long from() {
-		return from;
-	}
-	
-	public long to() {
-		return to;
-	}
-	
-	public boolean isMinInclusive() {
-		return minInclusive;
-	}
-	
-	public boolean isMaxInclusive() {
-		return maxInclusive;
-	}
-	
-	@Override
-	public String toString() {
-		return String.format("%s is %s(%s) and %s(%s)", getField(), isMinInclusive() ? "gte" : "gt", from, isMaxInclusive() ? "lte" : "lt", to);
-	}
-
 }

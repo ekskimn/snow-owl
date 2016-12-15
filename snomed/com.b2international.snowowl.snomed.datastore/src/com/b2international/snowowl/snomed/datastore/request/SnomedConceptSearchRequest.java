@@ -86,9 +86,15 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 
 		/**
 		 * ESCG expression to match
+		 * @deprecated
 		 */
 		ESCG,
-
+		
+		/**
+		 * ECL expression to match
+		 */
+		ECL,
+		
 		/**
 		 * Namespace part of concept ID to match (?)
 		 */
@@ -200,6 +206,11 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			}
 		}
 		
+		if (containsKey(OptionKey.ECL)) {
+			final String ecl = getString(OptionKey.ECL);
+			queryBuilder.must(SnomedRequests.prepareEclEvaluation(ecl).build().execute(context).getSync());
+		}
+		
 		Expression searchProfileQuery = null;
 		if (containsKey(OptionKey.SEARCH_PROFILE)) {
 			final String userId = getString(OptionKey.SEARCH_PROFILE);
@@ -264,9 +275,8 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			queryExpression = addSearchProfile(searchProfileQuery, queryBuilder.build());
 			sortBy = SortBy.NONE;
 		}
-		
-		
-		final Hits<SnomedConceptDocument> hits = searcher.search(Query.select(SnomedConceptDocument.class)
+
+		final Hits<SnomedConceptDocument> hits = searcher.search(Query.selectPartial(SnomedConceptDocument.class, fields())
 				.where(queryExpression)
 				.offset(offset())
 				.limit(limit())
@@ -278,6 +288,11 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 		} else {
 			return SnomedConverters.newConceptConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
 		}
+	}
+	
+	@Override
+	protected SnomedConcepts createEmptyResult(int offset, int limit) {
+		return new SnomedConcepts(offset, limit, 0);
 	}
 
 	private Expression addSearchProfile(final Expression searchProfileQuery, final Expression query) {
