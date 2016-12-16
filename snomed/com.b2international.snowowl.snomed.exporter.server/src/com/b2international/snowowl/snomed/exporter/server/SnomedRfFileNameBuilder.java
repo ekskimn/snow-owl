@@ -52,8 +52,8 @@ public class SnomedRfFileNameBuilder {
 				.append(String.valueOf(type))
 				.append("_")
 				.append(String.valueOf(configuration.getContentSubType()))
-				.append(isDescriptionType(type) ? "-" : "")
-				.append(isDescriptionType(type) ? getLanguageCode() : "")
+				.append(ComponentExportType.DESCRIPTION.equals(type) ? "-" : "")
+				.append(ComponentExportType.DESCRIPTION.equals(type) ? getLanguageCode() : "")
 				.append("_INT_")
 				.append(getReleaseDate(configuration))
 				.append(".txt")
@@ -156,10 +156,6 @@ public class SnomedRfFileNameBuilder {
 		return Dates.formatByHostTimeZone(new Date(), DateFormats.SHORT);
 	}
 
-	private static boolean isDescriptionType(final ComponentExportType type) {
-		return ComponentExportType.DESCRIPTION == type || ComponentExportType.TEXT_DEFINITION == type;
-	}
-	
 	/*returns with the language code*/
 	private static String getLanguageCode() {
 		return getLanguageConfiguration().getLanguageCode();

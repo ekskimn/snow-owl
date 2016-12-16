@@ -76,7 +76,6 @@ import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedInferredRela
 import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedRf2ConceptExporter;
 import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedRf2DescriptionExporter;
 import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedStatedRelationshipExporter;
-import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedTextDefinitionExporter;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
@@ -504,15 +503,6 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 			monitor.worked(2);
 		}
 		
-		logActivity(String.format("Exporting %sSNOMED CT text definitions into RF2 format", exportContext.isUnpublishedExport() ? "unpublished " : ""));
-		new SnomedTextDefinitionExporter(exportContext, revisionSearcher).execute();
-		
-		if (monitor.isCanceled()) {
-			return;
-		} else {
-			monitor.worked(2);
-		}
-		
 		logActivity(String.format("Exporting non-stated %sSNOMED CT relationships into RF2 format", exportContext.isUnpublishedExport() ? "unpublished " : ""));
 		new SnomedInferredRelationshipExporter(exportContext, revisionSearcher).execute();
 		
@@ -616,7 +606,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		int counter = 0;
 
 		if (coreComponentExport) {
-			counter += 10;
+			counter += 8;
 			if (includeRf1) {
 				counter += 6;
 			}
