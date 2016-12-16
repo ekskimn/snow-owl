@@ -35,15 +35,13 @@ public interface ISnomedClassificationService {
 	 * 
 	 * @param branchPath
 	 *            the branch path to match (may not be {@code null})
-	 * @param userId
-	 *            the requesting user's identifier to match (may not be {@code null})
 	 * 
 	 * @return a list of {@link IClassificationRun}s corresponding to the input parameters
 	 * 
 	 * @throws NotFoundException
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found
 	 */
-	List<IClassificationRun> getAllClassificationRuns(String branchPath, String userId);
+	List<IClassificationRun> getAllClassificationRuns(String branchPath);
 
 	/**
 	 * Starts a classification run.
@@ -74,8 +72,6 @@ public interface ISnomedClassificationService {
 	 *            the branch path to match (may not be {@code null})
 	 * @param classificationId
 	 *            the classification identifier to match (may not be {@code null})
-	 * @param userId
-	 *            the requesting user's identifier to match (may not be {@code null})
 	 * 
 	 * @return information about an ongoing or finished classification in an {@link IClassificationRun} object
 	 *
@@ -83,7 +79,7 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	IClassificationRun getClassificationRun(String branchPath, String classificationId, String userId);
+	IClassificationRun getClassificationRun(String branchPath, String classificationId);
 
 	/**
 	 * Retrieves the list of equivalent concept sets found during classification. Concepts in an equivalence set were considered
@@ -97,8 +93,6 @@ public interface ISnomedClassificationService {
 	 *            the classification identifier to match (may not be {@code null})
 	 * @param locales
 	 *            the list of locales to use, in order of preference
-	 * @param userId
-	 *            the requesting user's identifier to match (may not be {@code null})
 	 * 
 	 * @return a list of {@link IEquivalentConceptSet equivalent concept sets}, or an empty list if no such concept set exists
 	 * 
@@ -106,7 +100,7 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not
 	 *             found or the classification run not found with the specified parameters
 	 */
-	List<IEquivalentConceptSet> getEquivalentConceptSets(String branchPath, String classificationId, List<ExtendedLocale> locales, String userId);
+	List<IEquivalentConceptSet> getEquivalentConceptSets(String branchPath, String classificationId, List<ExtendedLocale> locales);
 
 	/**
 	 * Retrieves the pageable list of suggested relationship changes found during classification.
@@ -121,8 +115,7 @@ public interface ISnomedClassificationService {
 	 *            the branch path to match (may not be {@code null})
 	 * @param classificationId
 	 *            the classification identifier to match (may not be {@code null})
-	 * @param userId
-	 *            the requesting user's identifier to match (may not be {@code null})
+	 * 
 	 * @param offset
 	 *            the starting offset in the list (may not be negative)
 	 * @param limit
@@ -134,9 +127,9 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String userId, int offset, int limit);
+	IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, int offset, int limit);
 
-	ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> extendedLocales, String principalName);
+	ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> extendedLocales);
 
 	/**
 	 * Persists suggested changes for the specified classification run to the terminology store.
@@ -166,12 +159,10 @@ public interface ISnomedClassificationService {
 	 *            the branch path to match (may not be {@code null})
 	 * @param classificationId
 	 *            the classification identifier to match (may not be {@code null})
-	 * @param userId
-	 *            the requesting user's identifier to match (may not be {@code null})
 	 * 
 	 * @throws NotFoundException
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	void removeClassificationRun(String branchPath, String classificationId, String userId);
+	void removeClassificationRun(String branchPath, String classificationId);
 }

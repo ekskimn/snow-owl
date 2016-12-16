@@ -283,12 +283,12 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public List<IClassificationRun> getAllClassificationRuns(final String branchPath, final String userId) {
+	public List<IClassificationRun> getAllClassificationRuns(final String branchPath) {
 
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			return indexService.getAllClassificationRuns(storageRef, userId);
+			return indexService.getAllClassificationRuns(storageRef);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -325,25 +325,25 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId, final String userId) {
+	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId) {
 
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			return indexService.getClassificationRun(storageRef, classificationId, userId);
+			return indexService.getClassificationRun(storageRef, classificationId);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
-	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales, final String userId) {
+	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales) {
 		// Check if it exists
-		getClassificationRun(branchPath, classificationId, userId);
+		getClassificationRun(branchPath, classificationId);
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(storageRef, classificationId, userId);
+			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(storageRef, classificationId);
 			final Set<String> conceptIds = newHashSet();
 			
 			for (final IEquivalentConceptSet conceptSet : conceptSets) {
@@ -372,29 +372,29 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String userId, final int offset, final int limit) {
-		return getRelationshipChanges(branchPath, classificationId, null, userId, offset, limit);
+	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final int offset, final int limit) {
+		return getRelationshipChanges(branchPath, classificationId, null, offset, limit);
 	}
 
-	private IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit) {
+	private IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, int offset, int limit) {
 		// Check if it exists
-		getClassificationRun(branchPath, classificationId, userId);
+		getClassificationRun(branchPath, classificationId);
 
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, userId, offset, limit);
+			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, offset, limit);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
-	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales, String userId) {
+	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales) {
 		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(branchPath, conceptId, locales);
 
 		final List<ISnomedBrowserRelationship> relationships = Lists.newArrayList(conceptDetails.getRelationships());
-		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, userId, 0, 10000);
+		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, 0, 10000);
 
 		/* 
 		 * XXX: We don't want to match anything that is part of the inferred set below, so we remove relationships from the existing list, 
@@ -500,7 +500,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	@Override
 	public void persistChanges(final String branchPath, final String classificationId, final String userId) {
 		// Check if it exists
-		IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId, userId);
+		IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId);
 
 		if (!ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
 			return;
@@ -538,9 +538,9 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public void removeClassificationRun(final String branchPath, final String classificationId, final String userId) {
+	public void removeClassificationRun(final String branchPath, final String classificationId) {
 		// Check if it exists
-		getClassificationRun(branchPath, classificationId, userId);
+		getClassificationRun(branchPath, classificationId);
 		getRemoteJobManager().cancelRemoteJob(UUID.fromString(classificationId));
 		
 		try {
