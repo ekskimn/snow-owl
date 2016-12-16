@@ -29,11 +29,9 @@ import java.util.Map;
 import javax.annotation.Resource;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.xtext.util.Strings;
 
 import com.b2international.commons.StringUtils;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.DateFormats;
@@ -41,7 +39,6 @@ import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.ISnomedExportService;
@@ -52,9 +49,11 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedExportConfiguration
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.exporter.model.SnomedRf2ExportModel;
 import com.google.common.base.Function;
+import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 
@@ -73,36 +72,28 @@ public class SnomedExportService implements ISnomedExportService {
 		);
 	
 	@Override
-	public String resolveNamespaceId(String branchPath) {
-		String namespace = "INT";
-		Branch branch = SnomedRequests.branching()
-				.prepareGet(branchPath)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-				.execute(bus)
-				.getSync();
+	public String resolveNamespaceId(Branch branch) {
 		
 		String branchMetaShortname = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "shortname");
 		String branchMetaDefaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, "defaultNamespace");
-		if (!Strings.isEmpty(branchMetaShortname) && !Strings.isEmpty(branchMetaDefaultNamespace)) {
-			namespace = branchMetaShortname.toUpperCase() + branchMetaDefaultNamespace;
+		
+		if (!Strings.isNullOrEmpty(branchMetaShortname) && !Strings.isNullOrEmpty(branchMetaDefaultNamespace)) {
+			return String.format("%s%s", branchMetaShortname.toUpperCase(), branchMetaDefaultNamespace);
 		}
-		return namespace;
+		
+		return SnomedIdentifiers.INT_NAMESPACE;
 	}
 	
 	@Override
 	public File export(final ISnomedExportConfiguration configuration) {
-		checkNotNull(configuration, "Configuration was missing for the export operation.");
-		return tryExport(convertConfiguration(configuration));
+		return tryExport(convertConfiguration(checkNotNull(configuration, "Configuration was missing for the export operation.")));
 	}
 
 	private File tryExport(final SnomedRf2ExportModel model) {
 		try {
 			return doExport(model);
 		} catch (final Exception e) {
-			return throwExportException(
-					isEmpty(e.getMessage()) 
-						? "Error occurred while exporting SNOMED CT." 
-						: e.getMessage());
+			return throwExportException(isEmpty(e.getMessage())	? "Error occurred while exporting SNOMED CT." : e.getMessage());
 		}
 	}
 
@@ -116,24 +107,22 @@ public class SnomedExportService implements ISnomedExportService {
 
 	private SnomedRf2ExportModel convertConfiguration(final ISnomedExportConfiguration configuration) {
 		
-		checkNotNull(configuration, "Configuration was missing for the export operation.");
 		final ContentSubType contentSubType = convertType(configuration.getRf2ReleaseType());
 		
-		final StorageRef exportStorageRef = new StorageRef(SnomedDatastoreActivator.REPOSITORY_UUID, configuration.getBranchPath());
-		final IBranchPath exportBranch = exportStorageRef.getBranch().branchPath();
-		
-		final SnomedRf2ExportModel model = createExportModelWithAllRefSets(contentSubType, exportBranch);
-		
-		final String namespaceId = configuration.getNamespaceId();
-		model.setNamespace(namespaceId);
-		
-		final Collection<String> moduleIds;
+		Branch branch = SnomedRequests.branching()
+			.prepareGet(configuration.getBranchPath())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+			.execute(bus)
+			.getSync();
+				
+		final SnomedRf2ExportModel model = createExportModelWithAllRefSets(contentSubType, branch, configuration.getNamespaceId());
+
 		if (configuration.getModuleIds().isEmpty()) {
-			moduleIds = SnomedRequests.prepareSearchConcept()
+			model.getModulesToExport().addAll(SnomedRequests.prepareSearchConcept()
 					.all()
 					.filterByActive(true)
 					.filterByAncestor(Concepts.MODULE_ROOT)
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, exportBranch.getPath())
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch.path())
 					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 					.then(new Function<SnomedConcepts, Collection<String>>() {
 						@Override
@@ -141,15 +130,14 @@ public class SnomedExportService implements ISnomedExportService {
 							return FluentIterable.from(input).transform(IComponent.ID_FUNCTION).toSet();
 						}
 					})
-					.getSync();
+					.getSync());
 		} else {
-			moduleIds = configuration.getModuleIds();
+			model.getModulesToExport().addAll(configuration.getModuleIds());
 		}
-		model.getModulesToExport().addAll(moduleIds);
 		
 		model.setStartEffectiveTime(configuration.getStartEffectiveTime());
 		model.setEndEffectiveTime(configuration.getEndEffectiveTime());
-		model.setIncludeUnpublised(configuration.includeUnpublised());
+		model.setIncludeUnpublised(configuration.isIncludeUnpublised());
 		
 		final String transientEffectiveTime = configuration.getTransientEffectiveTime();
 		
@@ -167,13 +155,15 @@ public class SnomedExportService implements ISnomedExportService {
 			
 			model.setUnsetEffectiveTimeLabel(transientEffectiveTime);
 		}
+		
+		model.setCodeSystemShortName(configuration.getCodeSystemShortName());
+		model.setExtensionOnly(configuration.isExtensionOnly());
 
 		return model; 
 	}
 
 	private ContentSubType convertType(final Rf2ReleaseType typeToConvert) {
-		final ContentSubType type = TYPE_MAPPING.get(typeToConvert);
-		return checkNotNull(type, "Unknown or unexpected RF2 release type of: " + typeToConvert + ".");
+		return checkNotNull(TYPE_MAPPING.get(typeToConvert), "Unknown or unexpected RF2 release type of: " + typeToConvert + ".");
 	}
 
 	private <T> T checkNotNull(final T arg, final String message) {

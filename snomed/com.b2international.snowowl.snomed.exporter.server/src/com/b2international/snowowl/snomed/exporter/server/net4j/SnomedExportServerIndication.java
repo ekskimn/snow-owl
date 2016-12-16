@@ -48,18 +48,20 @@ import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.LogUtils;
 import com.b2international.snowowl.core.RepositoryManager;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.Net4jProtocolConstants;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.datastore.CodeSystemService;
+import com.b2international.snowowl.datastore.CodeSystemEntry;
+import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.ICodeSystemVersion;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.common.ContentSubType;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedMapSetSetting;
@@ -81,6 +83,7 @@ import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedRf2Descripti
 import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedStatedRelationshipExporter;
 import com.b2international.snowowl.snomed.exporter.server.rf2.SnomedTextDefinitionExporter;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.base.Stopwatch;
@@ -121,14 +124,14 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 	private Set<String> modulesToExport;
 	private Date startEffectiveTime;
 	private Date endEffectiveTime;
-	private String clientNamespace;
+	private String namespace;
 
 	private List<SnomedReferenceSet> referenceSetsToExport;
 	private Set<SnomedMapSetSetting> settings;
 
 	// Used for logging
 	private String userId;
-	private IBranchPath branchPath;
+	private String branchPath;
 
 	private SnomedExportResult result;
 
@@ -140,6 +143,8 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 	// this is the directory where the exported files with the RF2 directory "standard" are put
 	private Path tempDir;
 
+	private String codeSystemShortName;
+	private boolean extensionOnly;
 
 	public SnomedExportServerIndication(SignalProtocol<?> protocol) {
 		super(protocol, Net4jProtocolConstants.SNOMED_EXPORT_SIGNAL);
@@ -154,7 +159,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 	protected void indicating(ExtendedDataInputStream in, OMMonitor monitor) throws Exception {
 
 		userId = in.readUTF();
-		branchPath = BranchPathUtils.createPath(in.readUTF());
+		branchPath = in.readUTF();
 		
 		String startEffectiveTimeString = in.readUTF();
 		String endEffectiveTimeString = in.readUTF();
@@ -180,7 +185,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		referenceSetsToExport = refsetIdentifierConcepts.isEmpty() ? Collections.<SnomedReferenceSet>emptyList() : SnomedRequests.prepareSearchRefSet()
 				.all()
 				.setComponentIds(refsetIdentifierConcepts)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(getEventBus())
 				.getSync()
 				.getItems();
@@ -197,19 +202,22 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 			modulesToExport.add(in.readUTF());
 		}
 		
-		clientNamespace = in.readUTF();
+		namespace = in.readUTF();
+		codeSystemShortName = in.readUTF();
+		extensionOnly = in.readBoolean();
+		
 		tempDir = Files.createTempDirectory("export");
 		
 		exportContext = new SnomedExportContextImpl(
-				branchPath, 
+				BranchPathUtils.createPath(branchPath), // TODO remove IBranchPath
 				releaseType, 
 				unsetEffectiveTimeLabel,
 				startEffectiveTime, 
 				endEffectiveTime,
-				clientNamespace,
+				namespace,
 				modulesToExport,
 				new Id2Rf1PropertyMapper(),
-				getReleaseRootPath(tempDir, clientNamespace));
+				getReleaseRootPath(tempDir, namespace));
 		
 		logActivity(String.format("SNOMED CT %s export has been requested", releaseType.getDisplayName()));
 	}
@@ -353,14 +361,14 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		
 		if (startEffectiveTime == null && endEffectiveTime == null) {
 			
-			executeExport(revisionIndex, branchPath.getPath(), true, monitor);
+			executeExport(revisionIndex, branchPath, true, monitor);
 			
 		} else {
 			
-			List<ICodeSystemVersion> sortedVersions = FluentIterable.from(getAllCodeSystemVersions()).filter(new Predicate<ICodeSystemVersion>() {
+			List<CodeSystemVersionEntry> sortedVersions = FluentIterable.from(getCodeSystemVersions()).filter(new Predicate<CodeSystemVersionEntry>() {
 				@Override
-				public boolean apply(ICodeSystemVersion input) {
-					
+				public boolean apply(CodeSystemVersionEntry input) {
+
 					Date versionEffectiveDate = new Date(input.getEffectiveDate());
 	
 					if (startEffectiveTime != null && endEffectiveTime != null) {
@@ -404,7 +412,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 			}
 
 			if (includeUnpublished) {
-				executeExport(revisionIndex, branchPath.getPath(), true, monitor);
+				executeExport(revisionIndex, branchPath, true, monitor);
 			}
 		}
 		
@@ -412,26 +420,26 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 
 	private void executeSnapshotExport(RevisionIndex revisionIndex, OMMonitor monitor) {
 		
-		executeExport(revisionIndex, branchPath.getPath(), false, monitor);
+		executeExport(revisionIndex, branchPath, false, monitor);
 		
 		if (includeUnpublished) {
-			executeExport(revisionIndex, branchPath.getPath(), true, monitor);
+			executeExport(revisionIndex, branchPath, true, monitor);
 		}
 		
 	}
 
 	private void executeFullExport(RevisionIndex revisionIndex, OMMonitor monitor) {
 		
-		List<ICodeSystemVersion> sortedVersions = FluentIterable.from(getAllCodeSystemVersions()).toSortedList(new Comparator<ICodeSystemVersion>() {
+		List<CodeSystemVersionEntry> sortedVersions = FluentIterable.from(getCodeSystemVersions()).toSortedList(new Comparator<CodeSystemVersionEntry>() {
 			@Override
-			public int compare(ICodeSystemVersion o1, ICodeSystemVersion o2) {
+			public int compare(CodeSystemVersionEntry o1, CodeSystemVersionEntry o2) {
 				return Longs.compare(o1.getEffectiveDate(), o2.getEffectiveDate());
 			}
 		});
 		
 		long startTime = 0L;
 		
-		for (ICodeSystemVersion version : sortedVersions) {
+		for (CodeSystemVersionEntry version : sortedVersions) {
 			
 			exportContext.setStartEffectiveTime(new Date(startTime));
 			exportContext.setEndEffectiveTime(new Date(version.getEffectiveDate()));
@@ -443,7 +451,7 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		}
 		
 		if (includeUnpublished) {
-			executeExport(revisionIndex, branchPath.getPath(), true, monitor);
+			executeExport(revisionIndex, branchPath, true, monitor);
 		}
 		
 	}
@@ -632,18 +640,17 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		monitor.worked(1);
 	}
 
-	private List<String> convertToBranchPaths(List<ICodeSystemVersion> sortedVersions) {
-		return FluentIterable.from(sortedVersions).transform(new Function<ICodeSystemVersion, String>() {
+	private List<String> convertToBranchPaths(List<CodeSystemVersionEntry> sortedVersions) {
+		return FluentIterable.from(sortedVersions).transform(new Function<CodeSystemVersionEntry, String>() {
 			@Override
-			public String apply(ICodeSystemVersion input) {
+			public String apply(CodeSystemVersionEntry input) {
 				return convertToBranchPath(input);
 			}
 		}).toList();
 	}
 	
-	private String convertToBranchPath(ICodeSystemVersion version) {
-		// FIXME when MS changes are merged
-		return BranchPathUtils.createPath(BranchPathUtils.createMainPath(), version.getVersionId()).getPath();
+	private String convertToBranchPath(CodeSystemVersionEntry version) {
+		return version.getPath();
 	}
 
 	private void processCancel() {
@@ -696,11 +703,85 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		LogUtils.logExportActivity(LOGGER, userId, branchPath, message);
 	}
 	
-	private Collection<ICodeSystemVersion> getAllCodeSystemVersions() {
-		// FIXME: Not applicable to national extension exports
-		return ApplicationContext.getServiceForClass(CodeSystemService.class).getAllTags(SnomedDatastoreActivator.REPOSITORY_UUID);
+	private Collection<CodeSystemVersionEntry> getCodeSystemVersions() {
+		
+		if (extensionOnly) {
+			
+			return CodeSystemRequests.prepareSearchCodeSystemVersion()
+				.all()
+				.filterByCodeSystemShortName(codeSystemShortName)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, Branch.MAIN_PATH)
+				.execute(getEventBus())
+				.getSync()
+				.getItems();
+			
+		}
+		
+		return collectAllCodeSystemVersions(getCodeSystem(codeSystemShortName));
 	}
 	
+	private Collection<CodeSystemVersionEntry> collectAllCodeSystemVersions(CodeSystemEntry codeSystem) {
+		
+		Set<CodeSystemVersionEntry> results = newHashSet();
+		
+		List<CodeSystemVersionEntry> codeSystemVersions = CodeSystemRequests.prepareSearchCodeSystemVersion()
+				.all()
+				.filterByCodeSystemShortName(codeSystem.getShortName())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, Branch.MAIN_PATH)
+				.execute(getEventBus())
+				.getSync()
+				.getItems();
+		
+		results.addAll(codeSystemVersions);
+		
+		if (!codeSystem.getShortName().equals(SnomedTerminologyComponentConstants.SNOMED_INT_SHORT_NAME)) {
+			
+			if (!Strings.isNullOrEmpty(codeSystem.getExtensionOf())) {
+				
+				Branch codeSystemBranch = SnomedRequests.branching()
+					.prepareGet(codeSystem.getBranchPath())
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getEventBus())
+					.getSync();
+				 
+				final CodeSystemEntry parentCodeSystem = getCodeSystem(codeSystem.getExtensionOf());
+				
+				final CodeSystemVersionEntry parentVersion = Iterables.getOnlyElement(CodeSystemRequests.prepareSearchCodeSystemVersion()
+					.one()
+					.filterByCodeSystemShortName(parentCodeSystem.getShortName())
+					.filterByVersionId(codeSystemBranch.parent().name()) // must be a version branch of the parent extension 
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID, Branch.MAIN_PATH)
+					.execute(getEventBus())
+					.getSync());
+				
+				Collection<CodeSystemVersionEntry> parentVersions = collectAllCodeSystemVersions(parentCodeSystem);
+				
+				Set<CodeSystemVersionEntry> versionsToRemove = FluentIterable.from(parentVersions).filter(new Predicate<CodeSystemVersionEntry>() { 
+					@Override
+					public boolean apply(CodeSystemVersionEntry input) {
+						return input.getCodeSystemShortName().equals(parentCodeSystem.getShortName()) && input.getEffectiveDate() > parentVersion.getEffectiveDate();
+					}
+				}).toSet();
+				
+				parentVersions.removeAll(versionsToRemove);
+				
+				results.addAll(parentVersions);
+			}
+			
+		}
+		
+		return results;
+	}
+	
+	private CodeSystemEntry getCodeSystem(String shortName) {
+		return Iterables.getOnlyElement(CodeSystemRequests.prepareSearchCodeSystem()
+				.one()
+				.filterByShortName(shortName)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, Branch.MAIN_PATH)
+				.execute(getEventBus())
+				.getSync());
+	}
+
 	private IEventBus getEventBus() {
 		return ApplicationContext.getServiceForClass(IEventBus.class);
 	}
