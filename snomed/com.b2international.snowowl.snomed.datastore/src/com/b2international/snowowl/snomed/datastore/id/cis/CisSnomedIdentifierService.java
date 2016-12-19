@@ -55,6 +55,7 @@ import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkPublicati
 import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkRegistrationData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkReleaseData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkReservationData;
+import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkRetrieveData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.DeprecationData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.GenerationData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.PublicationData;
@@ -67,7 +68,6 @@ import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdent
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
-import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
@@ -511,16 +511,16 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	@Override
 	public Collection<SctId> getSctIds(final Collection<String> componentIds) {
 		
-		LOGGER.debug("Sending bulk component ID get request.");
+		LOGGER.debug("Sending bulk component ID POST request.");
 		
 		return FluentIterable
 			.from(partition(newArrayList(componentIds), BULK_GET_LIMIT))
 			.transformAndConcat(new Function<Collection<String>, Collection<SctId>>() {
 				@Override
 				public Collection<SctId> apply(Collection<String> input) {
-					HttpGet request = null;
+					HttpPost request = null;
 					try {
-						request = httpGet("sct/bulk/ids/", String.format("&sctids=%s", Joiner.on(",").join(input)));
+						request = httpPost("sct/bulk/ids", new BulkRetrieveData(componentIds));
 						return extractSctIds(execute(request));
 					} catch (IOException e) {
 						throw new SnowowlRuntimeException("Unable to get bulk component IDs", e);
