@@ -36,6 +36,16 @@ public interface IComponent extends Serializable {
 			return input.getId();
 		}
 	};
+	
+	/**
+	 * Unique terminology independent node identifier to make actual root elements searchable.
+	 */
+	String ROOT_ID = "-1";
+	
+	/**
+	 * Unique terminology independent node identifier to make actual root elements searchable (a {@link Long} value).
+	 */
+	long ROOT_IDL = Long.parseLong(ROOT_ID);
 
 	/**
 	 * Returns the component identifier.

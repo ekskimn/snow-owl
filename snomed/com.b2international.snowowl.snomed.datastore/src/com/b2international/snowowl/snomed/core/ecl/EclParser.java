@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.b2international.snowowl.snomed.exporter.server;
+package com.b2international.snowowl.snomed.core.ecl;
+
+import com.b2international.snowowl.snomed.ecl.ecl.ExpressionConstraint;
 
 /**
- * Enum to represent the export format.
+ * @since 5.4
  */
-public enum ExportFormat {
+public interface EclParser {
+
+	ExpressionConstraint parse(String expression);
 	
-	RF1,
-	RF2
 }

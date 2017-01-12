@@ -54,8 +54,25 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedSearchRequest
 		return addOption(SnomedConceptSearchRequest.OptionKey.DESCRIPTION_TYPE, type);
 	}
 
+	/**
+	 * Filter matches by the specified ESCG expression.
+	 * @param expression
+	 * @return
+	 * @deprecated - as of 5.4, use {@link #filterByEcl(String)}
+	 */
 	public final SnomedConceptSearchRequestBuilder filterByEscg(String expression) {
 		return addOption(SnomedConceptSearchRequest.OptionKey.ESCG, expression);
+	}
+
+	/**
+	 * Filter matches by the specified ECL expression. The currently supported ECL version is v1.1. See <a href="http://snomed.org/ecl">ECL
+	 * Specification and Guide</a>.
+	 * 
+	 * @param expression
+	 * @return
+	 */
+	public final SnomedConceptSearchRequestBuilder filterByEcl(String expression) {
+		return addOption(SnomedConceptSearchRequest.OptionKey.ECL, expression);
 	}
 
 	/**
@@ -67,7 +84,7 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedSearchRequest
 	public final SnomedConceptSearchRequestBuilder filterByParent(String parentId) {
 		return addOption(SnomedConceptSearchRequest.OptionKey.PARENT, parentId);
 	}
-	
+
 	/**
 	 * Filter matches to have any of the specified parent identifier amongst the direct inferred super types.
 	 * 
@@ -87,7 +104,7 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedSearchRequest
 	public final SnomedConceptSearchRequestBuilder filterByStatedParent(String parentId) {
 		return addOption(SnomedConceptSearchRequest.OptionKey.STATED_PARENT, parentId);
 	}
-	
+
 	/**
 	 * Filter matches to have the specified parent identifier amongst the direct stated super types.
 	 * 
@@ -107,7 +124,7 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedSearchRequest
 	public final SnomedConceptSearchRequestBuilder filterByAncestor(String ancestorId) {
 		return addOption(SnomedConceptSearchRequest.OptionKey.ANCESTOR, ancestorId);
 	}
-	
+
 	/**
 	 * Filter matches to have any of the specified ancestor identifier amongst the inferred super types (including direct as well).
 	 * 
@@ -127,7 +144,7 @@ public final class SnomedConceptSearchRequestBuilder extends SnomedSearchRequest
 	public final SnomedConceptSearchRequestBuilder filterByStatedAncestor(String ancestorId) {
 		return addOption(SnomedConceptSearchRequest.OptionKey.STATED_ANCESTOR, ancestorId);
 	}
-	
+
 	/**
 	 * Filter matches to have any of the specified ancestor identifier amongst the stated super types (including direct as well).
 	 * 

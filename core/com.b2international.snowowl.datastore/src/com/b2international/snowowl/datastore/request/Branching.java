@@ -51,8 +51,8 @@ public class Branching {
 		return RepositoryRequests.wrap(repositoryId, new ReadBranchRequest(path, true));
 	}
 	
-	public Request<ServiceProvider, Branches> prepareGetChildren(String path) {
-		return RepositoryRequests.wrap(repositoryId, new ReadBranchChildrenRequest(path));
+	public Request<ServiceProvider, Branches> prepareGetChildren(String path, boolean immediateChildrenOnly) {
+		return RepositoryRequests.wrap(repositoryId, new ReadBranchChildrenRequest(path, immediateChildrenOnly));
 	}
 	
 	public BranchMergeRequestBuilder prepareMerge() {

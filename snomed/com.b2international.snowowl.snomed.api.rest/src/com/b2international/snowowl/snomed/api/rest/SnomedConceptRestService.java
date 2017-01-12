@@ -95,9 +95,13 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestParam(value="term", required=false) 
 			final String termFilter,
 
-			@ApiParam(value="The ESCG expression to match")
+			@ApiParam(value="Deprecated! The ESCG expression to match")
 			@RequestParam(value="escg", required=false) 
 			final String escgFilter,
+			
+			@ApiParam(value="The ECL expression to match")
+			@RequestParam(value="ecl", required=false) 
+			final String eclFilter,
 			
 			@ApiParam(value="A set of Concept identifiers")
 			@RequestParam(value="conceptIds", required=false) 
@@ -127,7 +131,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		return doSearch(branch, termFilter, escgFilter, conceptIds,
+		return doSearch(branch, termFilter, escgFilter, eclFilter, conceptIds,
 				moduleFilter, activeFilter, offset, limit, expand,
 				acceptLanguage);
 	}
@@ -159,13 +163,13 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		return doSearch(branch, body.getTermFilter(), body.getEscgFilter(), body.getConceptIds(),
+		return doSearch(branch, body.getTermFilter(), body.getEscgFilter(), body.getEclFilter(), body.getConceptIds(),
 				body.getModuleFilter(), body.getActiveFilter(), body.getOffset(), body.getLimit(), body.getExpand(),
 				acceptLanguage);
 	}
 
 	private DeferredResult<SnomedConcepts> doSearch(final String branch,
-			final String termFilter, final String escgFilter,
+			final String termFilter, final String escgFilter, final String eclFilter,
 			final Set<String> conceptIds, final String moduleFilter,
 			final Boolean activeFilter, final int offset, final int limit,
 			final String expand, final String acceptLanguage) {
@@ -187,6 +191,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.setComponentIds(conceptIds)
 					.filterByTerm(termFilter)
 					.filterByEscg(escgFilter)
+					.filterByEcl(eclFilter)
 					.filterByModule(moduleFilter)
 					.filterByActive(activeFilter)
 					.setExpand(expand)

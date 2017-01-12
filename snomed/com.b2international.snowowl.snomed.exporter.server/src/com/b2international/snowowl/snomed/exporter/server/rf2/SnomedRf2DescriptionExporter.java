@@ -28,8 +28,8 @@ import com.b2international.snowowl.snomed.exporter.server.SnomedExportContext;
 public class SnomedRf2DescriptionExporter extends AbstractSnomedRf2CoreExporter<SnomedDescriptionIndexEntry> {
 
 	
-	public SnomedRf2DescriptionExporter(final SnomedExportContext configuration, final RevisionSearcher revisionSearcher, final boolean unpublished) {
-		super(configuration, SnomedDescriptionIndexEntry.class, revisionSearcher, unpublished);
+	public SnomedRf2DescriptionExporter(final SnomedExportContext exportContext, final RevisionSearcher revisionSearcher) {
+		super(exportContext, SnomedDescriptionIndexEntry.class, revisionSearcher);
 		
 	}
 	
@@ -40,7 +40,7 @@ public class SnomedRf2DescriptionExporter extends AbstractSnomedRf2CoreExporter<
 		sb.append(HT);
 		sb.append(formatEffectiveTime(doc.getEffectiveTime()));
 		sb.append(HT);
-		sb.append(doc.isActive() ? "1" : "0");
+		sb.append(formatStatus(doc.isActive()));
 		sb.append(HT);
 		sb.append(doc.getModuleId());
 		sb.append(HT);

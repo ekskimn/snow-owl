@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>snowowl-parent</artifactId>
-		<version>4.6.20</version>
+		<version>4.6.21-SNAPSHOT</version>
 	</parent>
 	
 	<modules>
@@ -62,6 +62,7 @@
 		<module>com.b2international.snowowl.snomed.dsl</module>
 		<module>com.b2international.snowowl.snomed.escg</module>
 		<module>com.b2international.snowowl.snomed.scg</module>
+		<module>com.b2international.snowowl.snomed.ecl</module>
 		
 		<!-- SNOMED CT Core Features -->
 		<module>com.b2international.snowowl.snomed.core.feature</module>

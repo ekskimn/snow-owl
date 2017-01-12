@@ -84,6 +84,10 @@ public abstract class SnomedDocument extends RevisionDocument implements Contain
 		public static final Expression effectiveTime(long from, long to) {
 			return matchRange(Fields.EFFECTIVE_TIME, from, to);
 		}
+		
+		public static final Expression effectiveTime(long from, long to, boolean minInclusive, boolean maxInclusive) {
+			return matchRange(Fields.EFFECTIVE_TIME, from, to, minInclusive, maxInclusive);
+		}
 
 
 	}
@@ -149,7 +153,7 @@ public abstract class SnomedDocument extends RevisionDocument implements Contain
 				iconId);
 
 		checkArgument(effectiveTime >= EffectiveTimes.UNSET_EFFECTIVE_TIME, "Effective time argument '%s' is invalid.", effectiveTime);
-		this.moduleId = checkNotNull(moduleId, "Component module identifier may not be null.");
+		this.moduleId = moduleId;
 		this.released = released;
 		this.active = active;
 		this.effectiveTime = effectiveTime;
