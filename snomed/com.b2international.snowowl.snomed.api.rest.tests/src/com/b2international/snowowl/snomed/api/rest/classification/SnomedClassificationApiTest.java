@@ -278,6 +278,6 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 			}
 		}
 		
-		assertTrue("No redundant relationships found in response.", redundantFound);
+		assertTrue("Redundant relationships found in response.", redundantFound);
 	}
 }
