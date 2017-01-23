@@ -116,6 +116,12 @@ While this should be enough to run the process, in production builds we recommen
 ./releng/com.b2international.snowowl.server.update/assembly/mysql/snowowl_config.yml
 ```
 
+## Deployment
+
+Please refer to the [installation guide](documentation/src/main/asciidoc/installation_guide.adoc). Prerequisites are detailed in the [software requirements](documentation/src/main/asciidoc/software_requirements.adoc) document. Then see the [configuration guide](documentation/src/main/asciidoc/configuration_guide.adoc) to configure for your particular installation.
+
+The [SNOMED CT extension management guide](documentation/src/main/asciidoc/snomed_extension_management.adoc) provides details for managing multiple SNOMED extensions on a single terminology server.
+
 ## Versioning
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/b2ihealthcare/snow-owl/tags). [CHANGELOG.md](CHANGELOG.md) contains a curated, chronologically ordered list of notable changes for each version.
