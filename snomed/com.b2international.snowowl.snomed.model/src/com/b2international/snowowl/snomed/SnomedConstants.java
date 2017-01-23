@@ -249,7 +249,7 @@ public abstract class SnomedConstants {
 		public static final String REFSET_CONCEPT_INACTIVITY_INDICATOR = "900000000000489007";
 		public static final String REFSET_DESCRIPTION_INACTIVITY_INDICATOR = "900000000000490003";
 		
-		//component incativation reasons
+		//component inactivation reasons
 		public static final String LIMITED = "900000000000486000";
 		public static final String DUPLICATE = "900000000000482003";
 		public static final String OUTDATED = "900000000000483008";

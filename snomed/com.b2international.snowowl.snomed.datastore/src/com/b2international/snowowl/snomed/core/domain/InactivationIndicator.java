@@ -64,6 +64,11 @@ public enum InactivationIndicator implements ConceptEnum {
 	PENDING_MOVE(InactivationReason.PENDING_MOVE),
 	
 	/**
+	 * The description fails to comply with the current editorial guidance.
+	 */
+	NONCONFORMANCE_TO_EDITORIAL_POLICY(InactivationReason.NONCONFORMANCE_TO_EDITORIAL_POLICY),
+	
+	/**
 	 * The concept has been retired without any particular indication. 
 	 */
 	RETIRED(InactivationReason.RETIRED);
