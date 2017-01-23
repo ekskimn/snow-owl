@@ -249,7 +249,7 @@ public abstract class SnomedConstants {
 		public static final String REFSET_CONCEPT_INACTIVITY_INDICATOR = "900000000000489007";
 		public static final String REFSET_DESCRIPTION_INACTIVITY_INDICATOR = "900000000000490003";
 		
-		//component incativation reasons
+		//component inactivation reasons
 		public static final String LIMITED = "900000000000486000";
 		public static final String DUPLICATE = "900000000000482003";
 		public static final String OUTDATED = "900000000000483008";
@@ -259,6 +259,7 @@ public abstract class SnomedConstants {
 		public static final String INAPPROPRIATE = "900000000000494007";
 		public static final String PENDING_MOVE = "900000000000492006";
 		public static final String CONCEPT_NON_CURRENT = "900000000000495008";
+		public static final String NONCONFORMANCE_TO_EDITORIAL_POLICY = "723277005";
 		
 		// Historical reference sets
 		public static final String REFSET_ALTERNATIVE_ASSOCIATION = "900000000000530003";
