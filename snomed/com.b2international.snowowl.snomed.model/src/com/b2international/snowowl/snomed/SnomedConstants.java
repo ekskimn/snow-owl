@@ -260,6 +260,7 @@ public abstract class SnomedConstants {
 		public static final String PENDING_MOVE = "900000000000492006";
 		public static final String CONCEPT_NON_CURRENT = "900000000000495008";
 		public static final String NONCONFORMANCE_TO_EDITORIAL_POLICY = "723277005";
+		public static final String NOT_SEMANTICALLY_EQUIVALENT = "723278000";
 		
 		// Historical reference sets
 		public static final String REFSET_ALTERNATIVE_ASSOCIATION = "900000000000530003";
