@@ -115,3 +115,7 @@ While this should be enough to run the process, in production builds we recommen
 ./releng/com.b2international.snowowl.server.update/assembly/h2/snowowl_config.yml
 ./releng/com.b2international.snowowl.server.update/assembly/mysql/snowowl_config.yml
 ```
+
+## Versioning
+
+We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/b2ihealthcare/snow-owl/tags). [CHANGELOG.md](CHANGELOG.md) contains a curated, chronologically ordered list of notable changes for each version.  
