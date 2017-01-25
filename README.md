@@ -138,4 +138,4 @@ This project is licensed under the Apache 2.0 License. See [LICENSE](LICENSE) fo
 
 ## Acknowledgements
 
-In March 2015, [SNOMED International](http://snomed.org) generously licensed the Snow Owl Terminology Server components supporting SNOMED CT. They subsequently made the licensed code available to their [members](http://www.snomed.org/members) and the global community under an open-source license.
+In March 2015, [SNOMED International](http://snomed.org) licensed the Snow Owl Terminology Server components supporting SNOMED CT from [B2I Healthcare](https://b2i.sg/)B2I Healthcare . They subsequently made the licensed code available to their [members](http://www.snomed.org/members) and the global community under an open-source license.
