@@ -132,10 +132,6 @@ See the [administration guide](documentation/src/main/asciidoc/administration_gu
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-## Versioning
-
-Our [releases](https://github.com/b2ihealthcare/snow-owl/releases) use [semantic versioning](http://semver.org). You can find a chronologically ordered list of notable changes in [CHANGELOG.md](CHANGELOG.md).
-
 ## License
 
 This project is licensed under the Apache 2.0 License. See [LICENSE](LICENSE) for details and refer to [NOTICE](NOTICE) for additional licencing notes and uses of third-party components.
