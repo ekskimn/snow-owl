@@ -140,10 +140,12 @@ public class ControllerExceptionMapper {
 			LOG.info("Conflict with cause", ex);
 		}
 		
+		ApiError apiError = ex.toApiError();
+		
 		if (ex instanceof MergeConflictException) {
-			LOG.info("Conflict details: {}", ex.toApiError().getAdditionalInfo());
+			LOG.info("Conflict details: {} - {}", apiError.getMessage(), apiError.getAdditionalInfo());
 		}
 		
-		return RestApiError.of(ex.toApiError()).build(HttpStatus.CONFLICT.value());
+		return RestApiError.of(apiError).build(HttpStatus.CONFLICT.value());
 	}
 }
