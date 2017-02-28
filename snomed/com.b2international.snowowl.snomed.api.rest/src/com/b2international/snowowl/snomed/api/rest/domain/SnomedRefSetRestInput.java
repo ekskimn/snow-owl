@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ package com.b2international.snowowl.snomed.api.rest.domain;
 
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequestBuilder;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
-import com.google.common.base.Strings;
 
 /**
  * @since 4.5
@@ -47,9 +47,16 @@ public class SnomedRefSetRestInput extends SnomedConceptRestInput {
 	@Override
 	public SnomedConceptCreateRequestBuilder toRequestBuilder() {
 		final SnomedConceptCreateRequestBuilder req = super.toRequestBuilder();
-		if (Strings.isNullOrEmpty(getParentId())) {
-			req.setParent(SnomedRefSetUtil.getConceptId(getType()));
+		
+		if (getRelationships().isEmpty()) {
+			req.addParent(SnomedRefSetUtil.getConceptId(getType()));
 		}
+
+		req.setRefSet(
+			SnomedRequests.prepareNewRefSet()
+				.setType(type)
+				.setReferencedComponentType(referencedComponentType));
+
 		return req;
 	}
 	

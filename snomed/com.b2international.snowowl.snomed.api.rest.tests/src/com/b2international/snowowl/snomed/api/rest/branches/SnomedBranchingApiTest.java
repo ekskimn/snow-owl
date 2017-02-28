@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,17 @@
 package com.b2international.snowowl.snomed.api.rest.branches;
 
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchChildrenContainsName;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCreationConflicts;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchNotCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchNotExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchReportedAsDeleted;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchUpdated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchesContainsName;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPathAndMetadata;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenDeletingBranchWithPath;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.util.Map;

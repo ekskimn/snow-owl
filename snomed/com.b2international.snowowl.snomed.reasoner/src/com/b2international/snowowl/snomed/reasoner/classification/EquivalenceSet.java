@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import java.io.Serializable;
 import java.text.MessageFormat;
 import java.util.List;
 
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 
 /**
  * Represents a regular equivalence set with one suggested concept as a replacement for the others.
@@ -28,14 +28,14 @@ public class EquivalenceSet extends AbstractEquivalenceSet implements Serializab
 
 	private static final long serialVersionUID = 1L;
 
-	private final ISnomedConcept suggestedConcept;
+	private final SnomedConcept suggestedConcept;
 
 	/**
 	 * Creates a new regular equivalence set with the specified arguments.
 	 * @param suggestedConcept the concept to suggest as a replacement
 	 * @param concepts the list containing the rest of the equivalent concepts (the suggested concept should not be repeated in this list)
 	 */
-	public EquivalenceSet(final ISnomedConcept suggestedConcept, final List<ISnomedConcept> concepts) {
+	public EquivalenceSet(final SnomedConcept suggestedConcept, final List<SnomedConcept> concepts) {
 		super(concepts);
 		this.suggestedConcept = suggestedConcept;
 	}
@@ -43,7 +43,7 @@ public class EquivalenceSet extends AbstractEquivalenceSet implements Serializab
 	/**
 	 * @return the concept to suggest as a replacement
 	 */
-	public ISnomedConcept getSuggestedConcept() {
+	public SnomedConcept getSuggestedConcept() {
 		return suggestedConcept;
 	}
 

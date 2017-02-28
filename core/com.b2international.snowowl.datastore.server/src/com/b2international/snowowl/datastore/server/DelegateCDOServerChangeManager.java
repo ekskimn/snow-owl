@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,11 +79,14 @@ public class DelegateCDOServerChangeManager {
 	private final ICDOCommitChangeSet commitChangeSet;
 	private final IBranchPath branchPath;
 	private final String repositoryUuid;
+	private final boolean isCommitNotificationEnabled;
 	
 	private @Nullable IOperationLockTarget lockTarget;
 	private @Nullable Collection<ICDOChangeProcessor> changeProcessors;
+
 	
-	public DelegateCDOServerChangeManager(final ICDOCommitChangeSet commitChangeSet, final Collection<CDOChangeProcessorFactory> factories, final boolean copySession) {
+	public DelegateCDOServerChangeManager(final ICDOCommitChangeSet commitChangeSet, final Collection<CDOChangeProcessorFactory> factories, final boolean copySession, boolean isCommitNotificationEnabled) {
+		this.isCommitNotificationEnabled = isCommitNotificationEnabled;
 		this.commitChangeSet = Preconditions.checkNotNull(commitChangeSet, "Commit change set data argument cannot be null.");
 		final CDOView view = commitChangeSet.getView();
 		this.repositoryUuid = ApplicationContext.getInstance().getService(ICDOConnectionManager.class).get(view).getUuid();
@@ -235,10 +238,12 @@ public class DelegateCDOServerChangeManager {
 			
 			ForkJoinUtils.runJobsInParallelWithErrorHandling(commitJobs, null);
 			// queue commit notification
-			final IndexCommitChangeSet mergedChangeSet = merge(indexCommitChangeSets);
-			getContext().getService(RepositoryManager.class)
-				.get(repositoryUuid)
-				.sendNotification(toCommitNotification(mergedChangeSet));
+			if (isCommitNotificationEnabled) {
+				final IndexCommitChangeSet mergedChangeSet = merge(indexCommitChangeSets);
+				getContext().getService(RepositoryManager.class)
+					.get(repositoryUuid)
+					.sendNotification(toCommitNotification(mergedChangeSet));
+			}
 		} catch (final Exception e) {
 			caughtException = new SnowowlRuntimeException("Error when committing change processors on branch: " + branchPath, e);
 		} finally {
@@ -248,6 +253,7 @@ public class DelegateCDOServerChangeManager {
 
 	private RepositoryCommitNotification toCommitNotification(IndexCommitChangeSet mergedChangeSet) {
 		return new RepositoryCommitNotification(repositoryUuid,
+				CDOCommitInfoUtils.getUuid(commitChangeSet.getCommitComment()),
 				branchPath.getPath(),
 				commitChangeSet.getTimestamp(),
 				commitChangeSet.getUserId(),
@@ -277,19 +283,9 @@ public class DelegateCDOServerChangeManager {
 			final Collection<Job> cleanupJobs = Sets.newHashSetWithExpectedSize(committedChangeProcessors.size());
 			
 			for (final ICDOChangeProcessor processor : committedChangeProcessors) {
-				cleanupJobs.add(new Job("Cleaning up " + processor.getName()) {
-					@Override 
-					protected IStatus run(final IProgressMonitor monitor) {
-						try {
-							LOGGER.info("Start ICDOChangeProcessor afterCommit() {}", processor.getClass());
-							processor.afterCommit();
-							LOGGER.info("Finished ICDOChangeProcessor afterCommit() {}", processor.getClass());
-							return Status.OK_STATUS;
-						} catch (final RuntimeException e) {
-							return new Status(IStatus.ERROR, DatastoreServerActivator.PLUGIN_ID, "Error while cleaning up change processor with " + processor.getName() + " for branch: " + branchPath, e);
-						}
-					}
-				});
+				LOGGER.info("Start ICDOChangeProcessor afterCommit() {}", processor.getClass());
+				processor.afterCommit();
+				LOGGER.info("Finished ICDOChangeProcessor afterCommit() {}", processor.getClass());
 			}
 			
 			ForkJoinUtils.runJobsInParallelWithErrorHandling(cleanupJobs, null);

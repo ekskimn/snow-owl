@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestSearc
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptRestUpdate;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
@@ -92,26 +92,42 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@PathVariable(value="path")
 			final String branch,
 
-			@ApiParam(value="The description term to match")
-			@RequestParam(value="term", required=false) 
-			final String termFilter,
-
-			@ApiParam(value="The ESCG expression to match")
-			@RequestParam(value="escg", required=false) 
-			final String escgFilter,
-			
-			@ApiParam(value="A set of Concept identifiers")
-			@RequestParam(value="conceptIds", required=false) 
-			final Set<String> conceptIds,
+			@ApiParam(value="The concept status to match")
+			@RequestParam(value="active", required=false) 
+			final Boolean activeFilter,
 			
 			@ApiParam(value="The concept module identifier to match")
 			@RequestParam(value="module", required=false) 
 			final String moduleFilter,
 			
-			@ApiParam(value="The concept status to match")
-			@RequestParam(value="active", required=false) 
-			final Boolean activeFilter,
+			@ApiParam(value="The namespace to match")
+			@RequestParam(value="namespace", required=false) 
+			final String namespaceFilter,
+			
+			@ApiParam(value="The effective time to match (yyyyMMdd, exact matches only)")
+			@RequestParam(value="effectiveTime", required=false) 
+			final String effectiveTimeFilter,
+			
+			@ApiParam(value="The definition status to match")
+			@RequestParam(value="definitionStatus", required=false) 
+			final String definitionStatusFilter,
+			
+			@ApiParam(value="The description term to match")
+			@RequestParam(value="term", required=false) 
+			final String termFilter,
 
+			@ApiParam(value="Deprecated! The ESCG expression to match")
+			@RequestParam(value="escg", required=false) 
+			final String escgFilter,
+			
+			@ApiParam(value="The ECL expression to match")
+			@RequestParam(value="ecl", required=false) 
+			final String eclFilter,
+			
+			@ApiParam(value="A set of concept identifiers")
+			@RequestParam(value="conceptIds", required=false) 
+			final Set<String> conceptIds,
+			
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 
 			final int offset,
@@ -128,8 +144,19 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		return doSearch(branch, termFilter, escgFilter, conceptIds,
-				moduleFilter, activeFilter, offset, limit, expand,
+		return doSearch(branch,
+				activeFilter,
+				moduleFilter,
+				namespaceFilter,
+				effectiveTimeFilter,
+				definitionStatusFilter,
+				termFilter,
+				escgFilter,
+				eclFilter,
+				conceptIds,
+				offset,
+				limit,
+				expand,
 				acceptLanguage);
 	}
 
@@ -160,16 +187,38 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
 			final String acceptLanguage) {
 
-		return doSearch(branch, body.getTermFilter(), body.getEscgFilter(), body.getConceptIds(),
-				body.getModuleFilter(), body.getActiveFilter(), body.getOffset(), body.getLimit(), body.getExpand(),
+		return doSearch(branch,
+				body.getActiveFilter(),
+				body.getModuleFilter(),
+				null, // TODO
+				null, // TODO
+				null, // TODO
+				body.getTermFilter(),
+				body.getEscgFilter(),
+				null, // TODO
+				body.getConceptIds(),
+				body.getOffset(),
+				body.getLimit(),
+				body.getExpand(),
 				acceptLanguage);
 	}
 
-	private DeferredResult<SnomedConcepts> doSearch(final String branch,
-			final String termFilter, final String escgFilter,
-			final Set<String> conceptIds, final String moduleFilter,
-			final Boolean activeFilter, final int offset, final int limit,
-			final String expand, final String acceptLanguage) {
+	private DeferredResult<SnomedConcepts> doSearch(
+			final String branch,
+			final Boolean activeFilter,
+			final String moduleFilter,
+			final String namespaceFilter,
+			final String effectiveTimeFilter,
+			final String definitionStatusFilter,
+			final String termFilter,
+			final String escgFilter,
+			final String eclFilter,
+			final Set<String> conceptIds, 
+			final int offset,
+			final int limit,
+			final String expand,
+			final String acceptLanguage) {
+		
 		final List<ExtendedLocale> extendedLocales;
 		
 		try {
@@ -186,12 +235,16 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.setLimit(limit)
 					.setOffset(offset)
 					.setComponentIds(conceptIds)
+					.filterByActive(activeFilter)
+					.filterByModule(moduleFilter)
+					.filterByEffectiveTime(effectiveTimeFilter)
+					.filterByDefinitionStatus(definitionStatusFilter)
+					.filterByNamespace(namespaceFilter)
 					.filterByTerm(termFilter)
 					.filterByEscg(escgFilter)
-					.filterByModule(moduleFilter)
-					.filterByActive(activeFilter)
+					.filterByEcl(eclFilter)
 					.setExpand(expand)
-					.setLocales(extendedLocales)
+					.filterByExtendedLocales(extendedLocales)
 					.build(repositoryId, branch)
 					.execute(bus));
 	}
@@ -211,7 +264,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 404, message = "Branch or Concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/concepts/{conceptId}", method=RequestMethod.GET)
-	public @ResponseBody DeferredResult<ISnomedConcept> read(
+	public @ResponseBody DeferredResult<SnomedConcept> read(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -366,16 +419,8 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 
 		final String userId = principal.getName();
 		final String commitComment = body.getCommitComment();
-		final SnomedConceptRestUpdate update = body.getChange();
 
-		SnomedRequests
-			.prepareUpdateConcept(conceptId)
-			.setActive(update.isActive())
-			.setModuleId(update.getModuleId())
-			.setAssociationTargets(update.getAssociationTargets())
-			.setDefinitionStatus(update.getDefinitionStatus())
-			.setInactivationIndicator(update.getInactivationIndicator())
-			.setSubclassDefinitionStatus(update.getSubclassDefinitionStatus())
+		body.getChange().toRequestBuilder(conceptId)
 			.build(repositoryId, branchPath, userId, commitComment)
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS);

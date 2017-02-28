@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.emf.cdo.common.commit.CDOCommitInfo;
 import org.eclipse.emf.cdo.session.CDORepositoryInfo;
@@ -37,9 +36,8 @@ import org.slf4j.Logger;
 import com.b2international.collections.longs.LongCollection;
 import com.b2international.commons.collect.LongSets;
 import com.b2international.commons.functions.UncheckedCastFunction;
-import com.b2international.index.revision.RevisionIndex;
+import com.b2international.index.revision.Purge;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
@@ -51,6 +49,8 @@ import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.server.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
+import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
+import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
 import com.b2international.snowowl.datastore.server.snomed.index.init.Rf2BasedSnomedTaxonomyBuilder;
 import com.b2international.snowowl.datastore.version.ITagConfiguration;
 import com.b2international.snowowl.datastore.version.ITagService;
@@ -225,7 +225,9 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 			// Reference set imports only, enable commit notifications
 			
 			importContext.setCommitNotificationEnabled(true);
+			
 			String lastUnitEffectiveTimeKey = units.get(0).getEffectiveTimeKey();
+			
 			for (final ComponentImportUnit subUnit : units) {
 				
 				final String currentUnitEffectiveTimeKey = subUnit.getEffectiveTimeKey();
@@ -234,10 +236,10 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 					createSnomedVersionFor(lastUnitEffectiveTimeKey);
 					lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
 				}
-					
+				
 				subUnit.doImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
 			}
-				
+			
 			createSnomedVersionFor(lastUnitEffectiveTimeKey);
 			
 		} else {
@@ -258,6 +260,7 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 				
 				if (!Objects.equal(lastUnitEffectiveTimeKey, currentUnitEffectiveTimeKey)) {
 					updateInfrastructure(units, branchPath, lastUnitEffectiveTimeKey);
+					createSnomedVersionFor(lastUnitEffectiveTimeKey);
 					lastUnitEffectiveTimeKey = currentUnitEffectiveTimeKey;
 				}
 					
@@ -402,8 +405,6 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 		
 		final Set<String> synonymAndDescendants = LongSets.toStringSet(inferredTaxonomyBuilder.getAllDescendantNodeIds(Concepts.SYNONYM));
 		synonymAndDescendants.add(Concepts.SYNONYM);
-		
-		initializeIndex(importContext, lastUnitEffectiveTimeKey, units);
 	}
 
 	private Rf2BasedSnomedTaxonomyBuilder buildTaxonomy(final String characteristicType) {
@@ -412,22 +413,11 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 		return Rf2BasedSnomedTaxonomyBuilder.newInstance(new SnomedTaxonomyBuilder(conceptIds, statements), characteristicType);
 	}
 
-	private RevisionIndex getIndex() {
-		return ApplicationContext.getInstance().getService(RepositoryManager.class).get(SnomedDatastoreActivator.REPOSITORY_UUID).service(RevisionIndex.class);
-	}
-	
-	private void initializeIndex(final SnomedImportContext context, final String lastUnitEffectiveTimeKey, final List<ComponentImportUnit> units) {
-		final SnomedRf2IndexInitializer snomedRf2IndexInitializer = new SnomedRf2IndexInitializer(getIndex(), context, lastUnitEffectiveTimeKey, units, inferredTaxonomyBuilder, statedTaxonomyBuilder);
-		snomedRf2IndexInitializer.run(new NullProgressMonitor());
-	}
-
 	protected void createSnomedVersionFor(final String lastUnitEffectiveTimeKey) {
 		
 		if (AbstractSnomedImporter.UNPUBLISHED_KEY.equals(lastUnitEffectiveTimeKey)) {
 			return;
 		}
-		
-		final SnomedEditingContext editingContext = importContext.getEditingContext();
 		
 		try {
 
@@ -455,14 +445,21 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 				}
 			}
 			
-			if (editingContext.isDirty()) {
-				new CDOServerCommitBuilder(importContext.getUserId(), importContext.getCommitMessage(), importContext.getAggregator(lastUnitEffectiveTimeKey))
-					.sendCommitNotification(false)
-					.parentContextDescription(DatastoreLockContextDescriptions.IMPORT)
-					.commit();
-			}
-			
 			if (!existingVersionFound && importContext.isVersionCreationEnabled()) {
+				// purge index
+				PurgeRequest.builder()
+					.setBranchPath(getImportBranchPath().getPath())
+					.setPurge(Purge.LATEST)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getEventBus())
+					.getSync();
+				// optimize index
+				OptimizeRequest.builder()
+					.setMaxSegments(8)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getEventBus())
+					.getSync();
+				
 				final IBranchPath snomedBranchPath = getImportBranchPath();
 				final Date effectiveDate = EffectiveTimes.parse(lastUnitEffectiveTimeKey, DateFormats.SHORT);
 				final String formattedEffectiveDate = EffectiveTimes.format(effectiveDate);
@@ -476,10 +473,8 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 				ApplicationContext.getInstance().getService(ITagService.class).tag(configuration);
 			}
 			
-		} catch (final CommitException e) {
-			throw new ImportException("Cannot create tag for SNOMED CT " + lastUnitEffectiveTimeKey, e);
 		} finally {
-			importContext.setCommitTime(CDOServerUtils.getLastCommitTime(editingContext.getTransaction().getBranch()));
+			importContext.setCommitTime(CDOServerUtils.getLastCommitTime(importContext.getEditingContext().getTransaction().getBranch()));
 			if (!importContext.isCommitNotificationEnabled()) {
 				final CDOCommitInfo commitInfo = createCommitInfo(importContext.getCommitTime(), importContext.getPreviousTime());
 				CDOServerUtils.sendCommitNotification(commitInfo);
@@ -495,7 +490,7 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 		final String repositoryUuid = info.getUUID();
 		final IBranchPath branchPath = getImportBranchPath();
 		
-		return CDOCommitInfoUtils.createEmptyCommitInfo(repositoryUuid, branchPath, importContext.getUserId(), Strings.nullToEmpty(importContext.getCommitMessage()), timestamp, previousTimestamp);
+		return CDOCommitInfoUtils.createEmptyCommitInfo(repositoryUuid, branchPath, importContext.getUserId(), String.format("%s%s", importContext.getCommitId(), Strings.nullToEmpty(importContext.getCommitMessage())), timestamp, previousTimestamp);
 		
 	}
 	

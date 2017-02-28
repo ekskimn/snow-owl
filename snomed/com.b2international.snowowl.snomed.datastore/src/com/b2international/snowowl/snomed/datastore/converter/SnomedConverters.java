@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.converter.ResourceConverter;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
@@ -43,15 +43,15 @@ public class SnomedConverters {
 	
 	private SnomedConverters() {}
 	
-	public static ResourceConverter<SnomedConceptDocument, ISnomedConcept, SnomedConcepts> newConceptConverter(BranchContext context, Options expand, List<ExtendedLocale> locales) {
+	public static ResourceConverter<SnomedConceptDocument, SnomedConcept, SnomedConcepts> newConceptConverter(BranchContext context, Options expand, List<ExtendedLocale> locales) {
 		return new SnomedConceptConverter(context, expand, locales);
 	}
 	
-	public static ResourceConverter<SnomedDescriptionIndexEntry, ISnomedDescription, SnomedDescriptions> newDescriptionConverter(BranchContext context, Options expand, List<ExtendedLocale> locales) {
+	public static ResourceConverter<SnomedDescriptionIndexEntry, SnomedDescription, SnomedDescriptions> newDescriptionConverter(BranchContext context, Options expand, List<ExtendedLocale> locales) {
 		return new SnomedDescriptionConverter(context, expand, locales);
 	}
 	
-	public static ResourceConverter<SnomedRelationshipIndexEntry, ISnomedRelationship, SnomedRelationships> newRelationshipConverter(BranchContext context, Options expand, List<ExtendedLocale> locales) {
+	public static ResourceConverter<SnomedRelationshipIndexEntry, SnomedRelationship, SnomedRelationships> newRelationshipConverter(BranchContext context, Options expand, List<ExtendedLocale> locales) {
 		return new SnomedRelationshipConverter(context, expand, locales);
 	}
 	

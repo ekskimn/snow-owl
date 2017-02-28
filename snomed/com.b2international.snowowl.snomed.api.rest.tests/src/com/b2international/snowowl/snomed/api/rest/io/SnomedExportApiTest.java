@@ -60,6 +60,15 @@ import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.SnomedVersioningApiAssert;
+import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -68,6 +77,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.jayway.restassured.http.ContentType;
+import com.google.common.collect.Multimap;
 
 /**
  * @since 5.4
@@ -123,13 +133,13 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		
 		final File exportArchive = assertExportFileCreated(exportId);
 		
-		String statedLine = getComponentLine(ImmutableList.<String> of(statedRelationshipId, transientEffectiveTime, "1", MODULE_SCT_CORE, DISEASE,
+		final String statedLine = getComponentLine(ImmutableList.<String> of(statedRelationshipId, transientEffectiveTime, "1", MODULE_SCT_CORE, DISEASE,
 				FINDING_CONTEXT, "0", TEMPORAL_CONTEXT, CharacteristicType.STATED_RELATIONSHIP.getConceptId(),
 				Concepts.EXISTENTIAL_RESTRICTION_MODIFIER));
-		String inferredLine = getComponentLine(ImmutableList.<String> of(inferredRelationshipId, transientEffectiveTime, "1", MODULE_SCT_CORE, DISEASE,
+		final String inferredLine = getComponentLine(ImmutableList.<String> of(inferredRelationshipId, transientEffectiveTime, "1", MODULE_SCT_CORE, DISEASE,
 				FINDING_CONTEXT, "0", TEMPORAL_CONTEXT, CharacteristicType.INFERRED_RELATIONSHIP.getConceptId(),
 				Concepts.EXISTENTIAL_RESTRICTION_MODIFIER));
-		String additionalLine = getComponentLine(ImmutableList.<String> of(additionalRelationshipId, transientEffectiveTime, "1", MODULE_SCT_CORE, BLEEDING,
+		final String additionalLine = getComponentLine(ImmutableList.<String> of(additionalRelationshipId, transientEffectiveTime, "1", MODULE_SCT_CORE, BLEEDING,
 				FINDING_CONTEXT, "0", TEMPORAL_CONTEXT, CharacteristicType.ADDITIONAL_RELATIONSHIP.getConceptId(),
 				Concepts.EXISTENTIAL_RESTRICTION_MODIFIER));
 		
@@ -151,11 +161,11 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		final String inferredRelationshipId = createInferredRelationshipOnMain();
 		final String additionalRelationshipId = createAdditionalRelationshipOnMain();
 		
-		Date newVersionDate = assertNewVersionCreated();
+		final Date newVersionDate = assertNewVersionCreated();
 		
-		String versionName = Dates.formatByGmt(newVersionDate);
-		String versionEffectiveDate = Dates.formatByGmt(newVersionDate, DateFormats.SHORT);
-		String versionPath = "MAIN/" + versionName;
+		final String versionName = Dates.formatByGmt(newVersionDate);
+		final String versionEffectiveDate = Dates.formatByGmt(newVersionDate, DateFormats.SHORT);
+		final String versionPath = String.format("%s%s%s", Branch.MAIN_PATH, Branch.SEPARATOR, versionName);
 		
 		final Map<Object, Object> config = ImmutableMap.builder()
 				.put("type", "DELTA")
@@ -897,7 +907,7 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		return statedRelationshipId;
 	}
 
-	private String getComponentLine(List<String> lineElements) {
+	private String getComponentLine(final List<String> lineElements) {
 		return Joiner.on("\t").join(lineElements);
 	}
 	
@@ -905,10 +915,10 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
 		assertComponentCreated(createMainPath(), SnomedComponentType.CONCEPT, conceptRequestBody);
 		
-		final Date dateForNewVersion = getDateForNewVersion("SNOMEDCT");
+		final Date dateForNewVersion = SnomedVersioningApiAssert.getLatestAvailableVersionDate("SNOMEDCT");
 		
-		String versionName = Dates.formatByGmt(dateForNewVersion);
-		String versionEffectiveDate = Dates.formatByGmt(dateForNewVersion, DateFormats.SHORT);
+		final String versionName = Dates.formatByGmt(dateForNewVersion);
+		final String versionEffectiveDate = Dates.formatByGmt(dateForNewVersion, DateFormats.SHORT);
 		
 		whenCreatingVersion(versionName, versionEffectiveDate)
 			.then().assertThat().statusCode(201);
@@ -920,6 +930,7 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		return dateForNewVersion;
 	}
 
+	// TODO remove
 	private Collection<String> getEffectiveDates(final String terminologyShortName) {
 		
 		final Map<?, ?> response = givenAuthenticatedRequest(ADMIN_API)
@@ -941,7 +952,8 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		
 		return effectiveDates;
 	}
-	
+
+	// TODO remove
 	private Date getDateForNewVersion(final String terminologyShortname) {
 		Date latestEffectiveDate = new Date();
 		for (final String effectiveDate : getEffectiveDates(terminologyShortname)) {
@@ -957,4 +969,5 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 
 		return calendar.getTime();
 	}
+	
 }

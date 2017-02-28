@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,11 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 	}
 	
 	@Override
+	protected BranchImpl doCreateBranch(String name, String parentPath, long baseTimestamp, long headTimestamp, boolean deleted, Metadata metadata) {
+		return new CDOMainBranchImpl(baseTimestamp, headTimestamp, metadata, segmentId, segments);
+	}
+	
+	@Override
 	public int segmentId() {
 		return segmentId;
 	}
@@ -60,19 +65,13 @@ public class CDOMainBranchImpl extends MainBranchImpl implements InternalCDOBase
 		return cdoBranchId;
 	}
 	
-	@Override
-	protected BranchImpl doCreateBranch(String name, String parentPath, long baseTimestamp, long headTimestamp, boolean deleted, Metadata metadata) {
-		return new CDOMainBranchImpl(baseTimestamp, headTimestamp, metadata, segmentId, segments);
-	}
-	
-	@Override
-	public InternalCDOBasedBranch withSegmentId(int newSegmentId) {
+	public InternalCDOBasedBranch withSegmentId(int segmentId) {
 		final Builder<Integer> builder = ImmutableSet.builder();
-		builder.add(newSegmentId);
+		builder.add(segmentId);
 		// MAIN branch uses all his previous segments because he never gets reopened
 		builder.addAll(segments());
 		
-		final CDOMainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), metadata(), newSegmentId, builder.build());
+		final CDOMainBranchImpl main = new CDOMainBranchImpl(baseTimestamp(), headTimestamp(), metadata(), segmentId, builder.build());
 		main.setBranchManager(getBranchManager());
 		return main;
 	}

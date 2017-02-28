@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,12 @@ package com.b2international.snowowl.snomed.datastore.index.entry;
 
 import static com.b2international.index.query.Expressions.match;
 import static com.b2international.index.query.Expressions.matchAny;
+import static com.b2international.index.query.Expressions.matchRange;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 import com.b2international.index.Doc;
@@ -34,7 +35,7 @@ import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -49,15 +50,18 @@ import com.google.common.collect.FluentIterable;
  */
 @Doc
 @JsonDeserialize(builder = SnomedRelationshipIndexEntry.Builder.class)
-public final class SnomedRelationshipIndexEntry extends SnomedDocument implements IStatement<String> {
+public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument implements IStatement<String> {
 
 	private static final long serialVersionUID = -7873086925532169024L;
+	
+	public static final int DEFAULT_GROUP = -1;
+	public static final int DEFAULT_UNION_GROUP = -1;
 
 	public static Builder builder() {
 		return new Builder();
 	}
 
-	public static Builder builder(final ISnomedRelationship input) {
+	public static Builder builder(final SnomedRelationship input) {
 		final Builder builder = builder()
 				.storageKey(input.getStorageKey())
 				.id(input.getId())
@@ -99,16 +103,34 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 				.effectiveTime(relationship.isSetEffectiveTime() ? relationship.getEffectiveTime().getTime() : EffectiveTimes.UNSET_EFFECTIVE_TIME);
 	}
 	
-	public static Collection<SnomedRelationshipIndexEntry> fromRelationships(Iterable<ISnomedRelationship> relationships) {
-		return FluentIterable.from(relationships).transform(new Function<ISnomedRelationship, SnomedRelationshipIndexEntry>() {
+	public static Builder builder(SnomedRelationshipIndexEntry input) {
+		return builder()
+				.storageKey(CDOIDUtils.asLong(input.cdoID()))
+				.id(input.getId())
+				.active(input.isActive())
+				.sourceId(input.getSourceId())
+				.typeId(input.getTypeId())
+				.destinationId(input.getDestinationId())
+				.characteristicTypeId(input.getCharacteristicType().getConceptId())
+				.group(input.getGroup())
+				.unionGroup(input.getUnionGroup())
+				.released(input.isReleased())
+				.modifierId(input.getModifierId())
+				.destinationNegated(input.isDestinationNegated())
+				.moduleId(input.getModuleId())
+				.effectiveTime(input.getEffectiveTime());
+	}
+	
+	public static Collection<SnomedRelationshipIndexEntry> fromRelationships(Iterable<SnomedRelationship> relationships) {
+		return FluentIterable.from(relationships).transform(new Function<SnomedRelationship, SnomedRelationshipIndexEntry>() {
 			@Override
-			public SnomedRelationshipIndexEntry apply(ISnomedRelationship input) {
+			public SnomedRelationshipIndexEntry apply(SnomedRelationship input) {
 				return builder(input).build();
 			}
 		}).toSet();
 	}
 	
-	public static final class Expressions extends SnomedDocument.Expressions {
+	public static final class Expressions extends SnomedComponentDocument.Expressions {
 		
 		private Expressions() {}
 		
@@ -154,6 +176,15 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 		
 		public static Expression group(int group) {
 			return match(Fields.GROUP, group);
+		}
+		
+		public static Expression group(int groupStart, int groupEnd) {
+			checkArgument(groupStart <= groupEnd, "Group end should be greater than or equal to groupStart");
+			if (groupStart == groupEnd) {
+				return group(groupStart);
+			} else {
+				return matchRange(Fields.GROUP, groupStart, groupEnd);
+			}
 		}
 		
 		public static Expression unionGroup(int unionGroup) {
@@ -208,7 +239,7 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 		
 	}
 	
-	public static final class Fields extends SnomedDocument.Fields {
+	public static final class Fields extends SnomedComponentDocument.Fields {
 		public static final String SOURCE_ID = SnomedRf2Headers.FIELD_SOURCE_ID;
 		public static final String TYPE_ID = SnomedRf2Headers.FIELD_TYPE_ID;
 		public static final String DESTINATION_ID = SnomedRf2Headers.FIELD_DESTINATION_ID;
@@ -220,7 +251,7 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 	}
 
 	@JsonPOJOBuilder(withPrefix="")
-	public static class Builder extends SnomedDocumentBuilder<Builder> {
+	public static class Builder extends SnomedComponentDocumentBuilder<Builder> {
 
 		private String sourceId;
 		private String typeId;
@@ -228,8 +259,8 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 		private String characteristicTypeId;
 		private String modifierId;
 
-		private int group;
-		private int unionGroup;
+		private int group = DEFAULT_GROUP;
+		private int unionGroup = DEFAULT_UNION_GROUP;
 
 		private boolean destinationNegated;
 		
@@ -282,7 +313,7 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 			this.destinationNegated = destinationNegated;
 			return getSelf();
 		}
-
+		
 		public SnomedRelationshipIndexEntry build() {
 			final SnomedRelationshipIndexEntry doc = new SnomedRelationshipIndexEntry(id,
 					label,
@@ -297,7 +328,10 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 					modifierId, 
 					group, 
 					unionGroup, 
-					destinationNegated);
+					destinationNegated,
+					namespace,
+					referringRefSets,
+					referringMappingRefSets);
 			doc.setScore(score);
 			doc.setBranchPath(branchPath);
 			doc.setCommitTimestamp(commitTimestamp);
@@ -316,7 +350,7 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 	private final int group;
 	private final int unionGroup;
 	private final boolean destinationNegated;
-
+	
 	private SnomedRelationshipIndexEntry(final String id, 
 			final String label,
 			final String moduleId, 
@@ -330,7 +364,10 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 			final String modifierId,
 			final int group,
 			final int unionGroup,
-			final boolean destinationNegated) {
+			final boolean destinationNegated,
+			final String namespace,
+			final List<String> referringRefSets,
+			final List<String> referringMappingRefSets) {
 
 		super(id, 
 				label,
@@ -338,16 +375,20 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 				moduleId, 
 				released, 
 				active, 
-				effectiveTimeLong);
+				effectiveTimeLong,
+				namespace,
+				referringRefSets,
+				referringMappingRefSets);
 
-		checkArgument(group >= 0, String.format("Group number '%s' may not be negative (relationship ID: %s).", group, id));
-		checkArgument(unionGroup >= 0, String.format("Union group number '%s' may not be negative (relationship ID: %s).", unionGroup, id));
+		// XXX -1 is the default value
+		checkArgument(group >= -1, String.format("Group number '%s' may not be negative (relationship ID: %s).", group, id));
+		checkArgument(unionGroup >= -1, String.format("Union group number '%s' may not be negative (relationship ID: %s).", unionGroup, id));
 
-		this.sourceId = checkNotNull(sourceId, "Relationship source identifier may not be null.");
-		this.typeId = checkNotNull(typeId, "Relationship type identifier may not be null.");
-		this.destinationId = checkNotNull(destinationId, "Relationship destination identifier may not be null.");
-		this.characteristicTypeId = checkNotNull(characteristicTypeId, "Relationship characteristic type identifier may not be null.");
-		this.modifierId = checkNotNull(modifierId, "Relationship modifier identifier may not be null.");
+		this.sourceId = sourceId;
+		this.typeId = typeId;
+		this.destinationId = destinationId;
+		this.characteristicTypeId = characteristicTypeId;
+		this.modifierId = modifierId;
 		this.group = group;
 		this.unionGroup = unionGroup;
 		this.destinationNegated = destinationNegated;
@@ -452,15 +493,15 @@ public final class SnomedRelationshipIndexEntry extends SnomedDocument implement
 	/**
 	 * @return the relationship group
 	 */
-	public int getGroup() {
-		return group;
+	public Integer getGroup() {
+		return group == DEFAULT_GROUP ? null : group;
 	}
 
 	/**
 	 * @return the relationship union group
 	 */
-	public int getUnionGroup() {
-		return unionGroup;
+	public Integer getUnionGroup() {
+		return unionGroup == DEFAULT_UNION_GROUP ? null : unionGroup;
 	}
 
 	/**

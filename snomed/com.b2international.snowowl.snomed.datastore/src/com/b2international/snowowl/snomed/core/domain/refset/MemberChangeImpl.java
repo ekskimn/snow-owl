@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Objects;
 
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 
 /**
  * @since 4.5
@@ -27,10 +27,10 @@ import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
 public class MemberChangeImpl implements MemberChange {
 
 	private final MemberChangeKind changeKind;
-	private final ISnomedConcept referencedComponent;
+	private final SnomedConcept referencedComponent;
 	private final String memberId;
 
-	private MemberChangeImpl(MemberChangeKind changeKind, ISnomedConcept referencedComponent, String memberId) {
+	private MemberChangeImpl(MemberChangeKind changeKind, SnomedConcept referencedComponent, String memberId) {
 		this.changeKind = changeKind;
 		this.referencedComponent = checkNotNull(referencedComponent);
 		this.memberId = memberId;
@@ -42,7 +42,7 @@ public class MemberChangeImpl implements MemberChange {
 	}
 
 	@Override
-	public ISnomedConcept getReferencedComponent() {
+	public SnomedConcept getReferencedComponent() {
 		return referencedComponent;
 	}
 
@@ -82,11 +82,11 @@ public class MemberChangeImpl implements MemberChange {
 		return diff;
 	}
 	
-	public static MemberChange added(ISnomedConcept referencedComponent) {
+	public static MemberChange added(SnomedConcept referencedComponent) {
 		return new MemberChangeImpl(MemberChangeKind.ADD, referencedComponent, null);
 	}
 	
-	public static MemberChange removed(ISnomedConcept referencedComponent, String memberId) {
+	public static MemberChange removed(SnomedConcept referencedComponent, String memberId) {
 		return new MemberChangeImpl(MemberChangeKind.REMOVE, referencedComponent, memberId);
 	}
 

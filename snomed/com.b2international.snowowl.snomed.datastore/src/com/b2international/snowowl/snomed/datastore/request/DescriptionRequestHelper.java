@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
@@ -47,29 +47,29 @@ import com.google.common.collect.Sets;
  */
 public abstract class DescriptionRequestHelper {
 
-	private static final class ExtractFirstFunction implements Function<Collection<ISnomedDescription>, ISnomedDescription> {
+	private static final class ExtractFirstFunction implements Function<Collection<SnomedDescription>, SnomedDescription> {
 		private static final ExtractFirstFunction INSTANCE = new ExtractFirstFunction();
 
 		@Override
-		public ISnomedDescription apply(Collection<ISnomedDescription> input) {
+		public SnomedDescription apply(Collection<SnomedDescription> input) {
 			return Iterables.getFirst(input, null);
 		}
 	}
 
-	private static final class ExtractBestFunction<T> implements Function<Collection<ISnomedDescription>, ISnomedDescription> {
+	private static final class ExtractBestFunction<T> implements Function<Collection<SnomedDescription>, SnomedDescription> {
 		private final List<T> orderedValues;
-		private final Function<T, Predicate<ISnomedDescription>> predicateFactory;
+		private final Function<T, Predicate<SnomedDescription>> predicateFactory;
 
-		private ExtractBestFunction(List<T> orderedValues, Function<T, Predicate<ISnomedDescription>> predicateFactory) {
+		private ExtractBestFunction(List<T> orderedValues, Function<T, Predicate<SnomedDescription>> predicateFactory) {
 			this.orderedValues = orderedValues;
 			this.predicateFactory = predicateFactory;
 		}
 
 		@Override 
-		public ISnomedDescription apply(Collection<ISnomedDescription> descriptions) {
+		public SnomedDescription apply(Collection<SnomedDescription> descriptions) {
 			for (T value : orderedValues) {
-				final Predicate<ISnomedDescription> predicateForValue = predicateFactory.apply(value);
-				for (ISnomedDescription description : descriptions) {
+				final Predicate<SnomedDescription> predicateForValue = predicateFactory.apply(value);
+				for (SnomedDescription description : descriptions) {
 					if (predicateForValue.apply(description)) {
 						return description;
 					}
@@ -80,11 +80,11 @@ public abstract class DescriptionRequestHelper {
 		}
 	}
 
-	private static final class LocalePredicateFactory implements Function<ExtendedLocale, Predicate<ISnomedDescription>> {
+	private static final class LocalePredicateFactory implements Function<ExtendedLocale, Predicate<SnomedDescription>> {
 		private static final LocalePredicateFactory INSTANCE = new LocalePredicateFactory();
 
 		@Override
-		public Predicate<ISnomedDescription> apply(final ExtendedLocale locale) {
+		public Predicate<SnomedDescription> apply(final ExtendedLocale locale) {
 			final String languageRefSetId;
 			
 			if (!locale.getLanguageRefSetId().isEmpty()) {
@@ -98,9 +98,9 @@ public abstract class DescriptionRequestHelper {
 				return Predicates.alwaysFalse();
 			}
 
-			return new Predicate<ISnomedDescription>() { 
+			return new Predicate<SnomedDescription>() { 
 				@Override 
-				public boolean apply(final ISnomedDescription description) {
+				public boolean apply(final SnomedDescription description) {
 					final boolean acceptabilityMatches = Acceptability.PREFERRED.equals(description.getAcceptabilityMap().get(languageRefSetId));
 					final boolean languageCodeMatches = locale.getLanguage().equals(description.getLanguageCode());
 					return acceptabilityMatches && languageCodeMatches;
@@ -109,14 +109,14 @@ public abstract class DescriptionRequestHelper {
 		}
 	}
 
-	private static final class LanguageCodePredicateFactory implements Function<String, Predicate<ISnomedDescription>> {
+	private static final class LanguageCodePredicateFactory implements Function<String, Predicate<SnomedDescription>> {
 		private static final LanguageCodePredicateFactory INSTANCE = new LanguageCodePredicateFactory();
 
 		@Override
-		public Predicate<ISnomedDescription> apply(final String languageCode) {
-			return new Predicate<ISnomedDescription>() { 
+		public Predicate<SnomedDescription> apply(final String languageCode) {
+			return new Predicate<SnomedDescription>() { 
 				@Override 
-				public boolean apply(final ISnomedDescription description) {
+				public boolean apply(final SnomedDescription description) {
 					return languageCode.equals(description.getLanguageCode()) ;
 				}
 			};
@@ -138,21 +138,21 @@ public abstract class DescriptionRequestHelper {
 	 * @param locales		a list of {@link Locale}s to use, in order of preference
 	 * @return 				the preferred term for the concept, or {@code null} if no results could be retrieved
 	 */
-	public ISnomedDescription getPreferredTerm(final String conceptId, final List<ExtendedLocale> locales) {
+	public SnomedDescription getPreferredTerm(final String conceptId, final List<ExtendedLocale> locales) {
 		final SnomedDescriptionSearchRequestBuilder req = preparePtSearch(conceptId, locales);
 		final SnomedDescriptions descriptions = execute(req);
-		final Map<String, ISnomedDescription> bestMatchByConceptId = indexBestPreferredByConceptId(descriptions, locales);
+		final Map<String, SnomedDescription> bestMatchByConceptId = indexBestPreferredByConceptId(descriptions, locales);
 		return bestMatchByConceptId.get(conceptId);
 	}
 	
-	public Map<String, ISnomedDescription> getPreferredTerms(Set<String> conceptIds, List<ExtendedLocale> locales) {
+	public Map<String, SnomedDescription> getPreferredTerms(Set<String> conceptIds, List<ExtendedLocale> locales) {
 		if (conceptIds.isEmpty()) {
 			return Collections.emptyMap();
 		}
 		
 		final SnomedDescriptionSearchRequestBuilder req = preparePtSearch(conceptIds, locales);
 		final SnomedDescriptions descriptions = execute(req);
-		final Map<String, ISnomedDescription> bestMatchByConceptId = indexBestPreferredByConceptId(descriptions, locales);
+		final Map<String, SnomedDescription> bestMatchByConceptId = indexBestPreferredByConceptId(descriptions, locales);
 		return bestMatchByConceptId;
 	}
 
@@ -177,10 +177,10 @@ public abstract class DescriptionRequestHelper {
 	 * @param locales    a list of {@link Locale}s to use, in order of preference
 	 * @return the preferred term for the concept
 	 */
-	public ISnomedDescription getFullySpecifiedName(final String conceptId, final List<ExtendedLocale> locales) {
+	public SnomedDescription getFullySpecifiedName(final String conceptId, final List<ExtendedLocale> locales) {
 		final SnomedDescriptionSearchRequestBuilder acceptabilityReq = prepareFsnSearchByAcceptability(conceptId, locales);
 		final SnomedDescriptions preferredDescriptions = execute(acceptabilityReq);
-		final Map<String, ISnomedDescription> bestPreferredByConceptId = indexBestPreferredByConceptId(preferredDescriptions, locales);
+		final Map<String, SnomedDescription> bestPreferredByConceptId = indexBestPreferredByConceptId(preferredDescriptions, locales);
 		
 		if (bestPreferredByConceptId.containsKey(conceptId)) {
 			return bestPreferredByConceptId.get(conceptId);
@@ -190,7 +190,7 @@ public abstract class DescriptionRequestHelper {
 		
 		final SnomedDescriptionSearchRequestBuilder languageCodeReq = prepareFsnSearchByLanguageCodes(conceptId, languageCodes);
 		final SnomedDescriptions languageCodeDescriptions = execute(languageCodeReq);
-		final Map<String, ISnomedDescription> bestLanguageByConceptId = indexBestLanguageByConceptId(languageCodeDescriptions, languageCodes);
+		final Map<String, SnomedDescription> bestLanguageByConceptId = indexBestLanguageByConceptId(languageCodeDescriptions, languageCodes);
 
 		if (bestLanguageByConceptId.containsKey(conceptId)) {
 			return bestLanguageByConceptId.get(conceptId);
@@ -206,12 +206,12 @@ public abstract class DescriptionRequestHelper {
 		return Iterables.getFirst(activeFsnDescriptions, null); 
 	}
 
-	public Map<String, ISnomedDescription> getFullySpecifiedNames(Set<String> conceptIds, List<ExtendedLocale> locales) {
+	public Map<String, SnomedDescription> getFullySpecifiedNames(Set<String> conceptIds, List<ExtendedLocale> locales) {
 		if (conceptIds.isEmpty()) {
 			return Collections.emptyMap();
 		}
 		
-		final Map<String, ISnomedDescription> fsnMap = newHashMap();
+		final Map<String, SnomedDescription> fsnMap = newHashMap();
 		Set<String> conceptIdsNotInMap;
 		
 		final SnomedDescriptionSearchRequestBuilder acceptabilityReq = prepareFsnSearchByAcceptability(conceptIds, locales);
@@ -275,7 +275,7 @@ public abstract class DescriptionRequestHelper {
 		return SnomedRequests.prepareSearchDescription()
 				.all()
 				.filterByActive(true)
-				.filterByConceptId(conceptId)
+				.filterByConcept(conceptId)
 				.filterByType(Concepts.FULLY_SPECIFIED_NAME);
 	}
 	
@@ -293,7 +293,7 @@ public abstract class DescriptionRequestHelper {
 		return SnomedRequests.prepareSearchDescription()
 				.all()
 				.filterByActive(true)
-				.filterByConceptId(conceptId)
+				.filterByConcept(conceptId)
 				.filterByType("<<" + Concepts.SYNONYM)
 				.filterByAcceptability(Acceptability.PREFERRED)
 				.filterByExtendedLocales(locales);
@@ -309,36 +309,36 @@ public abstract class DescriptionRequestHelper {
 				.filterByExtendedLocales(locales);
 	}
 
-	private Map<String, ISnomedDescription> indexBestPreferredByConceptId(final SnomedDescriptions descriptions, final List<ExtendedLocale> orderedLocales) {
+	private Map<String, SnomedDescription> indexBestPreferredByConceptId(final SnomedDescriptions descriptions, final List<ExtendedLocale> orderedLocales) {
 		return extractBest(indexByConceptId(descriptions), orderedLocales, LocalePredicateFactory.INSTANCE);
 	}
 	
-	private Map<String, ISnomedDescription> indexBestLanguageByConceptId(final SnomedDescriptions descriptions, final List<String> orderedLanguages) {
+	private Map<String, SnomedDescription> indexBestLanguageByConceptId(final SnomedDescriptions descriptions, final List<String> orderedLanguages) {
 		return extractBest(indexByConceptId(descriptions), orderedLanguages, LanguageCodePredicateFactory.INSTANCE);
 	}
 	
-	private Map<String, ISnomedDescription> indexFirstByConceptId(final SnomedDescriptions descriptions) {
+	private Map<String, SnomedDescription> indexFirstByConceptId(final SnomedDescriptions descriptions) {
 		return extractFirst(indexByConceptId(descriptions));
 	}
 
-	private Multimap<String, ISnomedDescription> indexByConceptId(final SnomedDescriptions descriptions) {
-		return Multimaps.index(descriptions.getItems(), new Function<ISnomedDescription, String>() {
-			@Override public String apply(ISnomedDescription description) {
+	private Multimap<String, SnomedDescription> indexByConceptId(final SnomedDescriptions descriptions) {
+		return Multimaps.index(descriptions.getItems(), new Function<SnomedDescription, String>() {
+			@Override public String apply(SnomedDescription description) {
 				return description.getConceptId();
 			}
 		});
 	}
 	
-	private Map<String, ISnomedDescription> extractFirst(final Multimap<String, ISnomedDescription> descriptionsByConceptId) {
-		final Map<String, ISnomedDescription> uniqueMap = Maps.transformValues(descriptionsByConceptId.asMap(), ExtractFirstFunction.INSTANCE);
+	private Map<String, SnomedDescription> extractFirst(final Multimap<String, SnomedDescription> descriptionsByConceptId) {
+		final Map<String, SnomedDescription> uniqueMap = Maps.transformValues(descriptionsByConceptId.asMap(), ExtractFirstFunction.INSTANCE);
 		return ImmutableMap.copyOf(Maps.filterValues(uniqueMap, Predicates.notNull()));
 	}
 	
-	private <T> Map<String, ISnomedDescription> extractBest(final Multimap<String, ISnomedDescription> descriptionsByConceptId, 
+	private <T> Map<String, SnomedDescription> extractBest(final Multimap<String, SnomedDescription> descriptionsByConceptId, 
 			final List<T> orderedValues, 
-			final Function<T, Predicate<ISnomedDescription>> predicateFactory) {
+			final Function<T, Predicate<SnomedDescription>> predicateFactory) {
 		
-		final Map<String, ISnomedDescription> uniqueMap = Maps.transformValues(descriptionsByConceptId.asMap(), new ExtractBestFunction<T>(orderedValues, predicateFactory));
+		final Map<String, SnomedDescription> uniqueMap = Maps.transformValues(descriptionsByConceptId.asMap(), new ExtractBestFunction<T>(orderedValues, predicateFactory));
 		return ImmutableMap.copyOf(Maps.filterValues(uniqueMap, Predicates.notNull()));
 	}
 	

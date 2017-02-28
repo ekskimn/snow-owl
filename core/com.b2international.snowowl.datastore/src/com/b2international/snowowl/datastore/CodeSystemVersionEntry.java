@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
-
 import com.b2international.snowowl.terminologymetadata.CodeSystemVersion;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -168,6 +167,7 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 	private final String repositoryUuid;
 	private final String codeSystemShortName;
 
+	// TODO remove these extra constructors and use the builder instead
 	public CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate, final String description,
 			final String versionId, final String parentBranchPath, final long storageKey, final String repositoryUuid) {
 		this(importDate, effectiveDate, latestUpdateDate, nullToEmpty(description), checkNotNull(versionId, "versionId"),
@@ -179,10 +179,10 @@ public class CodeSystemVersionEntry implements ICodeSystemVersion {
 		this(importDate, effectiveDate, latestUpdateDate, nullToEmpty(description), checkNotNull(versionId, "versionId"),
 				checkNotNull(parentBranchPath), false, storageKey, checkNotNull(repositoryUuid, "repositoryUuid"), codeSystemShortName);
 	}
-
-	public CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate, final String description,
-			final String versionId, final String parentBranchPath, final boolean patched, final long storageKey,
-			final String repositoryUuid, final String codeSystemShortName) {
+	
+	private CodeSystemVersionEntry(final long importDate, final long effectiveDate, final long latestUpdateDate,
+			final String description, final String versionId, final String parentBranchPath, final boolean patched, final long storageKey, final String repositoryUuid, 
+			final String codeSystemShortName) {
 		this.importDate = importDate;
 		this.effectiveDate = effectiveDate;
 		this.latestUpdateDate = latestUpdateDate;

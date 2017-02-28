@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,8 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedVersioningApiAssert.assertVersionGetStatus;
-import static com.b2international.snowowl.snomed.api.rest.SnomedVersioningApiAssert.assertVersionPostStatus;
+import static com.b2international.snowowl.snomed.api.rest.SnomedVersioningApiAssert.assertVersionCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedVersioningApiAssert.getLatestAvailableVersionDateAsString;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 
@@ -44,10 +45,10 @@ public class SnomedExtensionVersioningTest extends ExtensionTest {
 	public void createVersionWithoutChangesOnB2iBranch() {
 		assertB2iExtensionExistsWithDefaults();
 		
-		final String versionDate = getDateForNewVersion(B2I_EXT_SHORT_NAME);
+		final String versionDate = getLatestAvailableVersionDateAsString(B2I_EXT_SHORT_NAME);
 		final String versionId = UUID.randomUUID().toString();
 		
-		assertVersionPostStatus(versionId, versionDate, B2I_EXT_SHORT_NAME, 201);
+		assertVersionCreated(versionId, versionDate, B2I_EXT_SHORT_NAME, 201);
 		assertVersionGetStatus(versionId, 200, B2I_EXT_SHORT_NAME);
 	}
 	
@@ -55,8 +56,8 @@ public class SnomedExtensionVersioningTest extends ExtensionTest {
 	public void createVersionWithoutVersionIdOnB2iBranch() {
 		assertB2iExtensionExistsWithDefaults();
 		
-		final String versionDate = getDateForNewVersion(B2I_EXT_SHORT_NAME);
-		assertVersionPostStatus("", versionDate, B2I_EXT_SHORT_NAME, 400);
+		final String versionDate = getLatestAvailableVersionDateAsString(B2I_EXT_SHORT_NAME);
+		assertVersionCreated("", versionDate, B2I_EXT_SHORT_NAME, 400);
 	}
 	
 	@Test
@@ -71,10 +72,10 @@ public class SnomedExtensionVersioningTest extends ExtensionTest {
 			.when().get("{path}/concepts/{conceptId}", branchPath.getPath(), conceptId)
 			.then().body("released", equalTo(false));
 		
-		final String versionDate = getDateForNewVersion(B2I_EXT_SHORT_NAME);
+		final String versionDate = getLatestAvailableVersionDateAsString(B2I_EXT_SHORT_NAME);
 		final String versionId = UUID.randomUUID().toString();
 		
-		assertVersionPostStatus(versionId, versionDate, B2I_EXT_SHORT_NAME, 201);
+		assertVersionCreated(versionId, versionDate, B2I_EXT_SHORT_NAME, 201);
 		assertVersionGetStatus(versionId, 200, B2I_EXT_SHORT_NAME);
 		
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)

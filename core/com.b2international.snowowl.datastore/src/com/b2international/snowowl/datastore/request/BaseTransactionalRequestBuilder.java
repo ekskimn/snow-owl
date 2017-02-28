@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ public abstract class BaseTransactionalRequestBuilder<B extends BaseTransactiona
 		this.commitRequestBuilder = commitRequestBuilder;
 	}
 	
-	public final AsyncRequest<CommitInfo> build(String repositoryId, String branch, String userId, String commitComment) {
+	public final AsyncRequest<CommitResult> build(String repositoryId, String branch, String userId, String commitComment) {
 		return commitRequestBuilder
 				.setUserId(userId)
 				.setCommitComment(commitComment)

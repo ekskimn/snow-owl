@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,14 @@ import java.util.List;
 
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
 
 /**
  * @since 4.5
  */
-public final class SnomedConcepts extends PageableCollectionResource<ISnomedConcept> {
+public final class SnomedConcepts extends PageableCollectionResource<SnomedConcept> {
 
 	public static final Function<SnomedConcepts, List<SnomedConceptDocument>> TO_DOCS = new Function<SnomedConcepts, List<SnomedConceptDocument>>() {
 		@Override
@@ -35,10 +37,15 @@ public final class SnomedConcepts extends PageableCollectionResource<ISnomedConc
 	};
 
 	public SnomedConcepts(int offset, int limit, int total) {
-		super(Collections.<ISnomedConcept>emptyList(), offset, limit, total);
+		super(Collections.emptyList(), offset, limit, total);
 	}
 	
-	public SnomedConcepts(List<ISnomedConcept> items, int offset, int limit, int total) {
+	@JsonCreator
+	public SnomedConcepts(
+			@JsonProperty("items") List<SnomedConcept> items, 
+			@JsonProperty("offset") int offset, 
+			@JsonProperty("limit") int limit, 
+			@JsonProperty("total") int total) {
 		super(items, offset, limit, total);
 	}
 

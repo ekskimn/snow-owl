@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
  */
 package com.b2international.snowowl.datastore.server.snomed.index;
 
+import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
+import static com.google.common.collect.Sets.newHashSet;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Set;
@@ -29,6 +32,7 @@ import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionIndex;
+import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
@@ -37,8 +41,11 @@ import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.index.BaseCDOChangeProcessor;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessor;
+import com.b2international.snowowl.datastore.index.IndexCommitChangeSet;
+import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
+import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedPackage;
@@ -53,9 +60,12 @@ import com.b2international.snowowl.snomed.datastore.index.change.RelationshipCha
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomies;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomy;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
 /**
@@ -72,6 +82,7 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 		super(branchPath, index);
 	}
 	
+	/*updates the documents in the indexes based on the dirty, detached and new components.*/
 	@Override
 	protected void preUpdateDocuments(ICDOCommitChangeSet commitChangeSet, RevisionSearcher index) throws IOException {
 		final Set<String> statedSourceIds = Sets.newHashSet();
@@ -170,15 +181,6 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 		prepareTaxonomyBuilders(commitChangeSet, index, statedConceptIds, inferredConceptIds);	
 	}
 	
-	private void collectIds(final Set<String> sourceIds, final Set<String> destinationIds, Iterable<Relationship> newRelationships, CharacteristicType characteristicType) {
-		for (Relationship newRelationship : newRelationships) {
-			if (newRelationship.getCharacteristicType().getId().equals(characteristicType.getConceptId())) {
-				sourceIds.add(newRelationship.getSource().getId());
-				destinationIds.add(newRelationship.getDestination().getId());
-			}
-		}
-	}
-	
 	@Override
 	protected Collection<ChangeSetProcessor> getChangeSetProcessors() {
 		return ImmutableList.<ChangeSetProcessor>builder()
@@ -188,6 +190,68 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 				.add(new RefSetMemberChangeProcessor())
 				.add(new ConstraintChangeProcessor())
 				.build();
+	}
+	
+	@Override
+	protected void postUpdateDocuments(IndexCommitChangeSet commitChangeSet) {
+		final Set<String> releasableComponentIds = getReleasableComponentIds(commitChangeSet.getRevisionDeletions());
+		if (!releasableComponentIds.isEmpty()) {
+			SnomedRequests.identifiers().prepareRelease()
+					.setComponentIds(releasableComponentIds)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getServiceForClass(IEventBus.class))
+					.getSync();
+		}
+			
+	}
+	
+	private void collectIds(final Set<String> sourceIds, final Set<String> destinationIds, Iterable<Relationship> newRelationships, CharacteristicType characteristicType) {
+		for (Relationship newRelationship : newRelationships) {
+			if (newRelationship.getCharacteristicType().getId().equals(characteristicType.getConceptId())) {
+				sourceIds.add(newRelationship.getSource().getId());
+				destinationIds.add(newRelationship.getDestination().getId());
+			}
+		}
+	}
+
+	private Set<String> getReleasableComponentIds(Multimap<Class<? extends Revision>, Long> deletions) {
+		final Set<String> releasableComponentIds = newHashSet();
+		for (Class<? extends Revision> type : deletions.keySet()) {
+			if (isCoreComponent(type)) {
+				releasableComponentIds.addAll(getReleasableComponentIds((Class<? extends RevisionDocument>) type, deletions.get(type)));
+			}
+		}
+		return releasableComponentIds;
+	}
+
+	private boolean isCoreComponent(Class<? extends Revision> type) {
+		return SnomedConceptDocument.class == type || SnomedDescriptionIndexEntry.class == type || SnomedRelationshipIndexEntry.class == type;
+	}
+
+	private Collection<String> getReleasableComponentIds(final Class<? extends RevisionDocument> type, final Iterable<Long> storageKeys) {
+		return ImmutableSet.copyOf(ComponentUtils.<String>getIds(getReleasableComponents(type, storageKeys)));
+	}
+
+	private <T extends RevisionDocument> Iterable<T> getReleasableComponents(final Class<T> type, final Iterable<Long> storageKeys) {
+		IBranchPath currentBranchPath = getBranchPath();
+		final Set<Long> releasableStorageKeys = newHashSet(storageKeys);
+
+		while (!StringUtils.isEmpty(currentBranchPath.getParentPath())) {
+			currentBranchPath = currentBranchPath.getParent();
+			final Iterable<T> hits = index().read(currentBranchPath.getPath(), new RevisionIndexRead<Iterable<T>>() {
+				@Override
+				public Iterable<T> execute(RevisionSearcher index) throws IOException {
+					return index.get(type, releasableStorageKeys);
+				}
+			});
+			for (T hit : hits) {
+				// the ID of this component cannot be released because it is being used on an ancestor branch
+				releasableStorageKeys.remove(hit.getStorageKey());
+			}
+		}
+		
+		// the remaining storageKeys can be removed, since they are not in use on any ancestor branch
+		return getRevisions(type, releasableStorageKeys);
 	}
 
 	/**
@@ -201,7 +265,10 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 		
 		final FeatureToggles features = ApplicationContext.getServiceForClass(FeatureToggles.class);
 		final String reindexFeature = ReindexRequest.featureFor(SnomedDatastoreActivator.REPOSITORY_UUID);
-		final boolean checkCycles = features.exists(reindexFeature) ? !features.check(reindexFeature) : true;
+		final String importFeature = SnomedDatastoreActivator.REPOSITORY_UUID + ".import";
+		final boolean importRunning = features.exists(importFeature) ? features.check(importFeature) : false;
+		final boolean reindexRunning = features.exists(reindexFeature) ? features.check(reindexFeature) : false;
+		final boolean checkCycles = !importRunning && !reindexRunning;
 		
 		final Runnable inferredRunnable = CDOServerUtils.withAccessor(new Runnable() {
 			@Override
@@ -219,4 +286,5 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 		
 		ForkJoinUtils.runInParallel(inferredRunnable, statedRunnable);
 	}
+	
 }

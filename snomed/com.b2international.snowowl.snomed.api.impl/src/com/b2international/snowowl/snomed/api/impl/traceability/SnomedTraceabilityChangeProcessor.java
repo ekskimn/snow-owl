@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,9 +69,9 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserD
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
@@ -272,11 +272,8 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	@Override
 	public void afterCommit() {
 		final Timer traceabilityTimer = MetricsThreadLocal.get().timer("traceability");
-		
 		try {
-			
 			traceabilityTimer.start();
-			
 			if (commitChangeSet != null) {
 				final ImmutableSet<String> conceptIds = ImmutableSet.copyOf(entry.getChanges().keySet());
 				final String branch = commitChangeSet.getView().getBranch().getPathName();
@@ -294,7 +291,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				final Set<String> hasChildrenStated = collectNonLeafs(conceptIds, branch, bus, Concepts.STATED_RELATIONSHIP);
 				final Set<String> hasChildrenInferred = collectNonLeafs(conceptIds, branch, bus, Concepts.INFERRED_RELATIONSHIP);
 				
-				for (ISnomedConcept concept : concepts) {
+				for (SnomedConcept concept : concepts) {
 					SnomedBrowserConcept convertedConcept = new SnomedBrowserConcept();
 					
 					convertedConcept.setActive(concept.isActive());
@@ -314,13 +311,10 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 					entry.setConcept(convertedConcept.getId(), convertedConcept);
 				}
 			}
-
-			try {
-				LOGGER.info(WRITER.writeValueAsString(entry));
-			} catch (IOException e) {
-				throw SnowowlRuntimeException.wrap(e);
-			} 
-			
+		
+			LOGGER.info(WRITER.writeValueAsString(entry));
+		} catch (IOException e) {
+			throw SnowowlRuntimeException.wrap(e);
 		} finally {
 			traceabilityTimer.stop();
 		}
@@ -361,9 +355,9 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	}
 	
 	private List<ISnomedBrowserDescription> convertDescriptions(SnomedDescriptions descriptions) {
-		return FluentIterable.from(descriptions).transform(new Function<ISnomedDescription, ISnomedBrowserDescription>() {
+		return FluentIterable.from(descriptions).transform(new Function<SnomedDescription, ISnomedBrowserDescription>() {
 			@Override
-			public ISnomedBrowserDescription apply(ISnomedDescription input) {
+			public ISnomedBrowserDescription apply(SnomedDescription input) {
 				final SnomedBrowserDescription convertedDescription = new SnomedBrowserDescription();
 				
 				convertedDescription.setAcceptabilityMap(input.getAcceptabilityMap());
@@ -385,9 +379,9 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 	}
 
 	private List<ISnomedBrowserRelationship> convertRelationships(SnomedRelationships relationships) {
-		return FluentIterable.from(relationships).transform(new Function<ISnomedRelationship, ISnomedBrowserRelationship>() {
+		return FluentIterable.from(relationships).transform(new Function<SnomedRelationship, ISnomedBrowserRelationship>() {
 			@Override
-			public ISnomedBrowserRelationship apply(ISnomedRelationship input) {
+			public ISnomedBrowserRelationship apply(SnomedRelationship input) {
 				final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship();
 				
 				convertedRelationship.setActive(input.isActive());
@@ -404,12 +398,12 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				convertedRelationship.setType(type);
 				
 				final SnomedBrowserRelationshipTarget target = new SnomedBrowserRelationshipTarget();
-				target.setActive(input.getDestinationConcept().isActive());
+				target.setActive(input.getDestination().isActive());
 				target.setConceptId(input.getDestinationId());
-				target.setDefinitionStatus(input.getDestinationConcept().getDefinitionStatus());
-				target.setEffectiveTime(input.getDestinationConcept().getEffectiveTime());
+				target.setDefinitionStatus(input.getDestination().getDefinitionStatus());
+				target.setEffectiveTime(input.getDestination().getEffectiveTime());
 				target.setFsn(input.getDestinationId());
-				target.setModuleId(input.getDestinationConcept().getModuleId());
+				target.setModuleId(input.getDestination().getModuleId());
 				convertedRelationship.setTarget(target);
 				
 				return convertedRelationship;

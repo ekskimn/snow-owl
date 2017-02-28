@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.rest.classification;
 
+import static org.junit.Assert.*;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE_SCT_CORE;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
@@ -25,6 +26,7 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
+import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -226,5 +228,56 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		assertComponentExists(testBranchPath, SnomedComponentType.CONCEPT, parentConcept, "relationships()")
 			.and().assertThat()
 			.body("relationships.items.id", hasItem(containsString("9999999")));
+	}
+	
+	@Test
+	public void issue_SO_2152_testGroupRenumbering() throws Exception {
+		// create a new concept
+		final Map<?, ?> conceptReq = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		final String conceptId = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, conceptReq);
+
+		// add new relationship to the root as stated, add the same relationship with a different group to the new concept as inferred
+		// "associated morphology = SNOMED CT Core module"
+		final Map<String, Object> statedRelationshipReq = newHashMap(givenRelationshipRequestBody(ROOT_CONCEPT, 
+				Concepts.MORPHOLOGY, 
+				Concepts.MODULE_SCT_CORE, 
+				Concepts.MODULE_SCT_CORE, 
+				CharacteristicType.STATED_RELATIONSHIP, 
+				"New stated relationship"));
+		
+		statedRelationshipReq.put("group", 0);
+		assertComponentCreated(testBranchPath, SnomedComponentType.RELATIONSHIP, statedRelationshipReq);
+		
+		final Map<String, Object> inferredRelationshipReq = newHashMap(givenRelationshipRequestBody(conceptId, 
+				Concepts.MORPHOLOGY, 
+				Concepts.MODULE_SCT_CORE, 
+				Concepts.MODULE_SCT_CORE, 
+				CharacteristicType.INFERRED_RELATIONSHIP, 
+				"New inferred relationship"));
+		
+		inferredRelationshipReq.put("group", 5);
+		assertComponentCreated(testBranchPath, SnomedComponentType.RELATIONSHIP, inferredRelationshipReq);
+		
+		final String classificationRunId = waitForClassificationToComplete(testBranchPath.getPath());
+		final Multimap<String, Map<String, Object>> relationshipChangesBySourceId = classify(testBranchPath.getPath(), classificationRunId);
+		
+		/* 
+		 * Expecting three changes, with the original inferred relationship with group 5 being redundant, and two inferred 
+		 * relationships (IS A and associated morphology) from the root concept being added.
+		 */
+		final Collection<Map<String, Object>> conceptRelationshipChanges = relationshipChangesBySourceId.get(conceptId);
+		assertEquals(3, conceptRelationshipChanges.size());
+		
+		boolean redundantFound = false;
+		
+		for (Map<String, Object> relationshipChange : conceptRelationshipChanges) {
+			if (ChangeNature.REDUNDANT.name().equals(relationshipChange.get("changeNature"))) {
+				assertFalse("Two redundant relationships found in response.", redundantFound);
+				assertEquals(5, relationshipChange.get("group"));
+				redundantFound = true;
+			}
+		}
+		
+		assertTrue("No redundant relationships found in response.", redundantFound);
 	}
 }

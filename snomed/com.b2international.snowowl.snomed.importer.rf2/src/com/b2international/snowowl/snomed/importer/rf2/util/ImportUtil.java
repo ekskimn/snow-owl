@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongCollection;
@@ -92,6 +93,7 @@ import com.b2international.snowowl.snomed.datastore.ISnomedImportPostProcessor;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.importer.net4j.ImportConfiguration;
@@ -132,9 +134,17 @@ import com.google.common.primitives.Longs;
  */
 public final class ImportUtil {
 
-	private static final org.slf4j.Logger IMPORT_LOGGER = org.slf4j.LoggerFactory.getLogger(ImportUtil.class);
+	private static final org.slf4j.Logger IMPORT_LOGGER = LoggerFactory.getLogger("snomed.importer.rf2");
 	private static final String SNOMED_IMPORT_POST_PROCESSOR_EXTENSION = "com.b2international.snowowl.snomed.datastore.snomedImportPostProcessor";
 
+	public SnomedImportResult doImport(final String requestingUserId, final ImportConfiguration configuration, final IProgressMonitor monitor) throws ImportException {
+		try (SnomedImportContext context = new SnomedImportContext(getIndex())) {
+			return doImportInternal(context, requestingUserId, configuration, monitor); 
+		} catch (Exception e) {
+			throw new ImportException(e);
+		}
+	}
+	
 	public SnomedImportResult doImport(
 			final CodeSystem codeSystem,
 			final ContentSubType contentSubType,
@@ -238,14 +248,6 @@ public final class ImportUtil {
 		return new File("");
 	}
 
-	public SnomedImportResult doImport(final String requestingUserId, final ImportConfiguration configuration, final IProgressMonitor monitor) throws ImportException {
-		try (SnomedImportContext context = new SnomedImportContext(getIndex())) {
-			return doImportInternal(context, requestingUserId, configuration, monitor); 
-		} catch (Exception e) {
-			throw new ImportException(e);
-		}
-	}
-
 	private RepositoryState loadRepositoryState(RevisionSearcher searcher) throws IOException {
 		final LongCollection conceptIds = getConceptIds(searcher);
 		final Collection<SnomedRelationshipIndexEntry.Views.StatementWithId> statedStatements = getStatements(searcher, Concepts.STATED_RELATIONSHIP);
@@ -266,7 +268,7 @@ public final class ImportUtil {
 	}
 	
 	private LongCollection getConceptIds(RevisionSearcher searcher) throws IOException {
-		final Query<SnomedConceptDocument> query = Query.select(SnomedConceptDocument.class)
+		final Query<SnomedConceptDocument> query = Query.selectPartial(SnomedConceptDocument.class, SnomedDocument.Fields.ID)
 				.where(Expressions.matchAll())
 				.limit(Integer.MAX_VALUE)
 				.build();
@@ -402,9 +404,12 @@ public final class ImportUtil {
 		final FeatureToggles features = ApplicationContext.getServiceForClass(FeatureToggles.class);
 		try {
 			features.enable(SnomedDatastoreActivator.REPOSITORY_UUID + ".import");
-			OperationLockRunner.with(lockManager).run(new Runnable() { @Override public void run() {
-				resultHolder[0] = doImportLocked(requestingUserId, configuration, result, branchPath, context, subMonitor, importers, editingContext, branch, repositoryState);
-			}}, lockContext, IOperationLockManager.NO_TIMEOUT, lockTarget);
+			OperationLockRunner.with(lockManager).run(new Runnable() { 
+				@Override 
+				public void run() {
+					resultHolder[0] = doImportLocked(requestingUserId, configuration, result, branchPath, context, subMonitor, importers, editingContext, branch, repositoryState);
+				}
+			}, lockContext, IOperationLockManager.NO_TIMEOUT, lockTarget);
 		} catch (final OperationLockException | InterruptedException e) {
 			throw new ImportException(e);
 		} catch (final InvocationTargetException e) {
@@ -526,23 +531,32 @@ public final class ImportUtil {
 			@Override
 			public Boolean execute(RevisionSearcher index) throws IOException {
 				final SnomedValidationContext validator = new SnomedValidationContext(index, requestingUserId, configuration, IMPORT_LOGGER, repositoryState);
-				result.getValidationDefects().addAll(validator.validate(subMonitor.newChild(1)));
+				final Set<SnomedValidationDefect> defects = result.getValidationDefects();
+				defects.addAll(validator.validate(subMonitor.newChild(1)));
 				
-				if (!isEmpty(result.getValidationDefects())) {
+				if (!isEmpty(defects)) {
 					// If only header differences exist, continue the import
-					final FluentIterable<String> defects = FluentIterable.from(result.getValidationDefects()).transformAndConcat(new Function<SnomedValidationDefect, Iterable<? extends String>>() {
-						@Override
-						public Iterable<? extends String> apply(SnomedValidationDefect input) {
-							return input.getDefects();
-						}
-					});
+					
 					final String message = String.format("Validation encountered %s issue(s).", defects.size());
 					LogUtils.logImportActivity(IMPORT_LOGGER, requestingUserId, branchPath, message);
-					for (String defect : defects) {
-						LogUtils.logImportActivity(IMPORT_LOGGER, requestingUserId, branchPath, defect);
-					}
+//					
+//					final Map<String, BufferedWriter> defectWriters = newHashMap();
+//					try {
+//						for (SnomedValidationDefect defect : defects) {
+//							final String filePath = defect.getFileName();
+//							final String defectsFile = String.format("d:/%s_%s_defects.txt", configuration.getArchiveFile().getName(), filePath);
+//							if (!defectWriters.containsKey(defectsFile)) {
+//								defectWriters.put(defectsFile, Files.newWriter(new File(defectsFile), Charsets.UTF_8));
+//							}
+//							defect.writeTo(defectWriters.get(defectsFile));
+//						}
+//					} finally {
+//						for (BufferedWriter writer : defectWriters.values()) {
+//							writer.close();
+//						}
+//					}
 					
-					return !Iterables.tryFind(result.getValidationDefects(), new Predicate<SnomedValidationDefect>() {
+					return !Iterables.tryFind(defects, new Predicate<SnomedValidationDefect>() {
 						@Override
 						public boolean apply(SnomedValidationDefect input) {
 							return input.getDefectType().isCritical();

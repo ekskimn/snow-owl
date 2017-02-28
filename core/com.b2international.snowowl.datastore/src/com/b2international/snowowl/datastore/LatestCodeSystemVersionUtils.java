@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,18 +32,17 @@ public abstract class LatestCodeSystemVersionUtils {
 	 * @param repositoryUuid the repository UUID.
 	 * @return a fake version representing the HEAD in the repository.
 	 */
-	public static ICodeSystemVersion createLatestCodeSystemVersion(final String repositoryUuid) {
-
-		return new CodeSystemVersionEntry(MAX_VALUE, MAX_VALUE, UNSET_EFFECTIVE_TIME, LATEST_VERSION, MAIN_BRANCH, MAIN_BRANCH, NO_STORAGE_KEY, repositoryUuid) {
-			
-			private static final long serialVersionUID = 3431197771869140761L;
-
-			@Override
-			public boolean isPatched() {
-				return false;
-			}
-		};
-		
+	public static CodeSystemVersionEntry createLatestCodeSystemVersion(final String repositoryUuid) {
+		return CodeSystemVersionEntry.builder()
+				.repositoryUuid(repositoryUuid)
+				.versionId(MAIN_BRANCH)
+				.storageKey(NO_STORAGE_KEY)
+				.effectiveDate(MAX_VALUE)
+				.importDate(MAX_VALUE)
+				.latestUpdateDate(UNSET_EFFECTIVE_TIME)
+				.description(LATEST_VERSION)
+				.codeSystemShortName("SNOMEDCT")
+				.build();
 	}
 	
 	/**

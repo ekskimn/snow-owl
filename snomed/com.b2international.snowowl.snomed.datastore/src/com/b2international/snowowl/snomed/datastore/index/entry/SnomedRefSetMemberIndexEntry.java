@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,15 @@
  */
 package com.b2international.snowowl.snomed.datastore.index.entry;
 
-import static com.b2international.index.query.Expressions.*;
+import static com.b2international.index.query.Expressions.exactMatch;
+import static com.b2international.index.query.Expressions.matchAny;
+import static com.b2international.index.query.Expressions.matchAnyDecimal;
+import static com.b2international.index.query.Expressions.matchAnyInt;
+import static com.b2international.index.query.Expressions.matchRange;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.CONCEPT_NUMBER;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER;
 import static com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants.RELATIONSHIP_NUMBER;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -216,13 +219,6 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 			}
 
 			@Override
-			public Builder caseSnomedModuleDependencyRefSetMember(final SnomedModuleDependencyRefSetMember moduleDependencyMember) {
-				return builder
-						.field(Fields.SOURCE_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(moduleDependencyMember.getSourceEffectiveTime()))
-						.field(Fields.TARGET_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(moduleDependencyMember.getTargetEffectiveTime()));
-			}
-
-			@Override
 			public Builder caseSnomedQueryRefSetMember(final SnomedQueryRefSetMember queryMember) {
 				return builder.field(Fields.QUERY, queryMember.getQuery());
 			}
@@ -245,6 +241,13 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 						.field(Fields.MAP_RULE, Strings.nullToEmpty(mapRefSetMember.getMapRule()))
 						// extended refset
 						.field(Fields.MAP_CATEGORY_ID, Strings.nullToEmpty(mapRefSetMember.getMapCategoryId()));
+			}
+			
+			@Override
+			public Builder caseSnomedModuleDependencyRefSetMember(SnomedModuleDependencyRefSetMember member) {
+				return builder
+						.field(Fields.SOURCE_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(member.getSourceEffectiveTime()))
+						.field(Fields.TARGET_EFFECTIVE_TIME, EffectiveTimes.getEffectiveTime(member.getTargetEffectiveTime()));
 			}
 			
 			@Override
@@ -649,13 +652,25 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 			if (dataType != null) {
 				switch (dataType) {
 				case BOOLEAN:
-					doc.booleanValue = (Boolean) value;
+					if (value instanceof Boolean) {
+						doc.booleanValue = (Boolean) value;
+					} else if (value instanceof String) {
+						doc.booleanValue = SnomedRefSetUtil.deserializeValue(dataType, (String) value);
+					}
 					break;
 				case DECIMAL:
-					doc.decimalValue = (BigDecimal) value;
+					if (value instanceof BigDecimal) {
+						doc.decimalValue = (BigDecimal) value;
+					} else if (value instanceof String) {
+						doc.decimalValue = SnomedRefSetUtil.deserializeValue(dataType, (String) value);
+					}
 					break;
 				case INTEGER:
-					doc.integerValue = (Integer) value;
+					if (value instanceof Integer) {
+						doc.integerValue = (Integer) value;
+					} else if (value instanceof String) {
+						doc.integerValue = SnomedRefSetUtil.deserializeValue(dataType, (String) value);
+					}
 					break;
 				case STRING:
 					doc.stringValue = (String) value;
@@ -763,10 +778,9 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 				effectiveTimeLong);
 
 		checkArgument(referencedComponentType >= CoreTerminologyBroker.UNSPECIFIED_NUMBER_SHORT, "Referenced component type '%s' is invalid.", referencedComponentType);
-
-		this.referencedComponentId = checkNotNull(referencedComponentId, "Reference component identifier may not be null.");
-		this.referenceSetId = checkNotNull(referenceSetId, "Reference set identifier may not be null.");
-		this.referenceSetType = checkNotNull(referenceSetType, "Reference set type may not be null.");
+		this.referencedComponentId = referencedComponentId;
+		this.referenceSetId = referenceSetId;
+		this.referenceSetType = referenceSetType;
 		this.referencedComponentType = referencedComponentType;
 	}
 

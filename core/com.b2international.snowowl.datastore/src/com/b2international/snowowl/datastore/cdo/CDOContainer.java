@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -382,6 +382,8 @@ public abstract class CDOContainer<T extends ICDOManagedItem<T>> extends Lifecyc
 		
 		final IExtensionRegistry registry = Platform.getExtensionRegistry();
 
+		final Map<String, String> namespaceIdsByRepositoryId = newHashMap();
+		
 		//load all CDO repository extensions, instantiate repositories and apply inverse mapping to the namespace URI
 		for (final IConfigurationElement repositoryElement : registry.getConfigurationElementsFor(REPOSITORY_EXT_ID)) {
 			
@@ -407,6 +409,9 @@ public abstract class CDOContainer<T extends ICDOManagedItem<T>> extends Lifecyc
 			@Nullable final String repositoryName = repositoryElement.getAttribute(NAME_ATTRIBUTE); 
 			@Nullable final String dependsOnRepositoryUuid = repositoryElement.getAttribute(DEPENDS_ON_ATTRIBUTE);
 			final boolean metaRepository = Boolean.parseBoolean(nullToEmpty(repositoryElement.getAttribute(META_REPOSITORY_ATTRIBUTE)));
+			
+			String existingRepository = namespaceIdsByRepositoryId.put(_namespaceId, repositoryName);
+			Preconditions.checkState(Strings.isNullOrEmpty(existingRepository), "Another repository '%s' is already using namespaceId '%s' of '%s' repository.", existingRepository, _namespaceId, repositoryName);
 			
 			Byte namespaceId = null;
 

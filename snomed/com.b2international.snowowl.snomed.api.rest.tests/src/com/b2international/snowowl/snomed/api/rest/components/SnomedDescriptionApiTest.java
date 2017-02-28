@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,7 @@ import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.Description;
@@ -60,6 +61,8 @@ import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedLanguageRefSetMember;
@@ -174,7 +177,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void createDescriptionWithPredefinedId() {
 		final ISnomedIdentifierService identifierService = ApplicationContext.getInstance().getServiceChecked(ISnomedIdentifierService.class);
-		final String descriptionId = identifierService.reserve(null, ComponentCategory.DESCRIPTION);
+		final String descriptionId = Iterables.getOnlyElement(identifierService.reserve(null, ComponentCategory.DESCRIPTION, 1));
 		Map<Object, Object> requestBody = createRequestBuilder(DISEASE, "Description with predefined id", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM,
 				"New description with predefined id")
 				.put("id", descriptionId)
@@ -356,11 +359,8 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void updateAcceptabilityAndInactivate() {
-		final String ptId = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-GB")
-				.when().get("/{path}/concepts/{conceptId}/pt", createMainPath(), DISEASE)
-				.then().extract()
-				.body().path("id");
+		final SnomedConcept disease = assertComponentExists(createMainPath(), SnomedComponentType.CONCEPT, DISEASE, "pt()").extract().as(SnomedConcept.class);
+		
 
 		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease 2", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
 		final String descriptionId = assertComponentCreated(createMainPath(), SnomedComponentType.DESCRIPTION, createRequestBody);
@@ -371,7 +371,7 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 				.build();
 		
 		assertDescriptionCanBeUpdated(createMainPath(), descriptionId, updateRequestBody);
-		assertPreferredTermEquals(createMainPath(), DISEASE, ptId);
+		assertPreferredTermEquals(createMainPath(), DISEASE, disease.getPt().getId());
 	}
 
 	@Test
@@ -528,8 +528,8 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 			context.commit("Add fake member to " + descriptionId);
 		}
 		// check the acceptability map after the member injection, it should be preferred in UK lang refset
-		final Map<String, Object> acceptabilityMap = assertDescriptionExists(testBranchPath, descriptionId).extract().body().path("acceptabilityMap");
-		assertEquals(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED.name()), acceptabilityMap);
+		final Map<String, Acceptability> acceptability = assertDescriptionExists(testBranchPath, descriptionId).extract().as(SnomedDescription.class).getAcceptabilityMap();
+		assertEquals(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED), acceptability);
 		final Collection<Map<String, Object>> members = getDescriptionMembers(testBranchPath, descriptionId);
 		// but there should be two members, one is inactive ACCEPTABLE and one is active PREFERRED
 		assertEquals(2, members.size());
@@ -557,13 +557,23 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 			.statusCode(204);
 		
 		// assert that description acceptability is still preferred, but there is only one member available
-		final Map<String, Object> newAcceptabilityMap = assertDescriptionExists(testBranchPath, descriptionId).extract().body().path("acceptabilityMap");
-		assertEquals(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED.name()), newAcceptabilityMap);
+		final Map<String, Acceptability> newAcceptabilityMap = assertDescriptionExists(testBranchPath, descriptionId).extract().as(SnomedDescription.class).getAcceptabilityMap();
+		assertEquals(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED), newAcceptabilityMap);
 		final Collection<Map<String, Object>> updatedMembers = getDescriptionMembers(testBranchPath, descriptionId);
 		assertEquals(1, updatedMembers.size());
 		final Map<String, Object> updatedMember = Iterables.getOnlyElement(updatedMembers);
 		assertEquals(true, updatedMember.get(SnomedRf2Headers.FIELD_ACTIVE));
 		assertEquals(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED, updatedMember.get(SnomedRf2Headers.FIELD_ACCEPTABILITY_ID));
+	}
+	
+	@Test
+	public void issue_SO_2158_termFilter_throws_NPE() throws Exception {
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.accept(ContentType.JSON)
+			.queryParam("term", "<<")
+			.get("/{path}/descriptions", Branch.MAIN_PATH)
+			.then().log().ifValidationFails().assertThat()
+			.statusCode(200);
 	}
 	
 	// TODO: Use description member expansion here

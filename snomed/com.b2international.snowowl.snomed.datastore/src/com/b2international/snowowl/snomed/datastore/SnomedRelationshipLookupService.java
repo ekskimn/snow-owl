@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import com.b2international.snowowl.datastore.utils.ComponentUtils2;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedPackage;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
@@ -86,9 +86,9 @@ public class SnomedRelationshipLookupService extends AbstractLookupService<Strin
 					.setComponentId(id)
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-					.then(new Function<ISnomedRelationship, SnomedRelationshipIndexEntry>() {
+					.then(new Function<SnomedRelationship, SnomedRelationshipIndexEntry>() {
 						@Override
-						public SnomedRelationshipIndexEntry apply(ISnomedRelationship input) {
+						public SnomedRelationshipIndexEntry apply(SnomedRelationship input) {
 							return SnomedRelationshipIndexEntry.builder(input).build();
 						}
 					})

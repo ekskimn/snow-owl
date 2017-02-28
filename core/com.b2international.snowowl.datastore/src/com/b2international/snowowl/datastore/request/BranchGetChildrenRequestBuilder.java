@@ -41,4 +41,5 @@ public final class BranchGetChildrenRequestBuilder extends BaseRepositoryRequest
 	protected Request<RepositoryContext, Branches> doBuild() {
 		return new ReadBranchChildrenRequest(path, immediate);
 	}
+	
 }

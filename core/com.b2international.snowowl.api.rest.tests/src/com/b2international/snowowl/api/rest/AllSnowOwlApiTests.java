@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.junit.runners.Suite.SuiteClasses;
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.api.japi.cdo.RenameCDOBranchTest;
 import com.b2international.snowowl.api.japi.codesystem.CodeSystemRequestTest;
+import com.b2international.snowowl.api.japi.commitinfo.CommitInfoRequestTest;
 import com.b2international.snowowl.api.rest.auth.BasicAuthenticationTest;
 import com.b2international.snowowl.api.rest.codesystem.CodeSystemApiTest;
 import com.b2international.snowowl.snomed.common.ContentSubType;
@@ -41,7 +42,8 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	BasicAuthenticationTest.class,
 	RenameCDOBranchTest.class,
 	CodeSystemApiTest.class,
-	CodeSystemRequestTest.class
+	CodeSystemRequestTest.class,
+	CommitInfoRequestTest.class
 })
 public class AllSnowOwlApiTests {
 	

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import com.b2international.snowowl.core.events.Request;
 /**
  * @since 4.5
  */
-public final class SnomedRefSetMemberUpdateRequestBuilder extends BaseSnomedTransactionalRequestBuilder<SnomedRefSetMemberUpdateRequestBuilder, Void> {
+public final class SnomedRefSetMemberUpdateRequestBuilder extends BaseSnomedTransactionalRequestBuilder<SnomedRefSetMemberUpdateRequestBuilder, Boolean> {
 
 	private String memberId;
 	private Map<String, Object> source;
@@ -53,7 +53,7 @@ public final class SnomedRefSetMemberUpdateRequestBuilder extends BaseSnomedTran
 	}
 	
 	@Override
-	protected Request<TransactionContext, Void> doBuild() {
+	protected Request<TransactionContext, Boolean> doBuild() {
 		return new SnomedRefSetMemberUpdateRequest(memberId, source, force);
 	}
 

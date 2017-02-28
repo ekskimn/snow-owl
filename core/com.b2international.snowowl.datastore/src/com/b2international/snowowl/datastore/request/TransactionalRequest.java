@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,9 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+
+import org.hibernate.validator.constraints.NotEmpty;
 
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.domain.BranchContext;
@@ -29,14 +30,14 @@ import com.b2international.snowowl.core.events.metrics.MetricsThreadLocal;
 import com.b2international.snowowl.core.events.metrics.Timer;
 import com.b2international.snowowl.core.exceptions.ApiException;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Strings;
 
 /**
  * @since 4.5
  */
-public final class TransactionalRequest extends BaseRequest<BranchContext, CommitInfo> {
+public final class TransactionalRequest extends BaseRequest<BranchContext, CommitResult> {
 
 	@JsonProperty
+	@NotEmpty
 	private final String commitComment;
 	
 	@JsonProperty
@@ -45,20 +46,19 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 	private final Request<TransactionContext, ?> next;
 
 	private final long preRequestPreparationTime;
+	
+	private final String parentContextDescription;
 
-	private final String parentLockContextDescription;
-
-	TransactionalRequest(String userId, String commitComment, Request<TransactionContext, ?> next, long preRequestPreparationTime, String parentLockContextDescription) {
+	TransactionalRequest(String userId, String commitComment, Request<TransactionContext, ?> next, long preRequestPreparationTime, String parentContextDescription) {
 		this.next = checkNotNull(next, "next");
 		this.userId = userId;
-		checkArgument(!Strings.isNullOrEmpty(commitComment), "Commit comment may not be null or empty.");
 		this.commitComment = commitComment;
 		this.preRequestPreparationTime = preRequestPreparationTime;
-		this.parentLockContextDescription = parentLockContextDescription;
+		this.parentContextDescription = parentContextDescription;
 	}
 	
 	@Override
-	public CommitInfo execute(BranchContext context) {
+	public CommitResult execute(BranchContext context) {
 		final Metrics metrics = context.service(Metrics.class);
 		metrics.setExternalValue("preRequest", preRequestPreparationTime);
 		try (final TransactionContext transaction = context.service(TransactionContextProvider.class).get(context)) {
@@ -73,9 +73,12 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 		}
 	}
 
-	private CommitInfo commit(final TransactionContext context, final Object body) {
-		MetricsThreadLocal.set(context.service(Metrics.class));
+	private CommitResult commit(final TransactionContext context, final Object body) {
+		final Metrics metrics = context.service(Metrics.class);
+		final Timer commitTimer = metrics.timer("commit");
+		MetricsThreadLocal.set(metrics);
 		try {
+			commitTimer.start();
 			// TODO consider moving preCommit into commit(userId, commitComment)
 			context.preCommit();
 			
@@ -83,9 +86,10 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 			 * FIXME: at this point, the component identifier might have changed even though the input 
 			 * required an exact ID to be assigned. What to do?
 			 */
-			final long commitTimestamp = context.commit(userId, commitComment, parentLockContextDescription);
-			return new CommitInfo(commitTimestamp, body);
+			final long commitTimestamp = context.commit(userId, commitComment, parentContextDescription);
+			return new CommitResult(commitTimestamp, body);
 		} finally {
+			commitTimer.stop();
 			MetricsThreadLocal.release();
 		}
 	}
@@ -101,8 +105,8 @@ public final class TransactionalRequest extends BaseRequest<BranchContext, Commi
 	}
 
 	@Override
-	protected Class<CommitInfo> getReturnType() {
-		return CommitInfo.class;
+	protected Class<CommitResult> getReturnType() {
+		return CommitResult.class;
 	}
 	
 	/**

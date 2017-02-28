@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,8 +32,11 @@ import org.junit.runners.Suite.SuiteClasses;
 
 import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
+import com.b2international.snowowl.snomed.core.domain.SnomedReleases
+import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionDowngradeTest;
+import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionUpgradeTest;
+import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionVersioningTest;
 import com.b2international.snowowl.snomed.common.ContentSubType;
-import com.b2international.snowowl.snomed.core.domain.SnomedReleases;
 import com.b2international.snowowl.test.commons.BundleStartRule;
 import com.b2international.snowowl.test.commons.Resources;
 import com.b2international.snowowl.test.commons.SnomedContentRule;
@@ -50,11 +53,11 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 })
 public class SnomedExtensionApiTests {
 
-private static final String EXT_BRANCH_PATH = "MAIN/2016-01-31/SNOMEDCT-B2I";
+	public static final String EXT_BRANCH_PATH = "MAIN/2016-01-31/SNOMEDCT-B2I";
 	
 	@ClassRule
 	public static final RuleChain appRule = RuleChain
-			.outerRule(SnowOwlAppRule.snowOwl().clearResources(true).config(PlatformUtil.toAbsolutePath(SnomedExtensionApiTests.class, "rest-configuration.yml")))
+			.outerRule(SnowOwlAppRule.snowOwl().clearResources(true).config(PlatformUtil.toAbsolutePath(SnomedExtensionApiTests.class, "snomed-extension-api-test-config.yml")))
 			.around(new BundleStartRule("com.b2international.snowowl.api.rest"))
 			.around(new BundleStartRule("com.b2international.snowowl.snomed.api.rest"))
 			.around(new SnomedContentRule(SnomedReleases.newSnomedInternationalRelease(), Resources.Snomed.MINI_RF2__INT_20160131, ContentSubType.FULL))

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,8 @@
  */
 package com.b2international.snowowl.snomed.datastore.id.cis;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Lists.partition;
-import static java.util.Collections.singleton;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,10 +24,10 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
-import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpGet;
@@ -39,7 +38,6 @@ import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.commons.time.TimeUtil;
 import com.b2international.snowowl.core.IDisposableService;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.date.DateFormats;
@@ -55,7 +53,6 @@ import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkPublicati
 import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkRegistrationData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkReleaseData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkReservationData;
-import com.b2international.snowowl.snomed.datastore.id.cis.request.BulkRetrieveData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.DeprecationData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.GenerationData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.PublicationData;
@@ -64,15 +61,22 @@ import com.b2international.snowowl.snomed.datastore.id.cis.request.RegistrationD
 import com.b2international.snowowl.snomed.datastore.id.cis.request.ReleaseData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.RequestData;
 import com.b2international.snowowl.snomed.datastore.id.cis.request.ReservationData;
+import com.b2international.snowowl.snomed.datastore.id.domain.IdentifierStatus;
+import com.b2international.snowowl.snomed.datastore.id.domain.SctId;
 import com.b2international.snowowl.snomed.datastore.id.reservations.ISnomedIdentiferReservationService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.base.Strings;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 
 /**
  * CIS (IHTSDO) based implementation of the identifier service.
@@ -83,9 +87,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(CisSnomedIdentifierService.class);
 	
-	private static final String INT_NAMESPACE = "INT";
 	private static final int BULK_LIMIT = 1000;
-	private static final int BULK_GET_LIMIT = 3000;
 
 	private final long numberOfPollTries;
 	private final long numberOfReauthTries;
@@ -95,11 +97,11 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	private final ObjectMapper mapper;
 
 	private CisClient client;
-	private boolean disposed = false;
+	private boolean disposed;
 
-	public CisSnomedIdentifierService(final SnomedIdentifierConfiguration conf, final ISnomedIdentiferReservationService reservationService,
-			final ObjectMapper mapper) {
+	public CisSnomedIdentifierService(final SnomedIdentifierConfiguration conf, final ISnomedIdentiferReservationService reservationService, final ObjectMapper mapper) {
 		super(reservationService, conf);
+		
 		this.clientKey = conf.getCisClientSoftwareKey();
 		this.numberOfPollTries = conf.getCisNumberOfPollTries();
 		this.timeBetweenPollTries = conf.getCisTimeBetweenPollTries();
@@ -111,444 +113,381 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		login();
 	}
 
-	// GENERATE
-	
 	@Override
-	public String generate(final String namespace, final ComponentCategory category) {
+	public Set<String> generate(final String namespace, final ComponentCategory category, final int quantity) {
+		checkNotNull(category, "Component category must not be null.");
+		checkArgument(quantity > 0, "Number of requested IDs should be non-negative.");
+		checkCategory(category);
 
-		HttpPost request = null;
+		LOGGER.debug("Generating {} component IDs for category {}.", quantity, category.getDisplayName());
 
-		try {
-			LOGGER.debug("Sending single {} ID generation request for namespace {}", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace));
-			request = httpPost("sct/generate", createGenerationData(namespace, category));
-			return extractSctId(execute(request)).getSctid();
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to generate single %s ID for namespace %s", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace)), e);
-		} finally {
-			release(request);
-		}
-
-	}
-
-	@Override
-	public Collection<String> generate(final String namespace, final ComponentCategory category, final int quantity) {
-
-		HttpPost bulkRequest = null;
-
+		HttpPost generateRequest = null;
+		HttpGet recordsRequest = null;
 		try {
 
-			LOGGER.debug("Sending bulk {} ID generation request for namespace {} with size {}", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace), quantity);
-
-			bulkRequest = httpPost("sct/bulk/generate", createBulkGenerationData(namespace, category, quantity));
-			final String jobId = extractJobId(execute(bulkRequest));
-
-			waitForJob(jobId);
-
-			return getComponentIdsFromBulkJob(jobId);
-
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to bulk generate %s ID for namespace %s with size %s", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace), quantity), e);
-		} finally {
-			release(bulkRequest);
-		}
-	}
-
-	// REGISTER
-	
-	@Override
-	public void register(final String componentId) {
-		
-		Collection<String> idsToRegister = validateForRegistration(Collections.singleton(getSctId(componentId)));
-		
-		if (idsToRegister.isEmpty()) {
-			return;
-		}
-		
-		String idToRegister = Iterables.getOnlyElement(idsToRegister);
-		
-		if (!idToRegister.equals(componentId)) {
-			throw new SnowowlRuntimeException(String.format("ID (%s) and SctId (%s) does not match for registration", componentId, idToRegister));
-		}
-
-		HttpPost request = null;
-		
-		try {
-			
-			LOGGER.debug("Sending single registration request for ID {}", idToRegister);
-			request = httpPost("sct/register", createRegistrationData(idToRegister));
-			
-			execute(request);
-			
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to register ID %s", idToRegister), e);
-		} finally {
-			release(request);
-		}
-	}
-	
-	@Override
-	public void register(final Collection<String> componentIds) {
-
-		Collection<String> idsToRegister = validateForRegistration(getSctIds(componentIds));
-
-		if (idsToRegister.isEmpty()) {
-			return;
-		}
-
-		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToRegister);
-
-		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
-
-			final String namespace = entry.getKey();
-
-			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
-
-				HttpPost bulkRequest = null;
+			if (quantity > 1) {
+				LOGGER.debug(String.format("Sending %s ID bulk generation request.", category.getDisplayName()));
 				
-				try {
-
-					LOGGER.debug("Sending bulk registration request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
-
-					bulkRequest = httpPost("sct/bulk/register", createBulkRegistrationData(namespace, ids));
-
-					waitForJob(extractJobId(execute(bulkRequest)));
-
-				} catch (IOException e) {
-					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk register IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
-				} finally {
-					release(bulkRequest);
-				}
-			}
-		}
-	}
-
-	// RESERVE
+				generateRequest = httpPost(String.format("sct/bulk/generate?token=%s", getToken()), createBulkGenerationData(namespace, category, quantity));
+				final String response = execute(generateRequest);
+				final String jobId = mapper.readValue(response, JsonNode.class).get("id").asText();
+				joinBulkJobPolling(jobId, quantity, getToken());
 	
-	@Override
-	public String reserve(final String namespace, final ComponentCategory category) {
-
-		HttpPost request = null;
-
-		try {
-
-			LOGGER.debug("Sending single {} ID reservation request for namespace {}", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace));
-
-			request = httpPost("sct/reserve", createReservationData(namespace, category));
-
-			return extractSctId(execute(request)).getSctid();
-
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(
-					String.format("Unable to reserve %s ID for namespace %s", category.getDisplayName(), getSafeNamespaceDisplayName(namespace)), e);
-		} finally {
-			release(request);
-		}
-	}
-
-	@Override
-	public Collection<String> reserve(String namespace, ComponentCategory category, int quantity) {
-
-		HttpPost bulkRequest = null;
-
-		try {
-
-			LOGGER.debug("Sending bulk {} ID reservation request for namespace {} with size {}", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace), quantity);
-
-			bulkRequest = httpPost("sct/bulk/reserve", createBulkReservationData(namespace, category, quantity));
-
-			String jobId = extractJobId(execute(bulkRequest));
-
-			waitForJob(jobId);
-
-			return getComponentIdsFromBulkJob(jobId);
-
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to bulk reserve %s IDs for namespace %s with size %s", category.getDisplayName(),
-					getSafeNamespaceDisplayName(namespace), quantity), e);
-		} finally {
-			release(bulkRequest);
-		}
-	}
-
-	// DEPRECATE
-	
-	@Override
-	public void deprecate(final String componentId) {
-		
-		Collection<String> idsToDeprecate = validateForDeprecation(singleton(getSctId(componentId)));
-		
-		if (idsToDeprecate.isEmpty()) {
-			return;
-		}
-		
-		String idToDeprecate = Iterables.getOnlyElement(idsToDeprecate);
-		
-		if (!idToDeprecate.equals(componentId)) {
-			throw new SnowowlRuntimeException(String.format("ID (%s) and SctId (%s) does not match for deprecation", componentId, idToDeprecate));
-		}
-		
-		HttpPut request = null;
-		
-		try {
-			
-			LOGGER.debug("Sending single deprecation request for ID {}", idToDeprecate);
-
-			request = httpPut("sct/deprecate", createDeprecationData(idToDeprecate));
-			
-			execute(request);
-			
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to deprecate ID %s", idToDeprecate), e);
-		} finally {
-			release(request);
-		}
-	}
-
-	@Override
-	public void deprecate(final Collection<String> componentIds) {
-
-		Collection<String> idsToDeprecate = validateForDeprecation(getSctIds(componentIds));
-
-		if (idsToDeprecate.isEmpty()) {
-			return;
-		}
-
-		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToDeprecate);
-
-		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
-
-			String namespace = entry.getKey();
-
-			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
-
-				HttpPut bulkRequest = null;
+				recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
+				final String recordsResponse = execute(recordsRequest);
+				final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
+				return getComponentIds(records);
 				
-				try {
-
-					LOGGER.debug("Sending bulk deprecation request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
-
-					bulkRequest = httpPut("sct/bulk/deprecate", createBulkDeprecationData(namespace, ids));
-
-					waitForJob(extractJobId(execute(bulkRequest)));
-
-				} catch (IOException e) {
-					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk deprecate IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
-				} finally {
-					release(bulkRequest);
-				}
-			}
-		}
-	}
-
-	// RELEASE
-	
-	@Override
-	public void release(final String componentId) {
-		
-		Collection<String> idsToRelease = validateForReleasing(singleton(getSctId(componentId)));
-		
-		if (idsToRelease.isEmpty()) {
-			return;
-		}
-		
-		String idToRelease = Iterables.getOnlyElement(idsToRelease);
-		
-		if (!idToRelease.equals(componentId)) {
-			throw new SnowowlRuntimeException(String.format("ID (%s) and SctId (%s) does not match for releasing", componentId, idToRelease));
-		}
-		
-		HttpPut request = null;
-		
-		try {
-			
-			LOGGER.debug("Sending single release request for component ID {}", idToRelease);
-
-			request = httpPut("sct/release", createReleaseData(idToRelease));
-			
-			execute(request);
-			
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to release ID %s", idToRelease), e);
-		} finally {
-			release(request);
-		}
-	}
-
-	@Override
-	public void release(final Collection<String> componentIds) {
-
-		Collection<String> idsToRelease = validateForReleasing(getSctIds(componentIds));
-
-		if (idsToRelease.isEmpty()) {
-			return;
-		}
-
-		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToRelease);
-
-		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
-
-			String namespace = entry.getKey();
-
-			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
-
-				HttpPut bulkRequest = null;
+			} else {
+				LOGGER.debug(String.format("Sending %s ID single generation request.", category.getDisplayName()));
 				
-				try {
-
-					LOGGER.debug("Sending bulk release request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
-
-					bulkRequest = httpPut("sct/bulk/release", createBulkReleaseData(namespace, ids));
-
-					waitForJob(extractJobId(execute(bulkRequest)));
-
-				} catch (IOException e) {
-					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk release IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
-				} finally {
-					release(bulkRequest);
-				}
-			}
-		}
-	}
-
-	@Override
-	public void publish(final String componentId) {
-		
-		Collection<String> idsToPublish = validateForPublishing(singleton(getSctId(componentId)));
-		
-		if (idsToPublish.isEmpty()) {
-			return;
-		}
-		
-		String idToPublish = Iterables.getOnlyElement(idsToPublish);
-		
-		if (!idToPublish.equals(componentId)) {
-			throw new SnowowlRuntimeException(String.format("ID (%s) and SctId (%s) does not match for publishing", componentId, idToPublish));
-		}
-		
-		HttpPut request = null;
-		
-		try {
-			
-			LOGGER.debug("Sending single publish request for component ID {}", idToPublish);
-
-			request = httpPut("sct/publish", createPublishData(idToPublish));
-			
-			execute(request);
-			
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to publish ID %s", idToPublish), e);
-		} finally {
-			release(request);
-		}
-	}
-
-	@Override
-	public void publish(final Collection<String> componentIds) {
-
-		Collection<String> idsToPublish = validateForPublishing(getSctIds(componentIds));
-
-		if (idsToPublish.isEmpty()) {
-			return;
-		}
-
-		final Multimap<String, String> namespaceToIdsMap = toNamespaceMap(idsToPublish);
-
-		for (Entry<String, Collection<String>> entry : namespaceToIdsMap.asMap().entrySet()) {
-
-			String namespace = entry.getKey();
-
-			for (List<String> ids : partition(newArrayList(entry.getValue()), BULK_LIMIT)) {
-
-				HttpPut bulkRequest = null;
+				generateRequest = httpPost(String.format("sct/generate?token=%s", getToken()), createGenerationData(namespace, category));
+				final String response = execute(generateRequest);
+				final SctId sctid = mapper.readValue(response, SctId.class);
 				
-				try {
-
-					LOGGER.debug("Sending bulk publish request for namespace {} with size {}", getSafeNamespaceDisplayName(namespace), ids.size());
-
-					bulkRequest = httpPut("sct/bulk/publish", createBulkPublishData(namespace, ids));
-
-					waitForJob(extractJobId(execute(bulkRequest)));
-
-				} catch (IOException e) {
-					throw new SnowowlRuntimeException(
-							String.format("Unable to bulk publish IDs for namespace %s with size %s", getSafeNamespaceDisplayName(namespace), ids.size()), e);
-				} finally {
-					release(bulkRequest);
-				}
+				return ImmutableSet.of(sctid.getSctid());
 			}
+			
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException("Caught exception while generating IDs.", e);
+		} finally {
+			release(generateRequest);
+			release(recordsRequest);
 		}
 	}
 
 	@Override
-	public SctId getSctId(final String componentId) {
+	public void register(final Set<String> componentIds) {
+		LOGGER.debug(String.format("Registering {} component IDs.", componentIds.size()));
+
+		final Map<String, SctId> sctIds = getSctIds(componentIds);
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
+				SctId::isAvailable, 
+				SctId::isReserved, 
+				SctId::isAssigned))));
 		
-		HttpGet request = null;
+		if (!problemSctIds.isEmpty()) {
+			throw new SctIdStatusException("Cannot register %s component IDs because they are not available, reserved, or already assigned.", problemSctIds);
+		}
+
+		final Map<String, SctId> availableOrReservedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.or(
+				SctId::isAvailable, 
+				SctId::isReserved)));
+		
+		if (availableOrReservedSctIds.isEmpty()) {
+			return;
+		}
+		
+		HttpPost registerRequest = null;
+		String currentNamespace = null;
 		
 		try {
 			
-			LOGGER.debug("Sending single component ID get request for {}", componentId);
-			request = httpGet(String.format("sct/ids/%s", componentId));
-			
-			return extractSctId(execute(request));
-			
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to get single component ID %s"), e);
-		} finally {
-			release(request);
-		}
-		
-	}
-
-	@Override
-	public Collection<SctId> getSctIds(final Collection<String> componentIds) {
-		
-		LOGGER.debug("Sending bulk component ID POST request.");
-		
-		return FluentIterable
-			.from(partition(newArrayList(componentIds), BULK_GET_LIMIT))
-			.transformAndConcat(new Function<Collection<String>, Collection<SctId>>() {
-				@Override
-				public Collection<SctId> apply(Collection<String> input) {
-					HttpPost request = null;
-					try {
-						request = httpPost("sct/bulk/ids", new BulkRetrieveData(componentIds));
-						return extractSctIds(execute(request));
-					} catch (IOException e) {
-						throw new SnowowlRuntimeException("Unable to get bulk component IDs", e);
-					} finally {
-						release(request);
+			if (availableOrReservedSctIds.size() > 1) {
+				final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(availableOrReservedSctIds.keySet());
+				for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+					currentNamespace = entry.getKey();
+					
+					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), BULK_LIMIT)) {
+						LOGGER.debug(String.format("Sending bulk registration request for namespace %s with size %d.", currentNamespace, bulkIds.size()));
+						registerRequest = httpPost(String.format("sct/bulk/register?token=%s", getToken()), createBulkRegistrationData(bulkIds));
+						execute(registerRequest);
 					}
 				}
-		}).toList();
+				
+			} else {
+				
+				final String componentId = Iterables.getOnlyElement(availableOrReservedSctIds.keySet());
+				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
+				registerRequest = httpPost(String.format("sct/register?token=%s", getToken()), createRegistrationData(componentId));
+				execute(registerRequest);
+			}
+		
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(String.format("Exception while reserving IDs for namespace %s.", currentNamespace), e);
+		} finally {
+			release(registerRequest);
+		}
 	}
 
 	@Override
-	public Collection<SctId> getSctIds() {
+	public Set<String> reserve(String namespace, ComponentCategory category, int quantity) {
+		checkNotNull(category, "Component category must not be null.");
+		checkArgument(quantity > 0, "Number of requested IDs should be non-negative.");
+		checkCategory(category);
+
+		LOGGER.debug("Reserving {} component IDs for category {}.", quantity, category.getDisplayName());
+
+		HttpPost reserveRequest = null;
+		HttpGet recordsRequest = null;
+		try {
+
+			if (quantity > 1) {
+				LOGGER.debug(String.format("Sending %s ID bulk reservation request.", category.getDisplayName()));
+	
+				reserveRequest = httpPost(String.format("sct/bulk/reserve?token=%s", getToken()), createBulkReservationData(namespace, category, quantity));
+				final String bulkResponse = execute(reserveRequest);
+				final String jobId = mapper.readValue(bulkResponse, JsonNode.class).get("id").asText();
+				joinBulkJobPolling(jobId, quantity, getToken());
+	
+				recordsRequest = httpGet(String.format("bulk/jobs/%s/records?token=%s", jobId, getToken()));
+				final String recordsResponse = execute(recordsRequest);
+				final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
+				return getComponentIds(records);
+			
+			} else {
+				LOGGER.debug(String.format("Sending %s ID reservation request.", category.getDisplayName()));
+
+				reserveRequest = httpPost(String.format("sct/reserve?token=%s", getToken()), createReservationData(namespace, category));
+				final String response = execute(reserveRequest);
+				final SctId sctid = mapper.readValue(response, SctId.class);
+				
+				return ImmutableSet.of(sctid.getSctid());
+			}
+			
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException("Exception while bulk reserving IDs.", e);
+		} finally {
+			release(reserveRequest);
+			release(recordsRequest);
+		}
+	}
+	
+	@Override
+	public void release(final Set<String> componentIds) {
+		LOGGER.debug("Releasing {} component IDs.", componentIds.size());
+
+		final Map<String, SctId> sctIds = getSctIds(componentIds);
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
+				SctId::isAssigned, 
+				SctId::isReserved, 
+				SctId::isAvailable))));
+
+		if (!problemSctIds.isEmpty()) {
+			throw new SctIdStatusException("Cannot release %s component IDs because they are not assigned, reserved, or already available.", problemSctIds);
+		}
+
+		final Map<String, SctId> assignedOrReservedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.or(
+				SctId::isAssigned, 
+				SctId::isReserved)));
 		
-		HttpGet request = null;
+		if (assignedOrReservedSctIds.isEmpty()) {
+			return;
+		}
+
+		HttpPost releaseRequest = null;
+		String currentNamespace = null;
 		
 		try {
 			
-			LOGGER.debug("Sending component IDs get request.");
-	
-			request = httpGet(String.format("sct/ids/"));
-			final String response = execute(request);
-	
-			return extractSctIds(response);
+			if (assignedOrReservedSctIds.size() > 1) {
+				final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(assignedOrReservedSctIds.keySet());
+				for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+					currentNamespace = entry.getKey();
+					
+					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), BULK_LIMIT)) {
+						LOGGER.debug(String.format("Sending bulk release request for namespace %s with size %d.", currentNamespace, bulkIds.size()));
+						releaseRequest = httpPost(String.format("sct/bulk/release?token=%s", getToken()), createBulkReleaseData(currentNamespace, bulkIds));
+						execute(releaseRequest);
+					}
+				}
+				
+			} else {
+				
+				final String componentId = Iterables.getOnlyElement(assignedOrReservedSctIds.keySet());
+				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
+				releaseRequest = httpPost(String.format("sct/release?token=%s", getToken()), createReleaseData(componentId));
+				execute(releaseRequest);
+			}
+		
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(String.format("Exception while releasing IDs for namespace %s.", currentNamespace), e);
+		} finally {
+			release(releaseRequest);
+		}		
+	}
+
+	@Override
+	public void deprecate(final Set<String> componentIds) {
+		LOGGER.debug("Deprecating {} component IDs.", componentIds.size());
+
+		final Map<String, SctId> sctIds = getSctIds(componentIds);
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
+				SctId::isAssigned, 
+				SctId::isPublished, 
+				SctId::isDeprecated))));
+		
+		if (!problemSctIds.isEmpty()) {
+			throw new SctIdStatusException("Cannot deprecate %s component IDs because they are not assigned, published, or already deprecated.", problemSctIds);
+		}
+
+		final Map<String, SctId> assignedOrPublishedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.or(
+				SctId::isAssigned, 
+				SctId::isPublished)));
+		
+		if (assignedOrPublishedSctIds.isEmpty()) {
+			return;
+		}
+
+		HttpPost deprecateRequest = null;
+		String currentNamespace = null;
+		
+		try {
+			
+			if (assignedOrPublishedSctIds.size() > 1) {
+				final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(assignedOrPublishedSctIds.keySet());
+				for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+					currentNamespace = entry.getKey();
+					
+					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), BULK_LIMIT)) {
+						LOGGER.debug(String.format("Sending bulk deprecation request for namespace %s with size %d.", currentNamespace, bulkIds.size()));
+						deprecateRequest = httpPost(String.format("sct/bulk/deprecate?token=%s", getToken()), createBulkDeprecationData(currentNamespace, bulkIds));
+						execute(deprecateRequest);
+					}
+				}
+				
+			} else {
+				
+				final String componentId = Iterables.getOnlyElement(assignedOrPublishedSctIds.keySet());
+				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
+				deprecateRequest = httpPost(String.format("sct/deprecate?token=%s", getToken()), createDeprecationData(componentId));
+				execute(deprecateRequest);
+			}
+		
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(String.format("Exception while deprecating IDs for namespace %s.", currentNamespace), e);
+		} finally {
+			release(deprecateRequest);
+		}	
+	}
+
+	@Override
+	public void publish(final Set<String> componentIds) {
+		LOGGER.debug("Publishing {} component IDs.", componentIds.size());
+		
+		final Map<String, SctId> sctIds = getSctIds(componentIds);
+		final Map<String, SctId> problemSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, Predicates.<SctId>not(Predicates.or(
+				SctId::isAssigned, 
+				SctId::isPublished))));
+		
+		if (!problemSctIds.isEmpty()) {
+			throw new SctIdStatusException("Cannot publish %s component IDs because they are not assigned or already published.", problemSctIds);
+		}
+		
+		final Map<String, SctId> assignedSctIds = ImmutableMap.copyOf(Maps.filterValues(sctIds, SctId::isAssigned));
+		
+		if (assignedSctIds.isEmpty()) {
+			return;
+		}
+
+		HttpPost deprecateRequest = null;
+		String currentNamespace = null;
+		
+		try {
+			
+			if (assignedSctIds.size() > 1) {
+				final Multimap<String, String> componentIdsByNamespace = toNamespaceMultimap(assignedSctIds.keySet());
+				for (final Entry<String, Collection<String>> entry : componentIdsByNamespace.asMap().entrySet()) {
+					currentNamespace = entry.getKey();
+					
+					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), BULK_LIMIT)) {
+						LOGGER.debug(String.format("Sending bulk publication request for namespace %s with size %d.", currentNamespace, bulkIds.size()));
+						deprecateRequest = httpPost(String.format("sct/bulk/publish?token=%s", getToken()), createBulkPublishData(currentNamespace, bulkIds));
+						execute(deprecateRequest);
+					}
+				}
+				
+			} else {
+				
+				final String componentId = Iterables.getOnlyElement(assignedSctIds.keySet());
+				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
+				deprecateRequest = httpPost(String.format("sct/publish?token=%s", getToken()), createPublishData(componentId));
+				execute(deprecateRequest);
+			}
+		
+		} catch (IOException e) {
+			throw new SnowowlRuntimeException(String.format("Exception while publishing IDs for namespace %s.", currentNamespace), e);
+		} finally {
+			release(deprecateRequest);
+		}	
+	}
+
+	@Override
+	public Map<String, SctId> getSctIds(final Set<String> componentIds) {
+
+		final Map<String, SctId> existingIdsMap = readSctIds(componentIds);
+		
+		if (existingIdsMap.size() == componentIds.size()) {
+			return existingIdsMap;
+		} else {
+			final Set<String> knownComponentIds = existingIdsMap.keySet();
+			final Set<String> difference = ImmutableSet.copyOf(Sets.difference(componentIds, knownComponentIds));
+			
+			final ImmutableMap.Builder<String, SctId> resultBuilder = ImmutableMap.builder();
+			resultBuilder.putAll(existingIdsMap);
+			
+			for (final String componentId : difference) {
+				resultBuilder.put(componentId, buildSctId(componentId, IdentifierStatus.AVAILABLE));
+			}
+			
+			return resultBuilder.build();
+		}
+		
+	}
+
+	private SctId buildSctId(final String componentId, final IdentifierStatus status) {
+		final SctId sctId = new SctId();
+		
+		sctId.setSctid(componentId);
+		sctId.setStatus(status.getSerializedName());
+		sctId.setSequence(SnomedIdentifiers.getItemId(componentId));
+		sctId.setNamespace(SnomedIdentifiers.getNamespace(componentId));
+		sctId.setPartitionId(SnomedIdentifiers.getPartitionId(componentId));
+		sctId.setCheckDigit(SnomedIdentifiers.getCheckDigit(componentId));
+
+		// TODO: Other attributes of SctId could also be set here
+		return sctId;
+	}
+
+	private Map<String, SctId> readSctIds(final Set<String> componentIds) {
+		HttpPost bulkRequest = null;
+		HttpGet singleRequest = null;
+		
+		try {
+
+			if (componentIds.size() > 1) {
+				LOGGER.debug("Sending bulk component ID get request.");
+				final ImmutableMap.Builder<String, SctId> resultBuilder = ImmutableMap.builder();
+				
+				for (final Collection<String> ids : Iterables.partition(componentIds, BULK_LIMIT)) {
+					final String idsAsString = Joiner.on(',').join(ids);
+					final ObjectNode idsAsJson = mapper.createObjectNode().put("sctids", idsAsString);
+					bulkRequest = client.httpPost(String.format("sct/bulk/ids/?token=%s", getToken()), idsAsJson);
+					final String response = execute(bulkRequest);
+					
+					final SctId[] sctIds = mapper.readValue(response, SctId[].class);
+					final Map<String, SctId> sctIdMap = Maps.uniqueIndex(Arrays.asList(sctIds), SctId::getSctid); 
+					resultBuilder.putAll(sctIdMap);
+				}
+				
+				return resultBuilder.build();
+				
+			} else {
+				
+				final String componentId = Iterables.getOnlyElement(componentIds);
+				LOGGER.debug(String.format("Sending component ID %s get request.", componentId));
+				singleRequest = httpGet(String.format("sct/ids/%s?token=%s", componentId, getToken()));
+				final String response = execute(singleRequest);
+
+				final SctId sctId = mapper.readValue(response, SctId.class);
+				return ImmutableMap.of(sctId.getSctid(), sctId);
+			}
 			
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException("Exception while getting all IDs", e);
 		} finally {
-			release(request);
+			release(bulkRequest);
+			release(singleRequest);
 		}
 	}
 
@@ -557,44 +496,20 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		return false;
 	}
 
-	@Override
-	public void dispose() {
-		if (null != client) {
-			client.logout();
-			client.close();
-			client = null;
-		}
-	
-		disposed = true;
-	}
-
-	@Override
-	public boolean isDisposed() {
-		return disposed;
-	}
-
-	public String getToken() {
-		return client.getToken();
-	}
-
 	private void login() {
 		client.login();
 	}
 
-	private HttpGet httpGet(final String prefix) {
-		return httpGet(prefix, "");
+	private HttpGet httpGet(final String suffix) {
+		return client.httpGet(suffix);
 	}
 	
-	private HttpGet httpGet(final String prefix, final String suffix) {
-		return client.httpGet(String.format("%s?token=%s%s", prefix, getToken(), suffix));
+	private HttpPost httpPost(final String suffix, final RequestData data) throws IOException {
+		return client.httpPost(suffix, data);
 	}
 
-	private HttpPost httpPost(final String prefix, final RequestData data) throws IOException {
-		return client.httpPost(String.format("%s?token=%s", prefix, getToken()), data);
-	}
-
-	private HttpPut httpPut(final String prefix, final RequestData data) throws IOException {
-		return client.httpPut(String.format("%s?token=%s", prefix, getToken()), data);
+	private HttpPut httpPut(final String suffix, final RequestData data) throws IOException {
+		return client.httpPut(suffix, data);
 	}
 
 	private String execute(final HttpRequestBase request) throws IOException {
@@ -642,167 +557,83 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 		}
 	}
 
-	private void waitForJob(final String jobId) {
-		
-		if (Strings.isNullOrEmpty(jobId)) {
-			throw new SnowowlRuntimeException(String.format("Unknown job id: %s", jobId));
-		}
-		
+	private void joinBulkJobPolling(final String jobId, final int quantity, final String token) {
 		HttpGet request = null;
+		JobStatus status = JobStatus.PENDING;
 
 		try {
-			
-			LOGGER.debug("Polling job with ID: {}", jobId);
+			LOGGER.debug(String.format("Polling job status with ID %s.", jobId));
 
-			request = httpGet(String.format("bulk/jobs/%s", jobId));
+			request = httpGet(String.format("bulk/jobs/%s?token=%s", jobId, token));
 
-			int pollTry = 0;
-
-			JobStatus status = JobStatus.PENDING;
-			
-			while (pollTry < numberOfPollTries) {
-				
-				String response = execute(request);
-				status = extractStatus(response);
+			for (long pollTry = numberOfPollTries; pollTry > 0; pollTry--) {
+				final String response = execute(request);
+				final JsonNode node = mapper.readValue(response, JsonNode.class);
+				status = JobStatus.get(node.get("status").asInt());
 
 				if (JobStatus.FINISHED == status) {
 					break;
 				} else if (JobStatus.ERROR == status) {
-					throw new SnowowlRuntimeException(String.format("Job with ID: %s finished with error: %s", jobId, extractLog(response)));
+					throw new SnowowlRuntimeException("Bulk request has ended in error.");
 				} else {
-					pollTry++;
 					Thread.sleep(timeBetweenPollTries);
 				}
 			}
-			
-			if (status != JobStatus.FINISHED) {
-				throw new SnowowlRuntimeException(String.format("Job with ID: %s did not finish in %s", jobId, getMaxAllowedJobExecutionTime()));
-			}
-			
-		} catch (InterruptedException | IOException e) {
-			throw new SnowowlRuntimeException(String.format("Polling of job with ID: %s was interrupted", jobId), e);
+
+		} catch (Exception e) {
+			throw new SnowowlRuntimeException("Exception while polling job status.", e);
 		} finally {
 			release(request);
 		}
+		
+		if (JobStatus.FINISHED != status) {
+			throw new SnowowlRuntimeException("Job didn't finish with expected status."); 
+		} 
 	}
 
-	private String getMaxAllowedJobExecutionTime() {
-		return TimeUtil.milliToReadableString(numberOfPollTries * timeBetweenPollTries);
+	private Set<String> getComponentIds(final JsonNode[] records) {
+		return FluentIterable.from(Arrays.asList(records))
+				.transform(jsonNode -> jsonNode.get("sctid").asText())
+				.toSet();
 	}
 
-	private Collection<String> getComponentIdsFromBulkJob(final String jobId) {
+	private Multimap<String, String> toNamespaceMultimap(final Set<String> componentIds) {
+		return FluentIterable.from(componentIds).index(componentId -> getNamespace(componentId));
+	}
+	
+	private String getNamespace(final String componentId) {
+		final String namespace = SnomedIdentifiers.getNamespace(componentId);
 		
-		HttpGet recordsRequest = null;
-		
-		try {
-			
-			LOGGER.debug("Requesting records for bulk job with ID: {}", jobId);
-			
-			recordsRequest = httpGet(String.format("bulk/jobs/%s/records", jobId));
-			final String recordsResponse = execute(recordsRequest);
-			final JsonNode[] records = mapper.readValue(recordsResponse, JsonNode[].class);
-			
-			return FluentIterable.from(Arrays.asList(records)).transform(new Function<JsonNode, String>() {
-				@Override
-				public String apply(JsonNode input) {
-					return input.get("sctid").asText();
-				}
-			}).toList();
-			
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException(String.format("Unable to get records for job with ID: %s", jobId), e);
-		} finally {
-			release(recordsRequest);
+		if (namespace == null) {
+			return "0";
+		} else {
+			return namespace;
 		}
-		
-	}
-
-	private Collection<String> getValidatedIdCollection(Collection<SctId> ids, Predicate<SctId> predicate) {
-		return FluentIterable.from(ids).filter(predicate).transform(new Function<SctId, String>() {
-			@Override
-			public String apply(SctId input) {
-				return input.getSctid();
-			}
-		}).toList();
-	}
-	
-	
-	private Collection<String> validateForRegistration(Collection<SctId> ids) {
-		return getValidatedIdCollection(ids, new Predicate<SctId>() {
-			@Override 
-			public boolean apply(SctId input) {
-				boolean result = input.matches(IdentifierStatus.AVAILABLE, IdentifierStatus.RESERVED);
-				if (!result) {
-					LOGGER.warn("Cannot register ID {} as it is already present with status {}", input.getSctid(), input.getStatus());
-				}
-				return result;
-			}
-		});
-	}
-	
-	private Collection<String> validateForDeprecation(Collection<SctId> ids) {
-		return getValidatedIdCollection(ids, new Predicate<SctId>() {
-			@Override 
-			public boolean apply(SctId input) {
-				if (input.isDeprecated()) {
-					LOGGER.warn("Cannot deprecate ID {} as it is already deprecated", input.getSctid());
-				}
-				return !input.isDeprecated();
-			}
-		});
-	}
-	
-	private Collection<String> validateForReleasing(Collection<SctId> ids) {
-		return getValidatedIdCollection(ids, new Predicate<SctId>() {
-			@Override 
-			public boolean apply(SctId input) {
-				if (input.isAvailable()) {
-					LOGGER.warn("Cannot release ID {} as it is already available", input.getSctid());
-				}
-				return !input.isAvailable();
-			}
-		});
-	}
-	
-	private Collection<String> validateForPublishing(Collection<SctId> ids) {
-		return getValidatedIdCollection(ids, new Predicate<SctId>() {
-			@Override 
-			public boolean apply(SctId input) {
-				if (input.isPublished()) {
-					LOGGER.warn("Cannot publish ID {} as it is already published", input.getSctid());
-				}
-				return !input.isPublished();
-			}
-		});
 	}
 
 	private RequestData createGenerationData(final String namespace, final ComponentCategory category) throws IOException {
-		return new GenerationData(selectNamespace(namespace), clientKey, category);
+		return new GenerationData(namespace, clientKey, category);
 	}
 
-	private RequestData createBulkGenerationData(final String namespace, final ComponentCategory category, final int quantity)
-			throws IOException {
-		return new BulkGenerationData(selectNamespace(namespace), clientKey, category, quantity);
+	private RequestData createBulkGenerationData(final String namespace, final ComponentCategory category, final int quantity) throws IOException {
+		return new BulkGenerationData(namespace, clientKey, category, quantity);
 	}
 	
 	private RequestData createRegistrationData(final String componentId) throws IOException {
-		return new RegistrationData(getNamespace(componentId), clientKey, componentId);
+		return new RegistrationData(SnomedIdentifiers.getNamespace(componentId), clientKey, componentId, "");
 	}
 
-	private RequestData createBulkRegistrationData(final String namespace, final Collection<String> componentIds) throws IOException {
+	private RequestData createBulkRegistrationData(final Collection<String> componentIds) throws IOException {
+		final Collection<Record> records = Lists.newArrayList();
+		for (final String componentId : componentIds) {
+			records.add(new Record(componentId));
+		}
 
-		List<Record> records = FluentIterable.from(componentIds).transform(new Function<String, Record>() {
-			@Override
-			public Record apply(String input) {
-				return new Record(input);
-			}
-		}).toList();
-
-		return new BulkRegistrationData(namespace, clientKey, records);
+		return new BulkRegistrationData(SnomedIdentifiers.getNamespace(componentIds.iterator().next()), clientKey, records);
 	}
 
 	private RequestData createDeprecationData(final String componentId) throws IOException {
-		return new DeprecationData(getNamespace(componentId), clientKey, componentId);
+		return new DeprecationData(SnomedIdentifiers.getNamespace(componentId), clientKey, componentId);
 	}
 
 	private RequestData createBulkDeprecationData(final String namespace, final Collection<String> componentIds) throws IOException {
@@ -827,7 +658,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	}
 
 	private RequestData createReleaseData(final String componentId) throws IOException {
-		return new ReleaseData(getNamespace(componentId), clientKey, componentId);
+		return new ReleaseData(SnomedIdentifiers.getNamespace(componentId), clientKey, componentId);
 	}
 
 	private RequestData createBulkReleaseData(final String namespace, final Collection<String> componentIds) throws IOException {
@@ -835,68 +666,30 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 	}
 
 	private RequestData createPublishData(final String componentId) throws IOException {
-		return new PublicationData(getNamespace(componentId), clientKey, componentId);
+		return new PublicationData(SnomedIdentifiers.getNamespace(componentId), clientKey, componentId);
 	}
 
 	private RequestData createBulkPublishData(final String namespace, final Collection<String> componentIds) throws IOException {
 		return new BulkPublicationData(namespace, clientKey, componentIds);
 	}
 
-	private Multimap<String, String> toNamespaceMap(final Collection<String> componentIdsToPublish) {
-		return FluentIterable.from(componentIdsToPublish).index(new Function<String, String>() {
-			@Override
-			public String apply(String id) {
-				return Strings.nullToEmpty(getNamespace(id));
-			}
-		});
-	}
-
-	private String getNamespace(final String componentId) {
-		return SnomedIdentifiers.create(componentId).getNamespace();
-	}
-
-	private String getSafeNamespaceDisplayName(String namespace) {
-		return Strings.isNullOrEmpty(namespace) ? INT_NAMESPACE : namespace;
-	}
-
-	private String extractLog(String response) {
-		try {
-			return mapper.readValue(response, JsonNode.class).get("log").asText();
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException("Unable to extract log of job", e);
+	@Override
+	public void dispose() {
+		if (null != client) {
+			client.logout();
+			client.close();
+			client = null;
 		}
+
+		disposed = true;
 	}
 
-	private JobStatus extractStatus(final String response) {
-		try {
-			int status = mapper.readValue(response, JsonNode.class).get("status").asInt();
-			return JobStatus.get(status);
-		} catch (IOException | IllegalArgumentException e) {
-			throw new SnowowlRuntimeException("Unable to extract status of job", e);
-		}
+	@Override
+	public boolean isDisposed() {
+		return disposed;
 	}
 
-	private SctId extractSctId(final String response) {
-		try {
-			return mapper.readValue(response, SctId.class);
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException("Unable to extract SctId from response.", e);
-		}
-	}
-	
-	private Collection<SctId> extractSctIds(final String response) {
-		try {
-			return Arrays.asList(mapper.readValue(response, SctId[].class));
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException("Unable to extract SctIds from response.", e);
-		}
-	}
-
-	private String extractJobId(final String response) {
-		try {
-			return mapper.readValue(response, JsonNode.class).get("id").asText();
-		} catch (IOException e) {
-			throw new SnowowlRuntimeException("Unable to extract job id from response", e);
-		}
+	public String getToken() {
+		return client.getToken();
 	}
 }

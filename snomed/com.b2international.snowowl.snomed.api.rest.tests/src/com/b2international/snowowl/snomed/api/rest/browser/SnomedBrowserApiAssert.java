@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
 import com.b2international.snowowl.test.commons.rest.RestExtensions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
@@ -209,7 +210,7 @@ public class SnomedBrowserApiAssert {
 		final Map<?, ?> isaRelationship = ImmutableMap.<String, Object>builder()
 				.put("sourceId", "")
 				.put("effectiveTime", creationDate)
-				.put("modifier", RelationshipModifier.UNIVERSAL)
+				.put("modifier", RelationshipModifier.EXISTENTIAL)
 				.put("groupId", "0")
 				.put("characteristicType", CharacteristicType.STATED_RELATIONSHIP)
 				.put("active", true)
@@ -224,7 +225,7 @@ public class SnomedBrowserApiAssert {
 	
 	public static String generateComponentId(final String namespace, final ComponentCategory category) {
 		final ISnomedIdentifierService identifierService = ApplicationContext.getInstance().getService(ISnomedIdentifierService.class);
-		return identifierService.reserve(namespace, category);
+		return Iterables.getOnlyElement(identifierService.reserve(namespace, category, 1));
 	}
 	
 	public static Map<String, Object> getConcept(final IBranchPath branchPath, final String conceptId) {

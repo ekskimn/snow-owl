@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,20 +19,16 @@ import static com.b2international.snowowl.datastore.index.RevisionDocument.Expre
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.acceptableIn;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.allTermPrefixesPresent;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.allTermsPresent;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.concepts;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.exactTerm;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.fuzzy;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.languageCodes;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.parsedTerm;
 import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.preferredIn;
-import static com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Expressions.types;
 import static com.google.common.collect.Lists.newArrayList;
 
 import java.io.IOException;
 import java.util.List;
 
-import com.b2international.collections.longs.LongSet;
-import com.b2international.commons.collect.LongSets;
 import com.b2international.index.Hits;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
@@ -42,28 +38,24 @@ import com.b2international.index.query.SortBy;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
-import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
-import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
-import com.b2international.snowowl.snomed.dsl.query.RValue;
-import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableMultimap;
 
 /**
  * @since 4.5
  */
-final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDescriptions> {
+final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<SnomedDescriptions> {
 
 	enum OptionKey {
 		TERM,
-		CONCEPT_ESCG,
-		CONCEPT_ID,
+		CONCEPT,
 		TYPE,
 		ACCEPTABILITY,
 		LANGUAGE,
@@ -83,24 +75,16 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 		final ExpressionBuilder queryBuilder = Expressions.builder();
 		// Add (presumably) most selective filters first
 		addActiveClause(queryBuilder);
-		addEffectiveTimeClause(queryBuilder);
-		addModuleClause(queryBuilder);
-		addConceptIdsFilter(queryBuilder);
 		addComponentIdFilter(queryBuilder);
 		addLocaleFilter(context, queryBuilder);
+		addModuleClause(queryBuilder);
+		addNamespaceFilter(queryBuilder);
+		addEffectiveTimeClause(queryBuilder);
+		addActiveMemberOfClause(queryBuilder);
 		addLanguageFilter(queryBuilder);
-		addEscgFilter(context, queryBuilder, OptionKey.CONCEPT_ESCG, new Function<LongSet, Expression>() {
-			@Override
-			public Expression apply(LongSet input) {
-				return concepts(LongSets.toStringSet(input));
-			}
-		});
-		addEscgFilter(context, queryBuilder, OptionKey.TYPE, new Function<LongSet, Expression>() {
-			@Override
-			public Expression apply(LongSet input) {
-				return types(LongSets.toStringSet(input));
-			}
-		});
+		addActiveMemberOfClause(queryBuilder);
+		addEclFilter(context, queryBuilder, OptionKey.CONCEPT, SnomedDescriptionIndexEntry.Expressions::concepts);
+		addEclFilter(context, queryBuilder, OptionKey.TYPE, SnomedDescriptionIndexEntry.Expressions::types);
 		
 		SortBy sortBy = SortBy.NONE;
 		
@@ -159,26 +143,6 @@ final class SnomedDescriptionSearchRequest extends SnomedSearchRequest<SnomedDes
 		return Expressions.dismax(disjuncts);
 	}
 
-	private void addConceptIdsFilter(ExpressionBuilder queryBuilder) {
-		if (containsKey(OptionKey.CONCEPT_ID)) {
-			queryBuilder.must(concepts(getCollection(OptionKey.CONCEPT_ID, String.class)));
-		}
-	}
-
-	private void addEscgFilter(BranchContext context, final ExpressionBuilder queryBuilder, OptionKey key, Function<LongSet, Expression> expressionProvider) {
-		if (containsKey(key)) {
-			try {
-				final String escg = getString(key);
-				final RValue expression = context.service(EscgRewriter.class).parseRewrite(escg);
-				final LongSet conceptIds = new ConceptIdQueryEvaluator2(context.service(RevisionSearcher.class)).evaluate(expression);
-				final Expression conceptFilter = expressionProvider.apply(conceptIds);
-				queryBuilder.must(conceptFilter);
-			} catch (SyntaxErrorException e) {
-				throw new IllegalQueryParameterException(e.getMessage());
-			}
-		}
-	}
-	
 	private void addLanguageFilter(ExpressionBuilder queryBuilder) {
 		if (containsKey(OptionKey.LANGUAGE)) {
 			queryBuilder.must(languageCodes(getCollection(OptionKey.LANGUAGE, String.class)));

@@ -9,6 +9,7 @@ import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationInd
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -18,15 +19,22 @@ import com.google.common.collect.Multimap;
 public class DescriptionInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedDescriptionCreateRequest, SnomedDescriptionUpdateRequest, SnomedBrowserDescription> {
 
 	@Override
-	public SnomedDescriptionCreateRequest createInput(final SnomedBrowserDescription newDescription, final InputFactory inputFactory) {
-		return (SnomedDescriptionCreateRequest) SnomedRequests.prepareNewDescription()
-				.setModuleId(getModuleOrDefault(newDescription))
-				.setLanguageCode(newDescription.getLang())
-				.setTypeId(newDescription.getType().getConceptId())
-				.setTerm(newDescription.getTerm())
-				.setAcceptability(newDescription.getAcceptabilityMap())
-				.setCaseSignificance(newDescription.getCaseSignificance())
-				.build();
+	public SnomedDescriptionCreateRequest createInput(final SnomedBrowserDescription description, final InputFactory inputFactory) {
+		final SnomedDescriptionCreateRequestBuilder builder = SnomedRequests.prepareNewDescription()
+				.setModuleId(getModuleOrDefault(description))
+				.setLanguageCode(description.getLang())
+				.setTypeId(description.getType().getConceptId())
+				.setTerm(description.getTerm())
+				.setAcceptability(description.getAcceptabilityMap())
+				.setCaseSignificance(description.getCaseSignificance());
+		
+		if (description.getDescriptionId() != null) {
+			builder.setId(description.getDescriptionId());
+		} else {
+			builder.setIdFromNamespace(getDefaultNamespace());
+		}
+		
+		return (SnomedDescriptionCreateRequest) builder.build();
 	}
 
 	@Override

@@ -41,4 +41,5 @@ public final class BranchGetRequestBuilder extends BaseRepositoryRequestBuilder<
 	protected Request<RepositoryContext, Branch> doBuild() {
 		return new ReadBranchRequest(path, expandLock);
 	}
+
 }

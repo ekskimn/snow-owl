@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,14 +25,14 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.datastore.request.SearchRequestBuilder;
+import com.b2international.snowowl.datastore.request.RevisionSearchRequestBuilder;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.datastore.request.SnomedSearchRequest.OptionKey;
 
 /**
  * @since 4.5
  */
-public abstract class SnomedSearchRequestBuilder<B extends SnomedSearchRequestBuilder<B, R>, R> extends SearchRequestBuilder<B, R> {
+public abstract class SnomedSearchRequestBuilder<B extends SnomedSearchRequestBuilder<B, R>, R> extends RevisionSearchRequestBuilder<B, R> {
 
 	public final B filterByModule(String moduleId) {
 		return addOption(OptionKey.MODULE, moduleId);

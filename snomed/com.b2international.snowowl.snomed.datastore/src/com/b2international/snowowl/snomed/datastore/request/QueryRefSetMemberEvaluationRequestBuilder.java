@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.request.BaseResourceRequest;
-import com.b2international.snowowl.datastore.request.BaseResourceRequestBuilder;
+import com.b2international.snowowl.datastore.request.BaseRevisionResourceRequestBuilder;
 import com.b2international.snowowl.snomed.core.domain.refset.QueryRefSetMemberEvaluation;
 
 /**
  * @since 4.5
  */
-public final class QueryRefSetMemberEvaluationRequestBuilder extends BaseResourceRequestBuilder<QueryRefSetMemberEvaluationRequestBuilder, QueryRefSetMemberEvaluation> {
+public final class QueryRefSetMemberEvaluationRequestBuilder extends BaseRevisionResourceRequestBuilder<QueryRefSetMemberEvaluationRequestBuilder, QueryRefSetMemberEvaluation> {
 
 	private String memberId;
 

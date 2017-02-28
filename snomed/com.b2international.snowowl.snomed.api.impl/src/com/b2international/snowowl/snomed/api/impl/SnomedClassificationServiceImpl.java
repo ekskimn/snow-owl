@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventBusHandler
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEventSwitch;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobState;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobUtils;
-import com.b2international.snowowl.datastore.request.CommitInfo;
+import com.b2international.snowowl.datastore.request.CommitResult;
 import com.b2international.snowowl.datastore.request.DeleteRequestBuilder;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -88,13 +88,12 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Equival
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
@@ -118,6 +117,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
 import com.google.common.io.Closeables;
 
 /**
@@ -223,7 +223,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			}
 			
 			commitChanges(branchPath, userId, builder, persistStopwatch)
-					.then(new Function<CommitInfo, Void>() { @Override public Void apply(final CommitInfo input) {
+					.then(new Function<CommitResult, Void>() { @Override public Void apply(final CommitResult input) {
 						LOG.info("Classification changes saved on branch {}.", branchPath);
 						return updateStatus(uuid, ClassificationStatus.SAVED); 
 					}})
@@ -253,7 +253,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					.then(new Function<SnomedConcepts, Void>() {
 						@Override
 						public Void apply(SnomedConcepts input) {
-							for (ISnomedConcept concept : input) {
+							for (SnomedConcept concept : input) {
 								moduleMap.put(concept.getId(), concept.getModuleId());
 							}
 							return null;
@@ -292,7 +292,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			return inferredRelationshipBuilder;
 		}
 
-		private Promise<CommitInfo> commitChanges(final String branchPath, 
+		private Promise<CommitResult> commitChanges(final String branchPath, 
 				final String userId, 
 				final BulkRequestBuilder<TransactionContext> builder,
 				final Stopwatch persistStopwatch) {
@@ -315,12 +315,12 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				@Override public String apply(SnomedReferenceSetMember input) { return input.getReferencedComponent().getId(); }
 			});
 
-			for (ISnomedRelationship relationship : removeOrDeactivateRelationships) {
+			for (SnomedRelationship relationship : removeOrDeactivateRelationships) {
 				
 				if (relationship.isReleased()) {
 					
 					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
-						SnomedRefSetMemberUpdateRequestBuilder updateMemberBuilder = SnomedRequests.prepareUpdateMember()
+						SnomedRefSetMemberUpdateRequestBuilder updateMemberBuilder = SnomedRequests.prepareUpdateMember().
 								.setMemberId(snomedReferenceSetMember.getId())
 								.setSource(ImmutableMap.<String, Object>of(SnomedRf2Headers.FIELD_ACTIVE, Boolean.FALSE));
 						
@@ -584,11 +584,11 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				}
 			}
 
-			final Map<String, ISnomedDescription> fsnMap = new DescriptionService(bus, branchPath).getFullySpecifiedNames(conceptIds, locales);
+			final Map<String, SnomedDescription> fsnMap = new DescriptionService(bus, branchPath).getFullySpecifiedNames(conceptIds, locales);
 			for (final IEquivalentConceptSet conceptSet : conceptSets) {
 				for (final IEquivalentConcept equivalentConcept : conceptSet.getEquivalentConcepts()) {
 					final String equivalentConceptId = equivalentConcept.getId();
-					final ISnomedDescription fsn = fsnMap.get(equivalentConceptId);
+					final SnomedDescription fsn = fsnMap.get(equivalentConceptId);
 					if (fsn != null) {
 						((EquivalentConcept) equivalentConcept).setLabel(fsn.getTerm());
 					} else {
@@ -661,20 +661,20 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				.execute(bus)
 				.getSync();
 		
-		final Map<String, ISnomedConcept> relatedConceptsById = Maps.uniqueIndex(relatedConcepts, new Function<ISnomedConcept, String>() {
-			@Override public String apply(ISnomedConcept input) { return input.getId(); }
+		final Map<String, SnomedConcept> relatedConceptsById = Maps.uniqueIndex(relatedConcepts, new Function<SnomedConcept, String>() {
+			@Override public String apply(SnomedConcept input) { return input.getId(); }
 		});
 		
-		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipType> types = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipType>() {
+		final LoadingCache<SnomedConcept, SnomedBrowserRelationshipType> types = CacheBuilder.newBuilder().build(new CacheLoader<SnomedConcept, SnomedBrowserRelationshipType>() {
 			@Override
-			public SnomedBrowserRelationshipType load(ISnomedConcept key) throws Exception {
+			public SnomedBrowserRelationshipType load(SnomedConcept key) throws Exception {
 				return browserService.convertBrowserRelationshipType(key);
 			}
 		});
 		
-		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipTarget> targets = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipTarget>() {
+		final LoadingCache<SnomedConcept, SnomedBrowserRelationshipTarget> targets = CacheBuilder.newBuilder().build(new CacheLoader<SnomedConcept, SnomedBrowserRelationshipTarget>() {
 			@Override
-			public SnomedBrowserRelationshipTarget load(ISnomedConcept key) throws Exception {
+			public SnomedBrowserRelationshipTarget load(SnomedConcept key) throws Exception {
 				return browserService.convertBrowserRelationshipTarget(key);
 			}
 		});
@@ -687,6 +687,15 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					// XXX: Default and/or not populated values are shown as commented lines below
 					inferred.setType(new SnomedBrowserRelationshipType(relationshipChange.getTypeId()));
 					inferred.setSourceId(relationshipChange.getSourceId());
+
+					final SnomedConcept targetConcept = SnomedRequests.prepareGetConcept()
+							.setComponentId(relationshipChange.getDestinationId())
+							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+							.execute(bus)
+							.getSync();
+					final SnomedBrowserRelationshipTarget relationshipTarget = browserService.getSnomedBrowserRelationshipTarget(targetConcept, branchPath, locales);
+					inferred.setTarget(relationshipTarget);
+
 					inferred.setGroupId(relationshipChange.getGroup());
 					inferred.setModifier(relationshipChange.getModifier());
 					inferred.setActive(true);
@@ -699,8 +708,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					// inferred.setReleased(false);
 					inferred.setSourceId(relationshipChange.getSourceId());
 				
-					ISnomedConcept destinationConcept = relatedConceptsById.get(relationshipChange.getDestinationId());
-					ISnomedConcept typeConcept = relatedConceptsById.get(relationshipChange.getTypeId());
+					SnomedConcept destinationConcept = relatedConceptsById.get(relationshipChange.getDestinationId());
+					SnomedConcept typeConcept = relatedConceptsById.get(relationshipChange.getTypeId());
 					inferred.setTarget(targets.getUnchecked(destinationConcept));
 					inferred.setType(types.getUnchecked(typeConcept));
 

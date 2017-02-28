@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import com.b2international.snowowl.core.domain.BranchContext;
 /**
  * @since 4.5
  */
-public abstract class RevisionGetRequestBuilder<B extends RevisionGetRequestBuilder<B, R>, R> extends BaseResourceRequestBuilder<B, R> {
+public abstract class RevisionGetRequestBuilder<B extends RevisionGetRequestBuilder<B, R>, R> extends BaseRevisionResourceRequestBuilder<B, R> {
 
 	private String componentId;
 

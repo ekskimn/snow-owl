@@ -23,4 +23,5 @@ public final class StringRangePredicate extends RangePredicate<String> {
 	StringRangePredicate(String field, String lower, String upper, boolean includeLower, boolean includeUpper) {
 		super(field, lower, upper, includeLower, includeUpper);
 	}
+	
 }

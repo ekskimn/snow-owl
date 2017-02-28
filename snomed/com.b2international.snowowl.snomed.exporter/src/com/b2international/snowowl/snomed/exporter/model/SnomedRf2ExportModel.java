@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSets;
@@ -276,7 +277,7 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 			String refsetName = SnomedRequests.prepareSearchDescription()
 				.one()
 				.filterByActive(true)
-				.filterByConceptId(refsetId)
+				.filterByConcept(refsetId)
 				.filterByType("<<" + Concepts.SYNONYM)
 				.filterByAcceptability(Acceptability.PREFERRED)
 				.filterByExtendedLocales(ApplicationContext.getServiceForClass(LanguageSetting.class).getLanguagePreference())
@@ -284,7 +285,7 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.then(new Function<SnomedDescriptions, String>() {
 					@Override public String apply(SnomedDescriptions input) {
-						ISnomedDescription pt = Iterables.getOnlyElement(input, null);
+						SnomedDescription pt = Iterables.getOnlyElement(input, null);
 						if (pt == null || Strings.isNullOrEmpty(pt.getTerm())) { 
 							return refsetId; 
 						} else { 

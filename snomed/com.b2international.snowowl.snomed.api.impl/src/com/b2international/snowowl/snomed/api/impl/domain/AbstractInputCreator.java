@@ -4,6 +4,7 @@ import java.util.Map;
 
 import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponent;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
@@ -21,5 +22,9 @@ public abstract class AbstractInputCreator {
 	
 	protected <K, V> Multimap<K, V> nullToEmptyMultimap(final Multimap<K, V> multimap) {
 		return multimap != null ? multimap : ImmutableMultimap.<K, V>of();
+	}
+
+	protected String getDefaultNamespace() {
+		return SnomedIdentifiers.INT_NAMESPACE;
 	}
 }

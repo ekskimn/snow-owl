@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import com.b2international.snowowl.snomed.datastore.escg.IEscgQueryEvaluatorServ
  * Job for registering the ESCG query evaluator service factory to the application context. 
  * @see ServiceConfigJob
  * @see IEscgQueryEvaluatorServiceFactory
+ * @deprecated - see {@link IEscgQueryEvaluatorService}
  */
 public class EscgQueryEvaluatorServiceConfigJob extends AbstractServerServiceConfigJob<IEscgQueryEvaluatorService> {
 

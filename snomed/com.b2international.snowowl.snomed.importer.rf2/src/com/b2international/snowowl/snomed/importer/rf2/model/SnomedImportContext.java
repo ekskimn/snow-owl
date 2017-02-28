@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,6 +52,7 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	private RefSetMemberLookup refSetMemberLookup;
 
 	private String userId;
+	private String commitId;
 	private String commitMessage;
 
 	private SnomedEditingContext editingContext;
@@ -157,6 +158,14 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	public void setCommitMessage(final String commitMessage) {
 		this.commitMessage = checkNotNull(commitMessage, "Commit message argument may not be null.");
 	}
+	
+	public String getCommitId() {
+		return commitId;
+	}
+	
+	public void setCommitId(final String commitId) {
+		this.commitId = checkNotNull(commitId, "Commit id argument may not be null.");
+	}
 
 	/**
 	 * Returns the in-memory component lookup map used during the import, which maps component identifiers to unsaved
@@ -205,6 +214,11 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 			refSetMemberLookup.clear();
 		}
 	}
+	
+	@Override
+	public String branch() {
+		return editingContext.getBranch();
+	}
 
 	/**
 	 * Returns the editing context used for applying modifications on the SNOMED CT terminology, based on the incoming
@@ -212,7 +226,6 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	 * 
 	 * @return the editing context for this import run
 	 */
-	@Override
 	public SnomedEditingContext getEditingContext() {
 		return editingContext;
 	}

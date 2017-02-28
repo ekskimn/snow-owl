@@ -17,13 +17,14 @@ package com.b2international.index.revision;
 
 import static com.b2international.index.query.Expressions.match;
 import static com.b2international.index.query.Expressions.matchAnyInt;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
 import com.b2international.index.WithId;
+import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -93,7 +94,8 @@ public abstract class Revision implements WithId {
 	@Override
 	@JsonIgnore
 	public final String _id() {
-		return checkNotNull(_id);
+		checkState(_id != null, "Partial documents do not have document IDs. Load the entire document or extract the required data from this object.");
+		return _id;
 	}
 	
 	protected final void setBranchPath(String branchPath) {
@@ -143,7 +145,7 @@ public abstract class Revision implements WithId {
 	
 	protected ToStringHelper doToString() {
 		return Objects.toStringHelper(this)
-				.add("_id", _id)
+				.add(DocumentMapping._ID, _id)
 				.add(STORAGE_KEY, storageKey)
 				.add(Revision.BRANCH_PATH, branchPath)
 				.add(Revision.COMMIT_TIMESTAMP, commitTimestamp)

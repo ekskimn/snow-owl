@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,13 +27,13 @@ import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDes
  * 
  * @since 4.5
  */
-public class RepositoryCommitRequestBuilder extends BaseBranchRequestBuilder<RepositoryCommitRequestBuilder, CommitInfo> {
+public class RepositoryCommitRequestBuilder extends BaseBranchRequestBuilder<RepositoryCommitRequestBuilder, CommitResult> {
 
 	private String userId;
 	private String commitComment = "";
 	private Request<TransactionContext, ?> body;
 	private long preparationTime = Metrics.SKIP;
-	private String parentLockContextDescription = DatastoreLockContextDescriptions.ROOT;
+	private String parentContextDescription = DatastoreLockContextDescriptions.ROOT;
 
 	public final RepositoryCommitRequestBuilder setUserId(String userId) {
 		this.userId = userId;
@@ -66,18 +66,18 @@ public class RepositoryCommitRequestBuilder extends BaseBranchRequestBuilder<Rep
 		return getSelf();
 	}
 	
-	public final RepositoryCommitRequestBuilder setParentLockContextDescription(String parentLockContextDescription) {
-		this.parentLockContextDescription = parentLockContextDescription;
+	public final RepositoryCommitRequestBuilder setParentContextDescription(String parentContextDescription) {
+		this.parentContextDescription = parentContextDescription;
 		return getSelf();
 	}
 
 	@Override
-	protected final Request<BranchContext, CommitInfo> doBuild() {
-		return new TransactionalRequest(userId, commitComment, body, preparationTime, parentLockContextDescription);
+	protected final Request<BranchContext, CommitResult> doBuild() {
+		return new TransactionalRequest(userId, commitComment, body, preparationTime, parentContextDescription);
 	}
 	
 	@Override
-	protected Request<BranchContext, CommitInfo> extend(Request<BranchContext, CommitInfo> req) {
+	protected Request<BranchContext, CommitResult> extend(Request<BranchContext, CommitResult> req) {
 		return super.extend(new RevisionIndexReadRequest<>(req));
 	}
 

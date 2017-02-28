@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import com.b2international.snowowl.snomed.mrcm.core.widget.IWidgetModelProvider;
  * @see ServiceConfigJob
  * @see IWidgetModelProvider
  */
-public class SnomedConceptEditorServiceConfigJob extends AbstractServerServiceConfigJob<ISnomedConceptEditorService> {
+public class SnomedConceptEditorServiceConfigJob extends AbstractServerServiceConfigJob<SnomedConceptEditorService> {
 
 	public SnomedConceptEditorServiceConfigJob() {
 		super("SNOMED CT concept editor service configuration...", MrcmCoreServerActivator.PLUGIN_ID);
@@ -39,8 +39,8 @@ public class SnomedConceptEditorServiceConfigJob extends AbstractServerServiceCo
 	 * @see com.b2international.snowowl.datastore.serviceconfig.AbstractServerServiceConfigJob#getServiceClass()
 	 */
 	@Override
-	protected Class<ISnomedConceptEditorService> getServiceClass() {
-		return ISnomedConceptEditorService.class;
+	protected Class<SnomedConceptEditorService> getServiceClass() {
+		return SnomedConceptEditorService.class;
 	}
 
 	/*

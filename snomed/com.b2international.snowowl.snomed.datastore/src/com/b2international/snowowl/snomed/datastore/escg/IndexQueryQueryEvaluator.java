@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ import com.google.common.collect.ImmutableSortedSet;
 /**
  * Query evaluator transforming a parsed {@link com.b2international.snowowl.snomed.dsl.query.RValue right value} 
  * into a {@link Expression expression}.
+ * @deprecated - see {@link IEscgQueryEvaluatorService}
  */
 public class IndexQueryQueryEvaluator implements IQueryEvaluator<Expression, com.b2international.snowowl.snomed.dsl.query.RValue> {
 

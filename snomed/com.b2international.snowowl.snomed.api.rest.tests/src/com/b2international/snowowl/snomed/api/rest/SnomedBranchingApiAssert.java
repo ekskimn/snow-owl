@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ public abstract class SnomedBranchingApiAssert {
 
 	private static final Set<String> FINISH_STATES = ImmutableSet.of(Merge.Status.COMPLETED.name(), Merge.Status.FAILED.name(), Merge.Status.CONFLICTS.name());
 
-	private static final long POLL_INTERVAL = TimeUnit.SECONDS.toMillis(1L);
+	private static final long POLL_INTERVAL = TimeUnit.MILLISECONDS.toMillis(200L);
 
 	private static final long POLL_TIMEOUT = TimeUnit.SECONDS.toMillis(30L);
 

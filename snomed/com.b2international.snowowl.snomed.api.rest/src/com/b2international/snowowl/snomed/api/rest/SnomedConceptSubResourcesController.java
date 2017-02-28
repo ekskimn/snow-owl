@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.http.AcceptHeader;
@@ -43,13 +42,12 @@ import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptDescripti
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedInboundRelationships;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedOutboundRelationships;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
-import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
@@ -63,7 +61,7 @@ import com.wordnik.swagger.annotations.ApiResponses;
  * @since 1.0
  */
 @Api("Concepts")
-@RestController
+//@RestController
 @RequestMapping(
 		produces={ AbstractRestService.SO_MEDIA_TYPE })
 public class SnomedConceptSubResourcesController extends AbstractSnomedRestService {
@@ -97,7 +95,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				SnomedRequests
 					.prepareSearchDescription()
 					.all()
-					.filterByConceptId(conceptId)
+					.filterByConcept(conceptId)
 					.setExpand(expand)
 					.build(repositoryId, branchPath)
 					.execute(bus)
@@ -179,8 +177,8 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 							final SnomedInboundRelationships result = new SnomedInboundRelationships();
 							result.setTotal(input.getTotal());
 							
-							final List<ISnomedRelationship> members = newArrayList();
-							for (ISnomedRelationship relationship : input) {
+							final List<ExpandableSnomedRelationship> members = newArrayList();
+							for (SnomedRelationship relationship : input) {
 								members.add(new ExpandableSnomedRelationship(relationship, expand));
 							}
 							
@@ -283,11 +281,11 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				.setComponentId(conceptId)
 				.setExpand(String.format("descendants(form:\"%s\",direct:%s,offset:%d,limit:%d" + (expand.contains("fsn") ? ",expand(fsn())" : "") + ")", form, direct, offset, limit))
 				.setLocales(getExtendedLocales(acceptLanguage))
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.build(repositoryId, branchPath)
 				.execute(bus)
-				.then(new Function<ISnomedConcept, SnomedConcepts>() {
+				.then(new Function<SnomedConcept, SnomedConcepts>() {
 					@Override
-					public SnomedConcepts apply(ISnomedConcept input) {
+					public SnomedConcepts apply(SnomedConcept input) {
 						return input.getDescendants();
 					}
 				}));
@@ -334,9 +332,9 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 				.setExpand(String.format("ancestors(form:\"%s\",direct:%s,offset:%d,limit:%d)", form, direct, offset, limit))
 				.build(repositoryId, branchPath)
 				.execute(bus)
-				.then(new Function<ISnomedConcept, SnomedConcepts>() {
+				.then(new Function<SnomedConcept, SnomedConcepts>() {
 					@Override
-					public SnomedConcepts apply(ISnomedConcept input) {
+					public SnomedConcepts apply(SnomedConcept input) {
 						return input.getAncestors();
 					}
 				}));
@@ -353,7 +351,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	@RequestMapping(
 			value="/{path:**}/concepts/{conceptId}/pt",
 			method = RequestMethod.GET)
-	public @ResponseBody ISnomedDescription getPreferredTerm(
+	public @ResponseBody SnomedDescription getPreferredTerm(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -377,7 +375,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 		}
 		
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
-		final ISnomedDescription pt = descriptionService.getPreferredTerm(conceptId, extendedLocales);
+		final SnomedDescription pt = descriptionService.getPreferredTerm(conceptId, extendedLocales);
 		
 		if (pt == null) {
 			throw new PreferredTermNotFoundException(conceptId);
@@ -397,7 +395,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 	@RequestMapping(
 			value="/{path:**}/concepts/{conceptId}/fsn",
 			method = RequestMethod.GET)
-	public @ResponseBody ISnomedDescription getFullySpecifiedName(
+	public @ResponseBody SnomedDescription getFullySpecifiedName(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -421,7 +419,7 @@ public class SnomedConceptSubResourcesController extends AbstractSnomedRestServi
 		}
 		
 		final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
-		final ISnomedDescription fsn = descriptionService.getFullySpecifiedName(conceptId, extendedLocales);
+		final SnomedDescription fsn = descriptionService.getFullySpecifiedName(conceptId, extendedLocales);
 		
 		if (fsn == null) {
 			throw new FullySpecifiedNameNotFoundException(conceptId);

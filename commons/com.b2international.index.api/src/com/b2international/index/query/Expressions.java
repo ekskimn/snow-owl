@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,11 +117,15 @@ public class Expressions {
 	}
 
 	public static Expression matchAll() {
-		return new MatchAll();
+		return MatchAll.INSTANCE;
 	}
 	
 	public static Expression matchNone() {
-		return new MatchNone();
+		return MatchNone.INSTANCE;
+	}
+	
+	public static Expression hasParent(Class<?> parentType, Expression expression) {
+		return new HasParentPredicate(parentType, expression);
 	}
 	
 	public static Expression hasParent(Class<?> parentType, Expression expression) {

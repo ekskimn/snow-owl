@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import org.eclipse.emf.cdo.common.id.CDOIDUtil;
 import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.StringUtils;
-import com.b2international.commons.collections.Collections3;
 import com.b2international.commons.functions.StringToLongFunction;
 import com.b2international.index.Doc;
 import com.b2international.index.query.Expression;
@@ -39,8 +38,8 @@ import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.api.ITreeComponent;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.cdo.CDOUtils;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedMappingRefSet;
@@ -52,6 +51,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.base.Function;
 import com.google.common.base.Objects.ToStringHelper;
+import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 
 /**
@@ -142,14 +142,6 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 			return match(Fields.STRUCTURAL, false);
 		}
 		
-		public static Expression referringRefSet(String referringRefSet) {
-			return exactMatch(Fields.REFERRING_REFSETS, referringRefSet);
-		}
-		
-		public static Expression referringMappingRefSet(String referringMappingRefSet) {
-			return exactMatch(Fields.REFERRING_MAPPING_REFSETS, referringMappingRefSet);
-		}
-		
 		public static Expression referringPredicate(String referringPredicate) {
 			return exactMatch(Fields.REFERRING_PREDICATES, referringPredicate);
 		}
@@ -170,8 +162,6 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 		public static final String REFERENCED_COMPONENT_TYPE = "referencedComponentType";
 		public static final String MAP_TARGET_COMPONENT_TYPE = "mapTargetComponentType";
 		public static final String STRUCTURAL = "structural";
-		public static final String REFERRING_REFSETS = "referringRefSets";
-		public static final String REFERRING_MAPPING_REFSETS = "referringMappingRefSets";
 		public static final String DOI = "doi";
 	}
 	
@@ -199,7 +189,7 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 				.doi(input.getDoi());
 	}
 	
-	public static Builder builder(ISnomedConcept input) {
+	public static Builder builder(SnomedConcept input) {
 		final Builder builder = builder()
 				.storageKey(input.getStorageKey())
 				.id(input.getId())
@@ -222,14 +212,11 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 		return builder;
 	}
 	
-	public static List<SnomedConceptDocument> fromConcepts(Iterable<ISnomedConcept> concepts) {
-		return FluentIterable.from(concepts).transform(new Function<ISnomedConcept, SnomedConceptDocument>() {
-			@Override
-			public SnomedConceptDocument apply(ISnomedConcept input) {
-				final ISnomedDescription pt = input.getPt();
-				final String preferredTerm = pt == null ? input.getId() : pt.getTerm();
-				return SnomedConceptDocument.builder(input).label(preferredTerm).build();
-			}
+	public static List<SnomedConceptDocument> fromConcepts(Iterable<? extends SnomedConcept> concepts) {
+		return FluentIterable.from(concepts).transform((input) -> {
+			final SnomedDescription pt = input.getPt();
+			final String preferredTerm = pt == null ? input.getId() : pt.getTerm();
+			return SnomedConceptDocument.builder(input).label(preferredTerm).build();
 		}).toList();
 	}
 
@@ -246,8 +233,6 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 		private int referencedComponentType;
 		private int mapTargetComponentType;
 		private float doi = DEFAULT_DOI;
-		private Collection<String> referringRefSets;
-		private Collection<String> referringMappingRefSets;
 		private long refSetStorageKey = CDOUtils.NO_STORAGE_KEY;
 		private boolean structural = false;
 
@@ -310,10 +295,13 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 				mapTargetComponentType(componentType);
 			}
 			
-			return structural(SnomedRefSetUtil.isStructural(refSet.getId(), refSet.getType()))
+			Builder b = structural(SnomedRefSetUtil.isStructural(refSet.getId(), refSet.getType()))
 					.refSetType(refSet.getType())
-					.referencedComponentType(getValue(refSet.getReferencedComponentType()))
 					.refSetStorageKey(refSet.getStorageKey());
+			if (!Strings.isNullOrEmpty(refSet.getReferencedComponentType())) {
+				b.referencedComponentType(getValue(refSet.getReferencedComponentType()));
+			}
+			return b;
 		}
 		
 		Builder mapTargetComponentType(int mapTargetComponentType) {
@@ -346,16 +334,6 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 			return getSelf();
 		}
 		
-		public Builder referringRefSets(Collection<String> referringRefSets) {
-			this.referringRefSets = referringRefSets;
-			return getSelf();
-		}
-		
-		public Builder referringMappingRefSets(Collection<String> referringMappingRefSets) {
-			this.referringMappingRefSets = referringMappingRefSets;
-			return getSelf();
-		}
-		
 		public SnomedConceptDocument build() {
 			final SnomedConceptDocument entry = new SnomedConceptDocument(id,
 					label,
@@ -371,7 +349,9 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 					referencedComponentType,
 					mapTargetComponentType,
 					refSetStorageKey,
-					structural);
+					structural,
+					referringRefSets,
+					referringMappingRefSets);
 			
 			entry.doi = doi;
 			entry.setScore(score);
@@ -397,9 +377,6 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 				entry.statedAncestors = statedAncestors;
 			}
 			
-			entry.referringRefSets = Collections3.toImmutableList(referringRefSets);
-			entry.referringMappingRefSets = Collections3.toImmutableList(referringMappingRefSets);
-			
 			return entry;
 		}
 
@@ -418,8 +395,6 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 	private LongSet statedParents;
 	private LongSet statedAncestors;
 	private float doi;
-	private Collection<String> referringRefSets;
-	private Collection<String> referringMappingRefSets;
 
 	protected SnomedConceptDocument(final String id,
 			final String label,
@@ -435,9 +410,11 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 			final int referencedComponentType,
 			final int mapTargetComponentType,
 			final long refSetStorageKey,
-			final boolean structural) {
+			final boolean structural,
+			final List<String> referringRefSets,
+			final List<String> referringMappingRefSets) {
 
-		super(id, label, iconId, moduleId, released, active, effectiveTime, namespace);
+		super(id, label, iconId, moduleId, released, active, effectiveTime, namespace, referringRefSets, referringMappingRefSets);
 		this.primitive = primitive;
 		this.exhaustive = exhaustive;
 		this.refSetType = refSetType;
@@ -463,14 +440,6 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 	
 	public float getDoi() {
 		return doi;
-	}
-	
-	public Collection<String> getReferringRefSets() {
-		return referringRefSets;
-	}
-	
-	public Collection<String> getReferringMappingRefSets() {
-		return referringMappingRefSets;
 	}
 	
 	/**
@@ -535,9 +504,7 @@ public class SnomedConceptDocument extends SnomedComponentDocument implements IT
 				.add("ancestors", ancestors)
 				.add("statedParents", statedParents)
 				.add("statedAncestors", statedAncestors)
-				.add("doi", doi)
-				.add("referringRefSets", referringRefSets)
-				.add("referringMappingRefSets", referringMappingRefSets);
+				.add("doi", doi);
 	}
 
 }

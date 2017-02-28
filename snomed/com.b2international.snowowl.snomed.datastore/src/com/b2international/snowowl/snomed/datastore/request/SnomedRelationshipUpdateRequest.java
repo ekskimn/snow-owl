@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 
@@ -73,7 +73,7 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 	}
 	
 	@Override
-	public Void execute(TransactionContext context) {
+	public Boolean execute(TransactionContext context) {
 		final Relationship relationship = context.lookup(getComponentId(), Relationship.class);
 
 		boolean changed = false;
@@ -91,9 +91,9 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 				if (relationship.isReleased()) {
 					long start = new Date().getTime();
 					final IEventBus bus = context.service(IEventBus.class);
-					final ISnomedRelationship releasedRelationship = SnomedRequests.prepareGetRelationship()
+					final SnomedRelationship releasedRelationship = SnomedRequests.prepareGetRelationship()
 							.setComponentId(getComponentId())
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, getLatestReleaseBranch(context))
+							.build(context.id(), getLatestReleaseBranch(context))
 							.execute(bus)
 							.getSync();
 					
@@ -107,10 +107,10 @@ public final class SnomedRelationshipUpdateRequest extends BaseSnomedComponentUp
 				}
 			}
 		}
-		return null;
+		return changed;
 	}
 	
-	private boolean isDifferentToPreviousRelease(Relationship relationship, ISnomedRelationship releasedRelationship) {
+	private boolean isDifferentToPreviousRelease(Relationship relationship, SnomedRelationship releasedRelationship) {
 		if (releasedRelationship.isActive() != relationship.isActive()) return true;
 		if (!releasedRelationship.getModuleId().equals(relationship.getModule().getId())) return true;
 		if (!releasedRelationship.getSourceId().equals(relationship.getSource().getId())) return true;

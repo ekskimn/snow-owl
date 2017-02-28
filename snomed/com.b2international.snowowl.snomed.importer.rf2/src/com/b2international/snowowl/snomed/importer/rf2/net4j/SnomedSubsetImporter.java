@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.TransactionContext;
-import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
@@ -52,13 +51,13 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.core.domain.ReservingIdStrategy;
 import com.b2international.snowowl.snomed.core.store.SnomedComponents;
 import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequestBuilder;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.importer.net4j.SnomedUnimportedRefSets;
 import com.b2international.snowowl.snomed.refset.core.automap.CsvVariableFieldCountParser;
@@ -306,8 +305,10 @@ public class SnomedSubsetImporter {
 			.prepareNewConcept()
 			.setId(conceptId)
 			.setModuleId(moduleId)
-			.setParent(parentConceptId)
-			.setIsAId(new ReservingIdStrategy(ComponentCategory.RELATIONSHIP, Concepts.B2I_NAMESPACE))
+			.addRelationship(SnomedRequests.prepareNewRelationship()
+					.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+					.setDestinationId(parentConceptId)
+					.setTypeId(Concepts.IS_A))
 			.addDescription(SnomedRequests
 					.prepareNewDescription()
 					.setIdFromNamespace(Concepts.B2I_NAMESPACE)
@@ -407,11 +408,18 @@ public class SnomedSubsetImporter {
 			this.moduleId = context.lookup(refSetType, Concept.class).getModule().getId();
 			final String languageReferenceSetId = context.service(SnomedEditingContext.class).getLanguageRefSetId();
 			
+			SnomedRefSetCreateRequestBuilder refSetCreateReq = SnomedRequests
+					.prepareNewRefSet()
+					.setType(SnomedRefSetType.SIMPLE)
+					.setReferencedComponentType(SnomedTerminologyComponentConstants.CONCEPT);
+			
 			SnomedConceptCreateRequestBuilder identifierConceptReq = SnomedRequests
 					.prepareNewConcept()
 					.setModuleId(moduleId)
-					.setParent(refSetType)
-					.setIsAId(new ReservingIdStrategy(ComponentCategory.RELATIONSHIP, Concepts.B2I_NAMESPACE))
+					.addRelationship(SnomedRequests.prepareNewRelationship()
+							.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+							.setDestinationId(refSetType)
+							.setTypeId(Concepts.IS_A))
 					.addDescription(SnomedRequests
 							.prepareNewDescription()
 							.setIdFromNamespace(Concepts.B2I_NAMESPACE)
@@ -425,7 +433,8 @@ public class SnomedSubsetImporter {
 							.setModuleId(moduleId)
 							.setTerm(label)
 							.setTypeId(Concepts.SYNONYM)
-							.preferredIn(languageReferenceSetId));
+							.preferredIn(languageReferenceSetId))
+					.setRefSet(refSetCreateReq);
 			
 			final String cmtRefSetId = getIdIfCMTConcept(label);
 			if (cmtRefSetId == null) {
@@ -434,13 +443,7 @@ public class SnomedSubsetImporter {
 				identifierConceptReq.setId(cmtRefSetId);
 			}
 			
-			this.refSetId = SnomedRequests
-				.prepareNewRefSet()
-				.setType(SnomedRefSetType.SIMPLE)
-				.setReferencedComponentType(SnomedTerminologyComponentConstants.CONCEPT)
-				.setIdentifierConcept(identifierConceptReq)
-				.build()
-				.execute(context);
+			this.refSetId = identifierConceptReq.build().execute(context);
 			
 			// We create an inferred ISA manually to the same parent
 			SnomedRequests.prepareNewRelationship()

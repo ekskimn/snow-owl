@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.Set;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.snomed.core.domain.BaseSnomedCoreComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
@@ -67,7 +66,7 @@ class MembersExpander {
 			});
 			for (SnomedCoreComponent component : results) {
 				final Collection<SnomedReferenceSetMember> members = membersByReferencedComponentId.get(component.getId());
-				((BaseSnomedCoreComponent) component).setMembers(new SnomedReferenceSetMembers(ImmutableList.copyOf(members), 0, members.size(), members.size()));
+				((SnomedCoreComponent) component).setMembers(new SnomedReferenceSetMembers(ImmutableList.copyOf(members), 0, members.size(), members.size()));
 			}
 		}
 	}

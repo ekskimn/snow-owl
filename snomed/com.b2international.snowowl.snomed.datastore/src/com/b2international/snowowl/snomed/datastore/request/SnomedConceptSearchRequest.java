@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
@@ -62,7 +62,7 @@ import com.b2international.snowowl.snomed.dsl.query.SyntaxErrorException;
 /**
  * @since 4.5
  */
-final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcepts> {
+final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<SnomedConcepts> {
 
 	private static final float MIN_DOI_VALUE = 1.05f;
 	private static final float MAX_DOI_VALUE = 10288.383f;
@@ -86,13 +86,14 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 
 		/**
 		 * ESCG expression to match
+		 * @deprecated
 		 */
 		ESCG,
-
+		
 		/**
-		 * Namespace part of concept ID to match (?)
+		 * ECL expression to match
 		 */
-		NAMESPACE,
+		ECL,
 		
 		/**
 		 * The definition status to match
@@ -145,13 +146,11 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 		ExpressionBuilder queryBuilder = Expressions.builder();
 		
 		addActiveClause(queryBuilder);
-		addModuleClause(queryBuilder);
 		addComponentIdFilter(queryBuilder);
+		addModuleClause(queryBuilder);
+		addNamespaceFilter(queryBuilder);
 		addEffectiveTimeClause(queryBuilder);
-		
-		if (containsKey(OptionKey.NAMESPACE)) {
-			queryBuilder.must(namespace(getString(OptionKey.NAMESPACE)));
-		}
+		addActiveMemberOfClause(queryBuilder);
 		
 		if (containsKey(OptionKey.DEFINITION_STATUS)) {
 			if (Concepts.PRIMITIVE.equals(getString(OptionKey.DEFINITION_STATUS))) {
@@ -198,6 +197,11 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 				final LongCollection matchingConceptIds = new ConceptIdQueryEvaluator2(searcher).evaluate(expression);
 				queryBuilder.must(ids(LongSets.toStringSet(matchingConceptIds)));
 			}
+		}
+		
+		if (containsKey(OptionKey.ECL)) {
+			final String ecl = getString(OptionKey.ECL);
+			queryBuilder.must(SnomedRequests.prepareEclEvaluation(ecl).build().execute(context).getSync());
 		}
 		
 		Expression searchProfileQuery = null;
@@ -264,9 +268,8 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			queryExpression = addSearchProfile(searchProfileQuery, queryBuilder.build());
 			sortBy = SortBy.NONE;
 		}
-		
-		
-		final Hits<SnomedConceptDocument> hits = searcher.search(Query.select(SnomedConceptDocument.class)
+
+		final Hits<SnomedConceptDocument> hits = searcher.search(Query.selectPartial(SnomedConceptDocument.class, fields())
 				.where(queryExpression)
 				.offset(offset())
 				.limit(limit())
@@ -278,6 +281,11 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 		} else {
 			return SnomedConverters.newConceptConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
 		}
+	}
+	
+	@Override
+	protected SnomedConcepts createEmptyResult(int offset, int limit) {
+		return new SnomedConcepts(offset, limit, 0);
 	}
 
 	private Expression addSearchProfile(final Expression searchProfileQuery, final Expression query) {
@@ -312,14 +320,14 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 			requestBuilder.withParsedTerm();
 		}
 		
-		final Collection<ISnomedDescription> items = requestBuilder
+		final Collection<SnomedDescription> items = requestBuilder
 			.build()
 			.execute(context)
 			.getItems();
 		
 		final Map<String, Float> conceptMap = newHashMap();
 		
-		for (ISnomedDescription description : items) {
+		for (SnomedDescription description : items) {
 			if (!conceptMap.containsKey(description.getConceptId())) {
 				conceptMap.put(description.getConceptId(), description.getScore());
 			}

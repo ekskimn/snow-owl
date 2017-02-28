@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import com.b2international.snowowl.dsl.ESCGRewriter;
 import com.b2international.snowowl.dsl.ESCGStandaloneSetup;
 import com.b2international.snowowl.dsl.parser.antlr.ESCGParser;
 import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
+import com.b2international.snowowl.snomed.datastore.escg.IEscgQueryEvaluatorService;
 import com.b2international.snowowl.snomed.dsl.query.ast.RValue;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -34,7 +35,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 
 /**
  * Utility service singleton for ESCG expressions.
- * 
+ * @deprecated - see {@link IEscgQueryEvaluatorService}
  */
 public enum EscgUtils implements EscgRewriter {
 	

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -217,30 +217,6 @@ public abstract class CDOIDUtils {
 		Preconditions.checkNotNull(objects, "Objects argument cannot be null.");
 		Preconditions.checkNotNull(object, "Object argument cannot be null.");
 		return getIds(objects).contains(object.cdoID());
-	}
-	
-	/**
-	 * Returns {@code true} if the CDO ID of the investigated {@link CDOObject objects} are equal. Otherwise returns with {@code false}.
-	 * @param object1 the first CDO object.
-	 * @param object2 the second CDO object.
-	 * @return {@code true} if the CDO IDs are equal.
-	 */
-	public static <T1 extends CDOObject, T2 extends CDOObject> boolean eqaulsById(final T1 object1, final T2 object2) {
-		Preconditions.checkNotNull(object1, "Object1 argument cannot be null.");
-		Preconditions.checkNotNull(object2, "Object2 argument cannot be null.");
-		return null == object1.cdoID() ? null == object2.cdoID() : object1.cdoID().equals(object2.cdoID());
-	}
-	
-	/**
-	 * Returns {@code true} if the CDO ID of the investigated objects are equal. Otherwise returns with {@code false}.
-	 * @param object the CDO object.
-	 * @param idAndVersion the ID and version instance.
-	 * @return {@code true} if the CDO IDs are equal.
-	 */
-	public static <T1 extends CDOObject, T2 extends CDOIDAndVersion> boolean eqaulsById(final T1 object, final T2 idAndVersion) {
-		Preconditions.checkNotNull(object, "Object argument cannot be null.");
-		Preconditions.checkNotNull(idAndVersion, "IDAndVersion argument cannot be null.");
-		return null == object.cdoID() ? null == idAndVersion.getID() : object.cdoID().equals(idAndVersion.getID());
 	}
 	
 	/**

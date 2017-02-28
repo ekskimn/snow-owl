@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,21 +21,21 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.request.RevisionGetRequest;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 
 /**
  * @since 4.5
  */
-final class SnomedRelationshipGetRequest extends RevisionGetRequest<ISnomedRelationship> {
+final class SnomedRelationshipGetRequest extends RevisionGetRequest<SnomedRelationship> {
 
 	protected SnomedRelationshipGetRequest() {
 		super(ComponentCategory.RELATIONSHIP);
 	}
 
 	@Override
-	protected ISnomedRelationship process(BranchContext context, IComponent<String> component, Options expand) {
+	protected SnomedRelationship process(BranchContext context, IComponent<String> component, Options expand) {
 		return SnomedConverters.newRelationshipConverter(context, expand, locales()).convert((SnomedRelationshipIndexEntry) component);
 	}
 	
@@ -45,8 +45,8 @@ final class SnomedRelationshipGetRequest extends RevisionGetRequest<ISnomedRelat
 	}
 	
 	@Override
-	protected Class<ISnomedRelationship> getReturnType() {
-		return ISnomedRelationship.class;
+	protected Class<SnomedRelationship> getReturnType() {
+		return SnomedRelationship.class;
 	}
 
 }

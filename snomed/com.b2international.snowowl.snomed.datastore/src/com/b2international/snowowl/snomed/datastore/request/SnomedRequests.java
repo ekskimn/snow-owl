@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,10 +38,11 @@ import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
 import com.b2international.snowowl.snomed.core.domain.refset.MemberChange;
+import com.b2international.snowowl.snomed.core.ecl.SnomedEclEvaluationRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetMember;
@@ -137,6 +138,10 @@ public abstract class SnomedRequests {
 		return new SnomedRefSetGetRequestBuilder();
 	}
 	
+	public static SnomedEclEvaluationRequestBuilder prepareEclEvaluation(String expression) {
+		return new SnomedEclEvaluationRequestBuilder(expression);
+	}
+	
 	public static Branching branching() {
 		return RepositoryRequests.branching();
 	}
@@ -151,6 +156,10 @@ public abstract class SnomedRequests {
 	
 	public static MergeReviews mergeReview() {
 		return RepositoryRequests.mergeReviews();
+	}
+
+	public static Identifiers identifiers() {
+		return new Identifiers();
 	}
 
 	public static QueryRefSetEvaluationRequestBuilder prepareQueryRefSetEvaluation(String referenceSetId) {
@@ -229,10 +238,10 @@ public abstract class SnomedRequests {
 				@Override
 				public Set<String> apply(SnomedConcepts input) {
 					final Set<String> descendantDomainIds = newHashSet();
-					for (ISnomedConcept concept : input) {
+					for (SnomedConcept concept : input) {
 						descendantDomainIds.add(concept.getId());
 						// add parents and ancestors of the concept as well
-						descendantDomainIds.addAll(ISnomedConcept.GET_ANCESTORS.apply(concept));
+						descendantDomainIds.addAll(SnomedConcept.GET_ANCESTORS.apply(concept));
 					}
 					return descendantDomainIds;
 				}

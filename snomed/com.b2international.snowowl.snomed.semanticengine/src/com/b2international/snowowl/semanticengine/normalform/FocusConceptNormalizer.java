@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.dsl.scg.Concept;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.semanticengine.subsumption.SubsumptionTester;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -73,11 +73,11 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
  */
 public class FocusConceptNormalizer {
 	
-	private final class ParentCacheLoader extends CacheLoader<String, ISnomedConcept> {
+	private final class ParentCacheLoader extends CacheLoader<String, SnomedConcept> {
 		
 		@Override
-		public ISnomedConcept load(String conceptId) throws Exception {
-			ISnomedConcept conceptWithParents = SnomedRequests.prepareGetConcept()
+		public SnomedConcept load(String conceptId) throws Exception {
+			SnomedConcept conceptWithParents = SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
 				.setExpand("ancestors(direct:true,form:\"inferred\")")
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
@@ -88,7 +88,7 @@ public class FocusConceptNormalizer {
 		}
 
 		@Override
-		public Map<String, ISnomedConcept> loadAll(Iterable<? extends String> conceptIds) throws Exception {
+		public Map<String, SnomedConcept> loadAll(Iterable<? extends String> conceptIds) throws Exception {
 			Collection<String> conceptIdSet = ImmutableSet.copyOf(conceptIds);
 			SnomedConcepts conceptsWithParents = SnomedRequests.prepareSearchConcept()
 					.setComponentIds(conceptIdSet)
@@ -119,8 +119,8 @@ public class FocusConceptNormalizer {
 	}
 
 	public FocusConceptNormalizationResult normalizeFocusConcepts(Collection<Concept> focusConcepts, boolean normaliseAttributeValues) {
-		Map<String, ISnomedConcept> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(toIdSet(focusConcepts));
-		Collection<ISnomedConcept> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes).values();
+		Map<String, SnomedConcept> proximalPrimitiveSuperTypes = collectProximalPrimitiveSupertypes(toIdSet(focusConcepts));
+		Collection<SnomedConcept> filteredPrimitiveSuperTypes = filterRedundantSuperTypes(proximalPrimitiveSuperTypes).values();
 		ConceptDefinitionNormalizer conceptDefinitionNormalizer = new ConceptDefinitionNormalizer(branchPath);
 		Map<Concept, ConceptDefinition> conceptDefinitions = conceptDefinitionNormalizer.getNormalizedConceptDefinitions(focusConcepts);
 		ConceptDefinitionMerger conceptDefinitionMerger = new ConceptDefinitionMerger(subsumptionTester);
@@ -128,24 +128,24 @@ public class FocusConceptNormalizer {
 		return new FocusConceptNormalizationResult(filteredPrimitiveSuperTypes, mergedFocusConceptDefinitions);
 	}
 	
-	public Collection<ISnomedConcept> collectNonRedundantProximalPrimitiveSuperTypes(Collection<String> focusConceptIds) {
-		final Map<String, ISnomedConcept> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
+	public Collection<SnomedConcept> collectNonRedundantProximalPrimitiveSuperTypes(Collection<String> focusConceptIds) {
+		final Map<String, SnomedConcept> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
 		return filterRedundantSuperTypes(proximalPrimitiveSupertypes).values();
 	}
 
-	private Map<String, ISnomedConcept> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
-		Map<String, ISnomedConcept> proximatePrimitiveSuperTypes = newHashMap();
+	private Map<String, SnomedConcept> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
+		Map<String, SnomedConcept> proximatePrimitiveSuperTypes = newHashMap();
 
 		if (focusConceptIds.isEmpty()) {
 			return proximatePrimitiveSuperTypes;
 		}
 		
-		LoadingCache<String, ISnomedConcept> parentCache = CacheBuilder.newBuilder().build(new ParentCacheLoader());
+		LoadingCache<String, SnomedConcept> parentCache = CacheBuilder.newBuilder().build(new ParentCacheLoader());
 		
 		try {
 			
-			Iterable<ISnomedConcept> focusConcepts = parentCache.getAll(focusConceptIds).values();
-			for (ISnomedConcept focusConcept : focusConcepts) {
+			Iterable<SnomedConcept> focusConcepts = parentCache.getAll(focusConceptIds).values();
+			for (SnomedConcept focusConcept : focusConcepts) {
 				proximatePrimitiveSuperTypes.putAll(getProximatePrimitiveSuperTypes(focusConcept, parentCache));
 			}
 
@@ -167,11 +167,11 @@ public class FocusConceptNormalizer {
 	 * @param proximalPrimitiveSupertypes
 	 * @return
 	 */
-	private Map<String, ISnomedConcept> filterRedundantSuperTypes(Map<String, ISnomedConcept> proximalPrimitiveSupertypes) {
-		Map<String, ISnomedConcept> filteredSuperTypes = newHashMap(proximalPrimitiveSupertypes);
+	private Map<String, SnomedConcept> filterRedundantSuperTypes(Map<String, SnomedConcept> proximalPrimitiveSupertypes) {
+		Map<String, SnomedConcept> filteredSuperTypes = newHashMap(proximalPrimitiveSupertypes);
 		
-		for (Entry<String, ISnomedConcept> superType: proximalPrimitiveSupertypes.entrySet()) {
-			for (Entry<String, ISnomedConcept> otherSuperType: proximalPrimitiveSupertypes.entrySet()) {
+		for (Entry<String, SnomedConcept> superType: proximalPrimitiveSupertypes.entrySet()) {
+			for (Entry<String, SnomedConcept> otherSuperType: proximalPrimitiveSupertypes.entrySet()) {
 				if (!otherSuperType.getKey().equals(superType.getKey()) && filteredSuperTypes.containsKey(otherSuperType.getKey()) && isSuperTypeOf(superType.getValue(), otherSuperType.getValue())) {
 					filteredSuperTypes.remove(superType.getKey());
 				}
@@ -181,19 +181,19 @@ public class FocusConceptNormalizer {
 		return filteredSuperTypes;
 	}
 
-	private Map<String, ISnomedConcept> getProximatePrimitiveSuperTypes(ISnomedConcept focusConceptWithParents, LoadingCache<String, ISnomedConcept> parentCache) {
-		Map<String, ISnomedConcept> proximatePrimitiveSuperTypes = newHashMap();
+	private Map<String, SnomedConcept> getProximatePrimitiveSuperTypes(SnomedConcept focusConceptWithParents, LoadingCache<String, SnomedConcept> parentCache) {
+		Map<String, SnomedConcept> proximatePrimitiveSuperTypes = newHashMap();
 		
 		if (focusConceptWithParents.getDefinitionStatus().isPrimitive()) {
 			proximatePrimitiveSuperTypes.put(focusConceptWithParents.getId(), focusConceptWithParents);
 			return proximatePrimitiveSuperTypes;
 		}
 		
-		for (ISnomedConcept parent : focusConceptWithParents.getAncestors()) {
+		for (SnomedConcept parent : focusConceptWithParents.getAncestors()) {
 			if (parent.getDefinitionStatus().isPrimitive()) {
 				proximatePrimitiveSuperTypes.put(parent.getId(), parent);
 			} else {
-				final ISnomedConcept parentWithParents = parentCache.getUnchecked(parent.getId());
+				final SnomedConcept parentWithParents = parentCache.getUnchecked(parent.getId());
 				proximatePrimitiveSuperTypes.putAll(getProximatePrimitiveSuperTypes(parentWithParents, parentCache));
 			}
 		}
@@ -201,17 +201,17 @@ public class FocusConceptNormalizer {
 		return filterSuperTypesToProximate(proximatePrimitiveSuperTypes);
 	}
 
-	private Map<String, ISnomedConcept> filterSuperTypesToProximate(Map<String, ISnomedConcept> proximatePrimitiveSuperTypes) {
-			Map<String, ISnomedConcept> filteredProximateSuperTypes = newHashMap();
+	private Map<String, SnomedConcept> filterSuperTypesToProximate(Map<String, SnomedConcept> proximatePrimitiveSuperTypes) {
+			Map<String, SnomedConcept> filteredProximateSuperTypes = newHashMap();
 			
-			for (Entry<String, ISnomedConcept> superType : proximatePrimitiveSuperTypes.entrySet()) {
+			for (Entry<String, SnomedConcept> superType : proximatePrimitiveSuperTypes.entrySet()) {
 				if (filteredProximateSuperTypes.isEmpty()) {
 					filteredProximateSuperTypes.put(superType.getKey(), superType.getValue());
 				} else {
 					// remove types from proximateSuperTypes, if there is a more specific type among the superTypes
 					boolean toBeAdded = false;
-					Set<ISnomedConcept> removedProximateSuperTypes = new HashSet<ISnomedConcept>();
-					for (ISnomedConcept proximateSuperType : filteredProximateSuperTypes.values()) {
+					Set<SnomedConcept> removedProximateSuperTypes = new HashSet<SnomedConcept>();
+					for (SnomedConcept proximateSuperType : filteredProximateSuperTypes.values()) {
 						/*
 						 * If the super type is a super type of a type already in the proximate super type set, then 
 						 * it shouldn't be added, no further checks necessary.
@@ -243,7 +243,7 @@ public class FocusConceptNormalizer {
 			return filteredProximateSuperTypes;
 		}
 
-	private boolean isSuperTypeOf(ISnomedConcept superType, ISnomedConcept subType) {
+	private boolean isSuperTypeOf(SnomedConcept superType, SnomedConcept subType) {
 		long superTypeId = Long.parseLong(superType.getId());
 		LongSet ancestorIds = PrimitiveSets.newLongOpenHashSet(subType.getAncestorIds());
 		LongSet parentIds = PrimitiveSets.newLongOpenHashSet(subType.getParentIds());

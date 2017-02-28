@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.importer.rf2.validation;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -43,8 +44,8 @@ public class SnomedRelationshipValidator extends AbstractSnomedValidator {
 	private Collection<String> relationshipSourceAndDestinationAreEqual = Sets.newHashSet();
 	private Collection<String> missingReferencedConcepts = Sets.newHashSet();
 	
-	public SnomedRelationshipValidator(final ImportConfiguration configuration, final SnomedValidationContext context) throws IOException {
-		super(configuration, configuration.toURL(configuration.getRelationshipsFile()), ComponentImportType.RELATIONSHIP, context, SnomedRf2Headers.RELATIONSHIP_HEADER);
+	public SnomedRelationshipValidator(final ImportConfiguration configuration, final SnomedValidationContext context, final File relationshipsFile) throws IOException {
+		super(configuration, configuration.toURL(relationshipsFile), ComponentImportType.RELATIONSHIP, context, SnomedRf2Headers.RELATIONSHIP_HEADER);
 	}
 
 	@Override
@@ -87,6 +88,8 @@ public class SnomedRelationshipValidator extends AbstractSnomedValidator {
 		addDefect(DefectType.RELATIONSHIP_SOURCE_DESTINATION_EQUALS, relationshipSourceAndDestinationAreEqual);
 		addDefect(DefectType.RELATIONSHIP_REFERENCED_INVALID_CONCEPT, missingReferencedConcepts);
 		
+		relationshipIdsWithEffectivetimeStatus.clear();
+		relationshipIdNotUnique.clear();
 		relationshipSourceAndDestinationAreEqual.clear();
 		missingReferencedConcepts.clear();
 	}

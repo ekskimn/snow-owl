@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,15 +29,6 @@ public class SCGRuntimeModule extends com.b2international.snowowl.dsl.AbstractSC
 			@Override
 			public IEventBus get() {
 				return ApplicationContext.getServiceForClass(IEventBus.class);
-			}
-		};
-	}
-	
-	public Provider<String> provideActiveBranch() {
-		return new Provider<String>() {
-			@Override
-			public String get() {
-				throw new UnsupportedOperationException("This class requires active branch scope");
 			}
 		};
 	}

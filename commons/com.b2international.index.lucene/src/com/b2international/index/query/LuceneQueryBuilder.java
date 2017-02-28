@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -268,7 +268,7 @@ public final class LuceneQueryBuilder {
 		final String term = predicate.term();
 		final MatchType type = predicate.type();
 		final Analyzer analyzer = AnalyzerImpls.getAnalyzer(predicate.analyzer());
-		final Query query;
+		Query query;
 		switch (type) {
 		case PHRASE:
 			{
@@ -312,7 +312,10 @@ public final class LuceneQueryBuilder {
 			break;
 		default: throw new UnsupportedOperationException("Unexpected text match type: " + type);
 		}
-		deque.push(query);		
+		if (query == null) {
+			query = new MatchNoDocsQuery();
+		}
+		deque.push(query);	
 	}
 	
 	private void visit(StringPredicate predicate) {

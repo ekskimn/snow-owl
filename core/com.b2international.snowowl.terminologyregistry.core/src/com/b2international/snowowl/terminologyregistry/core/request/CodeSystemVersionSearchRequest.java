@@ -16,6 +16,7 @@
 package com.b2international.snowowl.terminologyregistry.core.request;
 
 import java.io.IOException;
+import java.util.Collections;
 
 import com.b2international.commons.StringUtils;
 import com.b2international.index.Hits;
@@ -81,9 +82,15 @@ final class CodeSystemVersionSearchRequest extends RevisionSearchRequest<CodeSys
 		
 		return new CodeSystemVersions(hits.getHits(), offset(), limit(), hits.getTotal());
 	}
+	
+	@Override
+	protected CodeSystemVersions createEmptyResult(int offset, int limit) {
+		return new CodeSystemVersions(Collections.emptyList(), offset, limit, 0);
+	}
 
 	@Override
 	protected Class<CodeSystemVersions> getReturnType() {
 		return CodeSystemVersions.class;
 	}
+	
 }

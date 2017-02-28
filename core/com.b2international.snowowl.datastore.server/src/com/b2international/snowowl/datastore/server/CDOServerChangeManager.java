@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -264,9 +264,19 @@ public class CDOServerChangeManager extends ObjectWriteAccessHandler {
 	
 	/*creates a change manager instance from the underlying transaction commit context*/
 	private DelegateCDOServerChangeManager createChangeManager(final TransactionCommitContext commitContext) {
-		return new DelegateCDOServerChangeManager(getCommitChangeSet(commitContext), factories, true);
+		final boolean isCommitNotificationEnabled = isCommitNotificationEnabled(commitContext);
+		return new DelegateCDOServerChangeManager(getCommitChangeSet(commitContext), factories, true, isCommitNotificationEnabled);
 	}
 	
+	private boolean isCommitNotificationEnabled(TransactionCommitContext commitContext) {
+		if (commitContext instanceof CDOServerCommitBuilder.ServerTransactionCommitContext) {
+			return ((CDOServerCommitBuilder.ServerTransactionCommitContext) commitContext).isCommitNotificationEnabled();
+		} else {
+			// by default all non server commits should send out commit notifications
+			return true;
+		}
+	}
+
 	/*returns with the branch path extracted from the underlying transaction commit context.*/
 	private IBranchPath getBranchPath(final TransactionCommitContext commitContext) {
 		return createPath(checkNotNull(checkNotNull(checkNotNull(commitContext, "commitContext").getTransaction(), "transaction").getBranch()));

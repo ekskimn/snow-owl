@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ public class SnomedConceptFsnStatusConstraint extends ComponentValidationConstra
 			final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
 				.setLimit(0)
 				.filterByActive(true)
-				.filterByConceptId(concept.getId())
+				.filterByConcept(concept.getId())
 				.filterByType(Concepts.FULLY_SPECIFIED_NAME)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(getBus())

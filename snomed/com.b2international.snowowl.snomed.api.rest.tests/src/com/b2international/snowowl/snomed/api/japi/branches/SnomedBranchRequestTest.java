@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,17 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchManager;
@@ -39,8 +42,9 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.events.AsyncRequest;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.merge.Merge;
+import com.b2international.snowowl.core.merge.Merge.Status;
 import com.b2international.snowowl.datastore.request.Branching;
-import com.b2international.snowowl.datastore.request.CommitInfo;
+import com.b2international.snowowl.datastore.request.CommitResult;
 import com.b2international.snowowl.datastore.request.Merging;
 import com.b2international.snowowl.datastore.server.internal.CDOBasedRepository;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
@@ -49,6 +53,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
@@ -63,6 +68,11 @@ import com.google.common.collect.Sets;
  */
 public class SnomedBranchRequestTest {
 
+	private static final String REPOSITORY_ID = SnomedDatastoreActivator.REPOSITORY_UUID;
+	
+	private static final long POLL_TIMEOUT = TimeUnit.SECONDS.toMillis(30L);
+	private static final long POLL_INTERVAL = TimeUnit.SECONDS.toMillis(1L);
+	
 	private IEventBus bus;
 	private CDOBranchManager cdoBranchManager;
 	
@@ -78,8 +88,8 @@ public class SnomedBranchRequestTest {
 		
 		// try to create two branches at the same time
 		final String branchName = UUID.randomUUID().toString();
-		final Promise<Branch> first = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchName).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus);
-		final Promise<Branch> second = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchName).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus);
+		final Promise<Branch> first = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchName).build(REPOSITORY_ID).execute(bus);
+		final Promise<Branch> second = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchName).build(REPOSITORY_ID).execute(bus);
 		final String error = Promise.all(first, second)
 			.then(new Function<List<Object>, String>() {
 				@Override
@@ -111,14 +121,26 @@ public class SnomedBranchRequestTest {
 		// try to create two branches at the same time
 		final String branchA = UUID.randomUUID().toString();
 		final String branchB = UUID.randomUUID().toString();
-
-		final Promise<Branch> first = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchA).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus);
-		final Promise<Branch> second = branches.prepareCreate().setParent(Branch.MAIN_PATH).setName(branchB).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus);
+		final Promise<Branch> first = branches.prepareCreate()
+				.setParent(Branch.MAIN_PATH)
+				.setName(branchA)
+				.build(REPOSITORY_ID)
+				.execute(bus);
+		
+		final Promise<Branch> second = branches.prepareCreate()
+				.setParent(Branch.MAIN_PATH)
+				.setName(branchB)
+				.build(REPOSITORY_ID)
+				.execute(bus);
 		
 		Promise.all(first, second).then(new Function<List<Object>, String>() {
 			@Override
 			public String apply(List<Object> input) {
-				final InternalCDOBasedBranch main = (InternalCDOBasedBranch) branches.prepareGet(Branch.MAIN_PATH).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
+				final InternalCDOBasedBranch main = (InternalCDOBasedBranch) branches.prepareGet(Branch.MAIN_PATH)
+						.build(REPOSITORY_ID)
+						.execute(bus)
+						.getSync();
+				
 				final InternalCDOBasedBranch createdFirst;
 				final InternalCDOBasedBranch createdSecond;
 				
@@ -149,69 +171,96 @@ public class SnomedBranchRequestTest {
 		final Branch first = branches.prepareCreate()
 				.setParent(Branch.MAIN_PATH)
 				.setName(branchA)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.build(REPOSITORY_ID)
 				.execute(bus)
 				.getSync();
 		
 		final SnomedDescriptionCreateRequestBuilder fsnBuilder = SnomedRequests.prepareNewDescription()
+				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE)
 				.setModuleId(Concepts.MODULE_ROOT)
 				.setTerm("FSN " + branchA)
 				.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
 				.setAcceptability(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED));
 		
 		final SnomedDescriptionCreateRequestBuilder ptBuilder = SnomedRequests.prepareNewDescription()
+				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE)
 				.setModuleId(Concepts.MODULE_ROOT)
 				.setTerm("PT " + branchA)
 				.setTypeId(Concepts.SYNONYM)
 				.setAcceptability(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED));
 		
-		final AsyncRequest<CommitInfo> conceptRequest = SnomedRequests.prepareNewConcept()
-				.setParent(Concepts.ROOT_CONCEPT)
+		final AsyncRequest<CommitResult> conceptRequest = SnomedRequests.prepareNewConcept()
 				.setModuleId(Concepts.MODULE_ROOT)
+				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE)
+				.addParent(Concepts.ROOT_CONCEPT)
 				.addDescription(fsnBuilder)
 				.addDescription(ptBuilder)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, first.path(), "user", "Created new concept");
+				.build(REPOSITORY_ID, first.path(), "user", "Created new concept");
 		
-		final CommitInfo info = conceptRequest.execute(bus).getSync();
+		final CommitResult info = conceptRequest.execute(bus).getSync();
 		final String conceptId = info.getResultAs(String.class);
 		
-		final Promise<Merge> mergePromise = merges.prepareCreate()
+		Promise<Merge> merge = merges.prepareCreate()
 				.setSource(first.path())
 				.setTarget(first.parentPath())
 				.setCommitComment("Merging changes")
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+				.build(REPOSITORY_ID)
 				.execute(bus);
 		
-		final Promise<Branch> secondPromise = branches.prepareCreate()
-				.setParent(first.parentPath())
-				.setName(branchB)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-				.execute(bus);
-		
-		Merge merge = mergePromise.getSync();
-		
-		SnomedBranchingApiAssert.waitForMergeJob(merge.getId().toString())
-				.then()
-				.assertThat()
-				.body("status", equalTo(Merge.Status.COMPLETED.name()));
-		
-		final InternalCDOBasedBranch target = (InternalCDOBasedBranch) branches.prepareGet(first.parentPath()).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
-		final InternalCDOBasedBranch firstAfterMerge = (InternalCDOBasedBranch) branches.prepareGet(first.path()).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
-		final InternalCDOBasedBranch secondAfterCreate = (InternalCDOBasedBranch) secondPromise.getSync();
-		
-		final InternalCDOBasedBranch createdFirst;
-		final InternalCDOBasedBranch createdSecond;
-		
-		if (firstAfterMerge.headTimestamp() > secondAfterCreate.headTimestamp()) {
-			createdFirst = secondAfterCreate;
-			createdSecond = firstAfterMerge;
-		} else {
-			createdFirst = firstAfterMerge;
-			createdSecond = secondAfterCreate;
+		final long endTime = System.currentTimeMillis() + POLL_TIMEOUT;
+		while (System.currentTimeMillis() < endTime && mergeNotCompleted(merge)) {
+			
+			try {
+				Thread.sleep(POLL_INTERVAL);
+			} catch (final InterruptedException e) {
+				fail(e.toString());
+			}
+
+			merge = merges.prepareGet(merge.getSync().getId())
+					.build(REPOSITORY_ID)
+					.execute(bus);
 		}
 		
-		assertBranchesCreated(branchA, branchB, firstAfterMerge, secondAfterCreate);
-		assertBranchSegmentsValid(target, createdFirst, createdSecond);
+		final Promise<Branch> second = branches.prepareCreate()
+				.setParent(first.parentPath())
+				.setName(branchB)
+				.build(REPOSITORY_ID)
+				.execute(bus);
+		
+		Promise.all(merge, second).then(new Function<List<Object>, Void>() {
+			@Override
+			public Void apply(final List<Object> input) {
+				final Merge merge = (Merge) input.get(0);
+				assertEquals(Status.COMPLETED, merge.getStatus());
+				
+				final InternalCDOBasedBranch target = (InternalCDOBasedBranch) branches.prepareGet(merge.getTarget())
+						.build(REPOSITORY_ID)
+						.execute(bus)
+						.getSync();
+				
+				final InternalCDOBasedBranch first = (InternalCDOBasedBranch) branches.prepareGet(merge.getSource())
+						.build(REPOSITORY_ID)
+						.execute(bus)
+						.getSync();
+				
+				final InternalCDOBasedBranch second = (InternalCDOBasedBranch) input.get(1);
+				final InternalCDOBasedBranch createdFirst;
+				final InternalCDOBasedBranch createdSecond;
+				
+				if (first.headTimestamp() > second.headTimestamp()) {
+					createdFirst = second;
+					createdSecond = first;
+				} else {
+					createdFirst = first;
+					createdSecond = second;
+				}
+				
+				assertBranchesCreated(branchA, branchB, first, second);
+				assertBranchSegmentsValid(target, createdFirst, createdSecond);
+				return null;
+			}
+		})
+		.getSync();
 		
 		// Check that the concept is visible on parent
 		SnomedRequests.prepareGetConcept()
@@ -219,6 +268,12 @@ public class SnomedBranchRequestTest {
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, firstAfterMerge.parentPath())
 				.execute(bus)
 				.getSync();
+	}
+
+	private boolean mergeNotCompleted(Promise<Merge> merge) {
+		final Merge mergeData = merge.getSync();
+		final Status mergeStatus = mergeData.getStatus();
+		return Status.IN_PROGRESS.equals(mergeStatus) || Status.SCHEDULED.equals(mergeStatus) || Status.CANCEL_REQUESTED.equals(mergeStatus);
 	}
 
 	private void assertBranchesCreated(final String branchA, final String branchB, final Branch first, final Branch second) {
@@ -254,6 +309,6 @@ public class SnomedBranchRequestTest {
 	
 	private CDOBranchManager getSnomedCdoBranchManager() {
 		final RepositoryManager repositoryManager = ApplicationContext.getInstance().getService(RepositoryManager.class);
-		return ((CDOBasedRepository) repositoryManager.get(SnomedDatastoreActivator.REPOSITORY_UUID)).getCdoBranchManager();
+		return ((CDOBasedRepository) repositoryManager.get(REPOSITORY_ID)).getCdoBranchManager();
 	}
 }

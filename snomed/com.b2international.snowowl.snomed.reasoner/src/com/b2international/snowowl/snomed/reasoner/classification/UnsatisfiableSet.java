@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package com.b2international.snowowl.snomed.reasoner.classification;
 import java.io.Serializable;
 import java.util.List;
 
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 
 /**
  * Represents unsatisfiable equivalence sets (holding concepts equivalent to {@code owl:Nothing}).
@@ -31,7 +31,7 @@ public class UnsatisfiableSet extends AbstractEquivalenceSet implements Serializ
 	 * Creates a new unsatisfiable equivalence set with the specified arguments.
 	 * @param unsatisfiableConcepts the list containing unsatisfiable concepts
 	 */
-	public UnsatisfiableSet(final List<ISnomedConcept> unsatisfiableConcepts) {
+	public UnsatisfiableSet(final List<SnomedConcept> unsatisfiableConcepts) {
 		super(unsatisfiableConcepts);
 	}
 

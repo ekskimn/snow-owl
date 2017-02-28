@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,12 +40,7 @@ public interface IComponent extends Serializable {
 	 * 
 	 * @since 4.6
 	 */
-	Function<IComponent, String> ID_FUNCTION = new Function<IComponent, String>() {
-		@Override
-		public String apply(IComponent input) {
-			return input.getId();
-		}
-	};
+	Function<IComponent, String> ID_FUNCTION = IComponent::getId;
 
 	/**
 	 * Returns the component identifier.

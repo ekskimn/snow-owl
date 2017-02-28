@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,19 +17,19 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import com.b2international.snowowl.datastore.request.RevisionGetRequest;
 import com.b2international.snowowl.datastore.request.RevisionGetRequestBuilder;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 
 /**
  * @since 4.5
  */
-public final class SnomedConceptGetRequestBuilder extends RevisionGetRequestBuilder<SnomedConceptGetRequestBuilder, ISnomedConcept> {
+public final class SnomedConceptGetRequestBuilder extends RevisionGetRequestBuilder<SnomedConceptGetRequestBuilder, SnomedConcept> {
 
 	SnomedConceptGetRequestBuilder() {
 		super();
 	}
 
 	@Override
-	protected RevisionGetRequest<ISnomedConcept> createGet() {
+	protected RevisionGetRequest<SnomedConcept> createGet() {
 		return new SnomedConceptGetRequest();
 	}
 	

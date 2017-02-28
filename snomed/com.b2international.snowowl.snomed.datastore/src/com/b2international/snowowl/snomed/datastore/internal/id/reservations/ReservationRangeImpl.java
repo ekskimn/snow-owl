@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,11 +47,11 @@ public class ReservationRangeImpl implements Reservation {
 	}
 	
 	private long getItemIdMin() {
-		return this.itemIdRange.lowerEndpoint();
+		return itemIdRange.lowerEndpoint();
 	}
 
 	private long getItemIdMax() {
-		return this.itemIdRange.upperEndpoint();
+		return itemIdRange.upperEndpoint();
 	}
 
 	private String getNamespace() {
@@ -61,11 +61,19 @@ public class ReservationRangeImpl implements Reservation {
 	private Collection<ComponentCategory> getComponents() {
 		return components;
 	}
+	
+	public boolean affects(String namespace, ComponentCategory category) {
+		return Objects.equal(namespace, getNamespace()) && getComponents().contains(category);
+	}
+	
+	public Range<Long> getItemIdRange() {
+		return itemIdRange;
+	}
 
 	@Override
 	public boolean includes(SnomedIdentifier identifier) {
 		checkNotNull(identifier, "identifier");
-		return itemIdRange.contains(identifier.getItemId()) && Objects.equal(identifier.getNamespace(), getNamespace()) && getComponents().contains(identifier.getComponentCategory());
+		return affects(identifier.getNamespace(), identifier.getComponentCategory()) && itemIdRange.contains(identifier.getItemId());
 	}
 	
 	@Override

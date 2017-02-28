@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,17 @@
 package com.b2international.snowowl.snomed.datastore.request;
 
 import java.util.Collection;
-import java.util.Collections;
 
 import com.b2international.commons.collections.Collections3;
 import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
-import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionSearchRequest.OptionKey;
 
 /**
  * @since 4.5
  */
-public final class SnomedDescriptionSearchRequestBuilder extends SnomedSearchRequestBuilder<SnomedDescriptionSearchRequestBuilder, SnomedDescriptions> {
+public final class SnomedDescriptionSearchRequestBuilder extends SnomedComponentSearchRequestBuilder<SnomedDescriptionSearchRequestBuilder, SnomedDescriptions> {
 
 	SnomedDescriptionSearchRequestBuilder() {}
 	
@@ -44,17 +42,12 @@ public final class SnomedDescriptionSearchRequestBuilder extends SnomedSearchReq
 		return addOption(OptionKey.TERM, termFilter == null ? termFilter : termFilter.trim());
 	}
 
-	public SnomedDescriptionSearchRequestBuilder filterByConceptEscg(String conceptEscgFilter) {
-		return addOption(OptionKey.CONCEPT_ESCG, conceptEscgFilter);
+	public SnomedDescriptionSearchRequestBuilder filterByConcept(String conceptFilter) {
+		return addOption(OptionKey.CONCEPT, conceptFilter);
 	}
 	
-	public SnomedDescriptionSearchRequestBuilder filterByConceptId(String conceptIdFilter) {
-		SnomedIdentifiers.validate(conceptIdFilter);
-		return filterByConceptId(Collections.singleton(conceptIdFilter));
-	}
-	
-	public SnomedDescriptionSearchRequestBuilder filterByConceptId(Collection<String> conceptIdFilter) {
-		return addOption(OptionKey.CONCEPT_ID, Collections3.toImmutableSet(conceptIdFilter));
+	public SnomedDescriptionSearchRequestBuilder filterByConceptId(Collection<String> conceptIds) {
+		return addOption(OptionKey.CONCEPT, Collections3.toImmutableSet(conceptIds));
 	}
 	
 	public SnomedDescriptionSearchRequestBuilder filterByType(String typeFilter) {

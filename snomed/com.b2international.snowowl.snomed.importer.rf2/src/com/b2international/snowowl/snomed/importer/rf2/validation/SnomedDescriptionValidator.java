@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -105,6 +105,9 @@ public class SnomedDescriptionValidator extends AbstractSnomedValidator {
 		addDefect(DefectType.DESCRIPTION_TYPE_NOT_EXIST, typeConceptNotExist);
 		addDefect(DefectType.DESCRIPTION_CASE_SIGNIFICANCE_NOT_EXIST, caseSignificanceConceptNotExist);
 		
+		descriptionIdsWithEffectivetimeStatus.clear();
+		fullySpecifiedNames.clear();
+		descriptionIdNotUnique.clear();
 		fullySpecifiedNameNotUnique.clear();
 		descriptionConceptNotExist.clear();
 		typeConceptNotExist.clear();

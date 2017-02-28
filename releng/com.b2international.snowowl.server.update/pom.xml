@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>releng-parent</artifactId>
-    <version>5.0.6-SNAPSHOT</version>
+    	<version>5.0.6-SNAPSHOT</version>
 	</parent>
 
 	<build>
@@ -28,7 +28,7 @@
 						<configuration>
 							<target>
 								<echo message="Unzipping Virgo archive..." />
-								<unzip src="assembly/virgo-tomcat-server-3.6.2.RELEASE.zip"
+								<unzip src="assembly/virgo-tomcat-server-3.7.0.M03.zip"
 									dest="target/" />
 							</target>
 						</configuration>

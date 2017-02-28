@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -45,7 +45,7 @@ public class SnomedConceptNameProvider implements ISnomedConceptNameProvider {
 	
 	@Override
 	public String getComponentLabel(final IBranchPath branchPath, final String componentId) {
-		final ISnomedDescription pt = new DescriptionRequestHelper() {
+		final SnomedDescription pt = new DescriptionRequestHelper() {
 			@Override
 			protected SnomedDescriptions execute(final SnomedDescriptionSearchRequestBuilder req) {
 				return req.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath()).execute(bus.get()).getSync(NAME_PROVIDER_TIMEOUT, TimeUnit.MILLISECONDS);

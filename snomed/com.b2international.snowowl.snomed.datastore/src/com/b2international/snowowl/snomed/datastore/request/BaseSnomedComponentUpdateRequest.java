@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRe
  * @since 4.5
  * @param <B>
  */
-public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<TransactionContext, Void> {
+public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<TransactionContext, Boolean> {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(BaseSnomedComponentUpdateRequest.class);
 
@@ -74,8 +74,8 @@ public abstract class BaseSnomedComponentUpdateRequest extends BaseRequest<Trans
 	}
 	
 	@Override
-	protected final Class<Void> getReturnType() {
-		return Void.class;
+	protected final Class<Boolean> getReturnType() {
+		return Boolean.class;
 	}
 	
 	public static String getLatestReleaseBranch(TransactionContext context) {

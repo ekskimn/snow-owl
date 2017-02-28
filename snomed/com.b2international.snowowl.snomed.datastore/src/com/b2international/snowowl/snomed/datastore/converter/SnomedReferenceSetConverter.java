@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,8 @@ import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.datastore.converter.BaseResourceConverter;
+import com.b2international.snowowl.datastore.request.BaseRevisionResourceConverter;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
-import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetImpl;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSets;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRefSetMemberSearchRequestBuilder;
@@ -33,7 +32,7 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 /**
  * @since 4.5
  */
-final class SnomedReferenceSetConverter extends BaseResourceConverter<SnomedConceptDocument, SnomedReferenceSet, SnomedReferenceSets> {
+final class SnomedReferenceSetConverter extends BaseRevisionResourceConverter<SnomedConceptDocument, SnomedReferenceSet, SnomedReferenceSets> {
 	
 	protected SnomedReferenceSetConverter(BranchContext context, Options expand, List<ExtendedLocale> locales) {
 		super(context, expand, locales);
@@ -67,14 +66,14 @@ final class SnomedReferenceSetConverter extends BaseResourceConverter<SnomedConc
 					req.setLimit(expandOptions.get("limit", Integer.class));
 				}
 
-				((SnomedReferenceSetImpl) refSet).setMembers(req.build().execute(context()));
+				refSet.setMembers(req.build().execute(context()));
 			}
 		}
 	}
 	
 	@Override
 	public SnomedReferenceSet toResource(SnomedConceptDocument entry) {
-		final SnomedReferenceSetImpl refset = new SnomedReferenceSetImpl();
+		final SnomedReferenceSet refset = new SnomedReferenceSet();
 		refset.setStorageKey(entry.getRefSetStorageKey());
 		refset.setId(entry.getId());
 		refset.setEffectiveTime(EffectiveTimes.toDate(entry.getEffectiveTime()));

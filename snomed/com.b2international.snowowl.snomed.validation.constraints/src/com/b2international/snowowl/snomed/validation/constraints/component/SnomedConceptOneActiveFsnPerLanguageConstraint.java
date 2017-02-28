@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import com.b2international.snowowl.core.validation.ComponentValidationDiagnostic
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
@@ -58,7 +58,7 @@ public class SnomedConceptOneActiveFsnPerLanguageConstraint extends ComponentVal
 		final SnomedDescriptions descriptions = SnomedRequests.prepareSearchDescription()
 			.filterByActive(true)
 			.filterByType(Concepts.FULLY_SPECIFIED_NAME)
-			.filterByConceptId(concept.getId())
+			.filterByConcept(concept.getId())
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 			.execute(getBus())
 			.getSync();
@@ -66,7 +66,7 @@ public class SnomedConceptOneActiveFsnPerLanguageConstraint extends ComponentVal
 		if (descriptions.getTotal() > 1) {
 			final Multimap<String, String> languageRefsetIdToDescriptionIdMap = HashMultimap.create(); 
 			
-			for (final ISnomedDescription description : descriptions) {
+			for (final SnomedDescription description : descriptions) {
 				final Set<String> languageRefsetIdsWithPreferredMember = Maps.filterValues(description.getAcceptabilityMap(), Predicates.equalTo(Acceptability.PREFERRED)).keySet();
 				for (final String id : languageRefsetIdsWithPreferredMember) {
 					languageRefsetIdToDescriptionIdMap.put(id, description.getId());

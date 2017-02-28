@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,21 +21,21 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.request.RevisionGetRequest;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 
 /**
  * @since 4.5
  */
-final class SnomedConceptGetRequest extends RevisionGetRequest<ISnomedConcept> {
+final class SnomedConceptGetRequest extends RevisionGetRequest<SnomedConcept> {
 
 	SnomedConceptGetRequest() {
 		super(ComponentCategory.CONCEPT);
 	}
 	
 	@Override
-	protected ISnomedConcept process(BranchContext context, IComponent<String> component, Options expand) {
+	protected SnomedConcept process(BranchContext context, IComponent<String> component, Options expand) {
 		return SnomedConverters.newConceptConverter(context, expand, locales()).convert((SnomedConceptDocument) component);
 	}
 	
@@ -45,8 +45,8 @@ final class SnomedConceptGetRequest extends RevisionGetRequest<ISnomedConcept> {
 	}
 	
 	@Override
-	protected Class<ISnomedConcept> getReturnType() {
-		return ISnomedConcept.class;
+	protected Class<SnomedConcept> getReturnType() {
+		return SnomedConcept.class;
 	}
 
 }

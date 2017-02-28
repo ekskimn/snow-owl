@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,10 +61,12 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CDOEditingContext;
 import com.b2international.snowowl.datastore.CodeSystemEntry;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
+import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
+import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
 import com.b2international.snowowl.datastore.config.IndexConfiguration;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.events.RepositoryCommitNotification;
@@ -109,7 +112,7 @@ import com.google.inject.Provider;
 public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, RepositoryContextProvider, CDOCommitInfoHandler {
 
 	private static final String REINDEX_KEY = "snowowl.reindex";
-
+	
 	private final String toolingId;
 	private final String repositoryId;
 	private final IEventBus handlers;
@@ -126,13 +129,11 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
 		mapper.registerModule(new PrimitiveCollectionModule());
 		initIndex(mapper);
-		initializeBranchingSupport(mapper, mergeMaxResults);
+		initializeBranchingSupport(mergeMaxResults);
 		initializeRequestSupport(numberOfWorkers);
-		bind(Repository.class, this);
-		bind(ObjectMapper.class, mapper);
-
 		reindex();
 		bind(Repository.class, this);
+		bind(ObjectMapper.class, mapper);
 	}
 
 	@Override
@@ -237,7 +238,7 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		return new DefaultRepositoryContext(context, repositoryId);
 	}
 
-	private void initializeBranchingSupport(final ObjectMapper mapper, int mergeMaxResults) {
+	private void initializeBranchingSupport(int mergeMaxResults) {
 		final CDOBranchManagerImpl branchManager = new CDOBranchManagerImpl(this);
 		bind(BranchManager.class, branchManager);
 		bind(BranchReplicator.class, branchManager);
@@ -269,6 +270,7 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		types.add(CodeSystemEntry.class);
 		types.add(CodeSystemVersionEntry.class);
 		types.addAll(getToolingTypes(toolingId));
+		types.add(CommitInfoDocument.class);
 		
 		final Map<String, Object> settings = initIndexSettings();
 		final IndexClient indexClient = Indexes.createIndexClient(repositoryId, mapper, new Mappings(types), settings);
@@ -393,10 +395,22 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 			final long commitTimestamp = commitInfo.getTimeStamp();
 			((CDOBranchManagerImpl) service(BranchManager.class)).handleCommit(branch.getID(), commitTimestamp);
 			// send out the currently enqueued commit notification, if there is any (import might skip sending commit notifications until a certain point)
-			final RepositoryCommitNotification notification = commitNotifications.get(commitTimestamp);
-			if (notification != null) {
-				notification.publish(events());
+			RepositoryCommitNotification notification = commitNotifications.remove(commitTimestamp);
+			if (notification == null) {
+				// make sure we always send out commit notification
+				// required in case of manual commit notifications via CDO API
+				notification = new RepositoryCommitNotification(id(),
+					CDOCommitInfoUtils.getUuid(commitInfo),
+					branch.getPathName(),
+					commitInfo.getTimeStamp(),
+					commitInfo.getUserID(),
+					commitInfo.getComment(),
+					Collections.emptyList(),
+					Collections.emptyList(),
+					Collections.emptyList());
 			}
+			notification.publish(events());
         }
 	}
+	
 }

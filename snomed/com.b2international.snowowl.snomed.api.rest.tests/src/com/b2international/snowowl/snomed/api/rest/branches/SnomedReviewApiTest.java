@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 			ReviewStatus.FAILED.toString(), 
 			ReviewStatus.STALE.toString());
 
-	private static final long POLL_INTERVAL = TimeUnit.SECONDS.toMillis(1L);
+	private static final long POLL_INTERVAL = TimeUnit.MILLISECONDS.toMillis(200L);
 	private static final long POLL_TIMEOUT = TimeUnit.SECONDS.toMillis(30L);
 	
 	private static final String DISEASE = "64572001";
@@ -251,7 +251,7 @@ public class SnomedReviewApiTest extends AbstractSnomedApiTest {
 		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
 		final String c1 = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, conceptRequestBody);
 		
-		final Map<Object, Object> descriptionRequestBody = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		final Map<Object, Object> descriptionRequestBody = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody(MODULE_SCT_CORE, "New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
 		descriptionRequestBody.put("conceptId", c1);
 		descriptionRequestBody.put("commitComment", "Created new synonym");
 		

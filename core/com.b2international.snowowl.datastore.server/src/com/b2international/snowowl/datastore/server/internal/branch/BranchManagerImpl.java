@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -185,7 +185,7 @@ public abstract class BranchManagerImpl implements BranchManager {
 	public final Collection<Branch> getBranches() {
 		final Collection<InternalBranch> values = search(Query.select(InternalBranch.class).where(Expressions.matchAll()).limit(Integer.MAX_VALUE).build());
 		initialize(values);
-		return ImmutableList.<Branch>copyOf(values);
+		return ImmutableList.copyOf(values);
 	}
 
 	private void initialize(final Collection<InternalBranch> values) {
@@ -254,6 +254,7 @@ public abstract class BranchManagerImpl implements BranchManager {
 	/**
 	 * Subclasses should override this method if they want to broadcast notifications of changed branches.
 	 * @param branchPath the subject of the notification (may not be {@code null})
+	 * @return {@code branch} (for convenience)
 	 */
 	void sendChangeEvent(final String branchPath) {
 	}
@@ -261,7 +262,7 @@ public abstract class BranchManagerImpl implements BranchManager {
 	/*package*/ final Collection<Branch> getChildren(BranchImpl parentBranch) {
 		final Collection<InternalBranch> values = search(Query.select(InternalBranch.class).where(Expressions.prefixMatch(DocumentMapping._ID, parentBranch.path() + Branch.SEPARATOR)).limit(Integer.MAX_VALUE).build());
 		initialize(values);
-		return ImmutableList.<Branch>copyOf(values);
+		return ImmutableList.copyOf(values);
 	}
 	
 	final Collection<Branch> getImmediateChildren(BranchImpl parentBranch) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -159,4 +159,13 @@ public interface Options {
 	 * @return a set view of the keys contained in this map
 	 */
 	Set<String> keySet();
+	
+	/**
+	 * Creates a new {@link OptionsBuilder} instance to build {@link Options}.
+	 * @return
+	 */
+	static OptionsBuilder builder() {
+		return OptionsBuilder.newBuilder();
+	}
+	
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ import com.b2international.snowowl.snomed.api.rest.domain.SnomedDescriptionRestU
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
@@ -58,13 +58,10 @@ import com.wordnik.swagger.annotations.ApiParam;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
 
-/**
- * @since 1.0
- */
 @Api("Descriptions")
 @RestController
 @RequestMapping(
-		produces={ AbstractRestService.SO_MEDIA_TYPE })
+		produces={ AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_JSON_VALUE })
 public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 
 	@ApiOperation(
@@ -75,22 +72,37 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 400, message = "Invalid filter config", response = RestApiError.class),
 		@ApiResponse(code = 404, message = "Branch not found", response = RestApiError.class)
 	})
-	// FIXME: Route clashes with path "/{path}/concepts/{id}/descriptions" -- Spring thinks "concepts/{id}" is part of "{path}"
-	// @RequestMapping(value="/{path:**}/descriptions", method=RequestMethod.GET)
+	@RequestMapping(value="/{path:**}/descriptions", method=RequestMethod.GET)
 	public @ResponseBody DeferredResult<SnomedDescriptions> search(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branch,
 
+			@ApiParam(value="The status to match")
+			@RequestParam(value="active", required=false) 
+			final Boolean activeFilter,
+
+			@ApiParam(value="The module identifier to match")
+			@RequestParam(value="module", required=false) 
+			final String moduleFilter,
+			
+			@ApiParam(value="The namespace to match")
+			@RequestParam(value="namespace", required=false) 
+			final String namespaceFilter,
+			
+			@ApiParam(value="The effective time to match (yyyyMMdd, exact matches only)")
+			@RequestParam(value="effectiveTime", required=false) 
+			final String effectiveTimeFilter,
+			
 			@ApiParam(value="The term to match")
 			@RequestParam(value="term", required=false) 
 			final String termFilter,
 
-			@ApiParam(value="The concept expression to match (limited ESCG allowed)")
+			@ApiParam(value="The concept ECL expression to match")
 			@RequestParam(value="concept", required=false) 
 			final String conceptFilter,
 			
-			@ApiParam(value="The type expression to match (limited ESCG allowed)")
+			@ApiParam(value="The type ECL expression to match")
 			@RequestParam(value="type", required=false) 
 			final String typeFilter,
 			
@@ -102,14 +114,6 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			@RequestParam(value="acceptability", required=false) 
 			final Acceptability acceptabilityFilter,
 			
-			@ApiParam(value="The module identifier to match")
-			@RequestParam(value="module", required=false) 
-			final String moduleFilter,
-
-			@ApiParam(value="The status to match")
-			@RequestParam(value="active", required=false) 
-			final Boolean activeFilter,
-
 			@ApiParam(value="The starting offset in the list")
 			@RequestParam(value="offset", defaultValue="0", required=false) 
 			final int offset,
@@ -139,14 +143,15 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 		return DeferredResults.wrap(
 				SnomedRequests
 					.prepareSearchDescription()
+					.filterByActive(activeFilter)
+					.filterByModule(moduleFilter)
+					.filterByNamespace(namespaceFilter)
+					.filterByConcept(conceptFilter)
 					.filterByTerm(termFilter)
-					.filterByConceptEscg(conceptFilter)
 					.filterByType(typeFilter)
 					.filterByAcceptability(acceptabilityFilter)
-					.filterByModule(moduleFilter)
-					.filterByActive(activeFilter)
 					.filterByLanguageRefSetIds(languageRefSetIds)
-					.setLocales(extendedLocales)
+					.filterByExtendedLocales(extendedLocales)
 					.setLimit(limit)
 					.setOffset(offset)
 					.setExpand(expand)
@@ -198,7 +203,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 		@ApiResponse(code = 404, message = "Branch or Description not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/descriptions/{descriptionId}", method=RequestMethod.GET)
-	public DeferredResult<ISnomedDescription> read(
+	public DeferredResult<SnomedDescription> read(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,

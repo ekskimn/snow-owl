@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -48,7 +48,7 @@ import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
-import com.b2international.snowowl.datastore.request.CommitInfo;
+import com.b2international.snowowl.datastore.request.CommitResult;
 import com.b2international.snowowl.datastore.request.RepositoryCommitRequestBuilder;
 import com.b2international.snowowl.datastore.server.domain.InternalComponentRef;
 import com.b2international.snowowl.datastore.server.domain.InternalStorageRef;
@@ -82,9 +82,9 @@ import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ConceptEnum;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
@@ -102,6 +102,7 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCr
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
+import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -175,7 +176,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	@Override
 	public ISnomedBrowserConcept getConceptDetails(final String branch, final String conceptId, final List<ExtendedLocale> locales) {
 
-		final ISnomedConcept concept = SnomedRequests.prepareGetConcept()
+		final SnomedConcept concept = SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
 				.setLocales(locales)
 				.setExpand("fsn(),pt(),descriptions(expand(inactivationProperties())),relationships(expand(type(expand(fsn())),destination(expand(fsn()))))")
@@ -183,8 +184,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.execute(bus)
 				.getSync();
 		
-		final ISnomedDescription fullySpecifiedName = concept.getFsn();
-		final ISnomedDescription preferredSynonym = concept.getPt();
+		final SnomedDescription fullySpecifiedName = concept.getFsn();
+		final SnomedDescription preferredSynonym = concept.getPt();
 		final SnomedDescriptions descriptions = concept.getDescriptions();
 		final SnomedRelationships relationships = concept.getRelationships();
 
@@ -201,7 +202,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return result;
 	}
 
-	private SnomedBrowserConcept convertConcept(ISnomedConcept concept) {
+	private SnomedBrowserConcept convertConcept(SnomedConcept concept) {
 		final SnomedBrowserConcept result = new SnomedBrowserConcept();
 		
 		result.setActive(concept.isActive());
@@ -214,18 +215,18 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return result;
 	}
 
-	private void populateInactivationFields(ISnomedConcept concept, SnomedBrowserConcept result) {
+	private void populateInactivationFields(SnomedConcept concept, SnomedBrowserConcept result) {
 		result.setInactivationIndicator(concept.getInactivationIndicator());
 		result.setAssociationTargets(concept.getAssociationTargets());
 	}
 
-	private void populatePreferredSynonym(final ISnomedDescription preferredSynonym, final SnomedBrowserConcept result) {
+	private void populatePreferredSynonym(final SnomedDescription preferredSynonym, final SnomedBrowserConcept result) {
 		if (preferredSynonym != null) {
 			result.setPreferredSynonym(preferredSynonym.getTerm());
 		}
 	}
 
-	private void populateFsn(final ISnomedDescription fullySpecifiedName, final SnomedBrowserConcept result) {
+	private void populateFsn(final SnomedDescription fullySpecifiedName, final SnomedBrowserConcept result) {
 		if (fullySpecifiedName != null) {
 			result.setFsn(fullySpecifiedName.getTerm());
 		} else {
@@ -233,10 +234,9 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}
 	}
 
-	private List<ISnomedBrowserDescription> convertDescriptions(final Iterable<ISnomedDescription> descriptions) {
+	private List<ISnomedBrowserDescription> convertDescriptions(final Iterable<SnomedDescription> descriptions) {
 		final ImmutableList.Builder<ISnomedBrowserDescription> convertedDescriptionBuilder = ImmutableList.builder();
-	
-		for (final ISnomedDescription description : descriptions) {
+		for (final SnomedDescription description : descriptions) {
 			final SnomedBrowserDescription convertedDescription = new SnomedBrowserDescription();
 	
 			final SnomedBrowserDescriptionType descriptionType = SnomedBrowserDescriptionType.getByConceptId(description.getTypeId());
@@ -266,25 +266,25 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return convertedDescriptionBuilder.build();
 	}
 
-	private List<ISnomedBrowserRelationship> convertRelationships(final Iterable<ISnomedRelationship> relationships) {
+	private List<ISnomedBrowserRelationship> convertRelationships(final Iterable<SnomedRelationship> relationships) {
 
-		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipType> types = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipType>() {
+		final LoadingCache<SnomedConcept, SnomedBrowserRelationshipType> types = CacheBuilder.newBuilder().build(new CacheLoader<SnomedConcept, SnomedBrowserRelationshipType>() {
 			@Override
-			public SnomedBrowserRelationshipType load(ISnomedConcept key) throws Exception {
+			public SnomedBrowserRelationshipType load(SnomedConcept key) throws Exception {
 				return convertBrowserRelationshipType(key);
 			}
 		});
 		
-		final LoadingCache<ISnomedConcept, SnomedBrowserRelationshipTarget> targets = CacheBuilder.newBuilder().build(new CacheLoader<ISnomedConcept, SnomedBrowserRelationshipTarget>() {
+		final LoadingCache<SnomedConcept, SnomedBrowserRelationshipTarget> targets = CacheBuilder.newBuilder().build(new CacheLoader<SnomedConcept, SnomedBrowserRelationshipTarget>() {
 			@Override
-			public SnomedBrowserRelationshipTarget load(ISnomedConcept key) throws Exception {
+			public SnomedBrowserRelationshipTarget load(SnomedConcept key) throws Exception {
 				return convertBrowserRelationshipTarget(key);
 			}
 		});
 		
 		final ImmutableList.Builder<ISnomedBrowserRelationship> convertedRelationshipBuilder = ImmutableList.builder();
 		
-		for (final ISnomedRelationship relationship : relationships) {
+		for (final SnomedRelationship relationship : relationships) {
 			final SnomedBrowserRelationship convertedRelationship = new SnomedBrowserRelationship(relationship.getId());
 			
 			convertedRelationship.setActive(relationship.isActive());
@@ -297,8 +297,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			convertedRelationship.setReleased(relationship.isReleased());
 			convertedRelationship.setSourceId(relationship.getSourceId());
 			
-			convertedRelationship.setTarget(targets.getUnchecked(relationship.getDestinationConcept()));
-			convertedRelationship.setType(types.getUnchecked(relationship.getTypeConcept()));
+			convertedRelationship.setTarget(targets.getUnchecked(relationship.getDestination()));
+			convertedRelationship.setType(types.getUnchecked(relationship.getType()));
 			
 			convertedRelationshipBuilder.add(convertedRelationship);
 		}
@@ -306,7 +306,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return convertedRelationshipBuilder.build();
 	}
 	
-	/* package */ SnomedBrowserRelationshipType convertBrowserRelationshipType(ISnomedConcept concept) {
+	/* package */ SnomedBrowserRelationshipType convertBrowserRelationshipType(SnomedConcept concept) {
 		final SnomedBrowserRelationshipType result = new SnomedBrowserRelationshipType();
 		
 		result.setConceptId(concept.getId());
@@ -320,7 +320,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		return result;
 	}
 
-	/* package */ SnomedBrowserRelationshipTarget convertBrowserRelationshipTarget(ISnomedConcept concept) {
+	/* package */ SnomedBrowserRelationshipTarget convertBrowserRelationshipTarget(SnomedConcept concept) {
 		final SnomedBrowserRelationshipTarget result = new SnomedBrowserRelationshipTarget();
 		
 		result.setActive(concept.isActive());
@@ -431,8 +431,8 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 					createBulkCommit(branch, updatedConcepts, userId, locales, commitComment)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 						.execute(bus)
-						.then(new Function<CommitInfo, Void>() {
-							@Override public Void apply(CommitInfo input) { return onSuccess(); }
+						.then(new Function<CommitResult, Void>() {
+							@Override public Void apply(CommitResult input) { return onSuccess(); }
 						})
 						.fail(new Procedure<Throwable>() {
 							@Override protected void doApply(Throwable throwable) { onFailure(throwable, "during commit"); }
@@ -662,16 +662,16 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.setLocales(locales)
 				.setExpand(expandBuilder.build());
 
-		final Promise<ISnomedConcept> concept = requestBuilder
+		final Promise<SnomedConcept> concept = requestBuilder
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
 				.execute(bus);
 		
-		final Promise<List<ISnomedBrowserParentConcept>> transformedParentConcepts = concept.then(new Function<ISnomedConcept, List<ISnomedBrowserParentConcept>>() {
+		final Promise<List<ISnomedBrowserParentConcept>> transformedParentConcepts = concept.then(new Function<SnomedConcept, List<ISnomedBrowserParentConcept>>() {
 			@Override
-			public List<ISnomedBrowserParentConcept> apply(ISnomedConcept input) {
+			public List<ISnomedBrowserParentConcept> apply(SnomedConcept input) {
 				final List<ISnomedBrowserParentConcept> convertedInput = Lists.newArrayList();
 				
-				for (final ISnomedConcept concept : input.getAncestors()) {
+				for (final SnomedConcept concept : input.getAncestors()) {
 
 					final SnomedBrowserParentConcept convertedConcept = new SnomedBrowserParentConcept(); 
 
@@ -763,7 +763,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			public List<ISnomedBrowserChildConcept> apply(SnomedConcepts input) {
 				final List<ISnomedBrowserChildConcept> convertedInput = Lists.newArrayList();
 				
-				for (final ISnomedConcept concept : input) {
+				for (final SnomedConcept concept : input) {
 
 					final SnomedBrowserChildConcept convertedConcept = new SnomedBrowserChildConcept(); 
 
@@ -877,7 +877,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				final List<ISnomedBrowserDescriptionResult> convertedInput = Lists.newArrayList();
 				final Cache<String, SnomedBrowserDescriptionResultDetails> detailCache = CacheBuilder.newBuilder().build();
 				
-				for (final ISnomedDescription description : input) {
+				for (final SnomedDescription description : input) {
 					
 					final SnomedBrowserDescriptionResult convertedDescription = new SnomedBrowserDescriptionResult();
 					convertedDescription.setActive(description.isActive());
@@ -890,7 +890,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 							
 							@Override
 							public SnomedBrowserDescriptionResultDetails call() throws Exception {
-								final ISnomedConcept concept = description.getConcept();
+								final SnomedConcept concept = description.getConcept();
 								final SnomedBrowserDescriptionResultDetails details = new SnomedBrowserDescriptionResultDetails();
 								
 								if (concept != null) {
@@ -954,7 +954,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				final SnomedBrowserConstant constant = new SnomedBrowserConstant();
 				constant.setConceptId(conceptId);
 				
-				final ISnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(conceptId, locales);
+				final SnomedDescription fullySpecifiedName = descriptionService.getFullySpecifiedName(conceptId, locales);
 				if (fullySpecifiedName != null) {
 					constant.setFsn(fullySpecifiedName.getTerm());
 				} else {

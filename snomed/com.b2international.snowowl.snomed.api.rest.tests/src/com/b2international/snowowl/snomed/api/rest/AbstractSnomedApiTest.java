@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 package com.b2international.snowowl.snomed.api.rest;
-
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 
 import java.util.UUID;
 
@@ -36,7 +34,7 @@ public abstract class AbstractSnomedApiTest {
 	 * The context-relative base URL for the administrative controller. 
 	 */
 	protected static String ADMIN_API = "/admin";
-
+	
 	protected static final String DISEASE = "64572001";
 	protected static final String BLEEDING = "50960005";
 	protected static final String TEMPORAL_CONTEXT = "410510008";

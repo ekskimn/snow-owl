@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipSe
 /**
  * @since 4.5
  */
-public final class SnomedRelationshipSearchRequestBuilder extends SnomedSearchRequestBuilder<SnomedRelationshipSearchRequestBuilder, SnomedRelationships> {
+public final class SnomedRelationshipSearchRequestBuilder extends SnomedComponentSearchRequestBuilder<SnomedRelationshipSearchRequestBuilder, SnomedRelationships> {
 
 	SnomedRelationshipSearchRequestBuilder() {
 		super();
@@ -59,8 +59,20 @@ public final class SnomedRelationshipSearchRequestBuilder extends SnomedSearchRe
 		return addOption(OptionKey.CHARACTERISTIC_TYPE, characteristicType);
 	}
 	
-	public SnomedRelationshipSearchRequestBuilder filterByGroup(int group) {
-		return addOption(OptionKey.GROUP, group);
+	public SnomedRelationshipSearchRequestBuilder filterByCharacteristicTypes(Collection<String> characteristicType) {
+		return addOption(OptionKey.CHARACTERISTIC_TYPE, characteristicType);
+	}
+	
+	public SnomedRelationshipSearchRequestBuilder filterByGroup(Integer group) {
+		return filterByGroup(group, group);
+	}
+	
+	public SnomedRelationshipSearchRequestBuilder filterByUnionGroup(Integer unionGroup) {
+		return addOption(OptionKey.UNION_GROUP, unionGroup);
+	}
+	
+	public SnomedRelationshipSearchRequestBuilder filterByGroup(Integer groupMin, Integer groupMax) {
+		return addOption(OptionKey.GROUP_MIN, groupMin).addOption(OptionKey.GROUP_MAX, groupMax);
 	}
 	
 	@Override

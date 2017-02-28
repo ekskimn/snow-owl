@@ -27,11 +27,5 @@
            class="com.b2international.snowowl.dsl.EscgBootstrap">
      </bootstrapFragment>
   </extension>
-  <extension
-        point="com.b2international.snowowl.core.bootstrapFragments">
-     <bootstrapFragment
-           class="com.b2international.snowowl.dsl.EscgBootstrap">
-     </bootstrapFragment>
-  </extension>
 
 </plugin>

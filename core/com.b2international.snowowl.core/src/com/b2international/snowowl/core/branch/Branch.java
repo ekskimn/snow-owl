@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -267,6 +267,15 @@ public interface Branch extends Deletable, MetadataHolder, Serializable {
 	 * @deprecated - use the new {@link Branch} interface instead
 	 */
 	IBranchPath branchPath();
+
+	/**
+	 * Returns a new version of this branch with updated {@link Metadata}.
+	 * 
+	 * @param metadata
+	 * @return
+	 */
+	@Override
+	Branch withMetadata(Metadata metadata);
 
 	/**
 	 * Updates the branch with the specified properties. Currently {@link Metadata} supported only.

@@ -17,21 +17,23 @@ package com.b2international.snowowl.datastore.request;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.commons.options.OptionsBuilder;
-import com.b2international.snowowl.core.domain.BranchContext;
+import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.Request;
 
 /**
- * @since 4.6
+ * @since 5.2
  */
-public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBuilder<B, R>, R> extends BaseRevisionIndexReadRequestBuilder<B, R> {
+public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBuilder<B, R>, R> extends BaseIndexReadRequestBuilder<B, R> {
 
 	private Options expand = OptionsBuilder.newBuilder().build();
 	private List<ExtendedLocale> locales = Collections.emptyList();
+<<<<<<< HEAD
 	
 	/**
 	 * Sets response locales, in order of preference.
@@ -42,20 +44,24 @@ public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBu
 	 * @param locales the locales to consider when returning content
 	 * @return this builder instance (for fluent API)
 	 */
+=======
+	private Set<String> fields = Collections.emptySet();
+
+>>>>>>> b2i-origin/master
 	public final B setLocales(List<ExtendedLocale> locales) {
 		if (!CompareUtils.isEmpty(locales)) {
 			this.locales = locales;
 		}
 		return getSelf();
 	}
-	
+
 	public final B setExpand(String expand) {
 		if (!CompareUtils.isEmpty(expand)) {
 			this.expand = ExpandParser.parse(expand);
 		}
 		return getSelf();
 	}
-	
+
 	public final B setExpand(Options expand) {
 		if (!CompareUtils.isEmpty(expand)) {
 			this.expand = expand;
@@ -63,14 +69,22 @@ public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBu
 		return getSelf();
 	}
 	
+	public final B setFields(Set<String> fields) {
+		if (!CompareUtils.isEmpty(fields)) {
+			this.fields = fields;
+		}
+		return getSelf();
+	}
+
 	@Override
-	protected final Request<BranchContext, R> doBuild() {
-		final BaseResourceRequest<BranchContext, R> req = create();
+	protected Request<RepositoryContext, R> doBuild() {
+		final BaseResourceRequest<RepositoryContext, R> req = create();
 		req.setLocales(locales);
 		req.setExpand(expand);
+		req.setFields(fields);
 		return req;
 	}
 
-	protected abstract BaseResourceRequest<BranchContext, R> create();
-	
+	protected abstract BaseResourceRequest<RepositoryContext, R> create();
+
 }

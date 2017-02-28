@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,12 +57,12 @@ public interface TransactionContext extends BranchContext, AutoCloseable {
 	 *            - the owner of the commit
 	 * @param commitComment
 	 *            - a message for the commit
-	 * @param parentLockContextDescription 
+	 * @param parentContextDescription 
 	 *            - the description of the lock context already held, for nested locking
 	 * 
 	 * @return - the timestamp of the successful commit
 	 */
-	long commit(String userId, String commitComment, String parentLockContextDescription);
+	long commit(String userId, String commitComment, String parentContextDescription);
 
 	/**
 	 * Rolls back any changes the underlying transaction has since its creation.

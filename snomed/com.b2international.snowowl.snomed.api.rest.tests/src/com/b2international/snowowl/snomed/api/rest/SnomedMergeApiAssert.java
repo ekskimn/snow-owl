@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -114,10 +114,15 @@ public abstract class SnomedMergeApiAssert {
 				.put("languageCode", "en")
 				.put("acceptability", PREFERRED_ACCEPTABILITY_MAP)
 				.build();
+		
+		final Map<?, ?> isa = ImmutableMap.builder()
+				.put("typeId", Concepts.IS_A)
+				.put("destinationId", Concepts.ROOT_CONCEPT)
+				.build();
 
 		final ImmutableMap.Builder<String, Object> conceptBuilder = ImmutableMap.<String, Object>builder()
 				.put("commitComment", "New concept")
-				.put("parentId", Concepts.ROOT_CONCEPT)
+				.put("relationships", ImmutableList.of(isa))
 				.put("moduleId", Concepts.MODULE_SCT_CORE)
 				.put("descriptions", ImmutableList.of(fsnDescription, ptDescription));
 

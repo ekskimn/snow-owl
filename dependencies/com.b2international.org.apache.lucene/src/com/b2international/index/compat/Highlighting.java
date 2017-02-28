@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,7 +104,7 @@ public class Highlighting {
 				final String filterToken = itr.next();
 				if (labelToken.startsWith(filterToken)) {
 					// XXX: the same segment of text may be selected for highlighting multiple times, revisit if this causes problems
-					elementMatchRegions.add(new int[] { startIndex, startIndex + filterToken.length() - 1 });
+					elementMatchRegions.add(new int[] { startIndex, startIndex + filterToken.length() });
 				}
 			}
 			

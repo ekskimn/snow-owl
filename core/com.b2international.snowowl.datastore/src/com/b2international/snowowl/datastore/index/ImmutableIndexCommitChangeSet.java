@@ -17,6 +17,7 @@ package com.b2international.snowowl.datastore.index;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -27,6 +28,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 
 /**
  * @since 5.0
@@ -114,12 +116,15 @@ public final class ImmutableIndexCommitChangeSet implements IndexCommitChangeSet
 	@Override
 	public void apply(RevisionWriter index) throws IOException {
 		for (final Class<?> type : rawDeletions.keySet()) {
-			final Map<Class<?>, Set<String>> map = ImmutableMap.<Class<?>, Set<String>>of(type, ImmutableSet.copyOf(rawDeletions.get(type)));
+			final Map<Class<?>, Set<String>> map = Collections.<Class<?>, Set<String>> singletonMap(type,
+					Sets.newHashSet(rawDeletions.get(type)));
 			index.writer().removeAll(map);
 		}
 		
 		for (Entry<String, Object> doc : rawMappings.entrySet()) {
-			index.writer().put(doc.getKey(), doc.getValue());
+			if (!rawDeletions.containsValue(doc.getKey())) {
+				index.writer().put(doc.getKey(), doc.getValue());
+			}
 		}
 
 		final Multimap<Class<? extends Revision>, Long> copiedRevision = ImmutableMultimap.copyOf(revisionDeletions);

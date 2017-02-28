@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,33 +23,18 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertMergeJobFailsWithConflict;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertComponentCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptCanBeDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptCanBeUpdated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertConceptNotExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionCanBeDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionCanBeUpdated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertDescriptionNotExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipCanBeDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipCanBeUpdated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.assertRelationshipNotExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.createAttributesMap;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.symbolicNameMap;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.*;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentUpdatedWithStatus;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.whenRetrievingConcept;
-import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.startsWith;
 
 import java.util.Collections;
 import java.util.List;
@@ -66,6 +51,7 @@ import com.b2international.snowowl.core.merge.ConflictingAttribute;
 import com.b2international.snowowl.core.merge.ConflictingAttributeImpl;
 import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
 import com.b2international.snowowl.core.merge.MergeConflictImpl;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
@@ -955,5 +941,21 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		// after the rebase verify that the two components have the modified values
 		assertComponentHasProperty(childBranch, SnomedComponentType.RELATIONSHIP, symbolicNameMap.get("R1"), "group", 99);
 		assertDescriptionNotExists(childBranch, "D1");
+	}
+	
+	@Test
+	@Ignore("Currently always fails due to merge policy")
+	public void rebaseChangedConceptOnBranchDeletedOnParent() {
+		mergeNewConceptForward();
+
+		final Map<?, ?> changeOnBranch = ImmutableMap.builder()
+				.put("definitionStatus", DefinitionStatus.FULLY_DEFINED)
+				.put("commitComment", "Changed definition status on parent")
+				.build();
+
+		assertConceptCanBeUpdated(testBranchPath, "C1", changeOnBranch);
+		assertConceptCanBeDeleted(testBranchPath.getParent(), "C1");
+
+		assertBranchCanBeRebased(testBranchPath, "Rebase concept change over deletion");
 	}
 }

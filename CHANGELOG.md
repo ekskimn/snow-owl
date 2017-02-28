@@ -1,6 +1,118 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 5.6.0
+
+### Added
+- GET /{path}/relationships endpoint to search SNOMED CT Relationship components
+- Namespace filter support to
+ * GET /{path}/descriptions
+ * GET /{path}/relationships
+- EffectiveTime filter support to
+ * GET /{path}/concepts
+ * GET /{path}/descriptions
+ * GET /{path}/relationships
+- ECL expression support to `GET /{path}/descriptions` endpoint's concept and type filter 
+- `subclassDefinitionStatus` property to `SnomedConceptSearchRequest`
+- `referenceSet` expand option to GET /{path}/concepts
+
+### Bugs
+- Fixed NPE when using only delimiter characters in `termFilter` query parameter
+- Server now fails to start if multiple terminology repositories have the same storageKey namespace ID assigned
+- Source and target effective time values are now indexed on module dependency reference set member index documents
+
+## 5.5.0
+
+### Added
+- Support for inactive component creation. See endpoints:
+ * POST /{path}/concepts
+ * POST /{path}/descriptions
+ * POST /{path}/relationships
+ * POST /{path}/members
+- Support the complete SNOMED CT Identifier functionality via a dedicated Java API (`SnomedRequests.identifiers()`)
+
+### Changed
+- SnomedDescription REST representation changes
+ * Changed `acceptabilityMap` to `acceptability`
+ * Changed `descriptionInactivationIndicator` to `inactivationIndicator`
+- SnomedRelationship REST representation changes
+ * Changed `sourceConcept` to `source`
+ * Changed `typeConcept` to `type`
+ * Changed `destinationConcept` to `destination`
+ * Removed `refinability` property
+- POST /{path}/concepts
+ * Added support for relationship creation as part of concept creation
+ * Added support for member creation as part of concept creation
+- POST /{path}/concepts/{id}/updates
+ * Added support for description updates
+ * Added support for relationship updates
+ * Added support for member updates
+- Swagger API
+ * Replaced ISnomed* types with the corresponding Snomed* type
+
+### Removed
+- The following endpoints have been completely removed from the REST API (equivalent requests can be initiated via expansion parameters, see GET /{path}/concepts endpoint)
+ * GET /{path}/concepts/ancestors
+ * GET /{path}/concepts/descriptions
+ * GET /{path}/concepts/descendants
+ * GET /{path}/concepts/outbound-relationships
+ * GET /{path}/concepts/inbound-relationships
+ * GET /{path}/concepts/pt
+ * GET /{path}/concepts/fsn
+- Removed `defaultModule` configuration option (requests should specify the desired module via `moduleId` parameter)
+- Removed `defaultNamespace` configuration option (requests should specify the desired namespace via `namespaceId` parameter)
+- Removed `enforceNamespace` configuration option
+
+## 5.4.0
+
+### Added
+- Support for Expression Constraint Language v1.1.1 has been added, see http://snomed.org/ecl for details
+- Support BigDecimal property mapping in index API
+
+### Changed
+- GET /{path}/concepts now supports filtering by ECL expressions via `ecl` query parameter
+- Deprecated `escg` filter on GET /concepts endpoint. Use the `ecl` query parameter instead
+- Snow Owl now uses sequential SNOMED CT identifier generation instead of random
+
+### Bugs
+- Fixed empty task branch issue when an exception occurs during rebase (rebase now works on a temporary branch until it completes and renames the branch to the original name using CDO branch rename functionality, see https://bugs.eclipse.org/bugs/show_bug.cgi?id=422145) (https://github.com/b2ihealthcare/snow-owl/pull/118)
+- Fixed missing non-stated relationship file from delta export (https://github.com/b2ihealthcare/snow-owl/pull/119)
+- Request new identifiers in bulk during bulk component updates (https://github.com/b2ihealthcare/snow-owl/pull/121)
+- Improved performance and memory usage of SNOMED CT RF2 importer (https://github.com/b2ihealthcare/snow-owl/pull/122)
+
+## 5.3.0
+
+### Changed
+- SNOMED CT Concept, Description and Relationship index schema changes
+ * Added `referringRefSets` field to all three main SNOMED CT component documents
+ * Added `referringMappingRefSets` field to all three main SNOMED CT component documents
+ * Non-mapping reference set identifiers that reference a given component will be indexed in the `referringRefSets`
+ * Mapping reference set identifiers that reference a given component will be indexed in the `referringMappingRefSets`
+ * NOTE: to be able to use these fields reindex `snomedStore` repository using the `snowowl reindex snomedStore` command after dropping the index directory of it
+
+### Bugs
+- Fixed review change calculation bug, deleted components will mark their container component changed by default
+- Fixed bug with new/dirty reference set (re)indexing without concept changes
+- Handle unordered list index calculations properly during CDO revision compare
+
+## 5.2.0
+
+### Added
+- New Java API to get/search commit information in a repository. See class `com.b2international.snowowl.datastore.request.CommitInfoRequests`. To make the new API work, you have to reindex your dataset using the `snowowl reindex` console command
+
+### Changed
+- SNOMED CT RF2 importer now uses the same change processing/indexing as regular commits
+- Support DOI score indexing during change processing (aka when committing changes)
+
+### Bugs
+- Fixed incorrect calculation of stated/inferred parent/ancestor information on SNOMED CT Concept documents in case of status change
+
+## 5.1.0
+
+### Java 8 support
+
+Snow Owl is now using Java 8 both compile time and runtime. Make sure your execution (and development, if you are developing custom plug-ins for Snow Owl) environment supports and uses Java 8. From 5.1.0, the minimum required Java version is 1.8.0 update 102. 
+
 ## 5.0.0
 
 ### Breaking changes

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import com.b2international.snowowl.datastore.utils.ComponentUtils2;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedPackage;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
@@ -87,9 +87,9 @@ public class SnomedDescriptionLookupService extends AbstractLookupService<String
 					.setComponentId(id)
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-					.then(new Function<ISnomedDescription, SnomedDescriptionIndexEntry>() {
+					.then(new Function<SnomedDescription, SnomedDescriptionIndexEntry>() {
 						@Override
-						public SnomedDescriptionIndexEntry apply(ISnomedDescription input) {
+						public SnomedDescriptionIndexEntry apply(SnomedDescription input) {
 							return SnomedDescriptionIndexEntry.builder(input).build();
 						}
 					}).getSync();

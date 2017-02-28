@@ -16,6 +16,7 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateR
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.collect.Multimap;
 
@@ -42,19 +43,26 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 	}
 
 	@Override
-	public SnomedConceptCreateRequest createInput(final SnomedBrowserConcept newConcept, final InputFactory inputFactory) {
-		final SnomedConceptCreateRequestBuilder builder = SnomedRequests.prepareNewConcept()
-				.setModuleId(getModuleOrDefault(newConcept))
-				.setDefinitionStatus(newConcept.getDefinitionStatus())
-				.setParent(getParentId(newConcept));
+	public SnomedConceptCreateRequest createInput(final String branchPath, SnomedBrowserConcept concept, InputFactory inputFactory) {
+		final SnomedConceptCreateRequestBuilder builder = SnomedRequests
+				.prepareNewConcept()
+				.setModuleId(getModuleOrDefault(concept))
+				.setDefinitionStatus(concept.getDefinitionStatus());
+				.setParent(getParentId(concept));
 		
-		final String conceptId = newConcept.getConceptId();
+		final String conceptId = concept.getConceptId();
 		if (conceptId != null) {
 			builder.setId(conceptId);
+		} else {
+			builder.setIdFromNamespace(getDefaultNamespace());
 		}
 
-		for (final ISnomedBrowserDescription newDescription : newConcept.getDescriptions()) {
-			builder.addDescription(inputFactory.createComponentInput(newDescription, SnomedDescriptionCreateRequest.class));
+		for (ISnomedBrowserRelationship relationship : concept.getRelationships()) {
+			builder.addRelationship(inputFactory.createComponentInput(branchPath, relationship, SnomedRelationshipCreateRequest.class));
+		}
+		
+		for (ISnomedBrowserDescription description : concept.getDescriptions()) {
+			builder.addDescription(inputFactory.createComponentInput(branchPath, description, SnomedDescriptionCreateRequest.class));
 		}
 
 		// TODO remove cast, use only Request interfaces with proper type

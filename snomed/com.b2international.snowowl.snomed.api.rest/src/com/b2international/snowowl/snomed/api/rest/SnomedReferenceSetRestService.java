@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -169,12 +169,7 @@ public class SnomedReferenceSetRestService extends AbstractSnomedRestService {
 			final Principal principal) {
 		
 		final SnomedRefSetRestInput change = body.getChange();
-		
-		final String createdRefSetId = SnomedRequests
-			.prepareNewRefSet()
-			.setIdentifierConcept(change.toRequestBuilder())
-			.setType(change.getType())
-			.setReferencedComponentType(change.getReferencedComponentType())
+		final String createdRefSetId = change.toRequestBuilder() 
 			.build(repositoryId, branchPath, principal.getName(), body.getCommitComment())
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS)
