@@ -20,7 +20,7 @@ import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -49,7 +49,7 @@ public class SnomedMrcmService {
 				.setComponentId(conceptId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-				.then(ISnomedConcept.GET_ANCESTORS) // XXX: includes inferred and stated concepts
+				.then(SnomedConcept.GET_ANCESTORS) // XXX: includes inferred and stated concepts
 				.getSync();
 		
 		Collection<SnomedConstraintDocument> constraintDocuments = SnomedRequests.prepareGetApplicablePredicates(branch, selfIds, parentIds, refSetIds).getSync();
@@ -119,9 +119,9 @@ public class SnomedMrcmService {
 				.setComponentId(attributeId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
-				.then(new Function<ISnomedConcept, Collection<String>>() {
+				.then(new Function<SnomedConcept, Collection<String>>() {
 					@Override
-					public Collection<String> apply(ISnomedConcept input) {
+					public Collection<String> apply(SnomedConcept input) {
 						Set<String> result = Sets.newHashSet();
 						result.addAll(LongToStringFunction.copyOf(Longs.asList(input.getParentIds())));
 						result.addAll(LongToStringFunction.copyOf(Longs.asList(input.getAncestorIds())));

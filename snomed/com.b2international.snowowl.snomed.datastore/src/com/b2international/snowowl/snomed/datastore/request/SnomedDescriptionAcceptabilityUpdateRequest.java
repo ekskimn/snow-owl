@@ -33,6 +33,7 @@ import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.BaseRequest;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Description;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;

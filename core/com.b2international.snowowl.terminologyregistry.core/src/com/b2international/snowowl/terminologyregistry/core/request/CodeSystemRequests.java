@@ -19,34 +19,11 @@ package com.b2international.snowowl.terminologyregistry.core.request;
  * @since 4.7
  */
 public class CodeSystemRequests {
-<<<<<<< HEAD
-	
-=======
 
->>>>>>> b2i-origin/master
 	private CodeSystemRequests() {}
 	
 	public static CodeSystemCreateRequestBuilder prepareNewCodeSystem() {
 		return new CodeSystemCreateRequestBuilder();
-<<<<<<< HEAD
-	}
-
-	public static CodeSystemUpdateRequestBuilder prepareUpdateCodeSystem(final String uniqueId) {
-		return new CodeSystemUpdateRequestBuilder(uniqueId);
-	}
-
-	public static CodeSystemGetRequestBuilder prepareGetCodeSystem() {
-		return new CodeSystemGetRequestBuilder();
-	}
-
-	public static CodeSystemSearchRequestBuilder prepareSearchCodeSystem() {
-		return new CodeSystemSearchRequestBuilder();
-	}
-
-	public static CodeSystemVersionSearchRequestBuilder prepareSearchCodeSystemVersion() {
-		return new CodeSystemVersionSearchRequestBuilder();
-	}
-=======
 	}
 
 	public static CodeSystemUpdateRequestBuilder prepareUpdateCodeSystem(final String uniqueId) {
@@ -65,5 +42,4 @@ public class CodeSystemRequests {
 		return new CodeSystemVersionSearchRequestBuilder();
 	}
 	
->>>>>>> b2i-origin/master
 }

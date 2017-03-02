@@ -10,7 +10,7 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.datastore.server.domain.ComponentRef;
 import com.b2international.snowowl.snomed.api.impl.domain.ISnomedConceptMin;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 
 public class SnomedServiceHelper {
@@ -26,9 +26,9 @@ public class SnomedServiceHelper {
 		for (ISnomedConceptMin conceptMin : concepts) {
 			allConceptIds.add(conceptMin.getId());
 		}
-		final Map<String, ISnomedDescription> fsns = descriptionService.getFullySpecifiedNames(allConceptIds, extendedLocales);
+		final Map<String, SnomedDescription> fsns = descriptionService.getFullySpecifiedNames(allConceptIds, extendedLocales);
 		for (ISnomedConceptMin conceptMin : concepts) {
-			final ISnomedDescription iSnomedDescription = fsns.get(conceptMin.getId());
+			final SnomedDescription iSnomedDescription = fsns.get(conceptMin.getId());
 			if (iSnomedDescription != null && iSnomedDescription.getTerm() != null) {
 				conceptMin.setTerm(iSnomedDescription.getTerm());
 			} else {

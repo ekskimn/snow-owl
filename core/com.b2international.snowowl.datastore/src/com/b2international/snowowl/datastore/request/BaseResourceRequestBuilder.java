@@ -33,7 +33,7 @@ public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBu
 
 	private Options expand = OptionsBuilder.newBuilder().build();
 	private List<ExtendedLocale> locales = Collections.emptyList();
-<<<<<<< HEAD
+	private Set<String> fields = Collections.emptySet();
 	
 	/**
 	 * Sets response locales, in order of preference.
@@ -44,10 +44,6 @@ public abstract class BaseResourceRequestBuilder<B extends BaseResourceRequestBu
 	 * @param locales the locales to consider when returning content
 	 * @return this builder instance (for fluent API)
 	 */
-=======
-	private Set<String> fields = Collections.emptySet();
-
->>>>>>> b2i-origin/master
 	public final B setLocales(List<ExtendedLocale> locales) {
 		if (!CompareUtils.isEmpty(locales)) {
 			this.locales = locales;

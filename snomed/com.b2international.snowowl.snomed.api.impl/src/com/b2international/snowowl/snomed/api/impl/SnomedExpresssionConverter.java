@@ -19,7 +19,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpre
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionAttribute;
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionGroup;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
@@ -80,8 +80,8 @@ public class SnomedExpresssionConverter {
 			.setExpand("fsn()")
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 			.execute(getServiceForClass(IEventBus.class))
-			.then(new Function<ISnomedConcept, SnomedExpressionConcept>() {
-				@Override public SnomedExpressionConcept apply(ISnomedConcept input) {
+			.then(new Function<SnomedConcept, SnomedExpressionConcept>() {
+				@Override public SnomedExpressionConcept apply(SnomedConcept input) {
 					final SnomedExpressionConcept expressionConcept = new SnomedExpressionConcept(input.getId(), input.getDefinitionStatus().isPrimitive());
 					expressionConcept.setTerm(input.getFsn().getTerm());
 					return expressionConcept;

@@ -28,13 +28,16 @@ import org.eclipse.emf.cdo.server.StoreThreadLocal;
 
 import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongSet;
+import com.b2international.commons.StringUtils;
 import com.b2international.commons.concurrent.equinox.ForkJoinUtils;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
+import com.b2international.index.revision.Revision;
 import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.api.ComponentUtils;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
@@ -58,6 +61,7 @@ import com.b2international.snowowl.snomed.datastore.index.change.DescriptionChan
 import com.b2international.snowowl.snomed.datastore.index.change.RefSetMemberChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.change.RelationshipChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;

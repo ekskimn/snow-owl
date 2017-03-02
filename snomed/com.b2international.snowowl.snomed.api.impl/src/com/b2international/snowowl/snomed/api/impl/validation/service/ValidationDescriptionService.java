@@ -26,9 +26,9 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.SnomedConstants.LanguageCodeReferenceSetIdentifierMapping;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationSnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -132,9 +132,9 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			String languageCode = LanguageCodeReferenceSetIdentifierMapping.getLanguageCode(languageRefsetId);
 			locales.add(new ExtendedLocale(languageCode, null, languageRefsetId));
 		}
-		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds,
+		Map<String, SnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds,
 				locales);
-		for (ISnomedDescription description : fullySpecifiedNames.values()) {
+		for (SnomedDescription description : fullySpecifiedNames.values()) {
 			fsns.add(description.getTerm());
 		}
 		return fsns;
@@ -150,7 +150,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				.getSync();
 
 		Set<Description> matches = new HashSet<>();
-		for (ISnomedDescription iSnomedDescription : descriptions) {
+		for (SnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(exactTerm)) {
 				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 			}
@@ -168,7 +168,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				.getSync();
 
 		Set<Description> matches = new HashSet<>();
-		for (ISnomedDescription iSnomedDescription : descriptions) {
+		for (SnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(exactTerm)) {
 				matches.add(new ValidationSnomedDescription(iSnomedDescription, iSnomedDescription.getConceptId()));
 			}
@@ -187,15 +187,15 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 				.execute(bus)
 				.getSync();
 		
-		for (ISnomedConcept rootConcept : rootConcepts) {
-			for (ISnomedConcept childConcept : rootConcept.getDescendants()) {
+		for (SnomedConcept rootConcept : rootConcepts) {
+			for (SnomedConcept childConcept : rootConcept.getDescendants()) {
 				hierarchyRootIds.add(childConcept.getId());
 			}
 		}
 		logger.info("Cached " + hierarchyRootIds.size() + " hierarchy root ids for validation");
 	}
 
-	private String getHierarchyIdForConcept(ISnomedConcept concept) {
+	private String getHierarchyIdForConcept(SnomedConcept concept) {
 
 		// if concept null, return null
 		if (concept == null) {
@@ -215,7 +215,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		}
 
 		// otherwise check ancestors
-		for (ISnomedConcept ancestor : concept.getAncestors()) {
+		for (SnomedConcept ancestor : concept.getAncestors()) {
 			if (hierarchyRootIds.contains(ancestor.getId())) {
 				return ancestor.getId().toString();
 			}
@@ -249,8 +249,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 		// filter by exact match and save concept ids
 		Set<String> matchingConceptIds = new HashSet<>();
-		Set<ISnomedDescription> matchesInSnomed = new HashSet<>();
-		for (ISnomedDescription iSnomedDescription : descriptions) {
+		Set<SnomedDescription> matchesInSnomed = new HashSet<>();
+		for (SnomedDescription iSnomedDescription : descriptions) {
 			if (iSnomedDescription.getTerm().equals(description.getTerm())) {
 				matchesInSnomed.add(iSnomedDescription);
 				matchingConceptIds.add(iSnomedDescription.getConceptId());
@@ -286,7 +286,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 
 			// use id to retrieve concept for hierarchy detection
-			ISnomedConcept hierarchyConcept = null;
+			SnomedConcept hierarchyConcept = null;
 
 			try {
 				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
@@ -304,11 +304,11 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			}
 
 			// retrieve active concepts from saved concept ids
-			List<ISnomedConcept> conceptsWithAncestors = new ArrayList<>();
+			List<SnomedConcept> conceptsWithAncestors = new ArrayList<>();
 			try {
 
 				for (String conceptId : matchingConceptIds) {
-					ISnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
+					SnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
 							.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 							.execute(bus)
@@ -319,8 +319,8 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 
 				// cycle over matching descriptions and compare to concepts with
 				// ancestors
-				for (ISnomedDescription iSnomedDescription : matchesInSnomed) {
-					for (ISnomedConcept iSnomedConcept : conceptsWithAncestors) {
+				for (SnomedDescription iSnomedDescription : matchesInSnomed) {
+					for (SnomedConcept iSnomedConcept : conceptsWithAncestors) {
 						if (iSnomedConcept.getId().equals(iSnomedDescription.getConceptId())) {
 							if (getHierarchyIdForConcept(hierarchyConcept)
 									.equals(getHierarchyIdForConcept(iSnomedConcept))) {

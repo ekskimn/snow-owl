@@ -128,10 +128,6 @@ public class Expressions {
 		return new HasParentPredicate(parentType, expression);
 	}
 	
-	public static Expression hasParent(Class<?> parentType, Expression expression) {
-		return new HasParentPredicate(parentType, expression);
-	}
-
 	public static Expression matchRange(String fieldName, Long from, Long to) {
 		return matchRange(fieldName, from, to, true, true);
 	}

@@ -33,7 +33,7 @@ import com.b2international.snowowl.dsl.scg.Group;
 import com.b2international.snowowl.dsl.scg.ScgFactory;
 import com.b2international.snowowl.semanticengine.utils.AttributeCollectionComparator;
 import com.b2international.snowowl.semanticengine.utils.SemanticUtils;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.google.common.collect.Ordering;
 
 /**
@@ -221,9 +221,9 @@ public class ScgExpressionNormalFormGenerator implements ExpressionNormalFormGen
 		return attributes;
 	}
 	
-	private Collection<Concept> wrapConceptMinis(Collection<ISnomedConcept> filteredPrimitiveSuperTypes) {
+	private Collection<Concept> wrapConceptMinis(Collection<SnomedConcept> filteredPrimitiveSuperTypes) {
 		List<Concept> concepts = new ArrayList<Concept>();
-		for (ISnomedConcept conceptMini : filteredPrimitiveSuperTypes) {
+		for (SnomedConcept conceptMini : filteredPrimitiveSuperTypes) {
 			Concept concept = ScgFactory.eINSTANCE.createConcept();
 			concept.setId(conceptMini.getId());
 			concepts.add(concept);

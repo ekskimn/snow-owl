@@ -40,7 +40,7 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;

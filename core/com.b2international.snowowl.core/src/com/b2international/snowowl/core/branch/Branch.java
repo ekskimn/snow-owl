@@ -243,7 +243,7 @@ public interface Branch extends Deletable, MetadataHolder, Serializable {
 	 * 
 	 * @return a {@link Collection} of child {@link Branch} instances or an empty collection, never <code>null</code>.
 	 */
-	Collection<? extends Branch> children();
+	Collection<Branch> children();
 	
 	/**
 	 * Returns all immediate child branches created on this {@link Branch}.

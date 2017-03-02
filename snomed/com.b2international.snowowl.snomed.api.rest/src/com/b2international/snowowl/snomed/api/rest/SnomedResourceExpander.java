@@ -15,10 +15,9 @@ import com.b2international.snowowl.snomed.api.domain.classification.IRelationshi
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
 import com.b2international.snowowl.snomed.api.rest.domain.ExpandableRelationshipChange;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedConceptMini;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 
@@ -74,7 +73,7 @@ public class SnomedResourceExpander {
 			}			
 		}
 		
-		Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
+		Map<String, SnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
 		for (IRelationshipChange iChange : changesExtended) {
 			ExpandableRelationshipChange change = (ExpandableRelationshipChange) iChange;
 			if (expandSource) {
@@ -103,14 +102,14 @@ public class SnomedResourceExpander {
 				final DescriptionService descriptionService = new DescriptionService(bus, branchPath);
 
 				Set<String> conceptIds = FluentIterable.from(concepts.getItems())
-						.transform(new Function<ISnomedConcept, String>() {
-							@Override public String apply(ISnomedConcept input) {
+						.transform(new Function<SnomedConcept, String>() {
+							@Override public String apply(SnomedConcept input) {
 								return input.getId();
 							}})
 						.toSet();
 				
-				Map<String, ISnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
-				for (ISnomedConcept iSnomedConcept : concepts) {
+				Map<String, SnomedDescription> fullySpecifiedNames = descriptionService.getFullySpecifiedNames(conceptIds, locales);
+				for (SnomedConcept iSnomedConcept : concepts) {
 					SnomedConcept concept = (SnomedConcept) iSnomedConcept;
 					concept.setFsn(fullySpecifiedNames.get(concept.getId()));
 				}
@@ -122,11 +121,11 @@ public class SnomedResourceExpander {
 		return concepts;
 	}
 	
-	private SnomedConceptMini createConceptMini(String conceptId, Map<String, ISnomedDescription> fullySpecifiedNames) {
+	private SnomedConceptMini createConceptMini(String conceptId, Map<String, SnomedDescription> fullySpecifiedNames) {
 		return new SnomedConceptMini(conceptId, getFsn(fullySpecifiedNames, conceptId));
 	}
 
-	private String getFsn(Map<String, ISnomedDescription> fsnMap, String conceptId) {
+	private String getFsn(Map<String, SnomedDescription> fsnMap, String conceptId) {
 		if (fsnMap.containsKey(conceptId)) {
 			return fsnMap.get(conceptId).getTerm();
 		} else {

@@ -22,8 +22,8 @@ import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.core.lang.LanguageSetting;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -115,9 +115,9 @@ public class SnomedRefSetExporter extends AbstractSnomedRf2CoreExporter<SnomedRe
 			.setLocales(ApplicationContext.getServiceForClass(LanguageSetting.class).getLanguagePreference())
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, getExportContext().getCurrentBranchPath().getPath())
 			.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-			.then(new Function<ISnomedConcept, String>() {
-				@Override public String apply(ISnomedConcept input) {
-					ISnomedDescription pt = input.getPt();
+			.then(new Function<SnomedConcept, String>() {
+				@Override public String apply(SnomedConcept input) {
+					SnomedDescription pt = input.getPt();
 					if (pt == null || Strings.isNullOrEmpty(pt.getTerm())) { 
 						return refset.getId(); 
 					} else { 

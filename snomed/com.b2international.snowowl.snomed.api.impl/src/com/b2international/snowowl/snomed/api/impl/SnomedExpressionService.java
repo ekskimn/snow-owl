@@ -22,8 +22,8 @@ import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpre
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionAttribute;
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.expression.SnomedExpressionGroup;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -46,7 +46,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 		final Map<String, SnomedExpressionConcept> concepts = new HashMap<>();
 		final SnomedRelationships relationships = getActiveInferredRelationships(branchPath, conceptId);
 		final Set<String> parents = new HashSet<>();
-		for (ISnomedRelationship relationship : relationships) {
+		for (SnomedRelationship relationship : relationships) {
 			final String attributeId = relationship.getTypeId();
 			if (Concepts.IS_A.equals(attributeId)) {
 				parents.add(relationship.getDestinationId());
@@ -64,13 +64,13 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 					attributes = groups.get(groupNum).getAttributes();
 				}
 				attributes.add(new SnomedExpressionAttribute(
-						getCreateConcept(relationship.getTypeConcept(), concepts), 
-						getCreateConcept(relationship.getDestinationConcept(), concepts)));
+						getCreateConcept(relationship.getType(), concepts), 
+						getCreateConcept(relationship.getDestination(), concepts)));
 			}
 		}
 		
-		final Collection<ISnomedConcept> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
-		for (ISnomedConcept superType : superTypes) {
+		final Collection<SnomedConcept> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
+		for (SnomedConcept superType : superTypes) {
 			expression.addConcept(getCreateConcept(superType, concepts));
 		}
 		
@@ -91,7 +91,7 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				.getSync();
 	}
 
-	private ISnomedExpressionConcept getCreateConcept(ISnomedConcept concept, Map<String, SnomedExpressionConcept> concepts) {
+	private ISnomedExpressionConcept getCreateConcept(SnomedConcept concept, Map<String, SnomedExpressionConcept> concepts) {
 		final String conceptId = concept.getId();
 		
 		if (!concepts.containsKey(conceptId)) {

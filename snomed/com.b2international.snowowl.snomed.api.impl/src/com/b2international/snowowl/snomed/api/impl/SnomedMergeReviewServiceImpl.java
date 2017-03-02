@@ -52,12 +52,12 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelat
 import com.b2international.snowowl.snomed.api.domain.mergereview.ISnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.SnomedBrowserMergeReviewDetail;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
-import com.b2international.snowowl.snomed.core.domain.BaseSnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.core.domain.ISnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.ISnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
@@ -257,8 +257,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		@Override
 		public T call() throws Exception {
 
-			final ISnomedConcept sourceConcept = getConcept(parameters.getSourcePath(), conceptId);
-			final ISnomedConcept targetConcept = getConcept(parameters.getTargetPath(), conceptId);
+			final SnomedConcept sourceConcept = getConcept(parameters.getSourcePath(), conceptId);
+			final SnomedConcept targetConcept = getConcept(parameters.getTargetPath(), conceptId);
 			
 			if (hasConceptChanges(sourceConcept, targetConcept)) {
 				return onSuccess();
@@ -281,7 +281,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			return onSkip();
 		}
 
-		private ISnomedConcept getConcept(final String path, final String conceptId) {
+		private SnomedConcept getConcept(final String path, final String conceptId) {
 			return SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
@@ -289,31 +289,31 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				.getSync();
 		}
 		
-		private boolean hasConceptChanges(final ISnomedConcept sourceConcept, final ISnomedConcept targetConcept) {
+		private boolean hasConceptChanges(final SnomedConcept sourceConcept, final SnomedConcept targetConcept) {
 			return hasSinglePropertyChanges(sourceConcept, targetConcept, "iconId", "score");
 		}
 		
 		private SnomedDescriptions getDescriptions(final String path, final String conceptId) {
 			return SnomedRequests.prepareSearchDescription()
 				.all()
-				.filterByConceptId(conceptId)
+				.filterByConcept(conceptId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
 				.execute(bus)
 				.getSync();
 		}
 		
-		private boolean hasDescriptionChanges(final List<ISnomedDescription> sourceDescriptions, final List<ISnomedDescription> targetDescriptions) {
+		private boolean hasDescriptionChanges(final List<SnomedDescription> sourceDescriptions, final List<SnomedDescription> targetDescriptions) {
 
 			if (sourceDescriptions.size() != targetDescriptions.size()) {
 				return true;
 			}
 				
-			final Map<String, ISnomedDescription> sourceMap = Maps.uniqueIndex(sourceDescriptions, new Function<ISnomedDescription, String>() {
-				@Override public String apply(final ISnomedDescription input) { return input.getId(); }
+			final Map<String, SnomedDescription> sourceMap = Maps.uniqueIndex(sourceDescriptions, new Function<SnomedDescription, String>() {
+				@Override public String apply(final SnomedDescription input) { return input.getId(); }
 			});
 			
-			final Map<String, ISnomedDescription> targetMap = Maps.uniqueIndex(targetDescriptions, new Function<ISnomedDescription, String>() {
-				@Override public String apply(final ISnomedDescription input) { return input.getId(); }
+			final Map<String, SnomedDescription> targetMap = Maps.uniqueIndex(targetDescriptions, new Function<SnomedDescription, String>() {
+				@Override public String apply(final SnomedDescription input) { return input.getId(); }
 			});
 			
 			for (final String descriptionId : sourceMap.keySet()) {
@@ -322,8 +322,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 					return true;
 				}
 				
-				final ISnomedDescription sourceDescription = sourceMap.get(descriptionId);
-				final ISnomedDescription targetDescription = targetMap.get(descriptionId);
+				final SnomedDescription sourceDescription = sourceMap.get(descriptionId);
+				final SnomedDescription targetDescription = targetMap.get(descriptionId);
 				
 				if (hasSinglePropertyChanges(sourceDescription, targetDescription, "iconId", "score")) {
 					return true;
@@ -343,22 +343,22 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				.getSync();
 		}
 		
-		private boolean hasNonInferredRelationshipChanges(final List<ISnomedRelationship> sourceRelationships, final List<ISnomedRelationship> targetRelationships) {
+		private boolean hasNonInferredRelationshipChanges(final List<SnomedRelationship> sourceRelationships, final List<SnomedRelationship> targetRelationships) {
 			
-			final Map<String, ISnomedRelationship> sourceMap = FluentIterable.from(sourceRelationships)
-					.filter(new Predicate<ISnomedRelationship>() {
-						@Override public boolean apply(final ISnomedRelationship input) { return !CharacteristicType.INFERRED_RELATIONSHIP.equals(input.getCharacteristicType()); }
+			final Map<String, SnomedRelationship> sourceMap = FluentIterable.from(sourceRelationships)
+					.filter(new Predicate<SnomedRelationship>() {
+						@Override public boolean apply(final SnomedRelationship input) { return !CharacteristicType.INFERRED_RELATIONSHIP.equals(input.getCharacteristicType()); }
 					})
-					.uniqueIndex(new Function<ISnomedRelationship, String>() {
-						@Override public String apply(final ISnomedRelationship input) { return input.getId(); }
+					.uniqueIndex(new Function<SnomedRelationship, String>() {
+						@Override public String apply(final SnomedRelationship input) { return input.getId(); }
 					});
 			
-			final Map<String, ISnomedRelationship> targetMap = FluentIterable.from(targetRelationships)
-					.filter(new Predicate<ISnomedRelationship>() {
-						@Override public boolean apply(final ISnomedRelationship input) { return !CharacteristicType.INFERRED_RELATIONSHIP.equals(input.getCharacteristicType()); }
+			final Map<String, SnomedRelationship> targetMap = FluentIterable.from(targetRelationships)
+					.filter(new Predicate<SnomedRelationship>() {
+						@Override public boolean apply(final SnomedRelationship input) { return !CharacteristicType.INFERRED_RELATIONSHIP.equals(input.getCharacteristicType()); }
 					})
-					.uniqueIndex(new Function<ISnomedRelationship, String>() {
-						@Override public String apply(final ISnomedRelationship input) { return input.getId(); }
+					.uniqueIndex(new Function<SnomedRelationship, String>() {
+						@Override public String apply(final SnomedRelationship input) { return input.getId(); }
 					});
 
 			// If there are no new or changed stated relationships on one side of the comparison, no merge conflict should be indicated
@@ -377,8 +377,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 					return true;
 				}
 				
-				final ISnomedRelationship sourceRelationship = sourceMap.get(relationshipId);
-				final ISnomedRelationship targetRelationship = targetMap.get(relationshipId);
+				final SnomedRelationship sourceRelationship = sourceMap.get(relationshipId);
+				final SnomedRelationship targetRelationship = targetMap.get(relationshipId);
 				
 				if (hasSinglePropertyChanges(sourceRelationship, targetRelationship, "iconId", "score")) {
 					return true;
@@ -419,12 +419,12 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		    	}
 		    	
 		    	// Compare core components by identifier
-		    	if (sourceValue instanceof BaseSnomedComponent) {
-		    		sourceValue = ((BaseSnomedComponent) sourceValue).getId();
+		    	if (sourceValue instanceof SnomedComponent) {
+		    		sourceValue = ((SnomedComponent) sourceValue).getId();
 		    	}
 		    	
-		    	if (targetValue instanceof BaseSnomedComponent) {
-		    		targetValue = ((BaseSnomedComponent) targetValue).getId();
+		    	if (targetValue instanceof SnomedComponent) {
+		    		targetValue = ((SnomedComponent) targetValue).getId();
 		    	}
 		    	
 			    if (!Objects.equals(sourceValue, targetValue)) {
@@ -613,9 +613,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				.then(new Function<SnomedDescriptions, Set<String>>() {
 					@Override
 					public Set<String> apply(SnomedDescriptions input) {
-						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
+						return FluentIterable.from(input).transform(new Function<SnomedDescription, String>() {
 							@Override
-							public String apply(ISnomedDescription input) {
+							public String apply(SnomedDescription input) {
 								return input.getConceptId();
 							}
 						}).toSet();
@@ -635,9 +635,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				.then(new Function<SnomedRelationships, Set<String>>() {
 					@Override
 					public Set<String> apply(SnomedRelationships input) {
-						return FluentIterable.from(input).transform(new Function<ISnomedRelationship, String>() {
+						return FluentIterable.from(input).transform(new Function<SnomedRelationship, String>() {
 							@Override
-							public String apply(ISnomedRelationship input) {
+							public String apply(SnomedRelationship input) {
 								return input.getSourceId();
 							}
 						}).toSet();
@@ -681,9 +681,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				.then(new Function<SnomedDescriptions, Set<String>>() {
 					@Override
 					public Set<String> apply(SnomedDescriptions input) {
-						return FluentIterable.from(input).transform(new Function<ISnomedDescription, String>() {
+						return FluentIterable.from(input).transform(new Function<SnomedDescription, String>() {
 							@Override
-							public String apply(ISnomedDescription input) {
+							public String apply(SnomedDescription input) {
 								return input.getConceptId();
 							}
 						}).toSet();
@@ -703,9 +703,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				.then(new Function<SnomedRelationships, Set<String>>() {
 					@Override
 					public Set<String> apply(SnomedRelationships input) {
-						return FluentIterable.from(input).transform(new Function<ISnomedRelationship, String>() {
+						return FluentIterable.from(input).transform(new Function<SnomedRelationship, String>() {
 							@Override
-							public String apply(ISnomedRelationship input) {
+							public String apply(SnomedRelationship input) {
 								return input.getSourceId();
 							}
 						}).toSet();

@@ -5,17 +5,17 @@ import java.util.Map;
 
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
-import com.b2international.snowowl.snomed.core.domain.ISnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 
 /**
- * Wrapper for the ISnomedDescription class 
+ * Wrapper for the SnomedDescription class 
  */
 public class ValidationSnomedDescription implements org.ihtsdo.drools.domain.Description {
 
-	private ISnomedDescription description;
+	private SnomedDescription description;
 	private String conceptId;
 
-	public ValidationSnomedDescription(ISnomedDescription description, String conceptId) {
+	public ValidationSnomedDescription(SnomedDescription description, String conceptId) {
 		this.description = description;
 		this.conceptId = conceptId;
 	}
