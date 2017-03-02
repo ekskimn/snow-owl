@@ -8,10 +8,6 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserCompo
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
-import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
-import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;

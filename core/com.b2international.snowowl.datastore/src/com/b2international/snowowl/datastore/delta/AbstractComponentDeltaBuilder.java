@@ -18,7 +18,6 @@ package com.b2international.snowowl.datastore.delta;
 import static com.b2international.commons.ChangeKind.ADDED;
 import static com.b2international.commons.ChangeKind.DELETED;
 import static com.b2international.commons.ChangeKind.UPDATED;
-import static com.b2international.commons.collect.LongSets.newLongSet;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createMainPath;
 import static com.google.common.base.Preconditions.checkNotNull;
 

@@ -20,8 +20,6 @@ import static com.b2international.index.query.Expressions.match;
 import static com.b2international.index.query.Expressions.matchAny;
 import static com.b2international.index.query.Expressions.matchRange;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import java.util.Set;
 
 import com.b2international.index.query.Expression;

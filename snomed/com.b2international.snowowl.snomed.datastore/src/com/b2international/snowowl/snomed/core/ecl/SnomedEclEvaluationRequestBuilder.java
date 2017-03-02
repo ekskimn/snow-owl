@@ -20,7 +20,6 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.datastore.request.BaseRevisionIndexReadRequestBuilder;
-import com.b2international.snowowl.snomed.ecl.ecl.ExpressionConstraint;
 
 /**
  * @since 5.4

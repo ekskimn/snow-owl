@@ -18,7 +18,6 @@ package com.b2international.snowowl.snomed.datastore.id.request;
 import java.util.Set;
 
 import com.b2international.snowowl.snomed.datastore.id.ISnomedIdentifierService;
-import com.google.common.collect.ImmutableList;
 
 /**
  * @since 5.5

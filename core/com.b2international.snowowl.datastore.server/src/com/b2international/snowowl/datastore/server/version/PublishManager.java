@@ -66,7 +66,6 @@ import com.b2international.snowowl.terminologyregistry.core.builder.CodeSystemVe
 import com.b2international.snowowl.terminologyregistry.core.request.CodeSystemRequests;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
 /**

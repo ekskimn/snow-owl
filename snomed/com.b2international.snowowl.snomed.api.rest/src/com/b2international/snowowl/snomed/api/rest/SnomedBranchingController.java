@@ -40,7 +40,6 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchUpdateRestRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.CreateBranchRestRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
-import com.b2international.snowowl.snomed.api.rest.domain.BranchUpdateRestRequest;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
