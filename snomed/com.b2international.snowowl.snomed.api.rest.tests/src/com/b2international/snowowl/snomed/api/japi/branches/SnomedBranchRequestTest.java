@@ -18,10 +18,8 @@ package com.b2international.snowowl.snomed.api.japi.branches;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -50,7 +48,6 @@ import com.b2international.snowowl.datastore.server.internal.CDOBasedRepository;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
@@ -265,7 +262,7 @@ public class SnomedBranchRequestTest {
 		// Check that the concept is visible on parent
 		SnomedRequests.prepareGetConcept()
 				.setComponentId(conceptId)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, firstAfterMerge.parentPath())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, first.parentPath())
 				.execute(bus)
 				.getSync();
 	}

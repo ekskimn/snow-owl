@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
+
 import java.util.UUID;
 
 import org.junit.Before;

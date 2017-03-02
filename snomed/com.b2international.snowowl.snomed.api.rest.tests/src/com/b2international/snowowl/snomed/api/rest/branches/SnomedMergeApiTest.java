@@ -26,15 +26,13 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergeApiAssert.*;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.assertComponentUpdatedWithStatus;
 import static com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiAssert.whenRetrievingConcept;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.startsWith;
 
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +49,6 @@ import com.b2international.snowowl.core.merge.ConflictingAttribute;
 import com.b2international.snowowl.core.merge.ConflictingAttributeImpl;
 import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
 import com.b2international.snowowl.core.merge.MergeConflictImpl;
-import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
@@ -943,19 +940,4 @@ public class SnomedMergeApiTest extends AbstractSnomedApiTest {
 		assertDescriptionNotExists(childBranch, "D1");
 	}
 	
-	@Test
-	@Ignore("Currently always fails due to merge policy")
-	public void rebaseChangedConceptOnBranchDeletedOnParent() {
-		mergeNewConceptForward();
-
-		final Map<?, ?> changeOnBranch = ImmutableMap.builder()
-				.put("definitionStatus", DefinitionStatus.FULLY_DEFINED)
-				.put("commitComment", "Changed definition status on parent")
-				.build();
-
-		assertConceptCanBeUpdated(testBranchPath, "C1", changeOnBranch);
-		assertConceptCanBeDeleted(testBranchPath.getParent(), "C1");
-
-		assertBranchCanBeRebased(testBranchPath, "Rebase concept change over deletion");
-	}
 }

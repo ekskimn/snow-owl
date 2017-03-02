@@ -326,7 +326,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		IBranchPath secondTaskPath = BranchPathUtils.createPath(testBranchPath, "2");
 		givenBranchWithPath(secondTaskPath);
 		
-		final Map<Object, Object> descriptionForSecondTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		final Map<Object, Object> descriptionForSecondTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody(MODULE_SCT_CORE, "New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
 		descriptionForSecondTask.put("conceptId", concept);
 		descriptionForSecondTask.put("commitComment", "Created new synonym");
 		
@@ -335,7 +335,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		IBranchPath thirdTaskPath = BranchPathUtils.createPath(testBranchPath, "3");
 		givenBranchWithPath(thirdTaskPath);
 		
-		final Map<Object, Object> descriptionForThirdTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at third ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		final Map<Object, Object> descriptionForThirdTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody(MODULE_SCT_CORE, "New SYN at third ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
 		descriptionForThirdTask.put("conceptId", concept);
 		descriptionForThirdTask.put("commitComment", "Created new synonym");
 		
@@ -394,7 +394,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		IBranchPath secondTaskPath = BranchPathUtils.createPath(testBranchPath, "2");
 		givenBranchWithPath(secondTaskPath);
 		
-		final Map<Object, Object> descriptionForSecondTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		final Map<Object, Object> descriptionForSecondTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody(MODULE_SCT_CORE, "New SYN at ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
 		descriptionForSecondTask.put("conceptId", concept);
 		descriptionForSecondTask.put("commitComment", "Created new synonym");
 		
@@ -403,7 +403,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		IBranchPath thirdTaskPath = BranchPathUtils.createPath(testBranchPath, "3");
 		givenBranchWithPath(thirdTaskPath);
 		
-		final Map<Object, Object> descriptionForThirdTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("New SYN at third ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		final Map<Object, Object> descriptionForThirdTask = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody(MODULE_SCT_CORE, "New SYN at third ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
 		descriptionForThirdTask.put("conceptId", concept);
 		descriptionForThirdTask.put("commitComment", "Created new synonym");
 		
@@ -443,7 +443,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		String conceptId = assertComponentCreated(firstTaskPath, SnomedComponentType.CONCEPT, requestBody);
 		assertComponentExists(firstTaskPath, SnomedComponentType.CONCEPT, conceptId);
 		
-		final Map<Object, Object> descriptionBody = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody("Description to change ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
+		final Map<Object, Object> descriptionBody = Maps.<Object, Object>newHashMap(givenDescriptionRequestBody(MODULE_SCT_CORE, "Description to change ", ACCEPTABLE_ACCEPTABILITY_MAP, SYNONYM));
 		descriptionBody.put("conceptId", conceptId);
 		descriptionBody.put("commitComment", "Created new synonym");
 		

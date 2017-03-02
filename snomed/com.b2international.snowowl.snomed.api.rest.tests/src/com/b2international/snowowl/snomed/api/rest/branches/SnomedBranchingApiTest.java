@@ -16,17 +16,7 @@
 package com.b2international.snowowl.snomed.api.rest.branches;
 
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchChildrenContainsName;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCreationConflicts;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchNotCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchNotExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchReportedAsDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchUpdated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchesContainsName;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPathAndMetadata;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenDeletingBranchWithPath;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.*;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.util.Map;

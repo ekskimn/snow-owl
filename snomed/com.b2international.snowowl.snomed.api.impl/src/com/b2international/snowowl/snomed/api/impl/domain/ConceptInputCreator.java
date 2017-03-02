@@ -1,11 +1,7 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
-import com.b2international.snowowl.core.exceptions.BadRequestException;
-import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
-import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationshipType;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
@@ -22,33 +18,12 @@ import com.google.common.collect.Multimap;
 
 public class ConceptInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedConceptCreateRequest, SnomedConceptUpdateRequest, SnomedBrowserConcept> {
 	
-	private String getParentId(final ISnomedBrowserConcept concept) {
-		ISnomedBrowserRelationship parentRelationship = null;
-		
-		for (final ISnomedBrowserRelationship relationship : concept.getRelationships()) {
-			final ISnomedBrowserRelationshipType type = relationship.getType();
-			final String typeId = type.getConceptId();
-			
-			// FIXME: add active status, characteristic type, group checks? 
-			if (Concepts.IS_A.equals(typeId)) {
-				parentRelationship = relationship;
-			}
-		}
-		
-		if (parentRelationship != null) {
-			return parentRelationship.getTarget().getConceptId();
-		} else {
-			throw new BadRequestException("At least one IS A relationship is required.");
-		}
-	}
-
 	@Override
-	public SnomedConceptCreateRequest createInput(final String branchPath, SnomedBrowserConcept concept, InputFactory inputFactory) {
+	public SnomedConceptCreateRequest createInput(SnomedBrowserConcept concept, InputFactory inputFactory) {
 		final SnomedConceptCreateRequestBuilder builder = SnomedRequests
 				.prepareNewConcept()
 				.setModuleId(getModuleOrDefault(concept))
 				.setDefinitionStatus(concept.getDefinitionStatus());
-				.setParent(getParentId(concept));
 		
 		final String conceptId = concept.getConceptId();
 		if (conceptId != null) {
@@ -58,11 +33,11 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 		}
 
 		for (ISnomedBrowserRelationship relationship : concept.getRelationships()) {
-			builder.addRelationship(inputFactory.createComponentInput(branchPath, relationship, SnomedRelationshipCreateRequest.class));
+			builder.addRelationship(inputFactory.createComponentInput(relationship, SnomedRelationshipCreateRequest.class));
 		}
 		
 		for (ISnomedBrowserDescription description : concept.getDescriptions()) {
-			builder.addDescription(inputFactory.createComponentInput(branchPath, description, SnomedDescriptionCreateRequest.class));
+			builder.addDescription(inputFactory.createComponentInput(description, SnomedDescriptionCreateRequest.class));
 		}
 
 		// TODO remove cast, use only Request interfaces with proper type

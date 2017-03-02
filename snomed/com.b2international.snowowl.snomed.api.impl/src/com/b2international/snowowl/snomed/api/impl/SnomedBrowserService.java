@@ -82,12 +82,12 @@ import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.ConceptEnum;
 import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.tree.Trees;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -102,7 +102,6 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCr
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
-import com.google.common.base.Optional;
 import com.google.common.base.Stopwatch;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -358,40 +357,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.execute(bus)
 				.getSync()
 				.getResultAs(String.class);
-		
-		final List<ISnomedBrowserRelationship> newRelationships = Lists.newArrayList();
-		for (ISnomedBrowserRelationship newRelationship : newConcept.getRelationships()) {
-			
-			// Skip first IS A relationship that has already been added as the concept's parent
-			// FIXME: add active status, characteristic type, group checks? 
-			if (Concepts.IS_A.equals(newRelationship.getType().getConceptId()) && conceptCreateRequest.getParentId().equals(newRelationship.getTarget().getConceptId())) {
-				continue;
-			}
-				
-			((SnomedBrowserRelationship) newRelationship).setSourceId(createdConceptId);
-			newRelationships.add(newRelationship);
-		}
-		
-		if (!newRelationships.isEmpty()) {
-			LOGGER.info("Persisting {} additional relationships.", newRelationships.size());
-			
-			final BulkRequestBuilder<TransactionContext> relationshipCreateBulkRequest = BulkRequest.create();
-			final List<SnomedRelationshipCreateRequest> relationshipCreateRequests = inputFactory.createComponentInputs(newRelationships, SnomedRelationshipCreateRequest.class);
-			for (SnomedRelationshipCreateRequest relationshipCreateRequest : relationshipCreateRequests) {
-				relationshipCreateBulkRequest.add(relationshipCreateRequest);
-			}
-			
-			final String additionalCommitComment = getCommitComment(userId, newConcept, "adding additional relationships to");
-			
-			SnomedRequests
-				.prepareCommit()
-				.setCommitComment(additionalCommitComment)
-				.setBody(relationshipCreateBulkRequest)
-				.setUserId(userId)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-				.execute(bus)
-				.getSync();
-		}
 		
 		return getConceptDetails(branch, createdConceptId, locales);
 	}

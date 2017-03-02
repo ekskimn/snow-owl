@@ -88,12 +88,13 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Equival
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
@@ -117,7 +118,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerServiceUtil;
 import com.google.common.io.Closeables;
 
 /**
@@ -301,7 +301,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					.setUserId(userId)
 					.setCommitComment("Classified ontology.") // Same message in PersistChangesRemoteJob
 					.setPreparationTime(persistStopwatch.elapsed(TimeUnit.MILLISECONDS))
-					.setParentLockContextDescription(DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW)
+					.setParentContextDescription(DatastoreLockContextDescriptions.CLASSIFY_WITH_REVIEW)
 					.setBody(builder)
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 					.execute(bus);
@@ -320,7 +320,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				if (relationship.isReleased()) {
 					
 					for (SnomedReferenceSetMember snomedReferenceSetMember : referringMembersById.get(relationship.getId())) {
-						SnomedRefSetMemberUpdateRequestBuilder updateMemberBuilder = SnomedRequests.prepareUpdateMember().
+						SnomedRefSetMemberUpdateRequestBuilder updateMemberBuilder = SnomedRequests.prepareUpdateMember()
 								.setMemberId(snomedReferenceSetMember.getId())
 								.setSource(ImmutableMap.<String, Object>of(SnomedRf2Headers.FIELD_ACTIVE, Boolean.FALSE));
 						
@@ -687,15 +687,6 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					// XXX: Default and/or not populated values are shown as commented lines below
 					inferred.setType(new SnomedBrowserRelationshipType(relationshipChange.getTypeId()));
 					inferred.setSourceId(relationshipChange.getSourceId());
-
-					final SnomedConcept targetConcept = SnomedRequests.prepareGetConcept()
-							.setComponentId(relationshipChange.getDestinationId())
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-							.execute(bus)
-							.getSync();
-					final SnomedBrowserRelationshipTarget relationshipTarget = browserService.getSnomedBrowserRelationshipTarget(targetConcept, branchPath, locales);
-					inferred.setTarget(relationshipTarget);
-
 					inferred.setGroupId(relationshipChange.getGroup());
 					inferred.setModifier(relationshipChange.getModifier());
 					inferred.setActive(true);

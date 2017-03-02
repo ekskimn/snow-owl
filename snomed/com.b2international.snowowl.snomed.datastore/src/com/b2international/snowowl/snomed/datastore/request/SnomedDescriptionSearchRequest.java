@@ -40,13 +40,10 @@ import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
-import com.google.common.base.Function;
-import com.google.common.collect.ImmutableMultimap;
 
 /**
  * @since 4.5
@@ -110,6 +107,11 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 		} else {
 			return SnomedConverters.newDescriptionConverter(context, expand(), locales()).convert(hits.getHits(), offset(), limit(), hits.getTotal());
 		}
+	}
+	
+	@Override
+	protected SnomedDescriptions createEmptyResult(int offset, int limit) {
+		return new SnomedDescriptions(offset, limit, 0);
 	}
 	
 	private Expression toDescriptionTermQuery(final String searchTerm) {
