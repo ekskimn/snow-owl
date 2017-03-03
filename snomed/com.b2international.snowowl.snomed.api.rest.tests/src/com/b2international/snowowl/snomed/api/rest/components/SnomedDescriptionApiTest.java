@@ -18,17 +18,7 @@ package com.b2international.snowowl.snomed.api.rest.components;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createMainPath;
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentActive;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreatedWithStatus;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertDescriptionNotExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertPreferredTermEquals;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -331,17 +321,23 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void updateAcceptability() {
-		final String oldPtId = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-GB")
-				.when().get("/{path}/concepts/{conceptId}/pt", createMainPath(), DISEASE)
-				.then().extract()
-				.body().path("id");
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().header("Accept-Language", "en-GB")
+			.when().get("/{path}/concepts/{conceptId}/pt", createMainPath(), DISEASE)
+			.then().log().ifValidationFails()
+			.assertThat().statusCode(200)
+			.body("term", equalTo("Disease"))
+			.body("acceptability", equalTo(ImmutableMap.<String, Object>of(Concepts.REFSET_LANGUAGE_TYPE_UK, "PREFERRED")));
 
 		final Map<?, ?> createRequestBody = createRequestBody(DISEASE, "Rare disease", Concepts.MODULE_SCT_CORE, Concepts.SYNONYM, "New description on MAIN");
 
 		final String descriptionId = assertComponentCreated(createMainPath(), SnomedComponentType.DESCRIPTION, createRequestBody);
 		final Collection<Map<String, Object>> members = assertDescriptionExists(createMainPath(), descriptionId, "members()").extract().body().path("members.items");
 		final Map<String, Object> member = Iterables.getOnlyElement(members);
+		
+		assertThat(member.get("referenceSetId"), equalTo(Concepts.REFSET_LANGUAGE_TYPE_UK));
+		assertThat(member.get("acceptabilityId"), equalTo(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE));
 		
 		final Map<?, ?> updateRequestBody = ImmutableMap.builder()
 				.put("acceptability", SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP)
@@ -352,9 +348,21 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 		
 		final Collection<Map<String, Object>> updatedMembers = assertDescriptionExists(createMainPath(), descriptionId, "members()").extract().body().path("members.items");
 		final Map<String, Object> updatedMember = Iterables.getOnlyElement(updatedMembers);
+		
 		// changing acceptability should change the acceptabilityId of the same member and not create a new one
 		assertEquals(member.get("id"), updatedMember.get("id"));
-		assertEquals(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED, updatedMember.get("acceptabilityId"));
+		assertThat(updatedMember.get("referenceSetId"), equalTo(Concepts.REFSET_LANGUAGE_TYPE_UK));
+		assertThat(updatedMember.get("acceptabilityId"), equalTo(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED));
+		
+		assertPreferredTermEquals(createMainPath(), DISEASE, descriptionId);
+		
+		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.with().header("Accept-Language", "en-GB")
+			.when().get("/{path}/concepts/{conceptId}/pt", createMainPath(), DISEASE)
+			.then().log().ifValidationFails()
+			.assertThat().statusCode(200)
+			.body("term", equalTo("Rare disease"))
+			.body("acceptability", equalTo(ImmutableMap.<String, Object>of(Concepts.REFSET_LANGUAGE_TYPE_UK, "PREFERRED")));
 	}
 	
 	@Test
