@@ -16,6 +16,7 @@
 package com.b2international.snowowl.snomed.api.rest.branches;
 
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.SCT_API;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeMerged;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeRebased;
@@ -496,8 +497,18 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 		
 		init();
 		
+		assertDescriptionCreated(testBranchPath, "D1", PREFERRED_ACCEPTABILITY_MAP);
+		
+		List<String> memberIds = SnomedComponentApiAssert.assertDescriptionExists(testBranchPath, symbolicNameMap.get("D1"), "members()").and().extract().body().path("members.items.id");
+		
+		assertEquals(1, memberIds.size());
+		
+		assertBranchCanBeMerged(testBranchPath, "merge");
+		
+		assertDescriptionExists(testBranchPath, "D1");
+		assertDescriptionExists(testBranchPath.getParent(), "D1");
+
 		String newMemberId = UUID.randomUUID().toString();
-		String descriptionId = "220309016"; // SNOMED CT Root (preferred term)
 		
 		try (final SnomedEditingContext context = new SnomedEditingContext(testBranchPath)) {
 			final SnomedLanguageRefSetMember member = SnomedRefSetFactory.eINSTANCE.createSnomedLanguageRefSetMember();
@@ -505,15 +516,15 @@ public class SnomedMergeConflictTest extends AbstractSnomedApiTest {
 			member.setActive(true);
 			member.setModuleId(Concepts.MODULE_SCT_CORE);
 			member.setRefSet(context.lookup(Concepts.REFSET_LANGUAGE_TYPE_UK, SnomedRefSet.class));
-			member.setReferencedComponentId(descriptionId);
+			member.setReferencedComponentId(symbolicNameMap.get("D1"));
 			member.setAcceptabilityId(Concepts.REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE);
-			final Description description = context.lookup(descriptionId, Description.class);
+			final Description description = context.lookup(symbolicNameMap.get("D1"), Description.class);
 			description.getLanguageRefSetMembers().add(member);
-			context.commit("Add member to " + descriptionId);
+			context.commit("Add member to " + symbolicNameMap.get("D1"));
 		}
 		
 		Collection<Map<String, Object>> members = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-			.when().get("/{path}/{componentType}?referencedComponentId={componentId}", testBranchPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), descriptionId)
+			.when().get("/{path}/{componentType}?referencedComponentId={componentId}", testBranchPath.getPath(), SnomedComponentType.MEMBER.toLowerCasePlural(), symbolicNameMap.get("D1"))
 			.then().extract().body().path("items");
 		
 		assertEquals(2, members.size());
