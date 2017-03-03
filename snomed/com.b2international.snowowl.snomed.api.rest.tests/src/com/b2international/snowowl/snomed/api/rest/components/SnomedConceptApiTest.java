@@ -29,19 +29,8 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertMergeJobFails;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenDeletingBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeDeleted;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCanBeUpdated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreatedWithStatus;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentExists;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentHasProperty;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotExists;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.createRefSetMemberRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.createRefSetRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.either;
@@ -74,9 +63,9 @@ import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
-import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
@@ -405,15 +394,11 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 	public void findConceptsById() {
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.when().get("/{path}/concepts?conceptIds=255203001,72670004", createMainPath().getPath())
-				.then()
-				.log()
-				.ifValidationFails()
-				.assertThat()
-				.statusCode(200)
+				.then().log().ifValidationFails()
+				.assertThat().statusCode(200)
 				.body("total", equalTo(2))
-				.body("items.id[0]", equalTo("255203001"))
-				.body("items.id[1]", equalTo("72670004"))
-				;
+				.body("items.id", hasItem("255203001"))
+				.body("items.id", hasItem("72670004"));
 	}
 	
 	@Test
