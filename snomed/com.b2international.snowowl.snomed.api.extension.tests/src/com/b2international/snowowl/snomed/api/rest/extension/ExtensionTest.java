@@ -28,7 +28,6 @@ import java.util.UUID;
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
-import com.b2international.snowowl.snomed.api.rest.SnomedExtensionApiTests;
 import com.google.common.collect.ImmutableMap;
 
 /**
