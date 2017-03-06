@@ -830,7 +830,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.setLimit(limit)
 			.setLocales(locales)
 			.setExpand(descriptionExpandOptions)
-			.filterByType(Concepts.FULLY_SPECIFIED_NAME + " UNION " + Concepts.SYNONYM)
+			.filterByType(Concepts.FULLY_SPECIFIED_NAME + " OR " + Concepts.SYNONYM)
 			.filterByTerm(query);
 		
 		final Promise<SnomedDescriptions> descriptions = requestBuilder
