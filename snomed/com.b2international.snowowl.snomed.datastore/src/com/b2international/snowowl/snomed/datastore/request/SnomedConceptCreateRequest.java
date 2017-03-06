@@ -27,10 +27,8 @@ import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
-import org.eclipse.xtext.util.Pair;
-import org.eclipse.xtext.util.Tuples;
-
 import com.b2international.collections.PrimitiveSets;
+import com.b2international.commons.Pair;
 import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
@@ -175,7 +173,9 @@ public final class SnomedConceptCreateRequest extends BaseSnomedComponentCreateR
 	}
 
 	private void convertRelationships(final TransactionContext context, String conceptId) {
-		final Set<Pair<String, CharacteristicType>> requiredRelationships = newHashSet(Tuples.pair(Concepts.IS_A, CharacteristicType.STATED_RELATIONSHIP));
+		Pair<String, CharacteristicType> defaultType = Pair.identicalPairOf(Concepts.IS_A, CharacteristicType.STATED_RELATIONSHIP);
+		final Set<Pair<String, CharacteristicType>> requiredRelationships = newHashSet();
+		requiredRelationships.add(defaultType);
 		
 		for (final SnomedRelationshipCreateRequest relationshipRequest : relationships) {
 			relationshipRequest.setSourceId(conceptId);
@@ -186,7 +186,7 @@ public final class SnomedConceptCreateRequest extends BaseSnomedComponentCreateR
 			
 			relationshipRequest.execute(context);
 			
-			requiredRelationships.remove(Tuples.pair(relationshipRequest.getTypeId(), relationshipRequest.getCharacteristicType()));
+			requiredRelationships.remove(Pair.identicalPairOf(relationshipRequest.getTypeId(), relationshipRequest.getCharacteristicType()));
 		}
 		
 		if (!requiredRelationships.isEmpty()) {

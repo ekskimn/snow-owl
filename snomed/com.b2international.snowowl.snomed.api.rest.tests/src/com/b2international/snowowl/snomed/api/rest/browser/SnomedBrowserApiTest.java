@@ -97,7 +97,29 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
 		final Map<?, ?> requestBody = givenConceptRequestBody(null, true, fsn, MODULE_SCT_CORE, descriptions, null, creationDate);
 		assertComponentCreatedWithStatus(createMainPath(), requestBody, 400).and().body("message",
-				equalTo("At least one IS A relationship is required."));
+				equalTo("At least one active stated IS A relationship is required."));
+	}
+	
+	@Test
+	public void createConceptWithInferredParentOnly() {
+		final Date creationDate = new Date();
+		final String fsn = "New FSN at " + creationDate;
+		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
+		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate, CharacteristicType.INFERRED_RELATIONSHIP);
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, true, fsn, MODULE_SCT_CORE, descriptions, relationships, creationDate);
+		assertComponentCreatedWithStatus(createMainPath(), requestBody, 400).and().body("message",
+				equalTo("At least one active stated IS A relationship is required."));
+	}
+	
+	@Test
+	public void createConceptWithInactiveStatedParent() {
+		final Date creationDate = new Date();
+		final String fsn = "New FSN at " + creationDate;
+		final ImmutableList<?> descriptions = createDescriptions(fsn, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, creationDate);
+		final ImmutableList<?> relationships = createIsaRelationship(ROOT_CONCEPT, MODULE_SCT_CORE, creationDate, false, CharacteristicType.STATED_RELATIONSHIP);
+		final Map<?, ?> requestBody = givenConceptRequestBody(null, true, fsn, MODULE_SCT_CORE, descriptions, relationships, creationDate);
+		assertComponentCreatedWithStatus(createMainPath(), requestBody, 400).and().body("message",
+				equalTo("At least one active stated IS A relationship is required."));
 	}
 
 	@Test

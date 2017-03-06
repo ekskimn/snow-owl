@@ -138,18 +138,21 @@ public class SnomedBrowserApiAssert {
 				.put("isLeafStated", "")
 				.put("definitionStatus", DefinitionStatus.PRIMITIVE);
 		
-		if (null != conceptId)
+		if (null != conceptId) {
 			conceptBuilder.put("conceptId", conceptId);
+		}
 		
-		if (null == descriptions)
+		if (null == descriptions) {
 			conceptBuilder.put("descriptions", Lists.newArrayList());
-		else
+		} else {
 			conceptBuilder.put("descriptions", descriptions);
+		}
 		
-		if (null == relationships)
+		if (null == relationships) {
 			conceptBuilder.put("relationships", Lists.newArrayList());
-		else
+		} else {
 			conceptBuilder.put("relationships", relationships);
+		}
 		
 		return conceptBuilder.build();
 	}
@@ -192,7 +195,7 @@ public class SnomedBrowserApiAssert {
 		return ImmutableList.of(fsnDescription, ptDescription);
 	}
 	
-	public static ImmutableList<?> createIsaRelationship(final String parentId, final String moduleId, final Date creationDate) {
+	public static ImmutableList<?> createIsaRelationship(final String parentId, final String moduleId, final Date creationDate, boolean active, CharacteristicType charType) {
 		final Map<?, ?> type = ImmutableMap.<String, Object>builder()
 				.put("conceptId", IS_A)
 				.put("fsn", "Is a (attribute)")
@@ -212,15 +215,23 @@ public class SnomedBrowserApiAssert {
 				.put("effectiveTime", creationDate)
 				.put("modifier", RelationshipModifier.EXISTENTIAL)
 				.put("groupId", "0")
-				.put("characteristicType", CharacteristicType.STATED_RELATIONSHIP)
-				.put("active", true)
+				.put("characteristicType", charType)
+				.put("active", active)
 				.put("type", type)
 				.put("relationshipId", generateComponentId(null, ComponentCategory.RELATIONSHIP))
 				.put("moduleId", moduleId)
 				.put("target", target)
 				.build();
-
+		
 		return ImmutableList.of(isaRelationship);
+	}
+	
+	public static ImmutableList<?> createIsaRelationship(final String parentId, final String moduleId, final Date creationDate, CharacteristicType charType) {
+		return createIsaRelationship(parentId, moduleId, creationDate, true, charType);
+	}
+	
+	public static ImmutableList<?> createIsaRelationship(final String parentId, final String moduleId, final Date creationDate) {
+		return createIsaRelationship(parentId, moduleId, creationDate, CharacteristicType.STATED_RELATIONSHIP);
 	}
 	
 	public static String generateComponentId(final String namespace, final ComponentCategory category) {

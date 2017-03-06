@@ -1,9 +1,12 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
+import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
+import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
@@ -32,6 +35,16 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 			builder.setIdFromNamespace(getDefaultNamespace());
 		}
 
+		boolean hasActiveStatedIsaRelationship = concept.getRelationships().stream()
+			.anyMatch( relationship -> 
+				relationship.getType().getConceptId().equals(Concepts.IS_A) 
+				&& relationship.getCharacteristicType() == CharacteristicType.STATED_RELATIONSHIP 
+				&& relationship.isActive());
+		
+		if (!hasActiveStatedIsaRelationship) {
+			throw new BadRequestException("At least one active stated IS A relationship is required.");
+		}
+		
 		for (ISnomedBrowserRelationship relationship : concept.getRelationships()) {
 			builder.addRelationship(inputFactory.createComponentInput(relationship, SnomedRelationshipCreateRequest.class));
 		}
