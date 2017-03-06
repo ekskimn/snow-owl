@@ -73,6 +73,7 @@ import com.b2international.snowowl.eventbus.IMessage;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
+import com.b2international.snowowl.snomed.api.domain.classification.ChangeNature;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
 import com.b2international.snowowl.snomed.api.domain.classification.IClassificationRun;
 import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConcept;
@@ -106,7 +107,6 @@ import com.b2international.snowowl.snomed.reasoner.classification.AbstractRespon
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationRequest;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
-import com.b2international.snowowl.snomed.reasoner.classification.entry.AbstractChangeEntry.Nature;
 import com.google.common.base.Function;
 import com.google.common.base.Stopwatch;
 import com.google.common.cache.CacheBuilder;
@@ -237,7 +237,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		private Set<String> getInferredSourceIds(final IRelationshipChangeList relationshipChanges) {
 			final Set<String> sourceIds = Sets.newHashSet();
 			for (final IRelationshipChange change : relationshipChanges.getChanges()) {
-				if (Nature.INFERRED.equals(change.getChangeNature())) {
+				if (ChangeNature.INFERRED == change.getChangeNature()) {
 					sourceIds.add(change.getSourceId());
 				}
 			}
