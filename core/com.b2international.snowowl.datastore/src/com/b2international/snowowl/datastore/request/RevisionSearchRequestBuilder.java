@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 import com.b2international.commons.CompareUtils;
+import com.b2international.commons.collections.Collections3;
 import com.b2international.commons.options.OptionsBuilder;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
@@ -51,7 +52,7 @@ public abstract class RevisionSearchRequestBuilder<B extends RevisionSearchReque
 	}
 	
 	public final B setComponentIds(Collection<String> componentIds) {
-		this.componentIds = componentIds;
+		this.componentIds = Collections3.toImmutableList(componentIds);
 		return getSelf();
 	}
 	
