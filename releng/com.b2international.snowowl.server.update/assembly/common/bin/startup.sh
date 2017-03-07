@@ -43,7 +43,7 @@ echo "Finished cleanup, starting server."
 
 # Set up signal handler for TERM (sent by supervisor) and INT (keyboard interrupt)
 # Note: we don't pass additional arguments from the startup script here
-trap '{ echo "Stopping server on signal." ; "$SCRIPT_DIR"/"$EXECUTABLE" stop ; }' TERM INT
+trap '{ echo "Stopping server on signal, process id $PID." ; kill -TERM $PID; }' TERM INT
 
 # Run start command in subshell (child process)
 "$SCRIPT_DIR"/"$EXECUTABLE" start "$@" &
