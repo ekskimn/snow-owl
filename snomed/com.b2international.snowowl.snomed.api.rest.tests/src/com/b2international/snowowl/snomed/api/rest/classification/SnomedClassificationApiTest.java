@@ -15,7 +15,6 @@
  */
 package com.b2international.snowowl.snomed.api.rest.classification;
 
-import static org.junit.Assert.*;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE_SCT_CORE;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
 import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
@@ -26,11 +25,14 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAsse
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentNotExists;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenRelationshipRequestBody;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.google.common.collect.Maps.newHashMap;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
 import java.util.List;
@@ -141,7 +143,11 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	
 	private Multimap<String, Map<String, Object>> classify(String branch, String classificationRunId) throws Exception {
 		// get relationship changes
-		final Collection<Map<String, Object>> items = RestExtensions.get(SnomedApiTestConstants.SCT_API, branch, "classifications", classificationRunId, "relationship-changes").body().path("items");
+		final Collection<Map<String, Object>> items = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.queryParam("limit", Integer.MAX_VALUE)
+			.get("/{path}/classifications/{id}/relationship-changes", branch, classificationRunId)
+			.body().path("items");
+		
 		// index all relationship changes by their source ID
 		return Multimaps.index(items, new Function<Map<String, Object>, String>() {
 			@Override
