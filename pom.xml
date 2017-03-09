@@ -615,11 +615,6 @@
 					<layout>p2</layout>
 				</repository>
 				<repository>
-					<id>3.8</id>
-					<url>http://download.eclipse.org/eclipse/updates/3.8</url>
-					<layout>p2</layout>
-				</repository>
-				<repository>
 					<id>cdo</id>
 					<url>http://download.eclipse.org/modeling/emf/cdo/updates/releases/4.1/</url>
 					<layout>p2</layout>
