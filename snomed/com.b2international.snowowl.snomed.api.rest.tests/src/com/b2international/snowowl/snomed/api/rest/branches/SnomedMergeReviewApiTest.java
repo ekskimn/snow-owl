@@ -268,7 +268,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@Test
-	public void setReviewStale() {
+	public void setReviewStale() throws Exception {
 		givenBranchWithPath(testBranchPath);
 
 		// Set up a review...
@@ -278,6 +278,9 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		// ...then commit to the branch.
 		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
 		assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, conceptRequestBody);
+		
+		// wait 1s before checking review state 
+		Thread.sleep(1000);
 		
 		whenRetrievingMergeReview(reviewId)
 		.then()

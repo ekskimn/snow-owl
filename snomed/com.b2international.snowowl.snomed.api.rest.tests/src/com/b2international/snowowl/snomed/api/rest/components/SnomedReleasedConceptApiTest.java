@@ -26,8 +26,8 @@ import com.google.common.collect.ImmutableMap;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SnomedReleasedConceptApiTest extends AbstractSnomedApiTest {
 
-	private static final String CONCEPT_ID = "63961392103";
-	private static final String DESCRIPTION_ID = "2989111016";
+	private static final String CONCEPT_ID = "408739003";
+	private static final String DESCRIPTION_ID = "2477174011";
 	private final IBranchPath mainPath = createMainPath();
 
 	@Test
@@ -35,15 +35,17 @@ public class SnomedReleasedConceptApiTest extends AbstractSnomedApiTest {
 		givenBranchWithPath(testBranchPath);
 		assertConceptExists(testBranchPath, CONCEPT_ID);
 		
-		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "effectiveTime", "20150204");
+		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "effectiveTime", "20110131");
+		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "definitionStatus", "PRIMITIVE");
 		
 		updateDefinitionStatus(CONCEPT_ID, DefinitionStatus.FULLY_DEFINED);
 
 		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "effectiveTime", null);
+		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "definitionStatus", "FULLY_DEFINED");
 
 		updateDefinitionStatus(CONCEPT_ID, DefinitionStatus.PRIMITIVE);
-
-		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "effectiveTime", "20150204");
+		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "definitionStatus", "PRIMITIVE");
+		assertComponentHasProperty(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, "effectiveTime", "20110131");
 	}
 
 	@Test
@@ -62,16 +64,18 @@ public class SnomedReleasedConceptApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void forceDeleteConcept() {
-		assertConceptExists(mainPath, CONCEPT_ID);
-		assertComponentCanBeDeleted(mainPath, SnomedComponentType.CONCEPT, CONCEPT_ID, true);
-		assertConceptNotExists(mainPath, CONCEPT_ID);
+		givenBranchWithPath(testBranchPath);
+		assertConceptExists(testBranchPath, CONCEPT_ID);
+		assertComponentCanBeDeleted(testBranchPath, SnomedComponentType.CONCEPT, CONCEPT_ID, true);
+		assertConceptNotExists(testBranchPath, CONCEPT_ID);
 	}
 
 	@Test
 	public void forceDeleteDescription() {
-		assertDescriptionExists(mainPath, DESCRIPTION_ID);
-		assertComponentCanBeDeleted(mainPath, SnomedComponentType.DESCRIPTION, DESCRIPTION_ID, true);
-		assertDescriptionNotExists(mainPath, DESCRIPTION_ID);
+		givenBranchWithPath(testBranchPath);
+		assertDescriptionExists(testBranchPath, DESCRIPTION_ID);
+		assertComponentCanBeDeleted(testBranchPath, SnomedComponentType.DESCRIPTION, DESCRIPTION_ID, true);
+		assertDescriptionNotExists(testBranchPath, DESCRIPTION_ID);
 	}
 
 	private void updateDefinitionStatus(final String conceptId,
