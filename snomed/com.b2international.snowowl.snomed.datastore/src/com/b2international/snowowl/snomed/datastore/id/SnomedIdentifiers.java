@@ -81,7 +81,7 @@ public class SnomedIdentifiers {
 	private static boolean isReindexRunning() {
 		FeatureToggles featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 		String feature = String.format("%s.reindex", SnomedDatastoreActivator.REPOSITORY_UUID);
-		return featureToggles.exists(feature) ? featureToggles.check(feature) : false;
+		return featureToggles!= null && featureToggles.exists(feature) ? featureToggles.check(feature) : false;
 	}
 
 	/**
