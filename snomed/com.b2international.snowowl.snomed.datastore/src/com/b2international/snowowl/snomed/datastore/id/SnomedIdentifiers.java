@@ -122,7 +122,7 @@ public class SnomedIdentifiers {
 		
 		if (firstPartitionIdDigit == '0') {
 			return true;
-		} else if (firstPartitionIdDigit == '1') {
+		} else if (firstPartitionIdDigit == '1' || isReindexRunning()) {
 			return false;
 		} else {
 			throw new IllegalArgumentException(String.format("First digit of partition identifier must be '0' or '1', got '%s' for input '%s'.", firstPartitionIdDigit, componentId));
