@@ -20,7 +20,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.util.Collection;
 
 import com.b2international.commons.VerhoeffCheck;
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.internal.id.SnomedComponentIdentifierValidator;
 import com.b2international.snowowl.snomed.datastore.internal.id.SnomedIdentifierImpl;
 import com.google.common.base.Strings;
@@ -58,17 +61,27 @@ public class SnomedIdentifiers {
 	 *             CT Identifier specification
 	 */
 	public static void validate(final String componentId) throws IllegalArgumentException {
-		checkArgument(!Strings.isNullOrEmpty(componentId), "SCTID may not be null or empty");
-		checkArgument(!componentId.startsWith("0"), "SCTID can't start with leading zero");
-		checkArgument(componentId.length() >= 6 && componentId.length() <= 18, "SCTID length must be between 6-18 characters");
-		
-		try {
-			Long.parseLong(componentId);
-		} catch (final NumberFormatException e) {
-			throw new IllegalArgumentException("SCTID should be parseable to a long value");
+		if (!isReindexRunning()) {
+
+			checkArgument(!Strings.isNullOrEmpty(componentId), "SCTID may not be null or empty");
+			checkArgument(!componentId.startsWith("0"), "SCTID can't start with leading zero");
+			checkArgument(componentId.length() >= 6 && componentId.length() <= 18, "SCTID length must be between 6-18 characters");
+			
+			try {
+				Long.parseLong(componentId);
+			} catch (final NumberFormatException e) {
+				throw new IllegalArgumentException("SCTID should be parseable to a long value");
+			}
+			
+			checkArgument(VerhoeffCheck.validateLastChecksumDigit(componentId), "ComponentId should pass Verhoeff check-digit test");
+			
 		}
-		
-		checkArgument(VerhoeffCheck.validateLastChecksumDigit(componentId), "ComponentId should pass Verhoeff check-digit test");
+	}
+	
+	private static boolean isReindexRunning() {
+		FeatureToggles featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
+		String feature = String.format("%s.reindex", SnomedDatastoreActivator.REPOSITORY_UUID);
+		return featureToggles.exists(feature) ? featureToggles.check(feature) : false;
 	}
 
 	/**
