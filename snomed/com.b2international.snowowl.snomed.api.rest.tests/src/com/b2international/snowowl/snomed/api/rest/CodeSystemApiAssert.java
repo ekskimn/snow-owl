@@ -25,6 +25,7 @@ import java.util.Map;
 
 import com.b2international.snowowl.api.impl.codesystem.domain.CodeSystem;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
 import com.jayway.restassured.response.ValidatableResponse;
@@ -109,10 +110,17 @@ public abstract class CodeSystemApiAssert {
 	}
 	
 	public static Map<String, String> newCodeSystemRequestBody(final String shortName) {
-		return newCodeSystemRequestBody(shortName, "MAIN");
+		return newCodeSystemRequestBody(shortName, "MAIN", "ENG");
 	}
 	
 	public static Map<String, String> newCodeSystemRequestBody(final String shortName, final String branchPath) {
+		return newCodeSystemRequestBody(shortName, branchPath, "ENG");
+	}
+	public static Map<String, String> newCodeSystemRequestBody(final String shortName, final String branchPath, final String language) {
+		return newCodeSystemRequestDefaultBodyBuilder(shortName, branchPath, language).build();
+	}
+
+	public static Builder<String, String> newCodeSystemRequestDefaultBodyBuilder(final String shortName, final String branchPath, final String language) {
 		return ImmutableMap.<String, String>builder()
 				.put("name", "CodeSystem")
 				.put("branchPath", branchPath)
@@ -122,9 +130,8 @@ public abstract class CodeSystemApiAssert {
 				.put("repositoryUuid", "snomedStore")
 				.put("terminologyId", "concept")
 				.put("oid", shortName)
-				.put("primaryLanguage", "ENG")
-				.put("organizationLink", "link")
-				.build();
+				.put("primaryLanguage", language)
+				.put("organizationLink", "link");
 	}
 
 }
