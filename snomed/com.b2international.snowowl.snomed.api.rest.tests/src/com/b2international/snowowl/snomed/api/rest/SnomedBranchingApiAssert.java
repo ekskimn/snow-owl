@@ -337,6 +337,10 @@ public abstract class SnomedBranchingApiAssert {
 	}
 	
 	public static Response whenCreatingVersion(final String version, final String effectiveDate) {
+		return whenCreatingVersion("SNOMEDCT", version, effectiveDate);
+	}
+	
+	public static Response whenCreatingVersion(final String codeSystemShortName, final String version, final String effectiveDate) {
 		final Map<?, ?> requestBody = ImmutableMap.builder()
 				.put("version", version)
 				.put("description", version)
@@ -346,7 +350,7 @@ public abstract class SnomedBranchingApiAssert {
 		return givenAuthenticatedRequest(ADMIN_API)
 				.and().contentType(ContentType.JSON)
 				.and().body(requestBody)
-				.when().post("/codesystems/SNOMEDCT/versions");
+				.when().post("/codesystems/{shortName}/versions", codeSystemShortName);
 	}
 	
 	private SnomedBranchingApiAssert() {
