@@ -1,9 +1,5 @@
 package com.b2international.snowowl.snomed.api.rest.io;
 
-import static com.b2international.snowowl.snomed.api.rest.CodeSystemApiAssert.assertCodeSystemCreated;
-import static com.b2international.snowowl.snomed.api.rest.CodeSystemApiAssert.newCodeSystemRequestDefaultBodyBuilder;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenUpdatingBranchWithPathAndMetadata;
-
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,9 +29,12 @@ public class SnomedImportApiExtensionImportTest extends AbstractSnomedImportApiT
 	
 	@Test
 	public void extensionCanBeImported() {
-		assertMetadataUpdateForBaseBranch();
-		assertCreateCodeSystem();
-		
+		// create extension branch first
+		Map<?, ?> extensionBranchMetadata = createMetadata();
+		updateBranchWithMetadata(extensionBranchMetadata);
+
+		// create the code system of the exentsion branch		
+		createSnomedExtensionCodeSystem(getExtensionName(), testBranchPath.getPath(), "DAN");
 		
 		
 		final Map<?, ?> importConfiguration = ImmutableMap.builder()
@@ -50,25 +49,13 @@ public class SnomedImportApiExtensionImportTest extends AbstractSnomedImportApiT
 		assertImportCompletes(importId);
 	}
 
-	private void assertMetadataUpdateForBaseBranch() {
-		whenUpdatingBranchWithPathAndMetadata(testBranchPath, createMetadata());
-	}
-
-	private void assertCreateCodeSystem() {
-		final Map<String, String> newExtensionCodeSystemRequestBody = 
-							newCodeSystemRequestDefaultBodyBuilder(getExtensionName(), testBranchPath.getPath(), "DAN")
-							.put("extensionOf", "SNOMEDCT")
-							.build();
-		assertCodeSystemCreated(newExtensionCodeSystemRequestBody);
-	}
-
 	private Map<?, ?> createMetadata() {
 		return ImmutableMap.<String, String> builder()
-				.put("assertionGroupNames", "common-authoring,dk-authoring")
+				.put("assertionGroupNames", "common-authoring")
 				.put("defaultModuleId", Concepts.MODULE_B2I_EXTENSION)
 				.put("defaultNamespace", "1000005")
 				.put("shortname","dk")
-				.put("requiredLanguageRefset.da",DANISH_LANGUAGE_REFSET)
+				.put("requiredLanguageRefset.da", DANISH_LANGUAGE_REFSET)
 				.put("codeSystemShortName", "SNOMEDCT-DK")
 				.build();
 	}

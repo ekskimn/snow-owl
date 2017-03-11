@@ -15,8 +15,13 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemApiAssert.assertCodeSystemCreated;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemApiAssert.newCodeSystemRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemApiAssert.newCodeSystemRequestDefaultBodyBuilder;
 import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenUpdatingBranchWithPathAndMetadata;
 
+import java.util.Map;
 import java.util.UUID;
 
 import org.junit.Before;
@@ -79,4 +84,25 @@ public abstract class AbstractSnomedApiTest {
 		return currentBranchPath;
 	}
 	
+	protected void updateBranchWithMetadata(Map<?, ?> metadata) {
+		whenUpdatingBranchWithPathAndMetadata(testBranchPath, metadata);
+	}
+	
+	protected void updateBranchWithMetadata(IBranchPath branchPath, Map<?, ?> metadata) {
+		whenUpdatingBranchWithPathAndMetadata(branchPath, metadata);
+	}
+	
+	protected String createDefaultCodeSystem(String shortName) {
+		Map<String, String> defaultCodeSystemRequestBody = newCodeSystemRequestBody(shortName);
+		return createCustomizedCodeSystem(defaultCodeSystemRequestBody);
+	}
+	
+	protected String createSnomedExtensionCodeSystem(String shortName, String branchPath, String language) {
+		Map<String, String> newExtensionCodeSystemRequestBody = newCodeSystemRequestDefaultBodyBuilder(shortName, branchPath, language).put("extensionOf", "SNOMEDCT").build();
+		return createCustomizedCodeSystem(newExtensionCodeSystemRequestBody);
+	}
+
+	protected String createCustomizedCodeSystem(final Map<String, String> newExtensionCodeSystemRequestBody) {
+		return assertCodeSystemCreated(newExtensionCodeSystemRequestBody);
+	}
 }
