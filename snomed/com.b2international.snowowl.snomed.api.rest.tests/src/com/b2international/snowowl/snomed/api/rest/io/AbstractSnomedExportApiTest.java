@@ -15,6 +15,13 @@
  */
 package com.b2international.snowowl.snomed.api.rest.io;
 
+import static com.b2international.snowowl.datastore.BranchPathUtils.createMainPath;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE_SCT_CORE;
+import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenCreatingVersion;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.expectStatus;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
@@ -33,14 +40,20 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
 import com.b2international.commons.Pair;
+import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
+import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.SnomedVersioningApiAssert;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
@@ -127,6 +140,35 @@ public abstract class AbstractSnomedExportApiTest extends AbstractSnomedApiTest 
 		assertNotNull(exportArchive);
 		
 		return exportArchive;
+	}
+	
+	protected Date assertNewVersionCreated() {
+		return assertNewVersionCreated(createMainPath(), "SNOMEDCT", true);
+	}
+	
+	protected Date assertNewVersionCreated(IBranchPath branchPath, String codeSystemShortName, boolean createPlaceholder) {
+		if (createPlaceholder) {
+			createPlaceholderConcept(branchPath);
+		}
+		
+		final Date dateForNewVersion = SnomedVersioningApiAssert.getLatestAvailableVersionDate(codeSystemShortName);
+		
+		final String versionId = Dates.formatByGmt(dateForNewVersion);
+		final String versionEffectiveDate = Dates.formatByGmt(dateForNewVersion, DateFormats.SHORT);
+		
+		whenCreatingVersion(codeSystemShortName, versionId, versionEffectiveDate)
+			.then().assertThat().statusCode(201);
+		
+		givenAuthenticatedRequest(ADMIN_API)
+			.when().get("/codesystems/{shortName}/versions/{version}", codeSystemShortName, versionId)
+			.then().assertThat().statusCode(200);
+		
+		return dateForNewVersion;
+	}
+
+	private void createPlaceholderConcept(IBranchPath branchPath) {
+		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
+		assertComponentCreated(branchPath, SnomedComponentType.CONCEPT, conceptRequestBody);
 	}
 	
 	protected void assertArchiveContainsLines(final File exportArchive, final Multimap<String, Pair<Boolean, String>> fileToLinesMap) throws Exception {

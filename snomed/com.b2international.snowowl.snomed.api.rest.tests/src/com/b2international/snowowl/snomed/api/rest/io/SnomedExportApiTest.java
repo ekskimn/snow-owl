@@ -902,24 +902,6 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		return Joiner.on("\t").join(lineElements);
 	}
 	
-	private Date assertNewVersionCreated() {
-		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
-		assertComponentCreated(createMainPath(), SnomedComponentType.CONCEPT, conceptRequestBody);
-		
-		final Date dateForNewVersion = SnomedVersioningApiAssert.getLatestAvailableVersionDate("SNOMEDCT");
-		
-		final String versionName = Dates.formatByGmt(dateForNewVersion);
-		final String versionEffectiveDate = Dates.formatByGmt(dateForNewVersion, DateFormats.SHORT);
-		
-		whenCreatingVersion(versionName, versionEffectiveDate)
-			.then().assertThat().statusCode(201);
-		
-		givenAuthenticatedRequest(ADMIN_API)
-			.when().get("/codesystems/SNOMEDCT/versions/{id}", versionName)
-			.then().assertThat().statusCode(200);
-		
-		return dateForNewVersion;
-	}
 
 	// TODO remove
 	private Collection<String> getEffectiveDates(final String terminologyShortName) {
