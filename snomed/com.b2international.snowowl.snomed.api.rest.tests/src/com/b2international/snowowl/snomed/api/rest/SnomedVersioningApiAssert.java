@@ -17,7 +17,8 @@ package com.b2international.snowowl.snomed.api.rest;
 
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 
-import java.util.Calendar;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -111,9 +112,8 @@ public class SnomedVersioningApiAssert {
 			}
 		}
 
-		final Calendar calendar = Calendar.getInstance();
-		calendar.setTime(latestEffectiveDate);
-		calendar.add(Calendar.DATE, 1);
-		return calendar.getTime();
+		Duration oneDay = Duration.ofDays(1);
+		Instant latestEffectiveInstant = latestEffectiveDate.toInstant();
+		return Date.from(latestEffectiveInstant.plus(oneDay));
 	}
 }

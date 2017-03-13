@@ -160,7 +160,7 @@ public abstract class AbstractSnomedExportApiTest extends AbstractSnomedApiTest 
 			.then().assertThat().statusCode(201);
 		
 		givenAuthenticatedRequest(ADMIN_API)
-			.when().get("/codesystems/{shortName}/versions/{version}", codeSystemShortName, versionId)
+			.when().get("/codesystems/{shortName}/versions/{id}", codeSystemShortName, versionId)
 			.then().assertThat().statusCode(200);
 		
 		return dateForNewVersion;

@@ -42,21 +42,15 @@ import com.google.common.collect.Multimap;
  */
 public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 
+	
 	@Override
 	protected IBranchPath createRandomBranchPath() {
 		return createNestedBranch(BranchPathUtils.createMainPath(), UUID.randomUUID().toString(), "SNOMEDCT-EXT-" + System.nanoTime());
 	}
 
-	@Override
-	public void setup() {
-		// setting up branch paths
-		super.setup();
-		// setting up extension
-		setupExtension();
-	}
-	
 	@Test
 	public void validateDeltaExportArchiveStructure() throws Exception {
+		setupExtension();
 		Date versionEffectiveTime = assertNewVersionCreated(testBranchPath, testBranchPath.lastSegment(), true);
 		
 		String effectiveTimeString = Dates.formatByGmt(versionEffectiveTime, DateFormats.SHORT);
@@ -72,6 +66,7 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 	
 	@Test
 	public void validateExtensionDeltaExportFileSplitting() throws Exception {
+		setupExtension();
 		// create new concept with both 'en' and 'da' languages
 		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
 		String conceptId = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, conceptRequestBody);
@@ -215,6 +210,8 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 		final File exportArchive = assertExportFileCreated(exportId);
 		return exportArchive;
 	}
+	
+	
 	
 	private void setupExtension() {
 		// codeSystem needs a versioned base branch
