@@ -86,8 +86,6 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 		referencedDescriptionIds.removeAll(newDescriptionsById.keySet());
 		changedDescriptionIds.addAll(referencedDescriptionIds);
 		
-		final Set<Description> newAndChangedDescriptions = newHashSet(Iterables.concat(newDescriptionsById.values(), changedDescriptionsById.values()));
-		
 		// load the known descriptions 
 		final Query<SnomedDescriptionIndexEntry> query = Query.select(SnomedDescriptionIndexEntry.class)
 				.where(SnomedDescriptionIndexEntry.Expressions.ids(changedDescriptionIds))
