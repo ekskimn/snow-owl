@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.server;
 
+import java.util.Optional;
+
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.net4j.jvm.IJVMConnector;
 import org.eclipse.net4j.jvm.JVMUtil;
@@ -31,6 +33,7 @@ import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.core.setup.ModuleConfig;
 import com.b2international.snowowl.core.setup.PreRunCapableBootstrapFragment;
 import com.b2international.snowowl.core.users.SpecialUserStore;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.CDOConnectionFactoryProvider;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
@@ -40,6 +43,7 @@ import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexMa
 import com.b2international.snowowl.datastore.server.internal.DefaultRepositoryManager;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedEditingContextFactoryProvider;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedRepositoryClassLoaderProviderRegistry;
+import com.b2international.snowowl.datastore.server.internal.InternalRepository;
 import com.b2international.snowowl.datastore.server.session.ApplicationSessionManager;
 import com.b2international.snowowl.datastore.server.session.LogListener;
 import com.b2international.snowowl.datastore.server.session.VersionProcessor;
@@ -121,9 +125,26 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		
 		if (env.isEmbedded() || env.isServer()) {
 			initializeRepositories(configuration, env);
+			verifyRepositories(env);
 		}
 	}
 
+	@SuppressWarnings("deprecation")
+	private void verifyRepositories(Environment env) {
+		final DefaultRepositoryManager repositories = (DefaultRepositoryManager) env.service(RepositoryManager.class);
+		Optional<InternalRepository> inconsistentRepository = repositories.repositories()
+			.stream()
+			.filter(repository -> repository instanceof InternalRepository).map(InternalRepository.class::cast)
+			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath())) 
+			/* XXX: or should we check all the branches, not just the main??*/
+			.findAny();
+		
+		if (inconsistentRepository.isPresent()) {
+				LOG.error("Found inconsistent repository: {}, halting boot.", inconsistentRepository.get().getCdoRepository().getRepositoryName());
+				Thread.currentThread().suspend();
+		}
+	}
+	
 	private void initializeRepositories(SnowOwlConfiguration configuration, Environment env) {
 		
 		final Stopwatch branchStopwatch = Stopwatch.createStarted();
