@@ -449,9 +449,9 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		return !hasInvalidCDOTimeStamps(cdoCommitInfos, getLast(indexCommitInfos).getTimeStamp(), branch);
 	}
 	
-	private boolean hasInvalidCDOTimeStamps(List<CDOCommitInfo> immutableCdoCommitInfosList, long lastIndexCommitTimestamp, IBranchPath branch) {
+	private boolean hasInvalidCDOTimeStamps(List<CDOCommitInfo> cdoCommitInfos, long lastIndexCommitTimestamp, IBranchPath branch) {
 		// expect all the commit infos to be invalid
-		List<CDOCommitInfo> problematicCommitInfos = Lists.newArrayList(immutableCdoCommitInfosList);
+		List<CDOCommitInfo> problematicCommitInfos = Lists.newArrayList(cdoCommitInfos);
 		Iterator<CDOCommitInfo> cdoCommitInfosIterator = problematicCommitInfos.iterator();
 		while (cdoCommitInfosIterator.hasNext()) {
 			CDOCommitInfo cdoCommitInfo = cdoCommitInfosIterator.next();
@@ -465,8 +465,11 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		if (!problematicCommitInfos.isEmpty()) {
 			LOG.error("Index must be re-initialized for repository: {}. (The database is ahead of the index's timestamp: {} with CDO commit timestamp(s): {})", getCdoRepository().getRepositoryName(),  lastIndexCommitTimestamp, transform(problematicCommitInfos, item -> item.getTimeStamp()));
 			return true;
+		} else if (getLast(cdoCommitInfos).getTimeStamp()  < lastIndexCommitTimestamp) {
+			LOG.error("Database inconsistency for repository: {}. (The index head timestamp: {} is ahead of CDO's head timestamp : {})", getCdoRepository().getRepositoryName(),  lastIndexCommitTimestamp, getLast(cdoCommitInfos).getTimeStamp());
+			return true;
 		} else {
-			LOG.info("{}'s {} branch's head CDO timestamp is: {} ", getCdoRepository().getRepositoryName(), branch.getPath(), Iterables.getLast(immutableCdoCommitInfosList).getTimeStamp());
+			LOG.info("{}'s {} branch's head CDO timestamp is: {} ", getCdoRepository().getRepositoryName(), branch.getPath(), Iterables.getLast(cdoCommitInfos).getTimeStamp());
 			LOG.info("{}'s {} branch's head INDEX timestamp is: {} ", getCdoRepository().getRepositoryName(), branch.getPath(), lastIndexCommitTimestamp);
 			return false;
 		}

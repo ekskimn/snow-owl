@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.RepositoryManager;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.config.ClientPreferences;
@@ -129,7 +130,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		}
 	}
 
-	@SuppressWarnings("deprecation")
 	private void verifyRepositories(Environment env) {
 		final DefaultRepositoryManager repositories = (DefaultRepositoryManager) env.service(RepositoryManager.class);
 		Optional<InternalRepository> inconsistentRepository = repositories.repositories()
@@ -140,8 +140,8 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 			.findAny();
 		
 		if (inconsistentRepository.isPresent()) {
-				LOG.error("Found inconsistent repository: {}, halting boot.", inconsistentRepository.get().getCdoRepository().getRepositoryName());
-				Thread.currentThread().suspend();
+			String message = String.format("Inconsistent repository: %s.", inconsistentRepository.get().getCdoRepository().getRepositoryName());
+			throw new SnowOwlApplication.InitializationException(message);
 		}
 	}
 	
