@@ -235,9 +235,9 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 	}
 	
 	private boolean isReindexRunning() {
-		final FeatureToggles features = ApplicationContext.getServiceForClass(FeatureToggles.class);
+		final FeatureToggles featureToggles = ApplicationContext.getServiceForClass(FeatureToggles.class);
 		String reindexFeature = String.format("%s.reindex", SnomedDatastoreActivator.REPOSITORY_UUID);
-		return features.exists(reindexFeature) ? features.check(reindexFeature) : false;
+		return featureToggles != null && featureToggles.exists(reindexFeature) ? featureToggles.check(reindexFeature) : false;
 	}
 
 }
