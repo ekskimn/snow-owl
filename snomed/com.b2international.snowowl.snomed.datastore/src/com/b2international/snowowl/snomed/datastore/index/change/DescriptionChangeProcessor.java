@@ -21,38 +21,46 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.eclipse.emf.cdo.common.id.CDOIDUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.b2international.index.Hits;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionSearcher;
-import com.b2international.snowowl.core.api.ComponentUtils;
+import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessorBase;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
+import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry.Builder;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.refset.RefSetMemberChange;
 import com.b2international.snowowl.snomed.datastore.index.update.ReferenceSetMembershipUpdater;
+import com.google.common.base.Joiner;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 
 /**
  * @since 4.3
  */
 public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
+
+	private static final Logger LOG = LoggerFactory.getLogger(DescriptionChangeProcessor.class);
 	
 	private final ReferringMemberChangeProcessor memberChangeProcessor;
 
@@ -89,12 +97,30 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 		// load the known descriptions 
 		final Query<SnomedDescriptionIndexEntry> query = Query.select(SnomedDescriptionIndexEntry.class)
 				.where(SnomedDescriptionIndexEntry.Expressions.ids(changedDescriptionIds))
-				.limit(changedDescriptionIds.size())
+				.limit(Integer.MAX_VALUE)
 				.build();
 		
 		final Hits<SnomedDescriptionIndexEntry> changedDescriptionHits = searcher.search(query);
-		final Map<String, SnomedDescriptionIndexEntry> changedDescriptionRevisionsById = Maps.uniqueIndex(changedDescriptionHits,
-				ComponentUtils.<String> getIdFunction());
+
+		Multimap<String, SnomedDescriptionIndexEntry> changedDescriptionRevisionsById = ArrayListMultimap
+				.<String, SnomedDescriptionIndexEntry> create();
+		changedDescriptionHits.forEach(hit -> changedDescriptionRevisionsById.put(hit.getId(), hit));
+
+		boolean reindexRunning = isReindexRunning();
+		
+		for (Entry<String, Collection<SnomedDescriptionIndexEntry>> entry : changedDescriptionRevisionsById.asMap().entrySet()) {
+			if (entry.getValue().size() > 1) {
+				
+				String message = String.format("Description with id %s exists with multiple storage keys: [%s]", entry.getKey(), 
+						Joiner.on(", ").join(entry.getValue().stream().map( e -> e.getStorageKey()).collect(Collectors.toList())));
+				
+				if (reindexRunning) {
+					LOG.info(message);
+				} else {
+					throw new IllegalStateException(message);
+				}
+			}
+		}
 		
 		// load missing descriptions with only changed acceptability values
 		final Set<String> descriptionsToBeLoaded = newHashSet();
@@ -114,21 +140,26 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 				processChanges(id, doc, null, acceptabilityChangesByDescription.get(id), referringRefSets);
 				indexNewRevision(storageKey, doc.build());
 			} else if (changedDescriptionIds.contains(id)) {
-				final SnomedDescriptionIndexEntry currentDoc = changedDescriptionRevisionsById.get(id);
-				if (currentDoc == null) {
-					throw new IllegalStateException(String.format("Current description revision should not be null for: %s", id));
+				final Collection<SnomedDescriptionIndexEntry> docs = changedDescriptionRevisionsById.get(id);
+				for (SnomedDescriptionIndexEntry currentDoc : docs) {
+
+					if (currentDoc == null) {
+						throw new IllegalStateException(String.format("Current description revision should not be null for: %s", id));
+					}
+
+					final Description description = changedDescriptionsById.get(id);
+					final Builder doc;
+					if (description != null) {
+						doc = SnomedDescriptionIndexEntry.builder(description);
+					} else {
+						doc = SnomedDescriptionIndexEntry.builder(currentDoc);
+					}
+
+					processChanges(id, doc, currentDoc, acceptabilityChangesByDescription.get(id), referringRefSets);
+					indexChangedRevision(currentDoc.getStorageKey(), doc.build());
+
 				}
-				
-				final Description description = changedDescriptionsById.get(id);
-				final Builder doc;
-				if (description != null) {
-					doc = SnomedDescriptionIndexEntry.builder(description);
-				} else {
-					doc = SnomedDescriptionIndexEntry.builder(currentDoc);
-				}
-				
-				processChanges(id, doc, currentDoc, acceptabilityChangesByDescription.get(id), referringRefSets);
-				indexChangedRevision(currentDoc.getStorageKey(), doc.build());
+
 			} else {
 				throw new IllegalStateException(String.format("Description %s is missing from new and dirty maps", id));
 			}
@@ -203,4 +234,10 @@ public class DescriptionChangeProcessor extends ChangeSetProcessorBase {
 		}
 	}
 	
+	private boolean isReindexRunning() {
+		final FeatureToggles features = ApplicationContext.getServiceForClass(FeatureToggles.class);
+		String reindexFeature = String.format("%s.reindex", SnomedDatastoreActivator.REPOSITORY_UUID);
+		return features.exists(reindexFeature) ? features.check(reindexFeature) : false;
+	}
+
 }
