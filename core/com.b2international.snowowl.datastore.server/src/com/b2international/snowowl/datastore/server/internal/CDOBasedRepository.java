@@ -43,7 +43,6 @@ import com.b2international.index.IndexClient;
 import com.b2international.index.IndexClientFactory;
 import com.b2international.index.IndexWrite;
 import com.b2international.index.Indexes;
-import com.b2international.index.Searcher;
 import com.b2international.index.Writer;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.index.query.slowlog.SlowLogConfig;
@@ -313,7 +312,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		bind(RevisionIndex.class, revisionIndex);
 		// initialize the index
 		index.admin().create();
-		getDelegate().services().registerService(Searcher.class, indexClient.searcher());
 	}
 
 	private Map<String, Object> initIndexSettings() {
@@ -492,17 +490,14 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	}
 
 	private CommitInfos getIndexCommitInfos(IBranchPath branch) {
-		RepositoryContext context = get(this, repositoryId);
-		
-		CommitInfos commitInfos = RepositoryRequests
+		return RepositoryRequests
 					.commitInfos()
 					.prepareSearchCommitInfo()
 					.filterByBranch(branch.getPath())
 					.all()
-					.build()
-					.execute(context);
-		
-		return commitInfos;
+					.build(repositoryId)
+					.execute(events())
+					.getSync();
 	}
 	
 	private String contentMessage(boolean empty) {
