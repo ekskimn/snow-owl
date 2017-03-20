@@ -166,14 +166,10 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath()))
 			.collect(Collectors.toList());
 		
-		boolean reindexMode = Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
-		if (reindexMode) {
-			modifyConfigurationForReindex(configuration);
-		}
-		
 		if (!inconsistentRepositories.isEmpty()) {
 			String message = String.format("Found inconsistent repositories: %s.", inconsistentRepositories.stream().map(repository -> repository.getCdoRepository().getRepositoryName()).toArray());
 
+			boolean reindexMode = Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
 			if (reindexMode) {
 				LOG.error("{}. Starting Snow Owl Terminology Server in reindex mode.", message);
 			} else {
@@ -184,18 +180,6 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		LOG.debug("<<< Repository consistency verified. [{}]", stopwatch);
 	}
 
-	private void modifyConfigurationForReindex(SnowOwlConfiguration configuration) {
-		final Stopwatch stopwatch = Stopwatch.createStarted();
-		LOG.debug("<<< Modifying configuration with defaults suitable to re-indexing");
-		IndexConfiguration indexConfiguration = configuration.getModuleConfig(IndexConfiguration.class);
-		indexConfiguration.setCommitInterval(900000L);
-		indexConfiguration.setTranslogSyncInterval(300000L);
-		
-		RepositoryConfiguration repositoryConfiguration = configuration.getModuleConfig(RepositoryConfiguration.class);
-		repositoryConfiguration.setRevisionCacheEnabled(false);
-		LOG.debug(">>> Re-index configurations have been changed. [{}]", stopwatch);
-	}
-	
 	private void connectSystemUser(IManagedContainer container) throws SnowowlServiceException {
 		// Normally this is done for us by CDOConnectionFactory
 		final IJVMConnector connector = JVMUtil.getConnector(container, Net4jUtils.NET_4_J_CONNECTOR_NAME);
