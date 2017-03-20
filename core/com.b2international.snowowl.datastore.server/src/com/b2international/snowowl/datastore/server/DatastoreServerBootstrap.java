@@ -15,6 +15,9 @@
  */
 package com.b2international.snowowl.datastore.server;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.net4j.jvm.IJVMConnector;
 import org.eclipse.net4j.jvm.JVMUtil;
@@ -23,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.RepositoryManager;
+import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.config.ClientPreferences;
@@ -31,8 +35,10 @@ import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.core.setup.ModuleConfig;
 import com.b2international.snowowl.core.setup.PreRunCapableBootstrapFragment;
 import com.b2international.snowowl.core.users.SpecialUserStore;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.CDOConnectionFactoryProvider;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
+import com.b2international.snowowl.datastore.config.IndexConfiguration;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.net4j.Net4jUtils;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
@@ -40,6 +46,7 @@ import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexMa
 import com.b2international.snowowl.datastore.server.internal.DefaultRepositoryManager;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedEditingContextFactoryProvider;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedRepositoryClassLoaderProviderRegistry;
+import com.b2international.snowowl.datastore.server.internal.InternalRepository;
 import com.b2international.snowowl.datastore.server.session.ApplicationSessionManager;
 import com.b2international.snowowl.datastore.server.session.LogListener;
 import com.b2international.snowowl.datastore.server.session.VersionProcessor;
@@ -59,6 +66,8 @@ import com.google.common.base.Stopwatch;
 public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DatastoreServerBootstrap.class);
+
+	private static final String REINDEX_KEY = "snowowl.reindex";
 	
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
@@ -121,6 +130,7 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		
 		if (env.isEmbedded() || env.isServer()) {
 			initializeRepositories(configuration, env);
+			verifyRepositories(configuration, env);
 		}
 	}
 
@@ -142,6 +152,32 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		}
 		
 		LOG.debug("<<< Branch and review services registered. [{}]", branchStopwatch);
+	}
+
+	private void verifyRepositories(SnowOwlConfiguration configuration, Environment env) {
+		final Stopwatch stopwatch = Stopwatch.createStarted();
+		LOG.debug(">>> Verifying repository consistency.");
+		
+		final DefaultRepositoryManager repositories = (DefaultRepositoryManager) env.service(RepositoryManager.class);
+		
+		List<InternalRepository> inconsistentRepositories = repositories.repositories()
+			.stream()
+			.filter(repository -> repository instanceof InternalRepository).map(InternalRepository.class::cast)
+			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath()))
+			.collect(Collectors.toList());
+		
+		if (!inconsistentRepositories.isEmpty()) {
+			String message = String.format("Found inconsistent repositories: %s.", inconsistentRepositories.stream().map(repository -> repository.getCdoRepository().getRepositoryName()).toArray());
+
+			boolean reindexMode = Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
+			if (reindexMode) {
+				LOG.error("{}. Starting Snow Owl Terminology Server in reindex mode.", message);
+			} else {
+				throw new SnowOwlApplication.InitializationException(message);
+			}
+		}
+		
+		LOG.debug("<<< Repository consistency verified. [{}]", stopwatch);
 	}
 
 	private void connectSystemUser(IManagedContainer container) throws SnowowlServiceException {
