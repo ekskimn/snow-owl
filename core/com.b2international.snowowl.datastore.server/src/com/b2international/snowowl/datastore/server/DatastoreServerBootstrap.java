@@ -15,7 +15,8 @@
  */
 package com.b2international.snowowl.datastore.server;
 
-import java.util.Optional;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.net4j.jvm.IJVMConnector;
@@ -24,6 +25,7 @@ import org.eclipse.net4j.util.container.IManagedContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
@@ -132,15 +134,14 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 
 	private void verifyRepositories(Environment env) {
 		final DefaultRepositoryManager repositories = (DefaultRepositoryManager) env.service(RepositoryManager.class);
-		Optional<InternalRepository> inconsistentRepository = repositories.repositories()
+		List<InternalRepository> inconsistentRepositories = repositories.repositories()
 			.stream()
 			.filter(repository -> repository instanceof InternalRepository).map(InternalRepository.class::cast)
-			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath())) 
-			/* XXX: or should we check all the branches, not just the main??*/
-			.findAny();
+			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath()))
+			.collect(Collectors.toList());
 		
-		if (inconsistentRepository.isPresent()) {
-			String message = String.format("Inconsistent repository: %s.", inconsistentRepository.get().getCdoRepository().getRepositoryName());
+		if (!inconsistentRepositories.isEmpty()) {
+			String message = String.format("Found inconsistent repositories: %s.", inconsistentRepositories.stream().map(repository -> repository.getCdoRepository().getRepositoryName()).toArray());
 			throw new SnowOwlApplication.InitializationException(message);
 		}
 	}
@@ -155,7 +156,7 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		RepositoryConfiguration repositoryConfig = configuration.getModuleConfig(RepositoryConfiguration.class);
 		final ICDORepositoryManager cdoRepositoryManager = env.service(ICDORepositoryManager.class);
 		for (String repositoryId : cdoRepositoryManager.uuidKeySet()) {
-			repositories
+			Repository build = repositories
 				.prepareCreate(repositoryId, cdoRepositoryManager.getByUuid(repositoryId).getSnowOwlTerminologyComponentId())
 				.setNumberOfWorkers(repositoryConfig.getNumberOfWorkers())
 				.setMergeMaxResults(repositoryConfig.getMergeMaxResults())
