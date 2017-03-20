@@ -25,7 +25,6 @@ import org.eclipse.net4j.util.container.IManagedContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
@@ -39,6 +38,7 @@ import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.CDOConnectionFactoryProvider;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
+import com.b2international.snowowl.datastore.config.IndexConfiguration;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.net4j.Net4jUtils;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
@@ -66,6 +66,8 @@ import com.google.common.base.Stopwatch;
 public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DatastoreServerBootstrap.class);
+
+	private static final String REINDEX_KEY = "snowowl.reindex";
 	
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
@@ -128,24 +130,10 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		
 		if (env.isEmbedded() || env.isServer()) {
 			initializeRepositories(configuration, env);
-			verifyRepositories(env);
+			verifyRepositories(configuration, env);
 		}
 	}
 
-	private void verifyRepositories(Environment env) {
-		final DefaultRepositoryManager repositories = (DefaultRepositoryManager) env.service(RepositoryManager.class);
-		List<InternalRepository> inconsistentRepositories = repositories.repositories()
-			.stream()
-			.filter(repository -> repository instanceof InternalRepository).map(InternalRepository.class::cast)
-			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath()))
-			.collect(Collectors.toList());
-		
-		if (!inconsistentRepositories.isEmpty()) {
-			String message = String.format("Found inconsistent repositories: %s.", inconsistentRepositories.stream().map(repository -> repository.getCdoRepository().getRepositoryName()).toArray());
-			throw new SnowOwlApplication.InitializationException(message);
-		}
-	}
-	
 	private void initializeRepositories(SnowOwlConfiguration configuration, Environment env) {
 		
 		final Stopwatch branchStopwatch = Stopwatch.createStarted();
@@ -156,7 +144,7 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		RepositoryConfiguration repositoryConfig = configuration.getModuleConfig(RepositoryConfiguration.class);
 		final ICDORepositoryManager cdoRepositoryManager = env.service(ICDORepositoryManager.class);
 		for (String repositoryId : cdoRepositoryManager.uuidKeySet()) {
-			Repository build = repositories
+			repositories
 				.prepareCreate(repositoryId, cdoRepositoryManager.getByUuid(repositoryId).getSnowOwlTerminologyComponentId())
 				.setNumberOfWorkers(repositoryConfig.getNumberOfWorkers())
 				.setMergeMaxResults(repositoryConfig.getMergeMaxResults())
@@ -166,6 +154,48 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		LOG.debug("<<< Branch and review services registered. [{}]", branchStopwatch);
 	}
 
+	private void verifyRepositories(SnowOwlConfiguration configuration, Environment env) {
+		final Stopwatch stopwatch = Stopwatch.createStarted();
+		LOG.debug(">>> Verifying repository consistency.");
+		
+		final DefaultRepositoryManager repositories = (DefaultRepositoryManager) env.service(RepositoryManager.class);
+		
+		List<InternalRepository> inconsistentRepositories = repositories.repositories()
+			.stream()
+			.filter(repository -> repository instanceof InternalRepository).map(InternalRepository.class::cast)
+			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath()))
+			.collect(Collectors.toList());
+		
+		boolean reindexMode = Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
+		if (reindexMode) {
+			modifyConfigurationForReindex(configuration);
+		}
+		
+		if (!inconsistentRepositories.isEmpty()) {
+			String message = String.format("Found inconsistent repositories: %s.", inconsistentRepositories.stream().map(repository -> repository.getCdoRepository().getRepositoryName()).toArray());
+
+			if (reindexMode) {
+				LOG.error("{}. Starting Snow Owl Terminology Server in reindex mode.", message);
+			} else {
+				throw new SnowOwlApplication.InitializationException(message);
+			}
+		}
+		
+		LOG.debug("<<< Repository consistency verified. [{}]", stopwatch);
+	}
+
+	private void modifyConfigurationForReindex(SnowOwlConfiguration configuration) {
+		final Stopwatch stopwatch = Stopwatch.createStarted();
+		LOG.debug("<<< Modifying configuration with defaults suitable to re-indexing");
+		IndexConfiguration indexConfiguration = configuration.getModuleConfig(IndexConfiguration.class);
+		indexConfiguration.setCommitInterval(900000L);
+		indexConfiguration.setTranslogSyncInterval(300000L);
+		
+		RepositoryConfiguration repositoryConfiguration = configuration.getModuleConfig(RepositoryConfiguration.class);
+		repositoryConfiguration.setRevisionCacheEnabled(false);
+		LOG.debug(">>> Re-index configurations have been changed. [{}]", stopwatch);
+	}
+	
 	private void connectSystemUser(IManagedContainer container) throws SnowowlServiceException {
 		// Normally this is done for us by CDOConnectionFactory
 		final IJVMConnector connector = JVMUtil.getConnector(container, Net4jUtils.NET_4_J_CONNECTOR_NAME);
