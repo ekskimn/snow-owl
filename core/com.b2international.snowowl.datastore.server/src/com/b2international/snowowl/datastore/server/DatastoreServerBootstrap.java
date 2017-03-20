@@ -67,7 +67,7 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 
 	private static final Logger LOG = LoggerFactory.getLogger(DatastoreServerBootstrap.class);
 
-	private static final String REINDEX_KEY = "snowowl.reindex";
+	private static final String REINDEX_KEY = "snowowl.reindex-mode";
 	
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
