@@ -24,7 +24,7 @@
 					<resolver>p2</resolver>
 					<pomDependencies>consider</pomDependencies>
 					<filters>
-						<!-- Restricted Logging API and implementation to version of Virgo 3.6.x -->
+						<!-- Restricted Logging API and implementation to version of Virgo 3.7.x -->
 						<filter>
 							<type>osgi-bundle</type>
 							<id>com.google.guava</id>
@@ -34,30 +34,23 @@
 						</filter>
 						<filter>
 							<type>p2-installable-unit</type>
-							<id>org.slf4j.api</id>
+							<id>slf4j.api</id>
 							<restrictTo>
-								<versionRange>[1.7.2,1.7.3)</versionRange>
+								<versionRange>[1.7.13,1.7.14)</versionRange>
 							</restrictTo>
 						</filter>
 						<filter>
 							<type>p2-installable-unit</type>
 							<id>ch.qos.logback.classic</id>
 							<restrictTo>
-								<versionRange>[1.0.7,1.0.8)</versionRange>
+								<versionRange>[1.1.3,1.1.4)</versionRange>
 							</restrictTo>
 						</filter>
 						<filter>
 							<type>p2-installable-unit</type>
 							<id>ch.qos.logback.core</id>
 							<restrictTo>
-								<versionRange>[1.0.7,1.0.8)</versionRange>
-							</restrictTo>
-						</filter>
-						<filter>
-							<type>p2-installable-unit</type>
-							<id>ch.qos.logback.slf4j</id>
-							<restrictTo>
-								<versionRange>[1.0.7,1.0.8)</versionRange>
+								<versionRange>[1.1.3,1.1.4)</versionRange>
 							</restrictTo>
 						</filter>
 						<!--
