@@ -84,6 +84,9 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 	public void preRun(SnowOwlConfiguration configuration, Environment env) {
 		if (env.isServer() || env.isEmbedded()) {
 			LOG.debug(">>> Starting server-side datastore bundle.");
+			if (isInReindexMode()) {
+				makeConfigReindexFriendly(configuration);
+			}
 			final IManagedContainer container = env.container();
 			final Stopwatch serverStopwatch = Stopwatch.createStarted();
 			
@@ -122,6 +125,19 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 				throw new SnowowlRuntimeException(e);
 			}
 		}
+	}
+
+	private void makeConfigReindexFriendly(SnowOwlConfiguration configuration) {
+		RepositoryConfiguration repositoryConfig = configuration.getModuleConfig(RepositoryConfiguration.class);
+		IndexConfiguration indexConfiguration = repositoryConfig.getIndexConfiguration();
+		repositoryConfig.setRevisionCacheEnabled(false);
+		indexConfiguration.setCommitInterval(900000L);
+		indexConfiguration.setTranslogSyncInterval(300000L);
+		LOG.debug("Modified runtime terminology server configuration, with values necessary for the reindexing process.");
+	}
+
+	private boolean isInReindexMode() {
+		return Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
 	}
 	
 	@Override
@@ -169,9 +185,9 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		if (!inconsistentRepositories.isEmpty()) {
 			String message = String.format("Found inconsistent repositories: %s.", inconsistentRepositories.stream().map(repository -> repository.getCdoRepository().getRepositoryName()).toArray());
 
-			boolean reindexMode = Boolean.parseBoolean(System.getProperty(REINDEX_KEY, "false"));
+			boolean reindexMode = isInReindexMode();
 			if (reindexMode) {
-				LOG.error("{}. Starting Snow Owl Terminology Server in reindex mode.", message);
+				LOG.error("{} Starting Snow Owl Terminology Server in reindex mode.", message);
 			} else {
 				throw new SnowOwlApplication.InitializationException(message);
 			}
