@@ -173,14 +173,14 @@ public class SnomedBranchRequestTest {
 				.getSync();
 		
 		final SnomedDescriptionCreateRequestBuilder fsnBuilder = SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE)
+				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE, first)
 				.setModuleId(Concepts.MODULE_ROOT)
 				.setTerm("FSN " + branchA)
 				.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
 				.setAcceptability(ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED));
 		
 		final SnomedDescriptionCreateRequestBuilder ptBuilder = SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE)
+				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE, first)
 				.setModuleId(Concepts.MODULE_ROOT)
 				.setTerm("PT " + branchA)
 				.setTypeId(Concepts.SYNONYM)
@@ -188,7 +188,7 @@ public class SnomedBranchRequestTest {
 		
 		final AsyncRequest<CommitResult> conceptRequest = SnomedRequests.prepareNewConcept()
 				.setModuleId(Concepts.MODULE_ROOT)
-				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE)
+				.setIdFromNamespace(SnomedIdentifiers.INT_NAMESPACE, first)
 				.addParent(Concepts.ROOT_CONCEPT)
 				.addDescription(fsnBuilder)
 				.addDescription(ptBuilder)

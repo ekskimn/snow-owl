@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.rest.domain;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.core.domain.ConstantIdStrategy;
 import com.b2international.snowowl.snomed.core.domain.IdGenerationStrategy;
 import com.b2international.snowowl.snomed.core.domain.NamespaceIdStrategy;
@@ -64,17 +65,17 @@ public abstract class AbstractSnomedComponentRestInput<I extends SnomedComponent
 
 	protected abstract I createRequestBuilder();
 	
-	protected I toRequestBuilder() {
+	protected I toRequestBuilder(Branch branch) {
 		final I req = createRequestBuilder();
-		req.setId(createIdGenerationStrategy(getId()));
+		req.setId(createIdGenerationStrategy(getId(), branch));
 		req.setModuleId(getModuleId());
 		req.setActive(isActive());
 		return req;
 	}
 
-	protected IdGenerationStrategy createIdGenerationStrategy(String idOrNull) {
+	protected IdGenerationStrategy createIdGenerationStrategy(String idOrNull, Branch branch) {
 		if (idOrNull == null) {
-			return new NamespaceIdStrategy(namespaceId);
+			return new NamespaceIdStrategy(namespaceId, branch);
 		} else {
 			return new ConstantIdStrategy(idOrNull);
 		}

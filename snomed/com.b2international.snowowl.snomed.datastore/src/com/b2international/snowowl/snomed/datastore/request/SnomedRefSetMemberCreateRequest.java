@@ -185,7 +185,7 @@ final class SnomedRefSetMemberCreateRequest extends BaseRequest<TransactionConte
 		
 		final SnomedConceptCreateRequestBuilder conceptReq = SnomedRequests
 				.prepareNewConcept()
-				.setIdFromNamespace(refSetNamespace)
+				.setIdFromNamespace(refSetNamespace, context.branch())
 				.setModuleId(moduleId)
 				.addParent(Concepts.REFSET_SIMPLE_TYPE);
 		
@@ -193,7 +193,7 @@ final class SnomedRefSetMemberCreateRequest extends BaseRequest<TransactionConte
 		conceptReq.addDescription(
 				SnomedRequests
 					.prepareNewDescription()
-					.setIdFromNamespace(refSetNamespace)
+					.setIdFromNamespace(refSetNamespace, context.branch())
 					.setTerm(getNewRefSetDescription())
 					.setModuleId(moduleId)
 					.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
@@ -202,7 +202,7 @@ final class SnomedRefSetMemberCreateRequest extends BaseRequest<TransactionConte
 		conceptReq.addDescription(
 				SnomedRequests
 					.prepareNewDescription()
-					.setIdFromNamespace(refSetNamespace)
+					.setIdFromNamespace(refSetNamespace, context.branch())
 					.setTerm(getNewRefSetDescription())
 					.setModuleId(moduleId)
 					.setTypeId(Concepts.SYNONYM)

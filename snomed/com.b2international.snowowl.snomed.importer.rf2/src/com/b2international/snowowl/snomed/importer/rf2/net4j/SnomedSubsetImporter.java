@@ -306,19 +306,19 @@ public class SnomedSubsetImporter {
 			.setId(conceptId)
 			.setModuleId(moduleId)
 			.addRelationship(SnomedRequests.prepareNewRelationship()
-					.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+					.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 					.setDestinationId(parentConceptId)
 					.setTypeId(Concepts.IS_A))
 			.addDescription(SnomedRequests
 					.prepareNewDescription()
-					.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+					.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 					.setModuleId(moduleId)
 					.setTerm(String.format("%s (%s)", label, "foundation metadata concept"))
 					.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
 					.preferredIn(languageRefSetId))
 			.addDescription(SnomedRequests
 					.prepareNewDescription()
-					.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+					.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 					.setModuleId(moduleId)
 					.setTerm(label)
 					.setTypeId(Concepts.SYNONYM)
@@ -328,7 +328,7 @@ public class SnomedSubsetImporter {
 		
 		SnomedRequests
 			.prepareNewRelationship()
-			.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+			.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 			.setModuleId(moduleId)
 			.setSourceId(createdConceptId)
 			.setDestinationId(parentConceptId)
@@ -417,19 +417,19 @@ public class SnomedSubsetImporter {
 					.prepareNewConcept()
 					.setModuleId(moduleId)
 					.addRelationship(SnomedRequests.prepareNewRelationship()
-							.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+							.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 							.setDestinationId(refSetType)
 							.setTypeId(Concepts.IS_A))
 					.addDescription(SnomedRequests
 							.prepareNewDescription()
-							.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+							.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 							.setModuleId(moduleId)
 							.setTerm(String.format("%s (%s)", label, "foundation metadata concept"))
 							.setTypeId(Concepts.FULLY_SPECIFIED_NAME)
 							.preferredIn(languageReferenceSetId))
 					.addDescription(SnomedRequests
 							.prepareNewDescription()
-							.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+							.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 							.setModuleId(moduleId)
 							.setTerm(label)
 							.setTypeId(Concepts.SYNONYM)
@@ -438,7 +438,7 @@ public class SnomedSubsetImporter {
 			
 			final String cmtRefSetId = getIdIfCMTConcept(label);
 			if (cmtRefSetId == null) {
-				identifierConceptReq.setIdFromNamespace(Concepts.B2I_NAMESPACE);
+				identifierConceptReq.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch());
 			} else {
 				identifierConceptReq.setId(cmtRefSetId);
 			}
@@ -447,7 +447,7 @@ public class SnomedSubsetImporter {
 			
 			// We create an inferred ISA manually to the same parent
 			SnomedRequests.prepareNewRelationship()
-				.setIdFromNamespace(Concepts.B2I_NAMESPACE)
+				.setIdFromNamespace(Concepts.B2I_NAMESPACE, context.branch())
 				.setModuleId(moduleId)
 				.setSourceId(refSetId)
 				.setDestinationId(refSetType)

@@ -18,6 +18,7 @@ package com.b2international.snowowl.snomed.api.rest.browser;
 import java.util.Collections;
 import java.util.List;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.rest.domain.AbstractSnomedComponentRestInput;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedDescriptionRestInput;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedRelationshipRestInput;
@@ -38,15 +39,15 @@ public class SnomedBrowserConceptRestInput extends AbstractSnomedComponentRestIn
 	}
 
 	@Override
-	public SnomedConceptCreateRequestBuilder toRequestBuilder() {
-		final SnomedConceptCreateRequestBuilder req = super.toRequestBuilder();
+	public SnomedConceptCreateRequestBuilder toRequestBuilder(Branch branch) {
+		final SnomedConceptCreateRequestBuilder req = super.toRequestBuilder(branch);
 
 		for (SnomedRelationshipRestInput restRelationship : getRelationships()) {
 			if (null == restRelationship.getNamespaceId()) {
 				restRelationship.setNamespaceId(getNamespaceId());
 			}
 			
-			req.addRelationship(restRelationship.toRequestBuilder());
+			req.addRelationship(restRelationship.toRequestBuilder(branch));
 		}
 		
 		for (SnomedDescriptionRestInput restDescription : getDescriptions()) {
@@ -55,7 +56,7 @@ public class SnomedBrowserConceptRestInput extends AbstractSnomedComponentRestIn
 				restDescription.setNamespaceId(getNamespaceId());
 			}
 			
-			req.addDescription(restDescription.toRequestBuilder());
+			req.addDescription(restDescription.toRequestBuilder(branch));
 		}
 
 		return req;

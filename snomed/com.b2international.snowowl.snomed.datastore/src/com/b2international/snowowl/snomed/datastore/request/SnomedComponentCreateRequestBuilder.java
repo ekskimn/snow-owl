@@ -17,6 +17,7 @@ package com.b2international.snowowl.snomed.datastore.request;
 
 import javax.annotation.OverridingMethodsMustInvokeSuper;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.snomed.core.domain.ConstantIdStrategy;
@@ -41,8 +42,12 @@ public abstract class SnomedComponentCreateRequestBuilder<B extends SnomedCompon
 		return getSelf();
 	}
 	
-	public final B setIdFromNamespace(String namespace) {
-		this.idGenerationStrategy = new NamespaceIdStrategy(namespace);
+	public final B setIdFromNamespace(String namespace, Branch branch) {
+		this.idGenerationStrategy = new NamespaceIdStrategy(namespace, branch);
+		return getSelf();
+	}
+	public final B setIdGenerationStrategy(final IdGenerationStrategy idGenerationStrategy) {
+		this.idGenerationStrategy = idGenerationStrategy;
 		return getSelf();
 	}
 	

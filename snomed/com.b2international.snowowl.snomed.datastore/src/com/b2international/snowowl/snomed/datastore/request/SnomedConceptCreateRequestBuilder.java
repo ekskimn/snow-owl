@@ -45,8 +45,9 @@ public final class SnomedConceptCreateRequestBuilder extends SnomedComponentCrea
 	// Relationship List builders
 	
 	public SnomedConceptCreateRequestBuilder addParent(String parentId) {
+		
 		return addRelationship(SnomedRequests.prepareNewRelationship()
-				.setIdFromNamespace(getIdGenerationStrategy().getNamespace())
+				.setIdGenerationStrategy(getIdGenerationStrategy())
 				.setDestinationId(parentId)
 				.setTypeId(Concepts.IS_A));
 	}

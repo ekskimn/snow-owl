@@ -42,6 +42,7 @@ import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.api.domain.expression.ISnomedExpression;
@@ -366,10 +367,16 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 		final String userId = principal.getName();
 		
 		final SnomedConceptRestInput change = body.getChange();
+		
 		final String commitComment = body.getCommitComment();
 		
+		Branch branch = SnomedRequests.branching()
+				.prepareGet(branchPath)
+				.build(repositoryId)
+				.execute(bus).getSync();
+		
 		final String createdConceptId = change
-			.toRequestBuilder()
+			.toRequestBuilder(branch)
 			.build(repositoryId, branchPath, userId, commitComment)
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS)

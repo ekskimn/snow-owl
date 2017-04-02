@@ -1,5 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl.domain;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
@@ -21,6 +22,10 @@ import com.google.common.collect.Multimap;
 
 public class ConceptInputCreator extends AbstractInputCreator implements ComponentInputCreator<SnomedConceptCreateRequest, SnomedConceptUpdateRequest, SnomedBrowserConcept> {
 	
+	public ConceptInputCreator(final Branch branch) {
+		super(branch);
+	}
+	
 	@Override
 	public SnomedConceptCreateRequest createInput(SnomedBrowserConcept concept, InputFactory inputFactory) {
 		final SnomedConceptCreateRequestBuilder builder = SnomedRequests
@@ -32,7 +37,7 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 		if (conceptId != null) {
 			builder.setId(conceptId);
 		} else {
-			builder.setIdFromNamespace(getDefaultNamespace());
+			builder.setIdFromNamespace(getDefaultNamespace(), getBranch());
 		}
 
 		boolean hasActiveStatedIsaRelationship = concept.getRelationships().stream()

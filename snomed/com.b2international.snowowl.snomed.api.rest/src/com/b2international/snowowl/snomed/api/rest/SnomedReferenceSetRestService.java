@@ -40,6 +40,7 @@ import org.springframework.web.context.request.async.DeferredResult;
 
 import com.b2international.commons.http.AcceptHeader;
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
@@ -168,8 +169,14 @@ public class SnomedReferenceSetRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 		
+		final Branch branch = SnomedRequests.branching()
+				.prepareGet(branchPath)
+				.build(repositoryId)
+				.execute(bus).getSync();
+
 		final SnomedRefSetRestInput change = body.getChange();
-		final String createdRefSetId = change.toRequestBuilder() 
+		
+		final String createdRefSetId = change.toRequestBuilder(branch) 
 			.build(repositoryId, branchPath, principal.getName(), body.getCommitComment())
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS)

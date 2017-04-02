@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponentWithId;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
@@ -17,11 +18,11 @@ public class InputFactory {
 
 	private final List<ComponentInputCreator<?, ?, ?>> creators;
 
-	public InputFactory() {
+	public InputFactory(final Branch branch) {
 		creators = ImmutableList.<ComponentInputCreator<?, ?, ?>>of(
-				new ConceptInputCreator(), 
-				new DescriptionInputCreator(), 
-				new RelationshipInputCreator());
+				new ConceptInputCreator(branch), 
+				new DescriptionInputCreator(branch), 
+				new RelationshipInputCreator(branch));
 	}
 
 	public <I extends BaseSnomedComponentCreateRequest> I createComponentInput(final ISnomedBrowserComponentWithId newComponent, final Class<I> inputType) {

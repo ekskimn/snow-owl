@@ -35,6 +35,7 @@ import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.SYNONY
 import java.util.Set;
 
 import com.b2international.snowowl.core.SnowOwlApplication;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.bulk.BulkRequest;
 import com.b2international.snowowl.core.events.bulk.BulkRequestBuilder;
@@ -201,7 +202,7 @@ public class SnomedConcreteDomainImportPostProcessor implements ISnomedImportPos
 	
 	private SnomedDescriptionCreateRequestBuilder createDescription(final String conceptId, final String term, final String type, final Acceptability acceptability, final String branch) {
 		return SnomedRequests.prepareNewDescription()
-				.setIdFromNamespace(B2I_NAMESPACE)
+				.setIdFromNamespace(B2I_NAMESPACE, getBranch(branch))
 				.setActive(true)
 				.setModuleId(MODULE_B2I_EXTENSION)
 				.setConceptId(conceptId)
@@ -214,7 +215,7 @@ public class SnomedConcreteDomainImportPostProcessor implements ISnomedImportPos
 	
 	private SnomedRelationshipCreateRequestBuilder createIsaRelationship(final String source, final String destination, final CharacteristicType characteristicType, final String branch) {
 		return SnomedRequests.prepareNewRelationship() 
-			.setIdFromNamespace(B2I_NAMESPACE)
+			.setIdFromNamespace(B2I_NAMESPACE, getBranch(branch))
 			.setActive(true)
 			.setModuleId(MODULE_B2I_EXTENSION)
 			.setSourceId(source)
@@ -224,6 +225,15 @@ public class SnomedConcreteDomainImportPostProcessor implements ISnomedImportPos
 			.setModifier(RelationshipModifier.EXISTENTIAL);
 	}
 	
+	private Branch getBranch(final String branchPath) {
+		return SnomedRequests
+					.branching()
+					.prepareGet(branchPath)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(getServiceForClass(IEventBus.class))
+					.getSync();
+	}
+
 	private boolean isDefaultConcreteDomainConfiguration(final SnomedCoreConfiguration config) {
 		return REFSET_CONCRETE_DOMAIN_TYPE.equals(config.getConcreteDomainTypeRefsetIdentifier())
 				&& REFSET_BOOLEAN_DATATYPE.equals(config.getBooleanDatatypeRefsetIdentifier())

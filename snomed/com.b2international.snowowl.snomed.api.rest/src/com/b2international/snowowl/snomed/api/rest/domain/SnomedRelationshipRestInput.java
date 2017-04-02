@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.rest.domain;
 
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequestBuilder;
@@ -104,8 +105,8 @@ public class SnomedRelationshipRestInput extends AbstractSnomedComponentRestInpu
 	}
 
 	@Override
-	public SnomedRelationshipCreateRequestBuilder toRequestBuilder() {
-		return super.toRequestBuilder()
+	public SnomedRelationshipCreateRequestBuilder toRequestBuilder(Branch branch) {
+		return super.toRequestBuilder(branch)
 				.setCharacteristicType(getCharacteristicType())
 				.setDestinationId(getDestinationId())
 				.setDestinationNegated(isDestinationNegated())

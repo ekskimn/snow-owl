@@ -40,6 +40,7 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.commons.options.OptionsBuilder;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.domain.IStorageRef;
 import com.b2international.snowowl.core.domain.TransactionContext;
@@ -159,7 +160,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		}
 	}
 	
-	private final InputFactory inputFactory;
 	
 	private final Cache<String, SnomedBrowserBulkChangeRun> bulkChangeRuns = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS).build();
 	
@@ -167,10 +167,6 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 	@Resource
 	private IEventBus bus;
-
-	public SnomedBrowserService() {
-		inputFactory = new InputFactory();
-	}
 
 	@Override
 	public ISnomedBrowserConcept getConceptDetails(final String branch, final String conceptId, final List<ExtendedLocale> locales) {
@@ -345,6 +341,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		if (bus == null) {
 			bus = com.b2international.snowowl.core.ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
 		}
+		InputFactory inputFactory = createInputFactory(branch);
 		final SnomedConceptCreateRequest conceptCreateRequest = inputFactory.createComponentInput(newConcept, SnomedConceptCreateRequest.class);
 		final String commitComment = getCommitComment(userId, newConcept, "creating");
 		
@@ -359,6 +356,17 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.getResultAs(String.class);
 		
 		return getConceptDetails(branch, createdConceptId, locales);
+	}
+
+	private InputFactory createInputFactory(String branchPath) {
+		return new InputFactory(getBranch(branchPath));
+	}
+
+	private Branch getBranch(String branchPath) {
+		return SnomedRequests.branching()
+					.prepareGet(branchPath)
+					.build(SnomedDatastoreActivator.REPOSITORY_UUID)
+					.execute(bus).getSync();
 	}
 
 	@Override
@@ -470,7 +478,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final List<ISnomedBrowserDescription> existingDescriptions = existingConcept.getDescriptions();
 		final List<ISnomedBrowserRelationship> existingRelationships = existingConcept.getRelationships();
 
+		
+		InputFactory inputFactory = createInputFactory(branch);
 		// Description updates
+		
 		final List<SnomedDescriptionCreateRequest> descriptionCreateRequests = inputFactory.createComponentInputs(updatedDescriptions, SnomedDescriptionCreateRequest.class);
 		final Map<String, SnomedDescriptionUpdateRequest> descriptionUpdateRequests = inputFactory.createComponentUpdates(existingDescriptions, updatedDescriptions, SnomedDescriptionUpdateRequest.class);
 		final Set<String> deletedDescriptionIds = inputFactory.getDeletedComponentIds(existingDescriptions, updatedDescriptions);

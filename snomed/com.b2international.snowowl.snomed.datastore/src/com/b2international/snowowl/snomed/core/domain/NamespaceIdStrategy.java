@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.snomed.core.domain;
 
+import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.google.common.base.Objects;
 
 /**
@@ -23,13 +25,19 @@ import com.google.common.base.Objects;
 public class NamespaceIdStrategy implements IdGenerationStrategy {
 
 	private final String namespace;
+	private Branch branch;
 
-	public NamespaceIdStrategy(final String namespace) {
+	public NamespaceIdStrategy(final String namespace, Branch branch) {
 		this.namespace = namespace;
+		this.branch = branch;
 	}
 
 	@Override
 	public String getNamespace() {
+		String branchDefaultNamespace = BranchMetadataResolver.getEffectiveBranchMetadataValue(branch, SnomedCoreConfiguration.BRANCH_DEFAULT_NAMESPACE_KEY);
+		if (branchDefaultNamespace != null) {
+			return branchDefaultNamespace;
+		}
 		return namespace;
 	}
 	
