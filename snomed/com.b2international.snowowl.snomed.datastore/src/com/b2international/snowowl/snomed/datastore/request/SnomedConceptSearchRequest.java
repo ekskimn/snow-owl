@@ -26,6 +26,7 @@ import static com.google.common.collect.Maps.newHashMap;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import com.b2international.collections.longs.LongCollection;
 import com.b2international.commons.collect.LongSets;
@@ -196,7 +197,9 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 		
 		if (containsKey(OptionKey.ECL)) {
 			final String ecl = getString(OptionKey.ECL);
-			queryBuilder.filter(SnomedRequests.prepareEclEvaluation(ecl).build().execute(context).getSync());
+			//XXX: ECL evaluation may fire sub requests that may be aimed at an already FULL event bus
+			// thus the need for allowing this request to time out to avoid deadlock. 
+			queryBuilder.filter(SnomedRequests.prepareEclEvaluation(ecl).build().execute(context).getSync(5, TimeUnit.MINUTES));
 		}
 		
 		Expression searchProfileQuery = null;
