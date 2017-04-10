@@ -199,7 +199,8 @@ final class SnomedConceptSearchRequest extends SnomedComponentSearchRequest<Snom
 			final String ecl = getString(OptionKey.ECL);
 			//XXX: ECL evaluation may fire sub requests that may be aimed at an already FULL event bus
 			// thus the need for allowing this request to time out to avoid deadlock. 
-			queryBuilder.filter(SnomedRequests.prepareEclEvaluation(ecl).build().execute(context).getSync(5, TimeUnit.MINUTES));
+			// set to 1 minute to match tomcat's time out
+			queryBuilder.filter(SnomedRequests.prepareEclEvaluation(ecl).build().execute(context).getSync(1, TimeUnit.MINUTES));
 		}
 		
 		Expression searchProfileQuery = null;
