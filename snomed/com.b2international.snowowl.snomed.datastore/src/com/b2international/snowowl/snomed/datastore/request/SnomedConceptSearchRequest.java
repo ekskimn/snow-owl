@@ -214,7 +214,7 @@ final class SnomedConceptSearchRequest extends SnomedSearchRequest<SnomedConcept
 					.execute(context)
 					//XXX: ECL evaluation may fire sub requests that may be aimed at an already FULL event bus
 					// thus the need for allowing this request to time out to avoid deadlock. 
-					.getSync(5, TimeUnit.MINUTES)); 
+					.getSync(1, TimeUnit.MINUTES)); 
 		}
 		
 		Expression searchProfileQuery = null;
