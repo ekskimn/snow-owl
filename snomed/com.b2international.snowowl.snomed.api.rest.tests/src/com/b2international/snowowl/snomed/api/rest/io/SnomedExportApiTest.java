@@ -829,6 +829,28 @@ public class SnomedExportApiTest extends AbstractSnomedExportApiTest {
 		assertArchiveContainsLines(exportArchive, fileToLinesMap);
 	}
 	
+	@Test
+	public void mutexExport() throws Exception {
+		final Map<Object, Object> config = ImmutableMap.builder()
+												.put("type", "FULL")
+												.put("branchPath", Branch.MAIN_PATH)
+												.put("includeUnpublished", true)
+												.build();
+
+		// create/register 2 export requests
+		final String exportId1 = assertExportConfigurationCanBeCreated(config);
+		final String exportId2 = assertExportConfigurationCanBeCreated(config);
+		
+		// assert their existence
+		assertExportConfiguration(exportId1);
+		assertExportConfiguration(exportId2);
+		
+		Thread backgroundExportThread = startExportInBackground(exportId1);
+		assertExportConflicts(exportId2);
+		
+		backgroundExportThread.join();
+	}
+	
 	private String getLanguageRefsetMemberId(String descriptionId) {
 		final Collection<Map<String, Object>> members = assertDescriptionExists(createMainPath(), descriptionId, "members()").extract().body().path("members.items");
 		return String.valueOf(Iterables.getOnlyElement(members).get("id"));

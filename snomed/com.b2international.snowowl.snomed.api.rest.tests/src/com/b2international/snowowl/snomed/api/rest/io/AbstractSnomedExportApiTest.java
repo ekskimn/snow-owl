@@ -102,6 +102,30 @@ public abstract class AbstractSnomedExportApiTest extends AbstractSnomedApiTest 
 				.then().assertThat().statusCode(200);
 	}
 	
+	protected void assertExportConflicts(final String exportId) {
+		startExport(exportId)
+			.then().assertThat().statusCode(409);
+	}
+
+	protected Response startExport(final String exportId) {
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+					.with().contentType(ContentType.JSON)
+					.when().get(EXPORTS_GET_ARCHIVE_ENDPOINT, exportId);
+	}
+	
+	protected Thread startExportInBackground(final String exportId) throws InterruptedException {
+		Thread thread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				startExport(exportId);
+			}
+		});
+		thread.start();
+		//wait for it to kick in.
+		Thread.sleep(1000);
+		return thread;
+	}
+	
 	protected File assertExportFileCreated(final String exportId) throws Exception {
 		
 		File tmpDir = null;
@@ -112,9 +136,7 @@ public abstract class AbstractSnomedExportApiTest extends AbstractSnomedApiTest 
 			final InputSupplier<InputStream> supplier = new InputSupplier<InputStream>() {
 				@Override
 				public InputStream getInput() throws IOException {
-					return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-							.with().contentType(ContentType.JSON)
-							.when().get(EXPORTS_GET_ARCHIVE_ENDPOINT, exportId)
+					return startExport(exportId)
 							.thenReturn().asInputStream();
 				}
 			};
