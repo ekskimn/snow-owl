@@ -32,6 +32,7 @@ import com.b2international.snowowl.core.exceptions.MergeConflictException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.core.exceptions.RequestTimeoutException;
+import com.b2international.snowowl.snomed.api.exception.MutexExportRunConflictException;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.fasterxml.jackson.databind.JsonMappingException;
 
@@ -125,6 +126,12 @@ public class ControllerExceptionMapper {
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	public @ResponseBody RestApiError handle(final TypeMismatchException ex) {
 		return RestApiError.of(ApiError.Builder.of(ex.getMessage()).build()).build(HttpStatus.BAD_REQUEST.value());
+	}
+	
+	@ExceptionHandler
+	@ResponseStatus(HttpStatus.CONFLICT)
+	public @ResponseBody RestApiError handle(final MutexExportRunConflictException ex) {
+		return RestApiError.of(ApiError.Builder.of(ex.getMessage()).build()).build(HttpStatus.CONFLICT.value());
 	}
 	
 	/**

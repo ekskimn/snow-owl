@@ -211,7 +211,8 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 			notes="Returns the export archive from a completed export run on the given version branch.")
 	@ApiResponses({
 		@ApiResponse(code=200, message="OK"),
-		@ApiResponse(code=404, message="Export run not found", response = RestApiError.class)
+		@ApiResponse(code=404, message="Export run not found", response = RestApiError.class),
+		@ApiResponse(code=409, message="Conflict, export already in progress.", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{id}/archive", method=RequestMethod.GET, produces = { AbstractRestService.SO_MEDIA_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
 	public @ResponseBody ResponseEntity<?> getArchive(

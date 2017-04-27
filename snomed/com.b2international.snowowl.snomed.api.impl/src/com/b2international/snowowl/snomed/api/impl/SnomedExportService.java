@@ -42,6 +42,7 @@ import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.ISnomedExportService;
+import com.b2international.snowowl.snomed.api.exception.MutexExportRunConflictException;
 import com.b2international.snowowl.snomed.api.exception.SnomedExportException;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
@@ -51,6 +52,8 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.b2international.snowowl.snomed.exporter.model.SnomedExportResult;
+import com.b2international.snowowl.snomed.exporter.model.SnomedExportResult.Result;
 import com.b2international.snowowl.snomed.exporter.model.SnomedRf2ExportModel;
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
@@ -90,15 +93,23 @@ public class SnomedExportService implements ISnomedExportService {
 	}
 
 	private File tryExport(final SnomedRf2ExportModel model) {
-		try {
-			return doExport(model);
-		} catch (final Exception e) {
-			return throwExportException(isEmpty(e.getMessage())	? "Error occurred while exporting SNOMED CT." : e.getMessage());
+		File exportedArchive = doExport(model);
+		SnomedExportResult exportResult = model.getExportResult();
+		if (exportResult.getResult() == Result.SUCCESSFUL) {
+			return exportedArchive;
+		} else if (exportResult.getResult() == Result.IN_PROGRESS) {
+			throw new MutexExportRunConflictException(exportResult.getMessage());
+		} else {
+			return throwExportException(isEmpty(exportResult.getMessage())	? "Error occurred while exporting SNOMED CT." : exportResult.getMessage());
 		}
 	}
 
-	private File doExport(final SnomedRf2ExportModel model) throws Exception {
-		return getDelegateService().export(model, new NullProgressMonitor());
+	private File doExport(final SnomedRf2ExportModel model) {
+		try {
+			return getDelegateService().export(model, new NullProgressMonitor());
+		} catch (Exception e) {
+			return throwExportException(isEmpty(e.getMessage())	? "Error occurred while exporting SNOMED CT." : e.getMessage());
+		}
 	}
 
 	private com.b2international.snowowl.snomed.exporter.service.SnomedExportService getDelegateService() {
@@ -112,7 +123,7 @@ public class SnomedExportService implements ISnomedExportService {
 		Branch branch = SnomedRequests.branching()
 			.prepareGet(configuration.getBranchPath())
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
-			.execute(bus)
+			.execute(ApplicationContext.getInstance().getServiceChecked(IEventBus.class))
 			.getSync();
 				
 		final SnomedRf2ExportModel model = createExportModelWithAllRefSets(contentSubType, branch, configuration.getNamespaceId());
@@ -123,7 +134,7 @@ public class SnomedExportService implements ISnomedExportService {
 					.filterByActive(true)
 					.filterByAncestor(Concepts.MODULE_ROOT)
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch.path())
-					.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+					.execute(ApplicationContext.getInstance().getServiceChecked(IEventBus.class))
 					.then(new Function<SnomedConcepts, Collection<String>>() {
 						@Override
 						public Collection<String> apply(SnomedConcepts input) {

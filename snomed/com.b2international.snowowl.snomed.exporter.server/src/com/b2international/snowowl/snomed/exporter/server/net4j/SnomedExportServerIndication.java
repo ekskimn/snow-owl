@@ -251,19 +251,21 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 				logActivity(String.format("SNOMED CT export finished in %s", TimeUtil.toString(stopwatch)));
 
 				monitor.worked(1);
+			} else {
+				sendResult(out, file, monitor);
 			}
 			
 		}  catch (Exception e) {
 			
 			final String reason = null != e.getMessage() ? " Reason: '" + e.getMessage() + "'" : "";
 			logActivity("Caught exception while exporting SNOMED CT terminology." + reason);
-			
 			if (e.getClass().isAssignableFrom(RuntimeException.class)) {
 				result.setResultAndMessage(Result.EXCEPTION, "An error occurred while exporting SNOMED CT components: could not retrieve data from database.");
 			} else if (e.getClass().isAssignableFrom(IOException.class)) {
 				result.setResultAndMessage(Result.EXCEPTION, "An error occurred while exporting SNOMED CT components: could not create release files.");
 			}
 			
+			sendResult(out, file, monitor); // an export that resulted in exception still needs to be sent back to requester.
 		} finally {
 
 			monitor.done();
@@ -321,10 +323,9 @@ public class SnomedExportServerIndication extends IndicationWithMonitoring {
 		if (coreComponentExport) {
 			if (!ACTIVE_FULL_RF2_PUBLICATION_USER.compareAndSet(NO_USER, userId)) {
 				final String publishingUserId = ACTIVE_FULL_RF2_PUBLICATION_USER.get();
-				
-				logActivity(String.format("SNOMED CT export is already in progress by %s.", publishingUserId));
-				
-				result.setResult(Result.IN_PROGRESS);
+				String message = String.format("SNOMED CT export is already in progress by %s.", publishingUserId);
+				logActivity(message);
+				result.setResultAndMessage(Result.IN_PROGRESS, message);
 			}
 		}
 	}
