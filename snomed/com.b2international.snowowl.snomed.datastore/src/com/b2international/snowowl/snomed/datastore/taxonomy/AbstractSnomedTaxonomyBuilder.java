@@ -174,6 +174,11 @@ public abstract class AbstractSnomedTaxonomyBuilder implements ISnomedTaxonomyBu
 			result = new SnomedTaxonomyBuilderResult(Statuses.ok());
 		} else {
 			LOGGER.warn("Missing concepts from relationships");
+			//PGW Temporary code to report where issues appearing.  Whatever is calling this function does 
+			//not appear to be iterating through the result.
+			for (InvalidRelationship r : invalidRelationships) {
+				LOGGER.warn("Invalid relationship: s " + r.getSourceId() + " d " + r.getDestinationId());
+			}
 			result = new SnomedTaxonomyBuilderResult(Statuses.error("Missing concepts from relationships."), invalidRelationships);
 		}
 
