@@ -32,7 +32,7 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 
 	@Override
 	public boolean isPublished() {
-		return browserDesciption.getEffectiveTime() != null;
+		return browserDesciption.isReleased();
 	}
 	
 	@Override
