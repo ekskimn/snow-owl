@@ -3,7 +3,9 @@ package com.b2international.snowowl.snomed.api.impl.domain;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUpdateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
@@ -12,7 +14,7 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 	
 	@Override
 	public SnomedRelationshipCreateRequest createInput(SnomedBrowserRelationship newRelationship, InputFactory inputFactory) {
-		return (SnomedRelationshipCreateRequest) SnomedRequests.prepareNewRelationship()
+		SnomedRelationshipCreateRequestBuilder builder = SnomedRequests.prepareNewRelationship()
 				.setActive(newRelationship.isActive())
 				.setModuleId(getModuleOrDefault(newRelationship))
 				.setTypeId(newRelationship.getType().getConceptId())
@@ -20,8 +22,13 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 				.setSourceId(newRelationship.getSourceId()) // XXX: for a new concept, this value might not be known
 				.setDestinationId(newRelationship.getTarget().getConceptId())
 				.setGroup(newRelationship.getGroupId())
-				.setModifier(newRelationship.getModifier())
-				.build();
+				.setModifier(newRelationship.getModifier());
+		
+		if (newRelationship.getId() != null) {
+			builder.setId(newRelationship.getId());
+		}
+		
+		return (SnomedRelationshipCreateRequest) builder.build();
 	}
 
 	@Override
