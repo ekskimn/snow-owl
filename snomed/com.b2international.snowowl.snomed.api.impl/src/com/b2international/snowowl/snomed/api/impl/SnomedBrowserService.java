@@ -42,6 +42,7 @@ import com.b2international.commons.collections.Procedure;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.commons.options.Options;
 import com.b2international.commons.options.OptionsBuilder;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.domain.IStorageRef;
@@ -355,7 +356,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		if (bus == null) {
 			bus = com.b2international.snowowl.core.ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
 			if (bus == null) {
-				throw new IllegalStateException ("Unable to create branch, could not recover event bus from ApplicationContext.");
+				throw new IllegalStateException ("Unable to create concept, could not recover event bus from ApplicationContext.");
 			}
 		}
 		final SnomedConceptCreateRequest conceptCreateRequest = inputFactory.createComponentInput(newConcept, SnomedConceptCreateRequest.class);
