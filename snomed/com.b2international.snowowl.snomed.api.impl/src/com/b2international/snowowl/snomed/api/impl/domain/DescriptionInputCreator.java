@@ -21,7 +21,6 @@ public class DescriptionInputCreator extends AbstractInputCreator implements Com
 	@Override
 	public SnomedDescriptionCreateRequest createInput(final SnomedBrowserDescription newDescription, final InputFactory inputFactory) {
 		SnomedDescriptionCreateRequestBuilder builder = SnomedRequests.prepareNewDescription()
-				.setId(newDescription.getDescriptionId())
 				.setModuleId(getModuleOrDefault(newDescription))
 				.setLanguageCode(newDescription.getLang())
 				.setTypeId(newDescription.getType().getConceptId())
