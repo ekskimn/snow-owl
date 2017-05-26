@@ -1,10 +1,8 @@
 package com.b2international.snowowl.snomed.api.impl.validation;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Resource;
@@ -25,7 +23,6 @@ import com.b2international.snowowl.snomed.api.impl.validation.domain.ValidationC
 import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationConceptService;
 import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationDescriptionService;
 import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationRelationshipService;
-import com.b2international.snowowl.snomed.api.impl.validation.service.ValidationUtility;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
@@ -88,18 +85,6 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 	private RuleExecutor newRuleExecutor() {
 		// TODO: Move path to configuration
 		return new RuleExecutor("/opt/termserver/snomed-drools-rules");
-	}
-
-
-	@Override
-	public Map<String, String> getDialectMatches(Set<String> tokenizedWords) {
-		Map<String, String> matches = new HashMap<>();
-		for (String word : tokenizedWords) {
-			if (ValidationUtility.hasUsSpelling(word)) {
-				matches.put(word, ValidationUtility.getGbSpellingForUsSpelling(word)); 
-			}
-		}
-		return matches;
 	}
 
 }
