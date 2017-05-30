@@ -62,7 +62,7 @@ public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 					}
 				});
 			} catch (BranchMergeException e) {
-				throw new ConflictException("Cannot rebase target '%s' on source '%s'.", target.path(), source.path(), e);
+				throw new ConflictException("Cannot rebase target '%s' on source '%s': %s", target.path(), source.path(), e.getCause(), e);
 			} catch (OperationLockException e) {
 				throw new ConflictException("Lock exception caught while rebasing target '%s' on source '%s'. %s", target.path(), source.path(), e.getMessage());
 			} catch (InterruptedException e) {
