@@ -42,7 +42,7 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 	
 	@Override
 	public boolean isPublished() {
-		return browserConcept.isReleased();
+		return browserConcept.getEffectiveTime() != null;
 	}
 	
 	@Override

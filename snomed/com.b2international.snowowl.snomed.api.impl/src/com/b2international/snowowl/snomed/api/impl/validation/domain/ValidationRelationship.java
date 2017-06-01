@@ -26,7 +26,7 @@ public class ValidationRelationship implements Relationship {
 
 	@Override
 	public boolean isPublished() {
-		return browserRelationship.isReleased();
+		return browserRelationship.getEffectiveTime() != null;
 	}
 	
 	@Override

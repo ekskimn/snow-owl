@@ -32,7 +32,7 @@ public class ValidationSnomedDescription implements org.ihtsdo.drools.domain.Des
 
 	@Override
 	public boolean isPublished() {
-		return description.isReleased();
+		return description.getEffectiveTime() != null;
 	}
 	
 	@Override
