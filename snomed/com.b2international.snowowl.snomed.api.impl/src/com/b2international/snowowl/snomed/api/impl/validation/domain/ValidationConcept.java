@@ -46,6 +46,11 @@ public class ValidationConcept implements org.ihtsdo.drools.domain.Concept {
 	}
 	
 	@Override
+	public boolean isReleased() {
+		return browserConcept.isReleased();
+	}
+	
+	@Override
 	public String getModuleId() {
 		return browserConcept.getModuleId();
 	}
