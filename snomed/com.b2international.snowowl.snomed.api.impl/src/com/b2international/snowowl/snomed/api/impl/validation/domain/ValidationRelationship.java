@@ -30,6 +30,11 @@ public class ValidationRelationship implements Relationship {
 	}
 	
 	@Override
+	public boolean isReleased() {
+		return browserRelationship.isReleased();
+	}
+	
+	@Override
 	public String getModuleId() {
 		return browserRelationship.getModuleId();
 	}

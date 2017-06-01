@@ -34,7 +34,12 @@ public class ValidationSnomedDescription implements org.ihtsdo.drools.domain.Des
 	public boolean isPublished() {
 		return description.getEffectiveTime() != null;
 	}
-	
+
+	@Override
+	public boolean isReleased() {
+		return description.isReleased();
+	}
+
 	@Override
 	public String getModuleId() {
 		return description.getModuleId();
