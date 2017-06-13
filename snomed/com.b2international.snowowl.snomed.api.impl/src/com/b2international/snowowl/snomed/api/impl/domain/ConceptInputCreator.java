@@ -6,11 +6,12 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
-import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
-import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
@@ -130,12 +131,12 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 	}
 
 	@Override
-	public boolean canCreateInput(final Class<? extends BaseSnomedComponentCreateRequest> inputType) {
+	public boolean canCreateInput(Class<? extends SnomedComponentCreateRequest> inputType) {
 		return SnomedConceptCreateRequest.class.isAssignableFrom(inputType);
 	}
 
 	@Override
-	public boolean canCreateUpdate(final Class<? extends BaseSnomedComponentUpdateRequest> updateType) {
+	public boolean canCreateUpdate(Class<? extends SnomedComponentUpdateRequest> updateType) {
 		return SnomedConceptUpdateRequest.class.isAssignableFrom(updateType);
 	}
 }

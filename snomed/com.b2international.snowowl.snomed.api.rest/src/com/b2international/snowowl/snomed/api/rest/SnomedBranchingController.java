@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.Branches;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchUpdateRestRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.CreateBranchRestRequest;
@@ -43,9 +44,10 @@ import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
+import com.google.common.collect.ImmutableList;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
+import com.wordnik.swagger.annotations.ApiParam;
 import com.wordnik.swagger.annotations.ApiResponse;
 import com.wordnik.swagger.annotations.ApiResponses;
 
@@ -73,7 +75,7 @@ public class SnomedBranchingController extends AbstractRestService {
 		ApiValidation.checkInput(request);
 		
 		return DeferredResults.wrap(
-				SnomedRequests
+				RepositoryRequests
 					.branching()
 					.prepareCreate()
 					.setParent(request.getParent())
@@ -91,11 +93,20 @@ public class SnomedBranchingController extends AbstractRestService {
 		@ApiResponse(code = 200, message = "OK", response=CollectionResource.class)
 	})
 	@RequestMapping(method=RequestMethod.GET)
-	public DeferredResult<Branches> getBranches() {
+	public DeferredResult<Branches> getBranches(
+			@ApiParam("parent")
+			@RequestParam(value="parent", required=false)
+			final String[] parents,
+			
+			@ApiParam("name")
+			@RequestParam(value="name", required=false)
+			final String[] names) {
 		return DeferredResults.wrap(
-				SnomedRequests
+				RepositoryRequests
 					.branching()
 					.prepareSearch()
+					.filterByParent(parents == null ? ImmutableList.of() : ImmutableList.copyOf(parents))
+					.filterByName(names == null ? ImmutableList.of() : ImmutableList.copyOf(names))
 					.build(repositoryId)
 					.execute(bus));
 	}
@@ -112,7 +123,7 @@ public class SnomedBranchingController extends AbstractRestService {
 			@PathVariable("path") String branchPath,
 			@RequestParam(value="immediateChildren", required=false, defaultValue="false") boolean immediateChildren) {
 		return DeferredResults.wrap(
-				SnomedRequests
+				RepositoryRequests
 					.branching()
 					.prepareGetChildren(branchPath)
 					.filterImmediate(immediateChildren)
@@ -130,7 +141,7 @@ public class SnomedBranchingController extends AbstractRestService {
 	@RequestMapping(value="/{path:**}", method=RequestMethod.GET)
 	public DeferredResult<Branch> getBranch(@PathVariable("path") String branchPath) {
 		return DeferredResults.wrap(
-				SnomedRequests
+				RepositoryRequests
 					.branching()
 					.prepareGet(branchPath)
 					.withLocks()
@@ -153,7 +164,7 @@ public class SnomedBranchingController extends AbstractRestService {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public DeferredResult<ResponseEntity<Void>> deleteBranch(@PathVariable("path") String branchPath) {
 		return DeferredResults.wrap(
-				SnomedRequests
+				RepositoryRequests
 					.branching()
 					.prepareDelete(branchPath)
 					.build(repositoryId)
@@ -177,7 +188,7 @@ public class SnomedBranchingController extends AbstractRestService {
 			@PathVariable("path") String branchPath,
 			@RequestBody BranchUpdateRestRequest request) {
 		return DeferredResults.wrap(
-				SnomedRequests
+				RepositoryRequests
 					.branching()
 					.prepareUpdate(branchPath)
 					.setMetadata(request.getMetadata())

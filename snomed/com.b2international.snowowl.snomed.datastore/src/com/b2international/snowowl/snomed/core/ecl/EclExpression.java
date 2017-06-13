@@ -65,7 +65,7 @@ final class EclExpression {
 					.all()
 					.setFields(ImmutableSet.of(SnomedConceptDocument.Fields.ID))
 					.filterByEcl(ecl)
-					.build(context.id(), context.branch().path())
+					.build(context.id(), context.branchPath())
 					.execute(context.service(IEventBus.class))
 					.then(new Function<SnomedConcepts, Set<String>>() {
 						@Override
@@ -82,7 +82,7 @@ final class EclExpression {
 			conceptPromise = SnomedRequests.prepareSearchConcept()
 					.all()
 					.filterByEcl(ecl)
-					.build(context.id(), context.branch().path())
+					.build(context.id(), context.branchPath())
 					.execute(context.service(IEventBus.class));
 		}
 		return conceptPromise;
@@ -91,7 +91,7 @@ final class EclExpression {
 	public Promise<Expression> resolveToExpression(final BranchContext context) {
 		if (expressionPromise == null) {
 			expressionPromise = SnomedRequests.prepareEclEvaluation(ecl)
-					.build(context.id(), context.branch().path())
+					.build(context.id(), context.branchPath())
 					.execute(context.service(IEventBus.class))
 					.thenWith(result -> result);
 		}
@@ -108,7 +108,7 @@ final class EclExpression {
 					@Override
 					public Expression apply(Expression it) {
 						if (!excludedMatches.isEmpty()) {
-							return Expressions.builder().must(it).mustNot(RevisionDocument.Expressions.ids(excludedMatches)).build();
+							return Expressions.builder().filter(it).mustNot(RevisionDocument.Expressions.ids(excludedMatches)).build();
 						} else {
 							return it;
 						}
@@ -125,7 +125,7 @@ final class EclExpression {
 					.filterBySource(ecl)
 					.filterByGroup(1, Integer.MAX_VALUE)
 					.setFields(ImmutableSet.of(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID))
-					.build(context.id(), context.branch().path())
+					.build(context.id(), context.branchPath())
 					.execute(context.service(IEventBus.class))
 					.then(new Function<SnomedRelationships, Set<String>>() {
 						@Override

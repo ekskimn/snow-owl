@@ -16,12 +16,12 @@
 package com.b2international.snowowl.datastore.server.internal.branch;
 
 import java.util.Collection;
+import java.util.Set;
 
 import com.b2international.commons.collections.Collections3;
 import com.b2international.snowowl.core.Metadata;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSet.Builder;
 
 /**
  * @since 4.1
@@ -72,12 +72,13 @@ public class CDOBranchImpl extends BranchImpl implements InternalCDOBasedBranch 
 	
 	@Override
 	public InternalCDOBasedBranch withSegmentId(int newSegmentId) {
-		final Builder<Integer> builder = ImmutableSet.builder();
-		builder.add(newSegmentId);
-		// use previous segments here, the branch got a new segment because a new child branch got opened
-		builder.addAll(segments());
+		final Set<Integer> newSegments = ImmutableSet.<Integer>builder()
+				.add(newSegmentId)
+				// use previous segments here, the branch got a new segment because a new child branch got opened				
+				.addAll(segments())
+				.build();
 		
-		CDOBranchImpl branch = new CDOBranchImpl(name(), parentPath(), baseTimestamp(), headTimestamp(), isDeleted(), metadata(), cdoBranchId(), newSegmentId, builder.build(), parentSegments());
+		CDOBranchImpl branch = new CDOBranchImpl(name(), parentPath(), baseTimestamp(), headTimestamp(), isDeleted(), metadata(), cdoBranchId(), newSegmentId, newSegments, parentSegments());
 		branch.setBranchManager(getBranchManager());
 		return branch;
 	}

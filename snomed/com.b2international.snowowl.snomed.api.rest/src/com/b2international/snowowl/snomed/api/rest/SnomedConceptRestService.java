@@ -244,8 +244,9 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.filterByTerm(termFilter)
 					.filterByEscg(escgFilter)
 					.filterByEcl(eclFilter)
-					.setExpand(expand)
 					.filterByExtendedLocales(extendedLocales)
+					.setExpand(expand)
+					.setLocales(extendedLocales)
 					.build(repositoryId, branch)
 					.execute(bus));
 	}
@@ -294,8 +295,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 
 		return DeferredResults.wrap(
 				SnomedRequests
-					.prepareGetConcept()
-					.setComponentId(conceptId)
+					.prepareGetConcept(conceptId)
 					.setExpand(expand)
 					.setLocales(extendedLocales)
 					.build(repositoryId, branchPath)
@@ -463,8 +463,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 		SnomedRequests
-			.prepareDeleteConcept()
-			.setComponentId(conceptId)
+			.prepareDeleteConcept(conceptId)
 			.force(force)
 			.build(repositoryId, branchPath, principal.getName(), String.format("Deleted Concept '%s' from store.", conceptId))
 			.execute(bus)

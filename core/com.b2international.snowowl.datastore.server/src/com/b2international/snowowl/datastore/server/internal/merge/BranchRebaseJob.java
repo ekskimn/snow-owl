@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,14 +37,14 @@ import com.google.common.base.Strings;
 /**
  * @since 4.6
  */
-public class BranchRebaseJob extends AbstractBranchChangeJob {
+public class BranchRebaseJob extends AbstractBranchChangeRemoteJob {
 
 	private static class SyncRebaseRequest extends AbstractBranchChangeRequest<Branch> {
 
 		private static final Logger LOG = LoggerFactory.getLogger(SyncRebaseRequest.class);
 		
 		SyncRebaseRequest(final Merge merge, final String commitMessage, String reviewId) {
-			super(Branch.class, merge.getId(), merge.getSource(), merge.getTarget(), commitMessage, reviewId);
+			super(merge.getSource(), merge.getTarget(), commitMessage, reviewId);
 		}
 
 		@Override
@@ -75,13 +75,13 @@ public class BranchRebaseJob extends AbstractBranchChangeJob {
 		}
 	}
 	
-	public BranchRebaseJob(Repository repository, UUID id, String source, String target, String commitMessage, String reviewId) {
-		super(repository, id, source, target, commitMessage, reviewId);
+	public BranchRebaseJob(Repository repository, String source, String target, String commitMessage, String reviewId) {
+		super(repository, source, target, commitMessage, reviewId);
 	}
 
 	@Override
 	protected void applyChanges() {
-		new AsyncRequest<>("/"+repository.id(),	new RepositoryRequest<>(repository.id(), new SyncRebaseRequest(merge, commitComment, reviewId)))
+		new AsyncRequest<>(new RepositoryRequest<>(repository.id(), new SyncRebaseRequest(getMerge(), commitComment, reviewId)))
 			.execute(repository.events())
 			.getSync();
 	}

@@ -77,4 +77,5 @@ public class SnomedExportExecutor {
 		fileChannel.write(ByteBuffer.wrap(Joiner.on("\t").join(columnHeaders).trim().getBytes(UTF_8)));
 		fileChannel.write(ByteBuffer.wrap(SnomedExporter.CR_LF.getBytes(UTF_8)));
 	}
+	
 }

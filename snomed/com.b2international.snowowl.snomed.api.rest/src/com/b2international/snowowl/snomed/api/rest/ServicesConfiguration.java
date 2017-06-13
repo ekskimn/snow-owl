@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,9 +50,8 @@ import com.b2international.snowowl.core.MetadataMixin;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.domain.CollectionResource;
+import com.b2international.snowowl.datastore.file.FileRegistry;
 import com.b2international.snowowl.datastore.review.BranchState;
-import com.b2international.snowowl.datastore.review.ConceptChanges;
-import com.b2international.snowowl.datastore.review.ConceptChangesMixin;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -72,7 +71,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
-import com.fasterxml.jackson.module.scala.DefaultScalaModule;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.io.Files;
@@ -179,23 +177,22 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	@Bean
 	public ObjectMapper objectMapper() {
 		final ObjectMapper objectMapper = new ObjectMapper();
-		objectMapper.registerModule(new DefaultScalaModule());
 		objectMapper.registerModule(new GuavaModule());
-		objectMapper.setSerializationInclusion(Include.NON_EMPTY);
+		objectMapper.setSerializationInclusion(Include.NON_NULL);
 		final ISO8601DateFormat df = new ISO8601DateFormat();
 		df.setTimeZone(TimeZone.getTimeZone("UTC"));
 		objectMapper.setDateFormat(df);
 		objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-		objectMapper.addMixInAnnotations(CollectionResource.class, CollectionResourceMixin.class);
-		objectMapper.addMixInAnnotations(SnomedComponent.class, ISnomedComponentMixin.class);
-		objectMapper.addMixInAnnotations(ISnomedBrowserComponent.class, ISnomedComponentMixin.class);
-		objectMapper.addMixInAnnotations(Branch.class, BranchMixin.class);
-		objectMapper.addMixInAnnotations(Metadata.class, MetadataMixin.class);
-		objectMapper.addMixInAnnotations(MetadataHolder.class, MetadataHolderMixin.class);
-		objectMapper.addMixInAnnotations(Review.class, ReviewMixin.class);
-		objectMapper.addMixInAnnotations(MergeReview.class, MergeReviewMixin.class);
-		objectMapper.addMixInAnnotations(BranchState.class, BranchStateMixin.class);
-		objectMapper.addMixInAnnotations(ConceptChanges.class, ConceptChangesMixin.class);
+		objectMapper.addMixIn(CollectionResource.class, CollectionResourceMixin.class);
+		objectMapper.addMixIn(SnomedComponent.class, ISnomedComponentMixin.class);
+		objectMapper.addMixIn(ISnomedBrowserComponent.class, ISnomedComponentMixin.class);
+		objectMapper.addMixIn(Branch.class, BranchMixin.class);
+		objectMapper.addMixIn(Metadata.class, MetadataMixin.class);
+		objectMapper.addMixIn(MetadataHolder.class, MetadataHolderMixin.class);
+		objectMapper.addMixIn(Review.class, ReviewMixin.class);
+		objectMapper.addMixIn(MergeReview.class, MergeReviewMixin.class);
+		objectMapper.addMixIn(BranchState.class, BranchStateMixin.class);
+		objectMapper.addMixIn(ConceptChanges.class, ConceptChangesMixin.class);
 		return objectMapper;
 	}
 	
@@ -203,6 +200,11 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	@Scope(value=ConfigurableBeanFactory.SCOPE_PROTOTYPE, proxyMode=ScopedProxyMode.TARGET_CLASS)
 	public IEventBus eventBus() {
 		return com.b2international.snowowl.core.ApplicationContext.getInstance().getServiceChecked(IEventBus.class);
+	}
+	
+	@Bean
+	public FileRegistry fileRegistry() {
+		return com.b2international.snowowl.core.ApplicationContext.getInstance().getServiceChecked(FileRegistry.class);
 	}
 	
 	@Bean

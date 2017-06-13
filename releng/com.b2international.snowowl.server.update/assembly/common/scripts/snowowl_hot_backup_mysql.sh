@@ -191,7 +191,7 @@ backup_repository() {
 	mysqldump --user="$MYSQL_USERNAME" --password="$MYSQL_PASSWORD" "$REPOSITORY" > "$ABSOLUTE_ARCHIVE_PREFIX/$DATABASE_DUMP_FILE" || unlock_repository_and_exit "Couldn't create SQL dump for repository $REPOSITORY. Exiting with error."
 
 	echo_date "Saving index content for repository $REPOSITORY..."
-	INDEX_NAME="${REPOSITORY%Store}"
+	INDEX_NAME="${REPOSITORY}"
 	rsync --verbose --recursive --dirs --prune-empty-dirs --exclude=segments.gen --exclude=write.lock "$INDEX_NAME" "$ABSOLUTE_ARCHIVE_PREFIX/indexes" || unlock_repository_and_exit "Couldn't copy files from $REPOSITORY index folder. Exiting with error."
 	
 	unlock_repository
@@ -208,7 +208,7 @@ backup_repositories() {
 		unlock_all_repositories_and_exit "Failed to retrieve list of repositories. Exiting with error."
 	fi
 	
-	echo "$CURL_MESSAGE" | while read -r REPOSITORY
+	echo "$CURL_MESSAGE" | grep -Po '"id":.*?[^\\]",' | sed 's/\"id\":\"\(.*\)\",/\1/' | while read -r REPOSITORY
 	do
 		backup_repository || break
 	done

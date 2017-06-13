@@ -23,6 +23,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 
+import com.b2international.index.Script;
+import com.b2international.index.WithHash;
 import com.b2international.index.WithId;
 import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.index.query.Expression;
@@ -32,40 +34,39 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Objects;
 import com.google.common.base.Objects.ToStringHelper;
+import com.google.common.collect.ImmutableSet;
 
 
 /**
  * @since 4.7
  */
+@Script(name=Revision.UPDATE_REPLACED_INS, script="ctx._source.replacedIns += params.segmentId")
 public abstract class Revision implements WithId {
 
 	public static class Views {
 		
-		public static class DocIdOnly implements WithId {
-			private String _id;
-			
-			@Override
-			public String _id() {
-				return _id;
-			}
-			
-			@Override
-			public void set_id(String _id) {
-				this._id = _id;
-			}
-			
-		}
-		
-		public static class StorageKeyOnly {
+		public static final class StorageKeyAndHash implements WithHash {
 			private final long storageKey;
+			private String _hash;
 
 			@JsonCreator
-			public StorageKeyOnly(@JsonProperty("storageKey") long storageKey) {
+			public StorageKeyAndHash(@JsonProperty(Revision.STORAGE_KEY) long storageKey, @JsonProperty(DocumentMapping._HASH) String _hash) {
 				this.storageKey = storageKey;
+				this._hash = _hash;
 			}
 			
 			public long getStorageKey() {
 				return storageKey;
+			}
+			
+			@Override
+			public String _hash() {
+				return _hash;
+			}
+			
+			@Override
+			public void set_hash(String _hash) {
+				this._hash = _hash;
 			}
 			
 		}
@@ -76,6 +77,14 @@ public abstract class Revision implements WithId {
 	public static final String COMMIT_TIMESTAMP = "commitTimestamp";
 	public static final String SEGMENT_ID = "segmentId";
 	public static final String REPLACED_INS = "replacedIns";
+	
+	// scripts
+	public static final String UPDATE_REPLACED_INS = "updateReplacedIns";
+	
+	/**
+	 * Revision fields that should not be part of any hash value.
+	 */
+	public static final Set<String> REV_FIELDS = ImmutableSet.of(BRANCH_PATH, COMMIT_TIMESTAMP, SEGMENT_ID, REPLACED_INS);
 
 	private String _id;
 	
@@ -159,14 +168,14 @@ public abstract class Revision implements WithId {
 
 	public static Expression branchSegmentFilter(final Integer segment) {
 		return Expressions.builder()
-				.must(match(Revision.SEGMENT_ID, segment))
+				.filter(match(Revision.SEGMENT_ID, segment))
 				.mustNot(match(Revision.REPLACED_INS, segment))
 				.build();
 	}
 	
 	public static Expression branchSegmentFilter(final Set<Integer> segments) {
 		return Expressions.builder()
-				.must(matchAnyInt(Revision.SEGMENT_ID, segments))
+				.filter(matchAnyInt(Revision.SEGMENT_ID, segments))
 				.mustNot(matchAnyInt(Revision.REPLACED_INS, segments))
 				.build();
 	}

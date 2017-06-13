@@ -154,6 +154,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 					.filterByAcceptability(acceptabilityFilter)
 					.filterByLanguageRefSetIds(languageRefSetIds)
 					.filterByExtendedLocales(extendedLocales)
+					.setLocales(extendedLocales)
 					.setLimit(limit)
 					.setOffset(offset)
 					.setExpand(expand)
@@ -224,9 +225,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			final String expand) {
 		
 		return DeferredResults.wrap(
-				SnomedRequests
-					.prepareGetDescription()
-					.setComponentId(descriptionId)
+				SnomedRequests.prepareGetDescription(descriptionId)
 					.setExpand(expand)
 					.build(repositoryId, branchPath)
 					.execute(bus));
@@ -272,6 +271,9 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 			.setInactivationIndicator(update.getInactivationIndicator())
 			.setCaseSignificance(update.getCaseSignificance())
 			.setAcceptability(update.getAcceptability())
+			.setTypeId(update.getTypeId())
+			.setTerm(update.getTerm())
+			.setLanguageCode(update.getLanguageCode())
 			.build(repositoryId, branchPath, userId, commitComment)
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS);
@@ -305,9 +307,7 @@ public class SnomedDescriptionRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 		
-		SnomedRequests
-			.prepareDeleteDescription()
-			.setComponentId(descriptionId)
+		SnomedRequests.prepareDeleteDescription(descriptionId)
 			.force(force)
 			.build(repositoryId, branchPath, principal.getName(), String.format("Deleted Description '%s' from store.", descriptionId))
 			.execute(bus)

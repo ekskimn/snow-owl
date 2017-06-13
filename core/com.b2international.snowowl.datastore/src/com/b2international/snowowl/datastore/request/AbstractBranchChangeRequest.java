@@ -15,12 +15,10 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import java.util.UUID;
-
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.ConflictException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.review.BranchState;
@@ -31,12 +29,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * @since 4.6
  */
-public abstract class AbstractBranchChangeRequest<R> extends BaseRequest<RepositoryContext, R> {
+public abstract class AbstractBranchChangeRequest<R> implements Request<RepositoryContext, R> {
 
-	private final Class<R> responseClass;
-	
-	@JsonProperty
-	protected final UUID id;
 	@JsonProperty
 	protected final String sourcePath;
 	@JsonProperty
@@ -46,10 +40,7 @@ public abstract class AbstractBranchChangeRequest<R> extends BaseRequest<Reposit
 	@JsonProperty
 	protected final String reviewId;
 
-	protected AbstractBranchChangeRequest(Class<R> responseClass, UUID id, String sourcePath, String targetPath, String commitMessage, String reviewId) {
-		this.responseClass = responseClass;
-		
-		this.id = id;
+	protected AbstractBranchChangeRequest(String sourcePath, String targetPath, String commitMessage, String reviewId) {
 		this.sourcePath = sourcePath;
 		this.targetPath = targetPath;
 		this.commitMessage = commitMessage;
@@ -87,10 +78,5 @@ public abstract class AbstractBranchChangeRequest<R> extends BaseRequest<Reposit
 	}
 
 	protected abstract R execute(RepositoryContext context, Branch source, Branch target);
-
-	@Override
-	protected Class<R> getReturnType() {
-		return responseClass;
-	}
 
 }

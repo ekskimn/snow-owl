@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.emf.ecore.EObject;
@@ -34,6 +33,7 @@ import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
 import com.b2international.snowowl.core.exceptions.ComponentStatusConflictException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
@@ -46,15 +46,16 @@ import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SubclassDefinitionStatus;
-import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan;
 import com.b2international.snowowl.snomed.datastore.SnomedInactivationPlan.InactivationReason;
-import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.Strings;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
@@ -62,9 +63,20 @@ import com.google.common.collect.Sets;
 /**
  * @since 4.5
  */
-public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateRequest {
+public final class SnomedConceptUpdateRequest extends SnomedComponentUpdateRequest {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedConceptUpdateRequest.class);
+
+	private static final Set<String> FILTERED_REFSET_IDS = ImmutableSet.of(Concepts.REFSET_CONCEPT_INACTIVITY_INDICATOR,
+			Concepts.REFSET_ALTERNATIVE_ASSOCIATION,
+			Concepts.REFSET_MOVED_FROM_ASSOCIATION,
+			Concepts.REFSET_MOVED_TO_ASSOCIATION,
+			Concepts.REFSET_POSSIBLY_EQUIVALENT_TO_ASSOCIATION,
+			Concepts.REFSET_REFERS_TO_ASSOCIATION,
+			Concepts.REFSET_REPLACED_BY_ASSOCIATION,
+			Concepts.REFSET_SAME_AS_ASSOCIATION,
+			Concepts.REFSET_SIMILAR_TO_ASSOCIATION,
+			Concepts.REFSET_WAS_A_ASSOCIATION);
 
 	private DefinitionStatus definitionStatus;
 	private SubclassDefinitionStatus subclassDefinitionStatus;
@@ -114,11 +126,25 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 		changed |= updateModule(context, concept, getModuleId());
 		changed |= updateDefinitionStatus(context, concept);
 		changed |= updateSubclassDefinitionStatus(context, concept);
-		changed |= updateComponents(context, concept, concept.getDescriptions(), descriptions, description -> description.getId(), id -> SnomedRequests.prepareDeleteDescription().setComponentId(id).build());
-		changed |= updateComponents(context, concept, concept.getOutboundRelationships(), relationships, relationship -> relationship.getId(), id -> SnomedRequests.prepareDeleteRelationship().setComponentId(id).build());
-		// TODO load all members referencing this concept except inactivation related ones
-		// XXX currently we support only concrete domain members to be updated
-		changed |= updateComponents(context, concept, concept.getConcreteDomainRefSetMembers(), filterMembers(context, members), member -> member.getUuid(), id -> SnomedRequests.prepareDeleteMember().setComponentId(id).build());
+		
+		if (descriptions != null) {
+			changed |= updateComponents(context, concept, 
+					getComponentIds(concept.getDescriptions()), descriptions, 
+					id -> SnomedRequests.prepareDeleteDescription(id).build());
+		}
+		
+		if (relationships != null) {
+			changed |= updateComponents(context, concept, 
+					getComponentIds(concept.getOutboundRelationships()), relationships, 
+					id -> SnomedRequests.prepareDeleteRelationship(id).build());
+		}
+		
+		if (members != null) {
+			changed |= updateComponents(context, concept, 
+					getPreviousMemberIds(concept, context), members, 
+					id -> SnomedRequests.prepareDeleteMember(id).build());
+		}
+		
 		changed |= processInactivation(context, concept);
 
 		if (changed) {
@@ -127,20 +153,19 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 			} else {
 				if (concept.isReleased()) {
 					long start = new Date().getTime();
-					final IEventBus bus = context.service(IEventBus.class);
-					final SnomedConcept releasedConcept = SnomedRequests.prepareGetConcept()
-							.setComponentId(getComponentId())
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, getLatestReleaseBranch(context))
-							.execute(bus)
+					final String branchPath = getLatestReleaseBranch(context);
+					if (!Strings.isNullOrEmpty(branchPath)) {
+						final SnomedConcept releasedConcept = SnomedRequests.prepareGetConcept(getComponentId())
+								.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+								.execute(context.service(IEventBus.class))
 							.getSync();
-					
-					if (releasedConcept == null) {
-						throw new ComponentNotFoundException(ComponentCategory.CONCEPT, getComponentId());
-					} else if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
-						concept.setEffectiveTime(releasedConcept.getEffectiveTime());
+						if (releasedConcept == null) {
+							throw new ComponentNotFoundException(ComponentCategory.CONCEPT, getComponentId());
+						} else if (!isDifferentToPreviousRelease(concept, releasedConcept)) {
+							concept.setEffectiveTime(releasedConcept.getEffectiveTime());
+						}
+						LOGGER.trace("Previous version comparison took {}", new Date().getTime() - start);
 					}
-					
-					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
 			}
 		}
@@ -148,24 +173,20 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 		return changed;
 	}
 
-	private Iterable<SnomedReferenceSetMember> filterMembers(TransactionContext context, List<SnomedReferenceSetMember> members) {
-		if (members == null) return null;
-		final Set<String> referenceSets = members.stream().map(member -> member.getReferenceSetId()).collect(Collectors.toSet());
-		final Map<String, SnomedReferenceSet> refSetsById = SnomedRequests.prepareSearchRefSet()
-				.setLimit(referenceSets.size())
-				.setComponentIds(referenceSets)
+	private Set<String> getComponentIds(Iterable<? extends Component> components) {
+		return FluentIterable.from(components).transform(c -> c.getId()).toSet();
+	}
+
+	private Set<String> getPreviousMemberIds(Concept concept, TransactionContext context) {
+		SnomedReferenceSetMembers members = SnomedRequests.prepareSearchMember()
+			.filterByReferencedComponent(concept.getId())
 				.build()
-				.execute(context)
-				.getItems()
-				.stream()
-				.collect(Collectors.toMap(SnomedReferenceSet::getId, Function.identity()));
+			.execute(context);
 		
-		return members.stream()
-				.filter(member -> {
-					final SnomedReferenceSet refSet = refSetsById.get(member.getReferenceSetId());
-					return refSet != null && refSet.getType() == SnomedRefSetType.CONCRETE_DATA_TYPE;
-				})
-				.collect(Collectors.toSet());
+		return FluentIterable.from(members)
+				.filter(m -> !FILTERED_REFSET_IDS.contains(m.getReferenceSetId()))
+				.transform(m -> m.getId())
+				.toSet();
 	}
 
 	private boolean isDifferentToPreviousRelease(Concept concept, SnomedConcept releasedConcept) {
@@ -330,14 +351,9 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 	
 	private <T extends EObject, U extends SnomedComponent> boolean updateComponents(final TransactionContext context, 
 			final Concept concept, 
-			final Iterable<T> previousComponents,
+			final Set<String> previousComponentIds,
 			final Iterable<U> currentComponents, 
-			final com.google.common.base.Function<T, String> idProvider,
 			final Function<String, Request<TransactionContext, Void>> toDeleteRequest) {
-		boolean changed = false;
-		if (currentComponents == null) {
-			return changed;
-		}
 
 		// pre process all incoming components
 		currentComponents.forEach(component -> {
@@ -352,19 +368,18 @@ public final class SnomedConceptUpdateRequest extends BaseSnomedComponentUpdateR
 		});
 		
 		// collect new/changed/deleted components and process them
-		final Map<String, T> previousComponentsById = Maps.uniqueIndex(previousComponents, idProvider);
 		final Map<String, U> currentComponentsById = Maps.uniqueIndex(currentComponents, component -> component.getId());
 		
-		return Sets.union(previousComponentsById.keySet(), currentComponentsById.keySet())
+		return Sets.union(previousComponentIds, currentComponentsById.keySet())
 			.stream()
 			.map(componentId -> {
-				if (!previousComponentsById.containsKey(componentId) && currentComponentsById.containsKey(componentId)) {
+				if (!previousComponentIds.contains(componentId) && currentComponentsById.containsKey(componentId)) {
 					// new component
 					return currentComponentsById.get(componentId).toCreateRequest(concept.getId());
-				} else if (previousComponentsById.containsKey(componentId) && currentComponentsById.containsKey(componentId)) {
+				} else if (previousComponentIds.contains(componentId) && currentComponentsById.containsKey(componentId)) {
 					// changed component
 					return currentComponentsById.get(componentId).toUpdateRequest();
-				} else if (previousComponentsById.containsKey(componentId) && !currentComponentsById.containsKey(componentId)) {
+				} else if (previousComponentIds.contains(componentId) && !currentComponentsById.containsKey(componentId)) {
 					// deleted component
 					return toDeleteRequest.apply(componentId);
 				} else {

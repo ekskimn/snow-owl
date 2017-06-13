@@ -232,9 +232,7 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			final String relationshipId) {
 
 		return DeferredResults.wrap(
-				SnomedRequests
-					.prepareGetRelationship()
-					.setComponentId(relationshipId)
+				SnomedRequests.prepareGetRelationship(relationshipId)
 					.build(repositoryId, branchPath)
 					.execute(bus));
 	}
@@ -278,6 +276,8 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			.setGroup(update.getGroup())
 			.setUnionGroup(update.getUnionGroup())
 			.setModifier(update.getModifier())
+			.setTypeId(update.getTypeId())
+			.setDestinationId(update.getDestinationId())
 			.build(repositoryId, branchPath, userId, commitComment)
 			.execute(bus)
 			.getSync(COMMIT_TIMEOUT, TimeUnit.MILLISECONDS);
@@ -313,9 +313,7 @@ public class SnomedRelationshipRestService extends AbstractSnomedRestService {
 			
 			final Principal principal) {
 
-		SnomedRequests
-			.prepareDeleteRelationship()
-			.setComponentId(relationshipId)
+		SnomedRequests.prepareDeleteRelationship(relationshipId)
 			.force(force)
 			.build(repositoryId, branchPath, principal.getName(), String.format("Deleted Relationship '%s' from store.", relationshipId))
 			.execute(bus)

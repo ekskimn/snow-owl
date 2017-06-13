@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.events;
 
+import java.util.List;
+
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.branch.Branches;
@@ -39,11 +41,7 @@ public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
 		if (immediateChildrenOnly) {
 			return new Branches(ImmutableList.copyOf(branch.immediateChildren()));
 		}
-		return new Branches(ImmutableList.copyOf(branch.children()));
-	}
-
-	@Override
-	protected Class<Branches> getReturnType() {
-		return Branches.class;
+		final List<Branch> children = ImmutableList.copyOf(branch.children());
+		return new Branches(children, 0, children.size(), children.size());
 	}
 }

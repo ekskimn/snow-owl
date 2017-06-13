@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>snowowl-parent</artifactId>
-		<version>5.0.8</version>
+		<version>5.10.5</version>
 	</parent>
 	
 	<properties>
@@ -46,18 +46,6 @@
 			<id>site</id>
 			<modules>
 				<module>com.b2international.snowowl.server.update</module>
-			</modules>
-		</profile>
-		<profile>
-			<id>javadoc</id>
-			<activation>
-				<property>
-					<name>javadoc</name>
-					<value>true</value>
-				</property>
-			</activation>
-			<modules>
-				<module>com.b2international.snowowl.javadoc</module>
 			</modules>
 		</profile>
 		<profile>

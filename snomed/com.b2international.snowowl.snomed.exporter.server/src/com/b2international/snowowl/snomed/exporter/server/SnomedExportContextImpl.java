@@ -127,7 +127,11 @@ public class SnomedExportContextImpl implements SnomedExportContext {
 	public String getNamespaceId() {
 		return namespaceId;
 	}
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 2146eb3708956a2faefe69a150477673a6a10aa8
 	@Override
 	public Path getReleaseRootPath() {
 		return releaseRootPath;

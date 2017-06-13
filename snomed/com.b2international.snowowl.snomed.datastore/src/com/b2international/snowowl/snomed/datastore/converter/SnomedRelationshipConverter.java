@@ -26,7 +26,6 @@ import com.b2international.commons.options.Options;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.datastore.request.BaseRevisionResourceConverter;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
@@ -90,9 +89,9 @@ final class SnomedRelationshipConverter extends BaseRevisionResourceConverter<Sn
 			}).toSet();
 			final SnomedConcepts sourceConcepts = SnomedRequests
 				.prepareSearchConcept()
+				.filterByIds(sourceConceptIds)
 				.setLimit(sourceConceptIds.size())
 				.setExpand(sourceOptions.get("expand", Options.class))
-				.setComponentIds(sourceConceptIds)
 				.setLocales(locales())
 				.build()
 				.execute(context());
@@ -115,9 +114,9 @@ final class SnomedRelationshipConverter extends BaseRevisionResourceConverter<Sn
 			}).toSet();
 			final SnomedConcepts destinationConcepts = SnomedRequests
 				.prepareSearchConcept()
+				.filterByIds(destinationConceptIds)
 				.setLimit(destinationConceptIds.size())
 				.setExpand(destinationOptions.get("expand", Options.class))
-				.setComponentIds(destinationConceptIds)
 				.setLocales(locales())
 				.build()
 				.execute(context());
@@ -140,9 +139,9 @@ final class SnomedRelationshipConverter extends BaseRevisionResourceConverter<Sn
 			}).toSet();
 			final SnomedConcepts typeConcepts = SnomedRequests
 				.prepareSearchConcept()
+				.filterByIds(typeConceptIds)
 				.setLimit(typeConceptIds.size())
 				.setExpand(typeOptions.get("expand", Options.class))
-				.setComponentIds(typeConceptIds)
 				.setLocales(locales())
 				.build()
 				.execute(context());

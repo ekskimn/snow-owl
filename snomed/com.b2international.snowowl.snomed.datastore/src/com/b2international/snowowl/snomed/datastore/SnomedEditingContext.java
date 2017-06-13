@@ -23,7 +23,7 @@ import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.*;
 import static com.b2international.snowowl.snomed.datastore.SnomedDeletionPlanMessages.COMPONENT_IS_RELEASED_MESSAGE;
 import static com.b2international.snowowl.snomed.datastore.SnomedDeletionPlanMessages.UNABLE_TO_DELETE_CONCEPT_MESSAGE;
 import static com.b2international.snowowl.snomed.datastore.SnomedDeletionPlanMessages.UNABLE_TO_DELETE_ONLY_FSN_DESCRIPTION_MESSAGE;
-import static com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions.isPreferred;
+import static com.b2international.snowowl.snomed.datastore.SnomedDeletionPlanMessages.UNABLE_TO_DELETE_REFERENCE_SET_MESSAGE;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
 import static org.eclipse.emf.cdo.common.id.CDOID.NULL;
@@ -54,7 +54,6 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import com.b2international.commons.CompareUtils;
 import com.b2international.commons.Pair;
 import com.b2international.snowowl.core.ApplicationContext;
-import com.b2international.snowowl.core.ComponentIdentifierPair;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.api.ILookupService;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
@@ -208,172 +207,6 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	}
 	
 	/**
-	 * Build a new child concept. All description will be replicated from the parent concept.
-	 * No NON IS_A relationship will be copied from the parent concept. One and only IS_A relationship will be created with parent concept destination.
-	 * @param editingContext the editing concept with an underlying audit CDO view for SNOMED&nbsp;CT concept creation. 
-	 * @param parentConcept the parent of the new concept.
-	 * @param conceptId the unique ID of the concept. Can be {@code null}. If {@code null}, then the ID will be generated via the specified editing context.
-	 * @param parentIds 
-	 * @return the new concept.
-	 */
-	public Concept buildConceptByProximalParents(final String focusConceptId, @Nullable final String conceptId, Set<String> parentIds) {
-		
-		final Concept focusConcept = lookup(focusConceptId, Concept.class);
-		
-		Concept concept = SnomedFactory.eINSTANCE.createConcept();
-		
-		//set concept properties
-		if (null == conceptId) {
-			concept.setId(generateComponentId(concept));
-		} else {
-			concept.setId(conceptId);
-		}
-		concept.setActive(true);
-		concept.setDefinitionStatus(focusConcept.getDefinitionStatus());
-		concept.setModule(getDefaultModuleConcept());
-		
-		final SnomedStructuralRefSet languageRefSet = getLanguageRefSet();
-	
-		for (final Description description : focusConcept.getDescriptions()) {
-			
-			if (!description.isActive()) {
-				continue;
-			}
-			
-			final Description newDescription = buildDefaultDescription(description.getTerm(), description.getType().getId());
-			concept.getDescriptions().add(newDescription);
-			final ComponentIdentifierPair<String> acceptabilityPair;
-			
-			//preferred acceptability if FSN or PT
-			if (isPreferred(description, languageRefSet.getIdentifierId()) || FULLY_SPECIFIED_NAME.equals(newDescription.getType().getId())) {
-				acceptabilityPair = SnomedRefSetEditingContext.createConceptTypePair(REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED);
-			} else {
-				acceptabilityPair = SnomedRefSetEditingContext.createConceptTypePair(REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE);
-			}
-	
-			//create language reference set membership
-			final ComponentIdentifierPair<String> referencedComponentPair = SnomedRefSetEditingContext.createDescriptionTypePair(newDescription.getId());
-			final SnomedLanguageRefSetMember member = getRefSetEditingContext().createLanguageRefSetMember(
-					referencedComponentPair, 
-					acceptabilityPair, 
-					getDefaultModuleConcept().getId(), 
-					languageRefSet);
-			
-			newDescription.getLanguageRefSetMembers().add(member);
-		}
-		
-		for (String parentId : parentIds) {
-			final Concept parentConcept = lookup(parentId, Concept.class);
-			buildDefaultIsARelationship(parentConcept, concept);
-		}
-		
-		add(concept);
-		concept.eAdapters().add(new ConceptParentAdapter(parentIds));
-		return concept;
-	}
-	
-	/**
-	 * Builds a draft child concepts where the parents are proximal primitives of the selected concept.
-	 * @param selectedConceptId
-	 * @param id new concept id
-	 * @param proximalPrimitiveParents
-	 * @return the new concept
-	 */
-	public Concept buildConceptByProximalPrimitiveParents(final String selectedConceptId, final String conceptId, final Set<String> proximalPrimitiveParentIds) {
-		
-		Preconditions.checkNotNull(proximalPrimitiveParentIds, "Proximal primitive parents is null.");
-		final Concept selectedConcept = lookup(selectedConceptId, Concept.class);
-		
-		Concept concept = SnomedFactory.eINSTANCE.createConcept();
-		
-		//set concept properties
-		if (null == conceptId) {
-			concept.setId(generateComponentId(concept));
-		} else {
-			concept.setId(conceptId);
-		}
-		concept.setActive(true);
-		concept.setDefinitionStatus(selectedConcept.getDefinitionStatus());
-		concept.setModule(getDefaultModuleConcept());
-		
-		final SnomedStructuralRefSet languageRefSet = getLanguageRefSet();
-	
-		for (final Description description : selectedConcept.getDescriptions()) {
-			
-			if (!description.isActive()) {
-				continue;
-			}
-			
-			final Description newDescription = buildDefaultDescription(description.getTerm(), description.getType().getId());
-			concept.getDescriptions().add(newDescription);
-			final ComponentIdentifierPair<String> acceptabilityPair;
-			
-			//preferred acceptability if FSN or PT
-			if (isPreferred(description, languageRefSet.getIdentifierId()) || FULLY_SPECIFIED_NAME.equals(newDescription.getType().getId())) {
-				acceptabilityPair = SnomedRefSetEditingContext.createConceptTypePair(REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED);
-			} else {
-				acceptabilityPair = SnomedRefSetEditingContext.createConceptTypePair(REFSET_DESCRIPTION_ACCEPTABILITY_ACCEPTABLE);
-			}
-	
-			//create language reference set membership
-			final ComponentIdentifierPair<String> referencedComponentPair = SnomedRefSetEditingContext.createDescriptionTypePair(newDescription.getId());
-			final SnomedLanguageRefSetMember member = getRefSetEditingContext().createLanguageRefSetMember(
-					referencedComponentPair, 
-					acceptabilityPair, 
-					getDefaultModuleConcept().getId(), 
-					languageRefSet);
-			
-			newDescription.getLanguageRefSetMembers().add(member);
-		}
-		
-		
-		final Concept statedRelationshipConcept = lookup(SnomedConstants.Concepts.STATED_RELATIONSHIP, Concept.class);
-		
-		//copy all inferred 
-		for (final Relationship sourceRelationship : selectedConcept.getOutboundRelationships()) {
-			
-			if (!sourceRelationship.isActive()) {
-				continue;
-			}
-			
-			//Copy inferred non IS-A relationships
-			if (!IS_A.equals(sourceRelationship.getType().getId()) 
-					&& (sourceRelationship.getCharacteristicType().getId().equals(SnomedConstants.Concepts.INFERRED_RELATIONSHIP))) {
-				
-				final Relationship newRelationship = SnomedFactory.eINSTANCE.createRelationship();
-				
-				String namespace = SnomedIdentifiers.create(sourceRelationship.getId()).getNamespace();
-				newRelationship.setId(generateComponentId(ComponentCategory.RELATIONSHIP, namespace));
-				
-				newRelationship.setSource(concept);
-				newRelationship.setType(sourceRelationship.getType());
-				newRelationship.setDestination(sourceRelationship.getDestination());
-				newRelationship.setActive(true);
-				newRelationship.setCharacteristicType(statedRelationshipConcept);
-				newRelationship.setGroup(sourceRelationship.getGroup());
-				newRelationship.setModifier(sourceRelationship.getModifier());
-				newRelationship.setModule(sourceRelationship.getModule());
-				
-				//copy all inferred concrete domains
-				//relationships can also have concrete domains
-				copyInferredConcreteDomainMembers(sourceRelationship, newRelationship);
-				concept.getOutboundRelationships().add(newRelationship);
-			}
-		}
-		
-		copyInferredConcreteDomainMembers(selectedConcept, concept);
-		
-		//hook the concept to the potentially multiple proximate primitive parents
-		for (String parentId : proximalPrimitiveParentIds) {
-			final Concept parentConcept = lookup(parentId, Concept.class);
-			buildDefaultIsARelationship(parentConcept, concept);
-		}
-		add(concept);
-		concept.eAdapters().add(new ConceptParentAdapter(proximalPrimitiveParentIds));
-		return concept;
-	}
-
-	/**
 	 * @param concreteDomainRefSetMembers
 	 * @param targetSnomedComponent 
 	 */
@@ -397,7 +230,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			newConcreteDatatype.setActive(true);
 			newConcreteDatatype.setCharacteristicTypeId(SnomedConstants.Concepts.STATED_RELATIONSHIP);
 			newConcreteDatatype.setLabel(sourceConcreteDataType.getLabel());
-			newConcreteDatatype.setModuleId(sourceConcreteDataType.getModuleId());
+			newConcreteDatatype.setModuleId(getDefaultModuleConcept().getId());
 			newConcreteDatatype.setOperatorComponentId(sourceConcreteDataType.getOperatorComponentId());
 			newConcreteDatatype.setReferencedComponentId(sourceConcreteDataType.getReferencedComponentId());
 			newConcreteDatatype.setRefSet(sourceConcreteDataType.getRefSet());
@@ -506,7 +339,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		final boolean isSubTypeOfQualifierValue = SnomedRequests.prepareSearchConcept()
 				.setLimit(0)
 				.filterByAncestor(QUALIFIER_VALUE_TOPLEVEL_CONCEPT)
-				.setComponentIds(Collections.singleton(destinationConceptid))
+				.filterById(destinationConceptid)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.getSync().getTotal() > 0;
@@ -715,11 +548,10 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		final SnomedStructuralRefSet languageRefSet = getLanguageRefSet();
 		for (final Description description : concept.getDescriptions()) {
 			if (description.isActive()) { //this point all description should be active
-				final ComponentIdentifierPair<String> acceptabilityPair;
-				acceptabilityPair = SnomedRefSetEditingContext.createConceptTypePair(REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED);
+				final String acceptabilityId = REFSET_DESCRIPTION_ACCEPTABILITY_PREFERRED;
 				//create language reference set membership
-				final ComponentIdentifierPair<String> referencedComponentPair = SnomedRefSetEditingContext.createDescriptionTypePair(description.getId());
-				final SnomedLanguageRefSetMember member = getRefSetEditingContext().createLanguageRefSetMember(referencedComponentPair, acceptabilityPair, moduleConcept.getId(), languageRefSet);
+				final String referencedComponentId = description.getId();
+				final SnomedLanguageRefSetMember member = getRefSetEditingContext().createLanguageRefSetMember(referencedComponentId, acceptabilityId, moduleConcept.getId(), languageRefSet);
 				description.getLanguageRefSetMembers().add(member);
 			}
 		}
@@ -984,9 +816,9 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			
 			final Concept concept = getConceptChecked(cdoId);
 			
-			if (updateSubtypeRelationships) {
-				updateChildren(concept, plan);
-			}
+//			if (updateSubtypeRelationships) {
+//				updateChildren(concept, plan);
+//			}
 			
 			if (monitor.isCanceled()) {
 				return SnomedInactivationPlan.NULL_IMPL;
@@ -1119,18 +951,13 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			delete((Description) object, force);
 		} else if (object instanceof Relationship) {
 			delete((Relationship) object, force);
+		} else if (object instanceof SnomedRefSet) {
+			delete((SnomedRefSet) object, force);
 		} else if (object instanceof SnomedRefSetMember) {
 			delete((SnomedRefSetMember) object, force);
+		} else {
+			super.delete(object, force);
 		}
-		super.delete(object, force);
-	}
-	
-	private void delete(SnomedRefSetMember member, boolean force) {
-		SnomedDeletionPlan deletionPlan = canDelete(member, force);
-		if (deletionPlan.isRejected()) {
-			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
-		}
-		delete(deletionPlan);
 	}
 	
 	private void delete(Concept concept, boolean force) {
@@ -1140,104 +967,13 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		}
 		delete(deletionPlan);
 	}
-	
-	private SnomedDeletionPlan canDelete(SnomedRefSetMember member, boolean force) {
-		final SnomedDeletionPlan plan = new SnomedDeletionPlan();
-		if (member.isReleased() && !force) {
-			plan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "member", member.getUuid()));
-		} else {
-			plan.markForDeletion(member);
-		}
-		return plan;
-	}
 
-	public SnomedDeletionPlan canDelete(Concept concept, SnomedDeletionPlan deletionPlan, boolean force) {
-		
-		if (deletionPlan == null) {
-			deletionPlan = new SnomedDeletionPlan();
+	private void delete(Description description, boolean force) {
+		SnomedDeletionPlan deletionPlan = canDelete(description, null, force);
+		if (deletionPlan.isRejected()) {
+			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
 		}
-		
-		// unreleased -> effective time must be in the future
-		if (concept.isReleased() && !force) {
-			deletionPlan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "concept", toString(concept)));
-			return deletionPlan;
-		}
-		
-		for (Relationship relationship : getInboundRelationships(concept.getId())) {
-			deletionPlan = canDelete(relationship, deletionPlan, force);
-			if (deletionPlan.isRejected()) {
-				deletionPlan.addRejectionReason(String.format(UNABLE_TO_DELETE_CONCEPT_MESSAGE, toString(concept)));
-				return deletionPlan;
-			}
-		}
-		
-		// check descriptions. If the deletion is not legit, we cannot reach this point, hence a check would be meaningless
-		for (Description description : concept.getDescriptions()) {
-			deletionPlan = canDelete(description, deletionPlan, force);
-		}
-		
-		// ===================== check refsets ========================
-		
-		// concept is a refset identifier
-		SnomedRefSet refSet = new SnomedRefSetLookupService().getComponent(concept.getId(), transaction);
-		if (refSet != null) {
-			deletionPlan = refSetEditingContext.deleteRefSet(refSet, deletionPlan);
-		}
-		
-		// a released refset member cannot be deleted. however, since a released refset member can
-		// only contain released concepts, we would not have made it this far if anyway
-		final List<SnomedRefSetMember> referringMembers = refSetEditingContext.getReferringMembers(concept);
-		deletionPlan.markForDeletion(referringMembers);
-		
-		//	concept deletion may affect (other) concept descriptions because the concept is being deleted is a member of description type reference set
-		for (SnomedRefSetMember member : referringMembers) {
-			if (com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_DESCRIPTION_TYPE.equals(member.getRefSetIdentifierId())) {
-				for (SnomedDescriptionIndexEntry entry : getRelatedDescriptions(member.getReferencedComponentId())) {
-					final Description description = lookup(entry.getId(), Description.class);
-					if (null == description) {
-						throw new SnowowlRuntimeException("Description does not exist in store with ID: " + entry.getId());
-					}
-					deletionPlan.addDirtyDescription(description);
-				}
-			}
-		}
-		
-		deletionPlan.markForDeletion(concept);
-		deletionPlan.markForDeletion(concept.getOutboundRelationships());
-		
-		return deletionPlan;
-	}
-
-	public final List<Relationship> getInboundRelationships(String conceptId) {
-		return FluentIterable.from(getInboundRelationshipsFromIndex(conceptId)).transform(new Function<SnomedRelationship, Relationship>() {
-			@Override
-			public Relationship apply(SnomedRelationship input) {
-				return (Relationship) lookup(input.getStorageKey());
-			}
-		}).toList();
-	}
-
-	private Iterable<SnomedRelationship> getInboundRelationshipsFromIndex(String conceptId) {
-		return SnomedRequests.prepareSearchRelationship()
-				.all()
-				.filterByDestination(conceptId)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
-				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-				.getSync();
-	}
-
-	private Iterable<SnomedDescriptionIndexEntry> getRelatedDescriptions(String conceptId) {
-		return SnomedRequests.prepareSearchDescription()
-				.all()
-				.filterByConcept(conceptId)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
-				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-				.then(new Function<SnomedDescriptions, Iterable<SnomedDescriptionIndexEntry>>() {
-					@Override
-					public Iterable<SnomedDescriptionIndexEntry> apply(SnomedDescriptions input) {
-						return SnomedDescriptionIndexEntry.fromDescriptions(input);
-					}
-				}).getSync();
+		delete(deletionPlan);
 	}
 
 	private void delete(Relationship relationship, boolean force) {
@@ -1247,34 +983,129 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		}
 		delete(deletionPlan);
 	}
-	
-	private String toString(final Component component) {
-		final String id = getAttribute(component, SnomedPackage.eINSTANCE.getComponent_Id(), String.class);
-		if (component instanceof Concept) {
-			return getServiceForClass(ISnomedConceptNameProvider.class).getComponentLabel(createPath(component), id);
-		} else if (component instanceof Description) {
-			return getAttribute(component, SnomedPackage.eINSTANCE.getDescription_Term(), String.class);
-		} else if (component instanceof Relationship) {
-			return getServiceForClass(ISnomedRelationshipNameProvider.class).getComponentLabel(createPath(component), id); 
-		} else {
-			return id;
+
+	private void delete(SnomedRefSet refSet, boolean force) {
+		SnomedDeletionPlan deletionPlan = canDelete(refSet, null, force);
+		if (deletionPlan.isRejected()) {
+			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
 		}
+		delete(deletionPlan);
 	}
 	
-	public SnomedDeletionPlan canDelete(Relationship relationship, SnomedDeletionPlan deletionPlan, boolean force) {
-		
+	private void delete(SnomedRefSetMember member, boolean force) {
+		SnomedDeletionPlan deletionPlan = canDelete(member, null, force);
+		if (deletionPlan.isRejected()) {
+			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
+		}
+		delete(deletionPlan);
+	}
+	
+	public SnomedDeletionPlan canDelete(Concept concept, SnomedDeletionPlan deletionPlan, boolean force) {
 		if (deletionPlan == null) {
 			deletionPlan = new SnomedDeletionPlan();
 		}
 		
-		// unreleased -> effective time must be in the future
+		// Check if concept is already released, and this is not a forced delete
+		if (concept.isReleased() && !force) {
+			deletionPlan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "concept", toString(concept)));
+			return deletionPlan;
+		}
+		
+		// Also check inbound relationships, as these could have been released with different effective times
+		for (Relationship relationship : getInboundRelationships(concept.getId())) {
+			deletionPlan = canDelete(relationship, deletionPlan, force);
+			if (deletionPlan.isRejected()) {
+				deletionPlan.addRejectionReason(String.format(UNABLE_TO_DELETE_CONCEPT_MESSAGE, toString(concept)));
+				return deletionPlan;
+			}
+		}
+		
+		/*
+		 * All other components below should become released when the concept is first released, which was handled 
+		 * above, so don't exit early via a rejection check.
+		 */
+		
+		for (Description description : concept.getDescriptions()) {
+			deletionPlan = canDelete(description, deletionPlan, force);
+		}
+		
+		for (Relationship outboundRelationship : concept.getOutboundRelationships()) {
+			deletionPlan = canDelete(outboundRelationship, deletionPlan, force);
+		}
+		
+		SnomedRefSet refSet = new SnomedRefSetLookupService().getComponent(concept.getId(), transaction);
+		if (refSet != null) {
+			deletionPlan = canDelete(refSet, deletionPlan, force);
+		}
+		
+		List<SnomedRefSetMember> referringMembers = refSetEditingContext.getReferringMembers(concept);
+		
+		// If this concept is a member of the description format reference set, descriptions of this type have to be updated
+		for (SnomedRefSetMember member : referringMembers) {
+			if (REFSET_DESCRIPTION_TYPE.equals(member.getRefSetIdentifierId())) {
+				for (SnomedDescriptionIndexEntry entry : getRelatedDescriptions(member.getReferencedComponentId())) {
+					final Description description = lookup(entry.getId(), Description.class);
+					if (null == description) {
+						throw new SnowowlRuntimeException("Description does not exist in store with ID: " + entry.getId());
+					} else {
+						deletionPlan.addDirtyDescription(description);
+					}
+				}
+			}
+		}
+		
+		deletionPlan.markForDeletion(referringMembers);
+		deletionPlan.markForDeletion(concept);
+		return deletionPlan;
+	}
+
+	public SnomedDeletionPlan canDelete(Description description, SnomedDeletionPlan deletionPlan, boolean force) {
+		// If the description is the target of the deletion, check validity
+		if (deletionPlan == null) {
+			deletionPlan = new SnomedDeletionPlan();
+
+			// Check if description is already released, and this is not a forced delete
+			if (description.isReleased() && !force) {
+				deletionPlan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "description", toString(description)));
+				return deletionPlan;
+	}
+
+			// not the only fully specified name
+			if (FULLY_SPECIFIED_NAME.equals(description.getType().getId())) {
+				boolean hasOtherFullySpecifiedName = false;
+				final List<Description> otherDescriptions = description.getConcept().getDescriptions();
+				for (Description otherDescription: otherDescriptions) {
+					// another fully specified name exists that is not this description
+					if (FULLY_SPECIFIED_NAME.equals(otherDescription.getType().getId()) && description != otherDescription) {
+						hasOtherFullySpecifiedName = true;
+						break;
+					}
+	}
+
+				if (!hasOtherFullySpecifiedName) {
+					deletionPlan.addRejectionReason(UNABLE_TO_DELETE_ONLY_FSN_DESCRIPTION_MESSAGE);
+					return deletionPlan;
+				}
+		}
+	}
+	
+		deletionPlan.markForDeletion(refSetEditingContext.getReferringMembers(description));
+		deletionPlan.markForDeletion(description);
+		return deletionPlan;
+	}
+	
+	public SnomedDeletionPlan canDelete(Relationship relationship, SnomedDeletionPlan deletionPlan, boolean force) {
+		// If the relationship is the target of the deletion, check validity
+		if (deletionPlan == null) {
+			deletionPlan = new SnomedDeletionPlan();
+		
+			// Check if description is already released, and this is not a forced delete
 		if (relationship.isReleased() && !force) {
 			deletionPlan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "relationship", toString(relationship)));
 			return deletionPlan;
 		}
+		}
 		
-		// a released refset member cannot be deleted. however, since a released refset member can
-		// only contain released relationships, we would not have made it this far if anyway
 		deletionPlan.markForDeletion(refSetEditingContext.getReferringMembers(relationship));		
 		
 		deletionPlan.markForDeletion(relationship);
@@ -1282,49 +1113,38 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		return deletionPlan;
 	}
 	
-	private void delete(Description description, boolean force) {
-		SnomedDeletionPlan deletionPlan = canDelete(description, null, force);
-		if(deletionPlan.isRejected()) {
-			throw new ConflictException(deletionPlan.getRejectionReasons().toString());
-		}
-		delete(deletionPlan);
-	}
-	
-	public SnomedDeletionPlan canDelete(Description description, SnomedDeletionPlan deletionPlan, boolean force) {
-		
+	public SnomedDeletionPlan canDelete(SnomedRefSet refSet, SnomedDeletionPlan deletionPlan, boolean force) {
+		// If the reference set is the target of the deletion, check validity for each member
 		if (deletionPlan == null) {
-			// this was called from outside. Deletion eligibility must be checked
 			deletionPlan = new SnomedDeletionPlan();
 			
-			// unreleased -> effective time must be in the future
-			if (description.isReleased() && !force) {
-				deletionPlan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "description", toString(description)));
-				return deletionPlan;
-			}
-			
-			// not the only fully specified name
-			if (FULLY_SPECIFIED_NAME.equals(description.getType().getId())) {
-				boolean hasOtherFullySpecifiedName = false;
-				final List<Description> otherDescriptions = description.getConcept().getDescriptions();
-				for (Description otherDescription: otherDescriptions) {
-					// another fully specified name exinsts that is not this description
-					if (FULLY_SPECIFIED_NAME.equals(otherDescription.getType().getId()) && description != otherDescription) {
-						hasOtherFullySpecifiedName = true;
-						break;
-					}
-				}
-				if (!hasOtherFullySpecifiedName) {
-					deletionPlan.addRejectionReason(UNABLE_TO_DELETE_ONLY_FSN_DESCRIPTION_MESSAGE);
+			for (SnomedRefSetMember member : refSetEditingContext.getMembers(refSet)) {
+				deletionPlan = canDelete(member, deletionPlan, force);
+		if(deletionPlan.isRejected()) {
+					deletionPlan.addRejectionReason(String.format(UNABLE_TO_DELETE_REFERENCE_SET_MESSAGE, refSet.getIdentifierId()));
 					return deletionPlan;
 				}
+		}
+		} else {
+			// Otherwise members can be deleted without individually checking each one
+			deletionPlan.markForDeletion(refSetEditingContext.getMembers(refSet));
+	}
+	
+		deletionPlan.markForDeletion(refSet);
+		return deletionPlan;
+	}
+		
+	public SnomedDeletionPlan canDelete(SnomedRefSetMember member, SnomedDeletionPlan deletionPlan, boolean force) {
+		if (deletionPlan == null) {
+			deletionPlan = new SnomedDeletionPlan();
+			
+			if (member.isReleased() && !force) {
+				deletionPlan.addRejectionReason(String.format(COMPONENT_IS_RELEASED_MESSAGE, "member", member.getUuid()));
+				return deletionPlan;
 			}
-		} 
+				}
 		
-		// a released refset member cannot be deleted. however, since a released refset member can
-		// only contain released descriptions, we would not have made it this far if anyway
-		deletionPlan.markForDeletion(refSetEditingContext.getReferringMembers(description));
-		
-		deletionPlan.markForDeletion(description);
+		deletionPlan.markForDeletion(member);
 		return deletionPlan;
 	}
 	
@@ -1424,6 +1244,51 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 			}  else {
 				throw new IllegalArgumentException("Don't know how to delete " + eObject.eClass());
 			}
+		}
+	}
+	
+	public final List<Relationship> getInboundRelationships(String conceptId) {
+		return FluentIterable.from(getInboundRelationshipsFromIndex(conceptId)).transform(new Function<SnomedRelationship, Relationship>() {
+			@Override
+			public Relationship apply(SnomedRelationship input) {
+				return (Relationship) lookup(input.getStorageKey());
+			}
+		}).toList();
+	}
+
+	private Iterable<SnomedRelationship> getInboundRelationshipsFromIndex(String conceptId) {
+		return SnomedRequests.prepareSearchRelationship()
+				.all()
+				.filterByDestination(conceptId)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.getSync();
+	}
+
+	private Iterable<SnomedDescriptionIndexEntry> getRelatedDescriptions(String conceptId) {
+		return SnomedRequests.prepareSearchDescription()
+				.all()
+				.filterByConcept(conceptId)
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, getBranch())
+				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
+				.then(new Function<SnomedDescriptions, Iterable<SnomedDescriptionIndexEntry>>() {
+					@Override
+					public Iterable<SnomedDescriptionIndexEntry> apply(SnomedDescriptions input) {
+						return SnomedDescriptionIndexEntry.fromDescriptions(input);
+					}
+				}).getSync();
+	}
+
+	private String toString(final Component component) {
+		final String id = getAttribute(component, SnomedPackage.eINSTANCE.getComponent_Id(), String.class);
+		if (component instanceof Concept) {
+			return getServiceForClass(ISnomedConceptNameProvider.class).getComponentLabel(createPath(component), id);
+		} else if (component instanceof Description) {
+			return getAttribute(component, SnomedPackage.eINSTANCE.getDescription_Term(), String.class);
+		} else if (component instanceof Relationship) {
+			return getServiceForClass(ISnomedRelationshipNameProvider.class).getComponentLabel(createPath(component), id); 
+		} else {
+			return id;
 		}
 	}
 	
@@ -1569,7 +1434,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 	
 	@Override
 	protected String getRootResourceName() {
-		return SnomedCDORootResourceNameProvider.ROOT_RESOURCE_NAME;
+		return SnomedDatastoreActivator.ROOT_RESOURCE_NAME;
 	}
 
 	/**
@@ -1620,7 +1485,8 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)
 				.getSync()
-				.getOnlyItem();
+				.first()
+				.get();
 		newComponentIds.add(generatedId);
 		return generatedId;
 	}

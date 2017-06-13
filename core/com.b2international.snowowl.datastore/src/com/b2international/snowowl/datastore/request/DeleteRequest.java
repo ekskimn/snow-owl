@@ -20,13 +20,15 @@ import javax.validation.constraints.NotNull;
 import org.eclipse.emf.ecore.EObject;
 
 import com.b2international.snowowl.core.domain.TransactionContext;
-import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.core.events.Request;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @since 4.5
  */
-final class DeleteRequest extends BaseRequest<TransactionContext, Void> {
+final class DeleteRequest implements Request<TransactionContext, Void> {
 
+	@JsonProperty
 	@NotNull
 	private String componentId;
 	
@@ -48,9 +50,4 @@ final class DeleteRequest extends BaseRequest<TransactionContext, Void> {
 		return null;
 	}
 	
-	@Override
-	protected Class<Void> getReturnType() {
-		return Void.class;
-	}
-
 }

@@ -43,10 +43,10 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedRefSetUtil;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
-import com.b2international.snowowl.snomed.exporter.model.AbstractSnomedDsvExportItem;
-import com.b2international.snowowl.snomed.exporter.model.SnomedExportResult;
-import com.b2international.snowowl.snomed.exporter.model.SnomedExportResult.Result;
-import com.b2international.snowowl.snomed.exporter.model.SnomedRefSetDSVExportModel;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.AbstractSnomedDsvExportItem;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.SnomedExportResult;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.SnomedRefSetDSVExportModel;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.SnomedExportResult.Result;
 import com.b2international.snowowl.snomed.exporter.server.dsv.IRefSetDSVExporter;
 import com.b2international.snowowl.snomed.exporter.server.dsv.MapTypeRefSetDSVExporter;
 import com.b2international.snowowl.snomed.exporter.server.dsv.SnomedSimpleTypeRefSetDSVExporter;
@@ -117,6 +117,7 @@ public class SnomedRefSetDSVExportServerIndication extends IndicationWithMonitor
 			final String reason = null != e.getMessage() ? " Reason: '" + e.getMessage() + "'" : "";
 			LogUtils.logExportActivity(LOGGER, userId, branchPath, "Caught exception while exporting SNOMED CT terminology to DSV format." + reason);
 			
+			LOGGER.error("Error while exporting DSV.", e);
 			result.setResultAndMessage(Result.EXCEPTION, "An error occurred while exporting SNOMED CT components to delimiter separated files.");
 		}
 		sendResult(out, result, response);

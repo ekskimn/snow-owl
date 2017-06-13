@@ -18,14 +18,16 @@ package com.b2international.snowowl.datastore.request;
 import java.util.UUID;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.merge.MergeService;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * @since 4.6
  */
-public final class DeleteMergeRequest extends BaseRequest<RepositoryContext, Boolean> {
+final class DeleteMergeRequest implements Request<RepositoryContext, Boolean> {
 
+	@JsonProperty
 	private final UUID id;
 
 	DeleteMergeRequest(UUID id) {
@@ -38,8 +40,4 @@ public final class DeleteMergeRequest extends BaseRequest<RepositoryContext, Boo
 		return Boolean.TRUE;
 	}
 
-	@Override
-	protected Class<Boolean> getReturnType() {
-		return Boolean.class;
-	}
 }

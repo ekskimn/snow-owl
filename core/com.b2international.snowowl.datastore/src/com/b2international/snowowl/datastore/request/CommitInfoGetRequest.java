@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,42 +15,23 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import com.b2international.commons.options.Options;
-import com.b2international.index.mapping.DocumentMapping;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfo;
-import com.b2international.snowowl.datastore.commitinfo.CommitInfoConverter;
-import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
 
 /**
- * @since 5.2
+ * @since 5.7
  */
-public class CommitInfoGetRequest extends GetRequest<CommitInfo, CommitInfoDocument> {
+final class CommitInfoGetRequest extends GetResourceRequest<CommitInfoSearchRequestBuilder, RepositoryContext, CommitInfo> {
 
 	private static final long serialVersionUID = 1L;
 
-	protected CommitInfoGetRequest() {
-		super("Commit Info");
+	CommitInfoGetRequest(String commitId) {
+		super(commitId);
 	}
 
 	@Override
-	protected Class<CommitInfoDocument> getDocType() {
-		return CommitInfoDocument.class;
-	}
-	
-	@Override
-	protected String getIdField() {
-		return DocumentMapping._ID;
-	}
-
-	@Override
-	protected CommitInfo process(final RepositoryContext context, final CommitInfoDocument doc, final Options expand) {
-		return new CommitInfoConverter(context, expand(), locales()).convert(doc);
-	}
-
-	@Override
-	protected Class<CommitInfo> getReturnType() {
-		return CommitInfo.class;
+	protected CommitInfoSearchRequestBuilder createSearchRequestBuilder() {
+		return new CommitInfoSearchRequestBuilder();
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,11 @@ import org.eclipse.emf.cdo.server.StoreThreadLocal;
 import org.eclipse.emf.cdo.spi.server.InternalSession;
 
 import com.b2international.snowowl.core.Repository;
+import com.b2international.snowowl.core.RepositoryInfo.Health;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.ft.FeatureToggles;
 import com.b2international.snowowl.datastore.server.internal.InternalRepository;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
@@ -33,7 +34,7 @@ import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOB
  * @since 4.7
  */
 @SuppressWarnings("restriction")
-public class ReindexRequest extends BaseRequest<RepositoryContext, ReindexResult> {
+public final class ReindexRequest implements Request<RepositoryContext, ReindexResult> {
 	
 	private long failedCommitTimestamp = 1;
 
@@ -63,6 +64,7 @@ public class ReindexRequest extends BaseRequest<RepositoryContext, ReindexResult
 		final InternalSession session = cdoRepository.getSessionManager().openSession(null);
 		
 		try {
+			repository.setHealth(Health.YELLOW, "Reindex is in progress...");
 			features.enable(featureFor(context.id()));
 			//set the session on the StoreThreadlocal for later access
 			StoreThreadLocal.setSession(session);
@@ -70,18 +72,15 @@ public class ReindexRequest extends BaseRequest<RepositoryContext, ReindexResult
 			//right now index is fully recreated
 			final IndexMigrationReplicationContext replicationContext = new IndexMigrationReplicationContext(context, maxCdoBranchId, failedCommitTimestamp - 1, session);
 			cdoRepository.replicate(replicationContext);
+			// update repository state after the re-indexing
 			return new ReindexResult(replicationContext.getFailedCommitTimestamp(),
 					replicationContext.getProcessedCommits(), replicationContext.getSkippedCommits(), replicationContext.getException());
 		} finally {
 			features.disable(featureFor(context.id()));
 			StoreThreadLocal.release();
 			session.close();
+			repository.checkHealth();
 		}
-	}
-
-	@Override
-	protected Class<ReindexResult> getReturnType() {
-		return ReindexResult.class;
 	}
 
 	public static ReindexRequestBuilder builder() {

@@ -15,7 +15,8 @@
  */
 package com.b2international.snowowl.datastore.server.internal;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Iterables.getLast;
 import static com.google.common.collect.Iterables.transform;
 import static com.google.common.collect.Sets.newHashSet;
@@ -26,7 +27,10 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchManager;
@@ -35,7 +39,6 @@ import org.eclipse.emf.cdo.common.commit.CDOCommitInfoHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.b2international.collections.PrimitiveCollectionModule;
 import com.b2international.commons.platform.Extensions;
 import com.b2international.index.DefaultIndex;
 import com.b2international.index.Index;
@@ -43,22 +46,20 @@ import com.b2international.index.IndexClient;
 import com.b2international.index.IndexClientFactory;
 import com.b2international.index.Indexes;
 import com.b2international.index.mapping.Mappings;
-import com.b2international.index.query.slowlog.SlowLogConfig;
 import com.b2international.index.revision.DefaultRevisionIndex;
 import com.b2international.index.revision.RevisionBranch;
 import com.b2international.index.revision.RevisionBranchProvider;
 import com.b2international.index.revision.RevisionIndex;
-import com.b2international.snowowl.core.ClassLoaderProvider;
 import com.b2international.snowowl.core.Repository;
-import com.b2international.snowowl.core.ServiceProvider;
+import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
+import com.b2international.snowowl.core.domain.DelegatingRepositoryContext;
 import com.b2international.snowowl.core.domain.DelegatingServiceProvider;
 import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.events.RepositoryEvent;
-import com.b2international.snowowl.core.events.util.ApiRequestHandler;
 import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.datastore.CodeSystemEntry;
@@ -70,12 +71,15 @@ import com.b2international.snowowl.datastore.cdo.ICDOConnection;
 import com.b2international.snowowl.datastore.cdo.ICDOConnectionManager;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
+import com.b2international.snowowl.datastore.commitinfo.CommitInfo;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
 import com.b2international.snowowl.datastore.commitinfo.CommitInfos;
 import com.b2international.snowowl.datastore.config.IndexConfiguration;
+import com.b2international.snowowl.datastore.config.IndexSettings;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.events.RepositoryCommitNotification;
 import com.b2international.snowowl.datastore.index.MappingProvider;
+import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
@@ -91,18 +95,16 @@ import com.b2international.snowowl.datastore.server.cdo.ICDOConflictProcessor;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOMainBranchImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.server.internal.merge.MergeServiceImpl;
-import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
-import com.b2international.snowowl.eventbus.EventBusUtil;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.eventbus.Pipe;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -113,30 +115,34 @@ import com.google.inject.Provider;
 /**
  * @since 4.1
  */
-public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, RepositoryContextProvider, CDOCommitInfoHandler {
+public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, CDOCommitInfoHandler {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(CDOBasedRepository.class);
+	
+	private static final String REINDEX_DIAGNOSIS_TEMPLATE = "Run reindex to synchronize index with the database. Command: 'snowowl reindex %s%s'.";
+	private static final String RESTORE_DIAGNOSIS = "Inconsistent database and index. Shutdown and restore database and indexes from a backup.";
 
 	private final String toolingId;
 	private final String repositoryId;
-	private final IEventBus handlers;
 	private final Map<Long, RepositoryCommitNotification> commitNotifications = new MapMaker().makeMap();
+	private Health health = Health.RED;
+	private String diagnosis;
 	
-	CDOBasedRepository(String repositoryId, String toolingId, int numberOfWorkers, int mergeMaxResults, Environment env) {
+	CDOBasedRepository(String repositoryId, String toolingId, int mergeMaxResults, Environment env) {
 		super(env);
-		checkArgument(numberOfWorkers > 0, "At least one worker thread must be specified");
-		
 		this.toolingId = toolingId;
 		this.repositoryId = repositoryId;
-		this.handlers = EventBusUtil.getWorkerBus(repositoryId, numberOfWorkers);
 		getCdoRepository().getRepository().addCommitInfoHandler(this);
-		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
-		mapper.registerModule(new PrimitiveCollectionModule());
+		final ObjectMapper mapper = service(ObjectMapper.class);
 		initIndex(mapper);
 		initializeBranchingSupport(mergeMaxResults);
-		initializeRequestSupport(numberOfWorkers);
 		bind(Repository.class, this);
-		bind(ObjectMapper.class, mapper);
+		checkHealth();
+	}
+
+	@Override
+	public void checkHealth() {
+		checkHealth(Branch.MAIN_PATH);
 	}
 
 	@Override
@@ -214,31 +220,8 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		return Math.max(getBaseTimestamp(branch), CDOServerUtils.getLastCommitTime(branch));
 	}
 	
-	private void initializeRequestSupport(int numberOfWorkers) {
-		final ClassLoaderProvider classLoaderProvider = getClassLoaderProvider();
-		for (int i = 0; i < numberOfWorkers; i++) {
-			handlers().registerHandler(address(), new ApiRequestHandler(this, classLoaderProvider));
-		}
-		
-		// register number of cores event bridge/pipe between events and handlers
-		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
-			events().registerHandler(address(), new Pipe(handlers(), address()));
-		}
-		// register RepositoryContextProvider
-		bind(RepositoryContextProvider.class, this);
-	}
-
-	private ClassLoaderProvider getClassLoaderProvider() {
-		return getDelegate().service(RepositoryClassLoaderProviderRegistry.class).get(repositoryId);
-	}
-	
-	@Override
-	public RepositoryContext get(ServiceProvider context, String repositoryId) {
-		return new DefaultRepositoryContext(context, repositoryId);
-	}
-
 	private void initializeBranchingSupport(int mergeMaxResults) {
-		final CDOBranchManagerImpl branchManager = new CDOBranchManagerImpl(this);
+		final CDOBranchManagerImpl branchManager = new CDOBranchManagerImpl(this, service(ObjectMapper.class));
 		bind(BranchManager.class, branchManager);
 		bind(BranchReplicator.class, branchManager);
 		
@@ -249,8 +232,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		final MergeReviewManager mergeReviewManager = new MergeReviewManagerImpl(this, reviewManager);
 		bind(MergeReviewManager.class, mergeReviewManager);
 
-		events().registerHandler(String.format(RepositoryEvent.ADDRESS_TEMPLATE, repositoryId), reviewManager.getStaleHandler());
-		
 		final MergeServiceImpl mergeService = new MergeServiceImpl(this, mergeMaxResults);
 		bind(MergeService.class, mergeService);
 	}
@@ -265,14 +246,15 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		types.add(MergeReview.class);
 		types.add(MergeReviewImpl.class);
 		types.add(ConceptChanges.class);
-		types.add(ConceptChangesImpl.class);
 		types.add(CodeSystemEntry.class);
 		types.add(CodeSystemVersionEntry.class);
 		types.addAll(getToolingTypes(toolingId));
 		types.add(CommitInfoDocument.class);
 		
-		final Map<String, Object> settings = initIndexSettings();
-		final IndexClient indexClient = Indexes.createIndexClient(repositoryId, mapper, new Mappings(types), settings);
+		final Map<String, Object> indexSettings = newHashMap(getDelegate().service(IndexSettings.class));
+		final IndexConfiguration repositoryIndexConfiguration = getDelegate().service(SnowOwlConfiguration.class).getModuleConfig(RepositoryConfiguration.class).getIndexConfiguration();
+		indexSettings.put(IndexClientFactory.NUMBER_OF_SHARDS, repositoryIndexConfiguration.getNumberOfShards());
+		final IndexClient indexClient = Indexes.createIndexClient(repositoryId, mapper, new Mappings(types), indexSettings);
 		final Index index = new DefaultIndex(indexClient);
 		final Provider<BranchManager> branchManager = provider(BranchManager.class);
 		final RevisionIndex revisionIndex = new DefaultRevisionIndex(index, new RevisionBranchProvider() {
@@ -315,20 +297,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		return builder.build();
 	}
 
-	private SlowLogConfig createSlowLogConfig(final IndexConfiguration config) {
-		final ImmutableMap.Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
-		builder.put(SlowLogConfig.FETCH_DEBUG_THRESHOLD, config.getFetchDebugThreshold());
-		builder.put(SlowLogConfig.FETCH_INFO_THRESHOLD, config.getFetchInfoThreshold());
-		builder.put(SlowLogConfig.FETCH_TRACE_THRESHOLD, config.getFetchTraceThreshold());
-		builder.put(SlowLogConfig.FETCH_WARN_THRESHOLD, config.getFetchWarnThreshold());
-		builder.put(SlowLogConfig.QUERY_DEBUG_THRESHOLD, config.getQueryDebugThreshold());
-		builder.put(SlowLogConfig.QUERY_INFO_THRESHOLD, config.getQueryInfoThreshold());
-		builder.put(SlowLogConfig.QUERY_TRACE_THRESHOLD, config.getQueryTraceThreshold());
-		builder.put(SlowLogConfig.QUERY_WARN_THRESHOLD, config.getQueryWarnThreshold());
-		
-		return new SlowLogConfig(builder.build());
-	}
-
 	private Collection<Class<?>> getToolingTypes(String toolingId) {
 		final Collection<Class<?>> types = newHashSet();
 		final Collection<MappingProvider> providers = Extensions.getExtensions("com.b2international.snowowl.datastore.mappingProvider", MappingProvider.class);
@@ -341,10 +309,11 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void doDispose() {
 		getCdoRepository().getRepository().removeCommitInfoHandler(this);
 		getIndex().admin().close();
 	}
+	
 	
 	@Override
 	protected Environment getDelegate() {
@@ -378,57 +347,98 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 	}
 
 	@Override
-	public boolean isConsistent(IBranchPath branch) {
+	public void setHealth(Health health, String diagnosis) {
+		this.health = health;
+		if (Health.GREEN != health) {
+			checkState(!Strings.isNullOrEmpty(diagnosis), "Diagnosis required for health status %s", health);
+		}
+		this.diagnosis = diagnosis;
+	}
+	
+	@Override
+	public Health health() {
+		return health;
+	}
+	
+	@Override
+	public String diagnosis() {
+		return diagnosis;
+	}
+	
+	private void checkHealth(String branch) { 
+		final List<CDOCommitInfo> cdoCommits = getCDOCommitInfos(branch);
+		final CommitInfos indexCommits = getIndexCommits(branch);
 		
-		List<CDOCommitInfo> cdoCommitInfos = getCDOCommitInfos(branch);
-		CommitInfos indexCommitInfos = getIndexCommitInfos(branch);
-		
-		boolean emptyDb = cdoCommitInfos.isEmpty();
-		boolean emptyIndex = indexCommitInfos.getItems().isEmpty();
+		boolean emptyDatabase = cdoCommits.isEmpty();
+		boolean emptyIndex = indexCommits.isEmpty();
 
-		if (emptyDb && emptyIndex) {
-			return true; // empty dataset
-		}
-		
-		if (emptyDb ^ emptyIndex) {
-			LOG.error("{} is in inconsistent state. CDO {} but INDEX {}", getCdoRepository().getRepositoryName(), contentMessage(emptyDb), contentMessage(emptyIndex));
-			return false; // either CDO or index was deleted but not the other.
-		}
-		
-		return !hasInvalidCDOTimeStamps(cdoCommitInfos, getLast(indexCommitInfos).getTimeStamp(), branch);
-	}
-	
-	private boolean hasInvalidCDOTimeStamps(List<CDOCommitInfo> cdoCommitInfos, long lastIndexCommitTimestamp, IBranchPath branch) {
-		// expect all the commit infos to be invalid
-		List<CDOCommitInfo> problematicCommitInfos = Lists.newArrayList(cdoCommitInfos);
-		Iterator<CDOCommitInfo> cdoCommitInfosIterator = problematicCommitInfos.iterator();
-		while (cdoCommitInfosIterator.hasNext()) {
-			CDOCommitInfo cdoCommitInfo = cdoCommitInfosIterator.next();
-			
-			if (cdoCommitInfo.getTimeStamp() <= lastIndexCommitTimestamp) {
-				//removing valid commits from the problematic list
-				cdoCommitInfosIterator.remove();
-			} 
-		}
-		
-		if (!problematicCommitInfos.isEmpty()) {
-			LOG.error("Index must be re-initialized for repository: {}. (The database is ahead of the index's timestamp: {} with CDO commit timestamp(s): {})", getCdoRepository().getRepositoryName(),  lastIndexCommitTimestamp, transform(problematicCommitInfos, item -> item.getTimeStamp()));
-			return true;
-		} else if (getLast(cdoCommitInfos).getTimeStamp()  < lastIndexCommitTimestamp) {
-			LOG.error("Database inconsistency for repository: {}. (The index head timestamp: {} is ahead of CDO's head timestamp : {})", getCdoRepository().getRepositoryName(),  lastIndexCommitTimestamp, getLast(cdoCommitInfos).getTimeStamp());
-			return true;
+		if (emptyDatabase && emptyIndex) {
+			// empty dataset, OK
+			setHealth(Health.GREEN, null); 
+		} else if (emptyDatabase && !emptyIndex) {
+			setHealth(Health.RED, RESTORE_DIAGNOSIS);
+		} else if (!emptyDatabase && emptyIndex) {
+			setHealth(Health.RED, String.format(REINDEX_DIAGNOSIS_TEMPLATE, id(), ""));
+		} else if (!emptyDatabase && !emptyIndex) {
+			final String diagnosis = validateCommitConsistency(cdoCommits, indexCommits);
+			if (Strings.isNullOrEmpty(diagnosis)) {
+				setHealth(Health.GREEN, null);	
+			} else {
+				setHealth(Health.RED, diagnosis);
+			}
 		} else {
-			LOG.info("{}'s {} branch's head CDO timestamp is: {} ", getCdoRepository().getRepositoryName(), branch.getPath(), Iterables.getLast(cdoCommitInfos).getTimeStamp());
-			LOG.info("{}'s {} branch's head INDEX timestamp is: {} ", getCdoRepository().getRepositoryName(), branch.getPath(), lastIndexCommitTimestamp);
-			return false;
+			throw new IllegalStateException("Should not happen");
 		}
 	}
 	
-	private List<CDOCommitInfo> getCDOCommitInfos(IBranchPath branchPath) {
+	private String validateCommitConsistency(List<CDOCommitInfo> cdoCommits, CommitInfos indexCommits) {
+		final TreeMap<Long, CDOCommitInfo> cdoCommitsByTimestamp = new TreeMap<>();
+		final TreeMap<Long, CommitInfo> indexCommitsByTimestamp = new TreeMap<>();
+		
+		cdoCommits.forEach(c -> cdoCommitsByTimestamp.put(c.getTimeStamp(), c));
+		indexCommits.forEach(c -> indexCommitsByTimestamp.put(c.getTimeStamp(), c));
+
+		long firstMissingCdoCommitTimestamp = -1;
+		
+		for (Long nextCdoCommitTimestamp : cdoCommitsByTimestamp.navigableKeySet()) {
+			final CDOCommitInfo nextCdoCommit = cdoCommitsByTimestamp.get(nextCdoCommitTimestamp);
+			
+			final Entry<Long, CommitInfo> firstIndexCommit = indexCommitsByTimestamp.firstEntry();
+			if (firstIndexCommit != null) {
+				final Long nextIndexCommitTimestamp = firstIndexCommit.getKey();
+				final CommitInfo indexCommit = firstIndexCommit.getValue();
+				if (nextIndexCommitTimestamp.equals(nextCdoCommitTimestamp)) {
+					// cdo commit is present in the index remove index commit from the treemap
+					indexCommitsByTimestamp.remove(nextIndexCommitTimestamp);
+				} else if (nextIndexCommitTimestamp > nextCdoCommitTimestamp) {
+					// importers can create batch commits using the same UUID in cdo which overrides subsequent index commits and results in a single index commit at the end
+					final String commitId = CDOCommitInfoUtils.getUuid(nextCdoCommit.getComment());
+					if (!Objects.equals(commitId, indexCommit.getId())) {
+						return RESTORE_DIAGNOSIS;
+					}
+				} else if (nextIndexCommitTimestamp < nextCdoCommitTimestamp) {
+					return RESTORE_DIAGNOSIS;
+				}
+			} else {
+				// first cdo commit from where reindex should be invoked  
+				if (firstMissingCdoCommitTimestamp == -1) {
+					firstMissingCdoCommitTimestamp = nextCdoCommitTimestamp;
+				}
+			}
+		}
+		
+		if (firstMissingCdoCommitTimestamp != -1) {
+			return String.format(REINDEX_DIAGNOSIS_TEMPLATE, id(), firstMissingCdoCommitTimestamp);
+		}
+		
+		return null;
+	}
+
+	private List<CDOCommitInfo> getCDOCommitInfos(String mainBranchPath) {
 		
 		long baseTimestamp = getBaseTimestamp(getCdoMainBranch());
 		long headTimestamp = getHeadTimestamp(getCdoMainBranch());
-		Map<String, IBranchPath> branchPathMap = ImmutableMap.of(repositoryId, branchPath);
+		Map<String, IBranchPath> branchPathMap = ImmutableMap.of(repositoryId, BranchPathUtils.createPath(mainBranchPath));
 
 		final CDOCommitInfoQuery query = new CDOCommitInfoQuery(branchPathMap)
 											.setStartTime(baseTimestamp)
@@ -440,18 +450,20 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		return handler.getInfos();
 	}
 
-	private CommitInfos getIndexCommitInfos(IBranchPath branch) {
-		return RepositoryRequests
-					.commitInfos()
-					.prepareSearchCommitInfo()
-					.filterByBranch(branch.getPath())
+	private CommitInfos getIndexCommits(final String branch) {
+		final RepositoryContext repositoryContext = new DefaultRepositoryContext(this, this);
+		return getIndex().read(new IndexRead<CommitInfos>() {
+			@Override
+			public CommitInfos execute(Searcher index) throws IOException {
+				return RepositoryRequests.commitInfos().prepareSearchCommitInfo()
 					.all()
-					.build(repositoryId)
-					.execute(events())
-					.getSync();
-	}
-	
-	private String contentMessage(boolean empty) {
-		return empty ? "IS EMPTY" : "HAS CONTENT";
+					.filterByBranch(branch)
+					.build()
+					.execute(DelegatingRepositoryContext
+							.basedOn(repositoryContext)
+							.bind(Searcher.class, index)
+							.build());
+			}
+		});
 	}
 }

@@ -24,35 +24,31 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.UUID;
 
-import org.apache.hadoop.hbase.util.Order;
-import org.apache.hadoop.hbase.util.OrderedBytes;
-import org.apache.hadoop.hbase.util.SimplePositionedMutableByteRange;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.util.BytesRef;
 
 import com.b2international.index.Searcher;
 import com.b2international.index.lucene.Fields;
 import com.b2international.index.mapping.DocumentMapping;
+import com.b2international.index.revision.Revision;
 import com.b2international.index.util.NumericClassUtils;
 import com.b2international.index.util.Reflections;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.hash.Hashing;
 
 /**
  * @since 4.7
  */
 public final class Index implements Operation {
 
-	public static final int PRECISION = 1 + 18 + 8; // according to OrderedBytes 
 	private final String key;
 	private byte[] source;
 
@@ -165,6 +161,14 @@ public final class Index implements Operation {
 			final JsonNode value = field.getValue();
 			addToDoc(doc, name, value, mapping, true);
 		}
+		
+		// add a hash of the object after processed all props (required for revision compare)
+		// modify the original _source JSON by removing Revision props completely, so that the hash function produces consistent hashes
+		final String content = node.remove(Revision.REV_FIELDS).toString();
+		final String _hash = Hashing.sha1().hashUnencodedChars(content).toString();
+		JsonDocumentMapping._hash().addTo(doc, _hash);
+		Fields.stringDocValuesField(DocumentMapping._HASH).addTo(doc, _hash);
+		
 		return doc;
 	}
 
@@ -183,7 +187,9 @@ public final class Index implements Operation {
 			break;
 		case STRING:
 			if (mapping.isAnalyzed(name)) {
-				Fields.searchOnlyTextField(name).addTo(doc, node.textValue());
+				for (String analyzedFieldName : mapping.getAnalyzers(name).keySet()) {
+					Fields.searchOnlyTextField(analyzedFieldName).addTo(doc, node.textValue());
+				}
 			} else {
 				Fields.searchOnlyStringField(name).addTo(doc, node.textValue());
 			}
@@ -210,14 +216,9 @@ public final class Index implements Operation {
 			} else if (NumericClassUtils.isInt(fieldType) || NumericClassUtils.isShort(fieldType)) {
 				Fields.searchOnlyIntField(name).addTo(doc, node.intValue());
 			} else if (NumericClassUtils.isBigDecimal(fieldType)) {
-				final SimplePositionedMutableByteRange dst = new SimplePositionedMutableByteRange(PRECISION);
-				final int writtenBytes = OrderedBytes.encodeNumeric(dst, node.decimalValue(), Order.ASCENDING);
-				final BytesRef term = new BytesRef(dst.getBytes(), 0, writtenBytes);
-				final StringField termField = new StringField(name, term, Store.NO);
-				doc.add(termField);
-				if (docValues) {
-					doc.add(new BinaryDocValuesField(name, term));
-				}
+				throw new UnsupportedOperationException("BigDecimal should be encoded to a ordered Base64 String value");
+			} else if (NumericClassUtils.isDate(fieldType)) {
+				Fields.searchOnlyLongField(name).addTo(doc, node.longValue());
 			} else {
 				throw new UnsupportedOperationException("Unsupported number type: " + fieldType + " for field: " + name);
 			}
@@ -225,7 +226,7 @@ public final class Index implements Operation {
 			if (docValues) {
 				if (NumericClassUtils.isFloat(fieldType)) {
 					doc.add(new FloatDocValuesField(name, node.floatValue()));
-				} else if (NumericClassUtils.isLong(fieldType) || NumericClassUtils.isInt(fieldType) || NumericClassUtils.isShort(fieldType)) {
+				} else if (NumericClassUtils.isLong(fieldType) || NumericClassUtils.isInt(fieldType) || NumericClassUtils.isShort(fieldType) || NumericClassUtils.isDate(fieldType)) {
 					doc.add(new NumericDocValuesField(name, node.longValue()));
 				}
 				// BigDecimals are handled above

@@ -207,7 +207,6 @@ public class DelegateCDOServerChangeManager {
 						try {
 							MetricsThreadLocal.set(metrics);
 							// commit if anything had changed
-							if (processor.hadChangesToProcess()) {
 								LOGGER.info("Start ICDOChangeProcessor commit() {}", processor.getClass());
 								final IndexCommitChangeSet indexCommitChangeSet = processor.commit();
 
@@ -219,7 +218,6 @@ public class DelegateCDOServerChangeManager {
 								// Add to set of change processors that committed changes successfully
 								committedChangeProcessors.add(processor);
 								indexCommitChangeSets.add(indexCommitChangeSet);
-							}
 							
 							return Status.OK_STATUS;
 						} catch (final SnowowlServiceException e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,18 @@ import static com.google.common.collect.Maps.newHashMap;
 import java.util.Map;
 
 import com.b2international.snowowl.core.internal.exceptions.ApiErrorImpl;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 
 /**
  * Represents a common error object create because of a failed API call, and can be derived mostly from {@link ApiException} subclasses.
  * 
  * @since 4.1
  */
+@JsonDeserialize(builder = ApiError.Builder.class)
 public interface ApiError {
 
 	/**
@@ -62,14 +68,16 @@ public interface ApiError {
 	 * 
 	 * @since 4.1
 	 */
+	@JsonPOJOBuilder(buildMethodName="build", withPrefix = "")
 	static class Builder {
 
 		private String message;
 		private String developerMessage;
 		private int code;
-		private Map<String, Object> additionalInformation = newHashMap();
+		private Map<String, Object> additionalInfo = newHashMap();
 
-		public Builder(String message) {
+		@JsonCreator
+		public Builder(@JsonProperty("message") String message) {
 			this.message = message;
 		}
 		
@@ -83,18 +91,20 @@ public interface ApiError {
 			return this;
 		}
 		
+		@JsonAnySetter
 		public Builder addInfo(String property, Object value) {
-			this.additionalInformation.put(property, value);
+			this.additionalInfo.put(property, value);
 			return this;
 		}
 
+		@JsonProperty("additionalInfo")
 		public Builder addInfos(Map<String, Object> additionalInformation) {
-			this.additionalInformation.putAll(additionalInformation);
+			this.additionalInfo.putAll(additionalInformation);
 			return this;
 		}
 		
 		public ApiError build() {
-			return new ApiErrorImpl(this.message, this.developerMessage, this.code, this.additionalInformation);
+			return new ApiErrorImpl(this.message, this.developerMessage, this.code, this.additionalInfo);
 		}
 		
 		public static Builder of(String message) {

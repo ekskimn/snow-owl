@@ -18,12 +18,18 @@ package com.b2international.snowowl.snomed.datastore.request;
 import java.util.Collection;
 
 import com.b2international.commons.collections.Collections3;
-import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
+import com.b2international.snowowl.core.domain.BranchContext;
+import com.b2international.snowowl.datastore.request.SearchResourceRequest;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionSearchRequest.OptionKey;
 
 /**
+ * <i>Builder</i> class to build requests responsible for searching SNOMED CT descriptions.
+ * This class should be instantiated from the corresponding static method on the central {@link SnomedRequests} class.
+ * Filter methods restrict the results set returned from the search requests; 
+ * what passes the filters will be returned as part of the pageable resultset.
+ * 
  * @since 4.5
  */
 public final class SnomedDescriptionSearchRequestBuilder extends SnomedComponentSearchRequestBuilder<SnomedDescriptionSearchRequestBuilder, SnomedDescriptions> {
@@ -40,6 +46,10 @@ public final class SnomedDescriptionSearchRequestBuilder extends SnomedComponent
 	
 	public SnomedDescriptionSearchRequestBuilder filterByTerm(String termFilter) {
 		return addOption(OptionKey.TERM, termFilter == null ? termFilter : termFilter.trim());
+	}
+	
+	public SnomedDescriptionSearchRequestBuilder filterByExactTerm(String exactTermFilter) {
+		return addOption(OptionKey.EXACT_TERM, exactTermFilter == null ? exactTermFilter : exactTermFilter.trim());
 	}
 
 	public SnomedDescriptionSearchRequestBuilder filterByConcept(String conceptFilter) {
@@ -63,7 +73,7 @@ public final class SnomedDescriptionSearchRequestBuilder extends SnomedComponent
 	}
 	
 	@Override
-	protected RevisionSearchRequest<SnomedDescriptions> createSearch() {
+	protected SearchResourceRequest<BranchContext, SnomedDescriptions> createSearch() {
 		return new SnomedDescriptionSearchRequest();
 	}
 

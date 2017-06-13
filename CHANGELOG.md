@@ -1,6 +1,261 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 5.10.5
+
+### Bugs
+- Fixed MRCM rendering issue (29ed90711b75462b277c72ce5d6b7c0e03367c57)
+- Fixed version creation failure if complex map uses invalid map category ids 
+
+## 5.10.4
+
+### Changed
+- Add versioning parameters to job params object (7ac489c6f715bb7fec791deb78bd83b681440613) 
+- Exclude UK products by their module ID from classifications (12164c8116701f9a21bce822810c2cfb9851b310)
+- SNOMED CT Identifier service now properly moves all ASSIGNED ids to PUBLISHED and reports errors after the changes
+
+## 5.10.3
+
+### Changed
+- Default JVM settings have been changed to recommended default elasticsearch settings (835cbc700022abdc68bf8f764d92794cf8a42254)
+
+### Bugs
+- Exact term matching should use match query instead of term query (11ffb349d2e2b778d36f0673217e0446990dc795)
+- Fixed invalid parsed text predicate -> ES query mapping (72043fb0d9c9b53a31b666643e5bce270beb9241)
+
+## 5.10.2
+
+### Added
+- SNOMED CT Description API now supports exact term matching via new option `EXACT_TERM` (3e33b974fd67671b5d8f616c2d6eeefca46ad885)
+- SNOMED CT Reference Set Member API now supports user supplied UUID parameters
+
+### Bugs
+- Fixed serialization issue of SyntaxException (20dbbea9eb13acb14237864d9be69258ccd7bf1b)
+- Fixed RemoteJobEntry result field mapping (3bc8b16febe593a6692873100ae32cb6f633ac40)
+- Fixed invalid BoostExpression -> ES Query mapping (00c57a81a0bf4c18f0796eb7583b361af70a9fe6)
+
+## 5.10.1
+
+### Changed
+- Elasticsearch module now properly configures dynamic mapping on Object/Map field types
+
+### Bugs
+- Searching for SNOMED CT Concept with termFilter throws score evaluation exception
+
+## 5.10.0
+
+### Breaking changes
+- `_id` document fields now indexed with doc_values enabled
+- `EMBEDDED` identifier service now operates on its own index, named `snomedids`
+- SNOMED CT Description index mapping now uses more precise analyzers to provide the best possible text matches when search for description terms
+  * Exact term searches now possible via the new `term.exact` index field
+  * Prefix searches now return better results (via the new `term.prefix` field), because the mapping now uses the `edgengram` tokenfilter to generate `1..20` length prefixes for each SNOMED CT Description term
+- NOTE: Due to the above mentioned changes, datasets created before 5.10.0 require a **full reindex**
+
+### Added
+- Full (but still **experimental**) Elasticsearch support (https://github.com/b2ihealthcare/snow-owl/pull/147)
+  * Supported elasticsearch version is `2.3.3`
+  * Snow Owl starts a local-only Elasticsearch node by default, but it is possible to configure the node to connect to a cluster of others
+  * Configure the Elasticsearch node with the `configuration/elasticsearch.yml` ES configuration file
+  * This index API implementation does not support the `SHA-1` `_hash` field on revision documents thus it cannot skip them from a revision compare result and will return them. Clients should query the base and head of the branch and remove the false positive hits manually.
+- Configuration options
+  * Added `numberOfShards` configuration option to repository.index node in snowowl_config.yml
+  * Added `commitConcurrencyLevel` configuration option to repository.index node in snowowl_config.yml
+  
+### Changed
+- Low-level Index API chanages (see https://github.com/b2ihealthcare/snow-owl/pull/147 for details)
+- API changes:
+  * JSON representations now include non-null values instead of non-empty
+  * SNOMED CT Concept inactivation properties are no longer auto-expanded. The new `inactivationProperties()` expand parameter need to be added to the expand parameter list in order to retrieve them.
+
+### Bugs
+- Fixed memory leak when using `gzip` compression on the in-JVM Net4j connection
+- Fixed invalid SNOMED CT Identifier state when supplying the identifiers instead of generating them (1e4488e35884cfa6f458471e73c7fd6943239722)
+
+### Performance
+- Greatly improved performance of index queries by using filter clauses in boolean queries instead of must clauses (eac279977bf2b0c49da949701136ba19260b5aef)
+
+## 5.9.0
+
+### Breaking changes
+- Datasets created before 5.9.0 require a **full reindex** in case you would like to use the new branch compare API (or you are using the old review-based compare feature). 
+
+### Added
+- New branch compare Java API (https://github.com/b2ihealthcare/snow-owl/pull/145)
+- Index documents now store a `_hash` field. The value is computed from the semantic content of the document using `SHA-1` (requires reindex).
+
+### Changed
+- Classification Java API now returns only SNOMED CT concept identifiers
+- Include component type in commit notification's new/changed/deleted buckets (470f4e99e42d7c2c1c2e4159ea2003bc51c7aa08)
+- Include version and codesystem changes in commit notification events
+- Enable gzip compression by default on all Net4j protocols (https://github.com/b2ihealthcare/snow-owl/pull/146)
+
+### Removed
+- `compression` configuration option from RPC
+
+### Bugs
+- Branch compare now skips unchanged components even if they had changed, but got reverted to their original form in the meantime (fixed as part of https://github.com/b2ihealthcare/snow-owl/pull/145)
+
+## 5.8.6
+
+### Changes
+- Description preferred acceptability update no longer update acceptabilities of other description (5f012c30a8346bc4905bafa92d9920ce9525dc3a)
+
+### Bugs
+- Fix concept document indexing when changing destination of a relationship in place (4a0ab3a5bcb9b5108785b799f86a1258f88c65e9)
+
+## 5.8.5
+
+### Changes
+- Allow editing immutable properties on unreleased SNOMED CT components (0e1444b9bac543c1cf5c22e90823c4ea42edd077)
+  * `typeId`, `destinationId` on SNOMED CT Relationships
+  * `typeId`, `term`, `languageCode` on SNOMED CT Descriptions
+
+### Bugs
+- Always create commit info document when processing a CDO commit (03e85d11b12c236ada328f8cce6e289558573bfc)
+
+## 5.8.4
+
+### Bugs
+- Fix serialization issue of SortField when using it in SearchRequests (e733dbec3edb831d6fba4974ff9ea8a04832f50f)
+
+## 5.8.3
+
+### Bugs
+- Initialize repositories only in GREEN health state (3bb706585d92ecc90336f62b6fc4530392486464)
+- Fix expansion of `statedDescendants` when persisting classification results (b9de8620ca59f728adaeb82c3100b09f40737304)
+- Fix missing backpressure exception when using `Notifications` event stream (ce022786e59c1ad14c8dc5877c076158c053fae6)
+
+## 5.8.2
+
+### Changes
+- Field selection now supports single fields as well (049578f483150fb566ec2c92b9e2b1659e40dccb)
+
+### Bugs
+- Fix missing SNOMED CT icons after importing RF2 files (388c13b34f4194f759239506c2e8f09a1d4cfb5e)
+
+## 5.8.1
+
+### Bugs
+- Fixed missing internal SNOMED CT ECL package export entry (required by ide and ui plugins)
+- Fixed duplicate repository ID shown in diagnostic messages
+- Fixed existing db index detection when ensuring index on CDO_CREATED columns
+
+## 5.8.0
+
+### Added
+- Health Status has been added to Repository instances (https://github.com/b2ihealthcare/snow-owl/pull/138)
+ * Repositories check their health status during the bootstrap process
+ * `RED` state: administrative action is required (restoring content from backup or initiating reindex on the repository). Accessing content is disallowed.
+ * `YELLOW` state: administrative operation (eg. reindex) is in progress, accessing content is allowed, but the content can be incomplete  
+ * `GREEN` state: terminology content is consistent
+- Server Info and Repository API (https://github.com/b2ihealthcare/snow-owl/pull/138)
+ * `GET /snowowl/admin/info` endpoint to retrieve version and diagnostic information of the running server
+ * `GET /snowowl/admin/repositories` endpoint to retrieve all available repositories with their health statuses
+ * `GET /snowowl/admin/repositories/:id` endpoint to retrieve a single repository and its health status
+- Console
+ * `--version` command parameter has been added to `snowowl` command to retrieve the server's version
+ * `snowowl repositories [id]` subcommand has been added to retrieve repository information and health status
+- Sorting support in Java API (https://github.com/b2ihealthcare/snow-owl/pull/140) 
+- Low-level API changes
+ * Support custom repository content initialization for empty repositories during the bootstrap process (usually primary code system entries are created here)
+
+### Changed
+- SNOMED CT RF2 importer changes
+ * Importer is no longer able to create codeSystem as part of the import process, how ever they require that the codeSystem exists before starting the import. 
+- SNOMED CT ECL grammar improvements (https://github.com/b2ihealthcare/snow-owl/pull/137)
+ * Optional `WS` before and after the `PIPE` terminals
+ * Case insensitive keyword support
+ * Fixed parser error when parsing empty ECL expression
+- Branching API improvements (https://github.com/b2ihealthcare/snow-owl/pull/143)
+ * Pagination support has been added to `GET /snowowl/snomed-ct/v2/branches` endpoint
+ * Filter by `parent` property has been added to `GET /snowowl/snomed-ct/v2/branches` endpoint
+ * Filter by `name` property has been addSed to `GET /snowowl/snomed-ct/v2/branches` endpoint
+- `SnomedConcept` expansions 
+ * Removed `form` parameter when expanding `ancestors`/`descendants` of SNOMED CT concepts
+ * Added `statedAncestors`/`statedDescendants` expand parameters to expand concepts referenced via `stated` IS_A relationships
+ * `ancestors`/`descendants` expansion expands concepts referenced via `inferred` IS_A relationships 
+
+### Removed
+- `GET /snowowl/admin/repositories/:id/versions` obsolete endpoint has been removed in favor of `GET /snowowl/admin/codesystem/:id/versions`
+- `snowowl listrepositories` subcommand has been replaced with `snowowl repositories`  
+
+### Dependencies
+- Xtext/Xtend changed from 2.8.4 to 2.11.0 (https://github.com/b2ihealthcare/snow-owl/pull/137)
+- EMF changed from 2.11.0 to 2.12.0 (https://github.com/b2ihealthcare/snow-owl/pull/137)
+- RxJava changed from 1.0.6 to 2.0.7 (https://github.com/b2ihealthcare/snow-owl/pull/141) 
+
+### Bugs
+- Validate SNOMED CT Text Definition files (if present) when import RF2 content 
+- Validate `branchPath` input parameter with given `codeSystemShortName` when running SNOMED CT RF2. It should be either full path or relative to the codesystem's main branch.
+- Fixed issue where files could not be opened after downloading them using the `FileRegistry.download(...)` api (c1088e217e1954952b57e70aec9f0d28f09083af)
+- Skip cdo repository initializer commits when reindexing a repository (b6d1e4f9e2cd170a8516bc2bcf1cda4f6ce6888c)
+
+## 5.7.4
+
+### Changed
+- Support UUID as return value of a RemoteJob (bee443409401b0ece88a520c009e07130b924357)
+
+### Bugs
+- Fixed invalid MRCM domain expression calculation in case of CompositeConceptSetDefinition (1600d9e1821b9d403ab3365e15f05a96f238eba1)
+
+## 5.7.3
+
+### Bugs
+- Fixed serialization of IdGenerationStrategy (555c3a585b8ea721c396de18d18c3fad4ac9568d)
+
+## 5.7.2
+
+### Added
+- Support reference set filtering in SNOMED CT RF2 export Java API
+
+### Changed
+- Improved repository request log output
+
+### Bugs
+- Fixed serialization of ValidationException (62d3d0516b87c62e4841a6d9b0eba6e262e18410)
+- Fixed class loading issue when using BulkRequests
+- Fixed Highlighting.getMatchRegions() bug (e7d449df9843c188700c11591ca7e70755f9f140)
+
+## 5.7.1
+
+### Bugs
+- Fixed node initialization issue when connecting to a master node (client-server mode)
+- Fixed serialization of GetResourceRequest classes
+
+## 5.7.0
+
+### Breaking changes
+- SNOMED CT Complex Map Members properties, `mapGroup` and `mapPriority` are changed to integer type instead of byte. This requires migration of the SNOMED CT database (TODO ref to sql script).
+
+### Added
+- Reader/Writer database connection pool capacity configuration (see configuration guide)
+- Domain representation classes for SNOMED CT MRCM Constraints
+ * SnomedRelationshipConstraint
+ * SnomedDescriptionConstraint
+ * SnomedConcreteDomainConstraint
+- Complete Java and REST support for SNOMED CT Reference Sets and Members (https://github.com/b2ihealthcare/snow-owl/pull/131)
+- Generic request-based job API (https://github.com/b2ihealthcare/snow-owl/pull/132)
+- RxJava-based notification observable support (part of https://github.com/b2ihealthcare/snow-owl/pull/132)
+- File attachment API (https://github.com/b2ihealthcare/snow-owl/pull/129)
+
+### Changed
+- SNOMED CT RF2 export API
+ * `startEffectiveTime` and `endEffectiveTime` export filters can be used for all RF2 export types
+ * `codeSystemShortName` and `extensionOnly` properties to select the right content for your RF2 package
+ * Export now always creates empty description, text definition and language refset files
+ * Export now creates description/text definition/lang refset files per language code
+ * A new RF2 API (https://github.com/b2ihealthcare/snow-owl/pull/135) 
+- Index API
+ * Support java.util.Date types in document mapping
+- Refactored SNOMED CT API test cases (part of https://github.com/b2ihealthcare/snow-owl/pull/131)
+
+### Removed
+- The obsolete rpc-based quick search API (use SearchResourceRequests instead)
+
+### Bugs
+- Properly dispose ReviewManager instance when disposing the Repository
+
 ## 5.6.0
 
 ### Added

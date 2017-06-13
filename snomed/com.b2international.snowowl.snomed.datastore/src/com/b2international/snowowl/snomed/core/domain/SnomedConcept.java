@@ -22,20 +22,67 @@ import java.util.Set;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSet;
+import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Function;
 import com.google.common.collect.Multimap;
 
 /**
- * Represents a SNOMED CT concept.
+ * Represents a SNOMED&nbsp;CT concept.
+ * <br>
+ * Concepts returned by search requests are populated based on the expand parameters passed into the {@link BaseResourceRequestBuilder#setExpand(String)}
+ * methods. The expand parameters can be nested allowing a fine control for the details returned in the resultset.  
+ * 
+ * The supported expand parameters are:
  * <p>
- * If the component status is not active, additional information about the inactivation reason and associated concepts can also be retrieved from this
- * object.
+ * <ul>
+ * <li>{@code pt()} - returns the <i>Preferred Term</i> for the </li> locale set by {@link BaseResourceRequestBuilder#setLocales(java.util.List)} method.
+ * 
+ * <li>{@code fsn()} - returns the <i>Fully Specified Name (fsn)</i> for the </li> locale set by {@link BaseResourceRequestBuilder#setLocales(java.util.List)} method.
+ * .setLocales(languagePreference)</li>
+ * <li>{@code descriptions()} - returns the descriptions of the concept</li>
+ * <li>{@code relationships()} - returns the relationships of the concept</li>
+ * <li>{@code descendants(direct:true|false, form:"stated"|"inferred")} - returns the all or the only the direct descendants of the concept based on the stated or the inferred tree.</li> 
+ * <li>{@code ancestors(direct:true|false, form:"stated"|"inferred")} - returns the all or the only the direct ancestors of the concept based on the stated or the inferred tree.</li>
+ * </ul>
+ * 
+ * Expand parameters can be nested to further expand or filter the details returned. 
+ * For example the expand string:
+ * <p>{@code descriptions(expand(type:"typeId"))}<p>
+ * returns only the descriptions with the specified <i>typeId</i>
+ * 
+ * <p>
+ * @see BaseResourceRequestBuilder#setLocales(java.util.List)
+ * @see SnomedDescription
+ * @see SnomedRelationship
+ * @see SnomedReferenceSet
+ * @see SnomedReferenceSetMember
  */
 public final class SnomedConcept extends SnomedCoreComponent implements DefinitionStatusProvider {
 
-	public static final String EXPAND_REFSET = "referenceSet";
+	private static final long serialVersionUID = 1L;
+
+	/**
+	 * Enumerates expandable property keys.
+	 * 
+	 * @since 5.10
+	 */
+	public static final class Expand {
+
+		public static final String REFERENCE_SET = "referenceSet";
+		public static final String INACTIVATION_PROPERTIES = "inactivationProperties";
+		public static final String REFERRING_MEMBERS = "members";
+		public static final String STATED_ANCESTORS = "statedAncestors";
+		public static final String ANCESTORS = "ancestors";
+		public static final String STATED_DESCENDANTS = "statedDescendants";
+		public static final String DESCENDANTS = "descendants";
+		public static final String RELATIONSHIPS = "relationships";
+		public static final String DESCRIPTIONS = "descriptions";
+		public static final String FULLY_SPECIFIED_NAME = "fsn";
+		public static final String PREFERRED_TERM = "pt";
+
+	}
 	
 	/**
 	 * Helper function to get ancestors of a given {@link SnomedConcept}.
@@ -67,6 +114,8 @@ public final class SnomedConcept extends SnomedCoreComponent implements Definiti
 	private SnomedRelationships relationships;
 	private SnomedConcepts ancestors;
 	private SnomedConcepts descendants;
+	private SnomedConcepts statedAncestors;
+	private SnomedConcepts statedDescendants;
 	private long[] ancestorIds;
 	private long[] parentIds;
 	private long[] statedAncestorIds;
@@ -150,17 +199,31 @@ public final class SnomedConcept extends SnomedCoreComponent implements Definiti
 	}
 
 	/**
-	 * @return the ancestors of the SNOMED CT concept
+	 * @return the inferred ancestors of the SNOMED CT concept
 	 */
 	public SnomedConcepts getAncestors() {
 		return ancestors;
 	}
+	
+	/**
+	 * @return the stated ancestors of the SNOMED CT concept
+	 */
+	public SnomedConcepts getStatedAncestors() {
+		return statedAncestors;
+	}
 
 	/**
-	 * @return the descendants of the SNOMED CT concept
+	 * @return the inferred descendants of the SNOMED CT concept
 	 */
 	public SnomedConcepts getDescendants() {
 		return descendants;
+	}
+	
+	/**
+	 * @return the stated descendants of the SNOMED CT concept
+	 */
+	public SnomedConcepts getStatedDescendants() {
+		return statedDescendants;
 	}
 
 	/**
@@ -233,6 +296,14 @@ public final class SnomedConcept extends SnomedCoreComponent implements Definiti
 	
 	public void setDescendants(SnomedConcepts descendants) {
 		this.descendants = descendants;
+	}
+	
+	public void setStatedAncestors(SnomedConcepts statedAncestors) {
+		this.statedAncestors = statedAncestors;
+	}
+	
+	public void setStatedDescendants(SnomedConcepts statedDescendants) {
+		this.statedDescendants = statedDescendants;
 	}
 	
 	public void setAncestorIds(final long[] ancestorIds) {

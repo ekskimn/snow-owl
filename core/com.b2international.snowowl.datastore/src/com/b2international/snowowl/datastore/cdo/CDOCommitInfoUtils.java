@@ -293,7 +293,7 @@ public abstract class CDOCommitInfoUtils {
 	public static final class CDOCommitInfoQuery {
 		
 		public static final Collection<String> EXCLUDED_USERS = 
-				ImmutableSet.<String>of(CDOCommitInfoConstants.SYSTEM_USER_ID);
+				ImmutableSet.of(CDOCommitInfoConstants.SYSTEM_USER_ID);
 		
 		private static final Predicate<String> EXCLUDED_USERS_PREDICATE = Predicates.not(Predicates.in(EXCLUDED_USERS));
 		
@@ -340,7 +340,6 @@ public abstract class CDOCommitInfoUtils {
 			this.enableGrouping = enableGrouping;
 			return this;
 		}
-		
 		
 		/**Specifies the excluded user ID predicate.*/
 		public CDOCommitInfoQuery setExcludedUsersPredicate(final Predicate<String> excludedUsersPredicate) {
@@ -404,7 +403,6 @@ public abstract class CDOCommitInfoUtils {
 						if (excludedUsersPredicate.apply(userId)) {
 							$[i.getAndIncrement()] = info;
 						}
-					}
 				});
 				
 				return Arrays2.iterator(Arrays.copyOf($, i.get()));

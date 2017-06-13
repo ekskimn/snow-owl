@@ -18,6 +18,7 @@ package com.b2international.index.util;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Date;
 
 import com.b2international.collections.PrimitiveCollection;
 import com.b2international.collections.bytes.ByteCollection;
@@ -61,7 +62,16 @@ public class NumericClassUtils {
 	 *         {@link PrimitiveCollection}, <code>false</code> otherwise
 	 */
 	public static boolean isCollection(final Field field) {
-		final Class<?> fieldType = field.getType();
+		return isCollection(field.getType());
+	}
+	
+	/**
+	 * @param fieldType the document mapping field's type to test
+	 * @return <code>true</code> if the field's type is either the same as, or
+	 *         is a subtype of {@link Collection} or
+	 *         {@link PrimitiveCollection}, <code>false</code> otherwise
+	 */
+	public static boolean isCollection(final Class<?> fieldType) {
 		return Collection.class.isAssignableFrom(fieldType) || PrimitiveCollection.class.isAssignableFrom(fieldType);
 	}
 
@@ -87,5 +97,9 @@ public class NumericClassUtils {
 
 	private NumericClassUtils() {
 		throw new UnsupportedOperationException(NumericClassUtils.class.getSimpleName() + " is not supposed to be instantiated.");
+	}
+
+	public static boolean isDate(Class<?> fieldType) {
+		return fieldType == Date.class;
 	}
 }

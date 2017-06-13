@@ -25,8 +25,7 @@ import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.IComponent;
 import com.b2international.snowowl.core.exceptions.IllegalQueryParameterException;
-import com.b2international.snowowl.datastore.request.BaseSearchRequest;
-import com.b2international.snowowl.datastore.request.RevisionSearchRequest;
+import com.b2international.snowowl.datastore.request.SearchResourceRequest;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.escg.ConceptIdQueryEvaluator2;
 import com.b2international.snowowl.snomed.datastore.escg.EscgRewriter;
@@ -42,9 +41,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 /**
+ * Abstract class for SNOMED CT search requests.
  * @since 4.5
  */
-public abstract class SnomedSearchRequest<R> extends RevisionSearchRequest<R> {
+public abstract class SnomedSearchRequest<R> extends SearchResourceRequest<BranchContext, R> {
 
 	enum OptionKey {
 		
@@ -80,20 +80,15 @@ public abstract class SnomedSearchRequest<R> extends RevisionSearchRequest<R> {
 		return getList(OptionKey.LANGUAGE_REFSET, String.class);
 	}
 
-	@Override
-	protected String getIdField() {
-		return "id";
-	}
-	
 	protected final void addModuleClause(ExpressionBuilder queryBuilder) {
 		if (containsKey(OptionKey.MODULE)) {
-			queryBuilder.must(SnomedDocument.Expressions.module(getString(OptionKey.MODULE)));
+			queryBuilder.filter(SnomedDocument.Expressions.module(getString(OptionKey.MODULE)));
 		}
 	}
 
 	protected final void addActiveClause(ExpressionBuilder queryBuilder) {
 		if (containsKey(OptionKey.ACTIVE)) {
-			queryBuilder.must(SnomedDocument.Expressions.active(getBoolean(OptionKey.ACTIVE)));
+			queryBuilder.filter(SnomedDocument.Expressions.active(getBoolean(OptionKey.ACTIVE)));
 		}
 	}
 	
@@ -101,7 +96,7 @@ public abstract class SnomedSearchRequest<R> extends RevisionSearchRequest<R> {
 		if (containsKey(OptionKey.EFFECTIVE_TIME_START) || containsKey(OptionKey.EFFECTIVE_TIME_END)) {
 			final long from = containsKey(OptionKey.EFFECTIVE_TIME_START) ? get(OptionKey.EFFECTIVE_TIME_START, Long.class) : 0;
 			final long to = containsKey(OptionKey.EFFECTIVE_TIME_END) ? get(OptionKey.EFFECTIVE_TIME_END, Long.class) : Long.MAX_VALUE;
-			queryBuilder.must(SnomedDocument.Expressions.effectiveTime(from, to));
+			queryBuilder.filter(SnomedDocument.Expressions.effectiveTime(from, to));
 		}
 	}
 	
@@ -115,7 +110,7 @@ public abstract class SnomedSearchRequest<R> extends RevisionSearchRequest<R> {
 				final RValue expression = context.service(EscgRewriter.class).parseRewrite(escg);
 				final LongSet conceptIds = new ConceptIdQueryEvaluator2(context.service(RevisionSearcher.class)).evaluate(expression);
 				final Expression conceptFilter = expressionProvider.apply(conceptIds);
-				queryBuilder.must(conceptFilter);
+				queryBuilder.filter(conceptFilter);
 			} catch (SyntaxErrorException e) {
 				throw new IllegalQueryParameterException(e.getMessage());
 			}
@@ -160,11 +155,11 @@ public abstract class SnomedSearchRequest<R> extends RevisionSearchRequest<R> {
 					.execute(context);
 				idFilter = FluentIterable.from(matchingConcepts).transform(IComponent.ID_FUNCTION).toSet();
 				if (idFilter.isEmpty()) {
-					throw new BaseSearchRequest.NoResultException();
+					throw new SearchResourceRequest.NoResultException();
 				}
 			}
 		}
-		queryBuilder.must(matchingIdsToExpression.apply(idFilter));
+		queryBuilder.filter(matchingIdsToExpression.apply(idFilter));
 	}
 	
 }

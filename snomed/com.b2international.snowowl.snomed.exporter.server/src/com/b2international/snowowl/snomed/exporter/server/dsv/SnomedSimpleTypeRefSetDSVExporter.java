@@ -59,12 +59,12 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.datastore.SnomedConceptLookupService;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.AbstractSnomedDsvExportItem;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.ComponentIdSnomedDsvExportItem;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.DatatypeSnomedDsvExportItem;
+import com.b2international.snowowl.snomed.datastore.internal.rf2.SnomedRefSetDSVExportModel;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.datastore.services.ISnomedConceptNameProvider;
-import com.b2international.snowowl.snomed.exporter.model.AbstractSnomedDsvExportItem;
-import com.b2international.snowowl.snomed.exporter.model.ComponentIdSnomedDsvExportItem;
-import com.b2international.snowowl.snomed.exporter.model.DatatypeSnomedDsvExportItem;
-import com.b2international.snowowl.snomed.exporter.model.SnomedRefSetDSVExportModel;
 import com.b2international.snowowl.snomed.exporter.server.SnomedRefSetExporterQueries;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -966,7 +966,7 @@ public class SnomedSimpleTypeRefSetDSVExporter implements IRefSetDSVExporter {
 	private Map<Long, String> getExportedMemberConceptCDOAndSnomedIds(String refSetId) throws SQLException {
 		Map<Long, String> conceptCDOIds = Maps.newHashMap();
 		PreparedStatement inactivatedCheckerStatement = connection
-				.prepareStatement(SnomedRefSetExporterQueries.SQL_SIMPLE_TYPE_REFSET_DSV_EXPORT_INCATIVATED_REFSET_MEMBER_CONCEPT_QUERY);
+				.prepareStatement(SnomedRefSetExporterQueries.SQL_SIMPLE_TYPE_REFSET_DSV_EXPORT_INACTIVATED_REFSET_MEMBER_CONCEPT_QUERY);
 		PreparedStatement statement = connection.prepareStatement(SnomedRefSetExporterQueries.SQL_SIMPLE_TYPE_REFSET_DSV_EXPORT_REFSET_MEMBER_QUERY);
 		statement.setLong(1, Long.valueOf(refSetId));
 		statement.setInt(2, branchId);
@@ -984,7 +984,10 @@ public class SnomedSimpleTypeRefSetDSVExporter implements IRefSetDSVExporter {
 			inactivatedCheckerStatement.setLong(1, CDOId);
 			inactivatedCheckerStatement.setInt(2, branchId);
 			ResultSet inactivatedCheckerResultSet = inactivatedCheckerStatement.executeQuery();
-			// if the concept was inactivated on the task
+			
+			/*
+			 * Active refset members are skipped if the referenced concept is inactive!
+			 */
 			if (inactivatedCheckerResultSet.absolute(1) && !inactivatedCheckerResultSet.getBoolean(1)) {
 				i++;
 				continue;

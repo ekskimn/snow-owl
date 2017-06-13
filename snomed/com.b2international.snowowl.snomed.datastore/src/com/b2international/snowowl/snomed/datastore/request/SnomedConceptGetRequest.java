@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,38 +15,24 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
-import com.b2international.commons.options.Options;
-import com.b2international.snowowl.core.api.IComponent;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.core.terminology.ComponentCategory;
-import com.b2international.snowowl.datastore.index.RevisionDocument;
-import com.b2international.snowowl.datastore.request.RevisionGetRequest;
+import com.b2international.snowowl.datastore.request.GetResourceRequest;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 
 /**
- * @since 4.5
+ * @since 5.7
  */
-final class SnomedConceptGetRequest extends RevisionGetRequest<SnomedConcept> {
+final class SnomedConceptGetRequest extends GetResourceRequest<SnomedConceptSearchRequestBuilder, BranchContext, SnomedConcept> {
 
-	SnomedConceptGetRequest() {
-		super(ComponentCategory.CONCEPT);
-	}
+	private static final long serialVersionUID = 1L;
 	
-	@Override
-	protected SnomedConcept process(BranchContext context, IComponent<String> component, Options expand) {
-		return SnomedConverters.newConceptConverter(context, expand, locales()).convert((SnomedConceptDocument) component);
+	SnomedConceptGetRequest(String conceptId) {
+		super(conceptId);
 	}
-	
+
 	@Override
-	protected Class<? extends RevisionDocument> getRevisionType() {
-		return SnomedConceptDocument.class;
-	}
-	
-	@Override
-	protected Class<SnomedConcept> getReturnType() {
-		return SnomedConcept.class;
+	protected SnomedConceptSearchRequestBuilder createSearchRequestBuilder() {
+		return new SnomedConceptSearchRequestBuilder();
 	}
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,30 +15,16 @@
  */
 package com.b2international.snowowl.core;
 
-import java.io.Closeable;
-
+import com.b2international.snowowl.core.events.Notifications;
 import com.b2international.snowowl.core.events.RepositoryEvent;
-import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.eventbus.IEventBus;
+
+import io.reactivex.Observable;
 
 /**
  * @since 4.5
  */
-public interface Repository extends ServiceProvider, Closeable {
-
-	/**
-	 * Returns the ID of the repository.
-	 * 
-	 * @return
-	 */
-	String id();
-
-	/**
-	 * Returns the {@link Repository}s own event bus. It can be used to execute {@link Request}s targeting this {@link Repository}.
-	 * 
-	 * @return
-	 */
-	IEventBus handlers();
+public interface Repository extends ServiceProvider, IDisposableService, RepositoryInfo {
 
 	/**
 	 * Returns the global singleton {@link IEventBus} to send events to it.
@@ -46,7 +32,16 @@ public interface Repository extends ServiceProvider, Closeable {
 	 * @return
 	 */
 	IEventBus events();
-
+	
+	/**
+	 * @return an {@link Observable} of {@link RepositoryEvent}s sent by this {@link Repository}.
+	 */
+	default Observable<RepositoryEvent> notifications() {
+		return service(Notifications.class)
+				.ofType(RepositoryEvent.class)
+				.filter(notification -> id().equals(notification.getRepositoryId()));
+	}
+ 
 	/**
 	 * Send a {@link RepositoryEvent notification} to each and every listener of this repository.
 	 * 

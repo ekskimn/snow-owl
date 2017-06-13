@@ -27,6 +27,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -264,9 +265,13 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		case SnomedRf2Headers.FIELD_SOURCE_EFFECTIVE_TIME:
 		case SnomedRf2Headers.FIELD_TARGET_EFFECTIVE_TIME:
 			if (value instanceof String && !StringUtils.isEmpty((String) value)) {
-				return Long.valueOf((String) value);
+				Date parsedDate = EffectiveTimes.parse((String) value, DateFormats.SHORT);
+				return EffectiveTimes.getEffectiveTime(parsedDate);
+			} else {
+				return EffectiveTimes.UNSET_EFFECTIVE_TIME;
 			}
-		default: return value;
+		default: 
+			return value;
 		}
 	}
 
@@ -291,6 +296,10 @@ public final class SnomedRefSetMemberIndexEntry extends SnomedDocument {
 		
 		public static Expression referencedComponentId(String referencedComponentId) {
 			return exactMatch(Fields.REFERENCED_COMPONENT_ID, referencedComponentId);
+		}
+		
+		public static Expression mapTargets(Collection<String> mapTargets) {
+			return matchAny(Fields.MAP_TARGET, mapTargets);
 		}
 
 		public static Expression referencedComponentIds(Collection<String> referencedComponentIds) {

@@ -16,8 +16,6 @@
 package com.b2international.snowowl.snomed.api.japi.branches;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.hamcrest.CoreMatchers.allOf;
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -44,6 +42,7 @@ import com.b2international.snowowl.core.merge.Merge.Status;
 import com.b2international.snowowl.datastore.request.Branching;
 import com.b2international.snowowl.datastore.request.CommitResult;
 import com.b2international.snowowl.datastore.request.Merging;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.server.internal.CDOBasedRepository;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -81,7 +80,7 @@ public class SnomedBranchRequestTest {
 
 	@Test
 	public void createTwoBranchesSameTimeWithSameName() throws Exception {
-		final Branching branches = SnomedRequests.branching();
+		final Branching branches = RepositoryRequests.branching();
 		
 		// try to create two branches at the same time
 		final String branchName = UUID.randomUUID().toString();
@@ -113,7 +112,7 @@ public class SnomedBranchRequestTest {
 	
 	@Test
 	public void createTwoBranchesSameTimeWithDifferentName() throws Exception {
-		final Branching branches = SnomedRequests.branching();
+		final Branching branches = RepositoryRequests.branching();
 		
 		// try to create two branches at the same time
 		final String branchA = UUID.randomUUID().toString();
@@ -159,8 +158,8 @@ public class SnomedBranchRequestTest {
 
 	@Test
 	public void createBranchAndCommitToParent() throws Exception {
-		final Branching branches = SnomedRequests.branching();
-		final Merging merges = SnomedRequests.merging();
+		final Branching branches = RepositoryRequests.branching();
+		final Merging merges = RepositoryRequests.merging();
 		
 		final String branchA = UUID.randomUUID().toString();
 		final String branchB = UUID.randomUUID().toString();
@@ -260,9 +259,8 @@ public class SnomedBranchRequestTest {
 		.getSync();
 		
 		// Check that the concept is visible on parent
-		SnomedRequests.prepareGetConcept()
-				.setComponentId(conceptId)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, first.parentPath())
+		SnomedRequests.prepareGetConcept(conceptId)
+				.build(REPOSITORY_ID, first.parentPath())
 				.execute(bus)
 				.getSync();
 	}

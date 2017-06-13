@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,9 @@ public class SnomedExportRestConfiguration {
 	@NotEmpty
 	private String branchPath;
 	
+	@NotEmpty
+	private String namespaceId = "INT";
+	
 	private String namespaceId;
 	private Collection<String> moduleIds;
 	private Date startEffectiveTime;
@@ -45,7 +48,7 @@ public class SnomedExportRestConfiguration {
 	private String transientEffectiveTime;
 	private boolean includeUnpublished;
 	
-	private String codeSystemShortName = SnomedTerminologyComponentConstants.SNOMED_INT_SHORT_NAME;
+	private String codeSystemShortName = SnomedTerminologyComponentConstants.SNOMED_SHORT_NAME;
 	private boolean extensionOnly = false;
 
 	/**

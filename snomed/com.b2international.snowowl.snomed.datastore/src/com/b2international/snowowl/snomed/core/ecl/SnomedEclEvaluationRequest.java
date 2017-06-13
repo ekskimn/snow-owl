@@ -38,12 +38,13 @@ import org.eclipse.xtext.util.PolymorphicDispatcher;
 
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
+import com.b2international.index.query.MatchNone;
 import com.b2international.index.query.Predicate;
 import com.b2international.index.query.StringPredicate;
 import com.b2international.index.query.StringSetPredicate;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.domain.IComponent;
-import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.events.util.Promise;
 import com.b2international.snowowl.core.exceptions.NotImplementedException;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -68,7 +69,6 @@ import com.b2international.snowowl.snomed.ecl.ecl.ParentOf;
 import com.b2international.snowowl.snomed.ecl.ecl.RefinedExpressionConstraint;
 import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
-import com.google.common.reflect.TypeToken;
 
 /**
  * Evaluates the given ECL expression {@link String} or parsed {@link ExpressionConstraint} to an executable {@link Expression query expression}.
@@ -79,7 +79,7 @@ import com.google.common.reflect.TypeToken;
  * 
  * @since 5.4
  */
-final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promise<Expression>> {
+final class SnomedEclEvaluationRequest implements Request<BranchContext, Promise<Expression>> {
 
 	private static final long serialVersionUID = 5891665196136989183L;
 	
@@ -93,13 +93,6 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 
 	void setExpression(String expression) {
 		this.expression = expression;
-	}
-
-	@Override
-	protected Class<Promise<Expression>> getReturnType() {
-		TypeToken<Promise<Expression>> exp = new TypeToken<Promise<Expression>>(){};
-		Class<Promise<Expression>> rawType = (Class<Promise<Expression>>) exp.getRawType();
-		return rawType;
 	}
 
 	@Override
@@ -165,7 +158,6 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 		// <* should eval to * MINUS parents IN (ROOT_ID)
 		if (inner instanceof Any) {
 			return Promise.immediate(Expressions.builder()
-					.must(Expressions.matchAll())
 					.mustNot(parents(Collections.singleton(IComponent.ROOT_ID)))
 					.build());
 		} else {
@@ -217,7 +209,6 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 		// <!* should eval to * MINUS parents in (ROOT_ID)
 		if (innerConstraint instanceof Any) {
 			return Promise.immediate(Expressions.builder()
-					.must(Expressions.matchAll())
 					.mustNot(parents(Collections.singleton(IComponent.ROOT_ID)))
 					.build());
 		} else {
@@ -316,8 +307,8 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 						final Expression left = (Expression) innerExpressions.get(0);
 						final Expression right = (Expression) innerExpressions.get(1);
 						return Expressions.builder()
-								.must(left)
-								.must(right)
+								.filter(left)
+								.filter(right)
 								.build();
 					}
 				});
@@ -354,7 +345,7 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 						final Expression left = (Expression) innerExpressions.get(0);
 						final Expression right = (Expression) innerExpressions.get(1);
 						return Expressions.builder()
-								.must(left)
+								.filter(left)
 								.mustNot(right)
 								.build();
 					}
@@ -392,6 +383,13 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 	 */
 	protected Promise<Expression> eval(BranchContext context, final NestedExpression nested) {
 		return evaluate(context, nested.getNested());
+	}
+	
+	/**
+	 * Handles cases when the expression constraint is not available at all. For instance, script is empty.
+	 */
+	protected Promise<Expression> eval(BranchContext context, final Void empty) {
+		return Promise.immediate(MatchNone.INSTANCE);
 	}
 	
 	/*package*/ static <T> Promise<T> throwUnsupported(EObject eObject) {
@@ -438,9 +436,9 @@ final class SnomedEclEvaluationRequest extends BaseRequest<BranchContext, Promis
 			@Override
 			public Promise<SnomedConcepts> apply(Set<String> ids) {
 				return SnomedRequests.prepareSearchConcept()
+						.filterByIds(ids)
 						.setLimit(ids.size())
-						.setComponentIds(ids)
-						.build(context.id(), context.branch().path())
+						.build(context.id(), context.branchPath())
 						.execute(context.service(IEventBus.class));
 			}
 		};

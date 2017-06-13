@@ -49,5 +49,7 @@ public interface InternalRepository extends Repository {
 
 	long getHeadTimestamp(CDOBranch branch);
 
-	boolean isConsistent(IBranchPath createMainPath);
+	void setHealth(Health health, String diagnosis);
+
+	void checkHealth();
 }

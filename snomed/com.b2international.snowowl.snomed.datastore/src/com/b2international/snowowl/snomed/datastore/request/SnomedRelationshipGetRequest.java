@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,38 +15,24 @@
  */
 package com.b2international.snowowl.snomed.datastore.request;
 
-import com.b2international.commons.options.Options;
-import com.b2international.snowowl.core.api.IComponent;
 import com.b2international.snowowl.core.domain.BranchContext;
-import com.b2international.snowowl.core.terminology.ComponentCategory;
-import com.b2international.snowowl.datastore.index.RevisionDocument;
-import com.b2international.snowowl.datastore.request.RevisionGetRequest;
+import com.b2international.snowowl.datastore.request.GetResourceRequest;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
-import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 
 /**
- * @since 4.5
+ * @since 5.7
  */
-final class SnomedRelationshipGetRequest extends RevisionGetRequest<SnomedRelationship> {
+final class SnomedRelationshipGetRequest extends GetResourceRequest<SnomedRelationshipSearchRequestBuilder, BranchContext, SnomedRelationship> {
 
-	protected SnomedRelationshipGetRequest() {
-		super(ComponentCategory.RELATIONSHIP);
-	}
+	private static final long serialVersionUID = 1L;
 
-	@Override
-	protected SnomedRelationship process(BranchContext context, IComponent<String> component, Options expand) {
-		return SnomedConverters.newRelationshipConverter(context, expand, locales()).convert((SnomedRelationshipIndexEntry) component);
+	SnomedRelationshipGetRequest(String relationshipId) {
+		super(relationshipId);
 	}
 	
 	@Override
-	protected Class<? extends RevisionDocument> getRevisionType() {
-		return SnomedRelationshipIndexEntry.class;
-	}
-	
-	@Override
-	protected Class<SnomedRelationship> getReturnType() {
-		return SnomedRelationship.class;
+	protected SnomedRelationshipSearchRequestBuilder createSearchRequestBuilder() {
+		return new SnomedRelationshipSearchRequestBuilder();
 	}
 
 }

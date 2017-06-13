@@ -41,13 +41,13 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.EffectiveTimes;
-import com.b2international.snowowl.core.domain.exceptions.CodeSystemNotFoundException;
+import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CodeSystemEntry;
-import com.b2international.snowowl.datastore.ICodeSystemVersion;
+import com.b2international.snowowl.datastore.CodeSystemVersions;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
+import com.b2international.snowowl.datastore.cdo.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
-import com.b2international.snowowl.datastore.server.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
 import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
@@ -140,45 +140,29 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 	}
 
 	private void collectExistingVersions() {
-		CodeSystemEntry releaseEntry = getCodeSystemEntry(importContext.getCodeSystemShortName(), importContext.getCodeSystemOID());
-		existingVersions = FluentIterable.from(CodeSystemRequests
-			.prepareSearchCodeSystemVersion()
-			.filterByCodeSystemShortName(releaseEntry.getShortName())
-			.build(SnomedDatastoreActivator.REPOSITORY_UUID, IBranchPath.MAIN_BRANCH)
+		CodeSystemEntry codeSystem = getCodeSystem();
+		CodeSystemVersions codeSystemVersions = CodeSystemRequests.prepareSearchCodeSystemVersion()
+			.filterByCodeSystemShortName(codeSystem.getShortName())
+			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(getEventBus())
-			.getSync()
-			.getItems()).transform(new Function<ICodeSystemVersion, String>() {
-				@Override public String apply(ICodeSystemVersion input) {
-					return EffectiveTimes.format(input.getEffectiveDate(), DateFormats.SHORT);
-				}
-			}).toSet();
+			.getSync();
+		
+		existingVersions = FluentIterable.from(codeSystemVersions)
+				.transform(version -> EffectiveTimes.format(version.getEffectiveDate(), DateFormats.SHORT))
+				.toSet();
 	}
 
-	private CodeSystemEntry getCodeSystemEntry(String shortName, String oid) {
-		CodeSystemEntry entry;
+	private CodeSystemEntry getCodeSystem() {
 		try {
-			entry = CodeSystemRequests
-				.prepareGetCodeSystem()
-				.setUniqueId(oid)
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, IBranchPath.MAIN_BRANCH)
+			
+			return CodeSystemRequests.prepareGetCodeSystem(importContext.getCodeSystemShortName())
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(getEventBus())
 				.getSync();
-		} catch (CodeSystemNotFoundException e) {
-			try {
-				entry = CodeSystemRequests
-					.prepareGetCodeSystem()
-					.setUniqueId(shortName)
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, IBranchPath.MAIN_BRANCH)
-					.execute(getEventBus())
-					.getSync();
-			} catch (CodeSystemNotFoundException e2) {
-				throw new ImportException(String.format(
-						"Unable to find the specified SNOMED CT release among the registered terminologies. Short name: %s, OID: %s",
-						importContext.getCodeSystemShortName(), importContext.getCodeSystemOID()));
-			}
+			
+		} catch (NotFoundException e) {
+			throw new ImportException("Unable to find code system for short name %s.", importContext.getCodeSystemShortName(), e);
 		}
-		
-		return entry;
 	}
 
 	@Override
@@ -287,48 +271,39 @@ public class SnomedCompositeImporter extends AbstractLoggingImporter {
 	
 	@Override
 	public void postImport(final SubMonitor subMonitor) {
-	
 		subMonitor.setWorkRemaining(importers.size());
 		
 		for (final Importer importer : importers) {
 			importer.postImport(subMonitor.newChild(1, SubMonitor.SUPPRESS_NONE));
 		}
 		
-		if (getImportBranchPath().getPath().equals(IBranchPath.MAIN_BRANCH)) {
-			createNewVersions(importContext.getEditingContext());
-		} else {
-			try (SnomedEditingContext snomedEditingContext = new SnomedEditingContext(BranchPathUtils.createMainPath())) {
-				createNewVersions(snomedEditingContext);
-			}
-		}
+		createNewVersions();
 	}
 
-	private void createNewVersions(SnomedEditingContext snomedEditingContext) {
-		try {
-			final CodeSystem codeSystem = checkNotNull(snomedEditingContext.lookup(importContext.getCodeSystemShortName(), CodeSystem.class));
+	private void createNewVersions() {
+		
+		try (SnomedEditingContext codeSystemEditingContext = new SnomedEditingContext(BranchPathUtils.createMainPath())) {
+			
+			final CodeSystem codeSystem = codeSystemEditingContext.lookup(importContext.getCodeSystemShortName(), CodeSystem.class);
 			codeSystem.getCodeSystemVersions().addAll(versionsToCreate);
 			
-			if (snomedEditingContext.isDirty()) {
+			if (codeSystemEditingContext.isDirty()) {
+				String commitMessage = String.format("Create %s SNOMED CT versions for branch '%s'", versionsToCreate.size(), getImportBranchPath().getPath());
 				
-				new CDOServerCommitBuilder(importContext.getUserId(), String.format("Created %s SNOMED CT versions for branch '%s'", versionsToCreate.size(), getImportBranchPath().getPath()), snomedEditingContext.getTransaction())
+				new CDOServerCommitBuilder(importContext.getUserId(), commitMessage, codeSystemEditingContext.getTransaction())
 					.sendCommitNotification(false)
 					.parentContextDescription(DatastoreLockContextDescriptions.IMPORT)
 					.commit();
 				
-				getLogger().info(String.format("Version tags created: %s", Joiner.on(", ").join(FluentIterable.from(versionsToCreate).transform(new Function<CodeSystemVersion, String>() {
-					@Override public String apply(CodeSystemVersion input) {
-						return String.format("[%s]", input.getVersionId());
-					}
-				}))));
+				Iterable<String> versionIds = FluentIterable.from(versionsToCreate)
+						.transform(version -> String.format("[%s]", version.getVersionId()));
 				
+				String versionIdList = Joiner.on(", ").join(versionIds);
+				getLogger().info("Version tags created: {}", versionIdList);
 			}
 			
-		} catch (NullPointerException e) {
-			throw new ImportException(String.format(
-					"Unable to find the specified SNOMED CT release among the registered terminologies. Short name: %s, OID: %s",
-					importContext.getCodeSystemShortName(), importContext.getCodeSystemOID()));
 		} catch (CommitException e) {
-			throw new ImportException(String.format("Unable to commit SNOMED CT versions for branch %s", getImportBranchPath().getPath()), e);
+			throw new ImportException(String.format("Unable to commit SNOMED CT versions for branch %s.", getImportBranchPath().getPath()), e);
 		}
 	}
 

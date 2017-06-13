@@ -29,26 +29,31 @@ import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
-import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 
 /**
  * @since 4.5
  */
-public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpdateRequest {
+public final class SnomedDescriptionUpdateRequest extends SnomedComponentUpdateRequest {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedDescriptionUpdateRequest.class);
-	
+
 	private CaseSignificance caseSignificance;
 	private Map<String, Acceptability> acceptability;
 	private DescriptionInactivationIndicator inactivationIndicator;
 	private Multimap<AssociationType, String> associationTargets;
+	
+	private String term;
+	private String typeId;
+	private String languageCode;
 	
 	SnomedDescriptionUpdateRequest(String componentId) {
 		super(componentId);
@@ -70,6 +75,18 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 		this.inactivationIndicator = inactivationIndicator;
 	}
 	
+	void setLanguageCode(String languageCode) {
+		this.languageCode = languageCode;
+	}
+	
+	void setTerm(String term) {
+		this.term = term;
+	}
+	
+	void setTypeId(String typeId) {
+		this.typeId = typeId;
+	}
+	
 	@Override
 	public Boolean execute(TransactionContext context) {
 		final Description description = context.lookup(getComponentId(), Description.class);
@@ -77,6 +94,9 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 		boolean changed = false;
 		changed |= updateModule(context, description, getModuleId());
 		changed |= updateCaseSignificance(context, description, caseSignificance);
+		changed |= updateTypeId(context, description);
+		changed |= updateTerm(context, description);
+		changed |= updateLanguageCode(context, description);
 		changed |= processInactivation(context, description);
 
 		// XXX: acceptability and association changes do not push the effective time forward on the description
@@ -89,13 +109,13 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 				if (description.isReleased()) {
 					long start = new Date().getTime();
 					final String branchPath = getLatestReleaseBranch(context);
-					final IEventBus bus = context.service(IEventBus.class);
-					final SnomedDescription releasedDescription = SnomedRequests
-						.prepareGetDescription()
-						.setComponentId(getComponentId())
-						.build(SnomedDatastoreActivator.REPOSITORY_UUID, getLatestReleaseBranch(context))
-						.execute(bus)
-						.getSync();
+					if (!Strings.isNullOrEmpty(branchPath)) {
+						final IEventBus bus = context.service(IEventBus.class);
+						final SnomedDescription releasedDescription = SnomedRequests
+							.prepareGetDescription(getComponentId())
+							.build(context.id(), branchPath)
+							.execute(bus)
+							.getSync();
 
 					if (releasedDescription == null) {
 						throw new ComponentNotFoundException(ComponentCategory.DESCRIPTION, getComponentId());
@@ -105,6 +125,7 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 					LOGGER.info("Previous version comparison took {}", new Date().getTime() - start);
 				}
 			}
+		}
 		}
 		
 		return changed;
@@ -215,5 +236,46 @@ public final class SnomedDescriptionUpdateRequest extends BaseSnomedComponentUpd
 			return false;
 		}
 	}
-
+	
+	private boolean updateTypeId(final TransactionContext context, final Description description) {
+		if (null == typeId) {
+			return false;
+		}
+		
+		if (!description.getType().getId().equals(typeId)) {
+			checkUpdateOnReleased(description, SnomedRf2Headers.FIELD_TYPE_ID, typeId);
+			description.setType(context.lookup(typeId, Concept.class));
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean updateTerm(final TransactionContext context, final Description description) {
+		if (null == term) {
+			return false;
+		}
+		
+		if (!description.getTerm().equals(term)) {
+			checkUpdateOnReleased(description, SnomedRf2Headers.FIELD_TERM, term);
+			description.setTerm(term);
+			return true;
+		}
+		
+		return false;
+	}
+	
+	private boolean updateLanguageCode(final TransactionContext context, final Description description) {
+		if (null == languageCode) {
+			return false;
+		}
+		
+		if (!description.getLanguageCode().equals(languageCode)) {
+			checkUpdateOnReleased(description, SnomedRf2Headers.FIELD_LANGUAGE_CODE, languageCode);
+			description.setLanguageCode(languageCode);
+			return true;
+		}
+		return false;
+	}
+	
 }

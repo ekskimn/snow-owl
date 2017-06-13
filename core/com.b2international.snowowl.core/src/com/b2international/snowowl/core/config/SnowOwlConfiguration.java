@@ -44,7 +44,21 @@ public class SnowOwlConfiguration extends Configuration {
 	private String defaultsDirectory = "resources/defaults";
 	
 	private boolean systemUserNeeded = false;
+	
+	private String description = "You Know, for Terminologies";
 
+	private boolean gzip = true;
+
+	@JsonProperty
+	public String getDescription() {
+		return description;
+	}
+	
+	@JsonProperty
+	public void setDescription(String description) {
+		this.description = description;
+	}
+	
 	@JsonProperty
 	public String getConfigurationDirectory() {
 		return configurationDirectory;
@@ -83,6 +97,16 @@ public class SnowOwlConfiguration extends Configuration {
 	@JsonProperty("systemUser")
 	public void setSystemUserNeeded(boolean systemUserNeeded) {
 		this.systemUserNeeded = systemUserNeeded;
+	}
+	
+	@JsonProperty
+	public boolean isGzip() {
+		return gzip;
+	}
+	
+	@JsonProperty
+	public void setGzip(boolean gzip) {
+		this.gzip = gzip;
 	}
 	
 	/**

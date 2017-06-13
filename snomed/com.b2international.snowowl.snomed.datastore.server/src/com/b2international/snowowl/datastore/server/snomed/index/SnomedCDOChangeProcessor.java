@@ -37,18 +37,22 @@ import com.b2international.snowowl.datastore.ICDOCommitChangeSet;
 import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.index.BaseCDOChangeProcessor;
 import com.b2international.snowowl.datastore.index.ChangeSetProcessor;
+import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
 import com.b2international.snowowl.snomed.SnomedPackage;
+import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedIconProvider;
 import com.b2international.snowowl.snomed.datastore.index.change.*;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
+import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomies;
 import com.b2international.snowowl.snomed.datastore.taxonomy.Taxonomy;
 import com.google.common.collect.ImmutableList;
@@ -69,6 +73,7 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 	}
 	
 	/*updates the documents in the indexes based on the dirty, detached and new components.*/
+	
 	@Override
 	protected void preUpdateDocuments(ICDOCommitChangeSet commitChangeSet, RevisionSearcher index) throws IOException {
 		final Set<String> statedSourceIds = Sets.newHashSet();
@@ -168,6 +173,22 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 	}
 	
 	@Override
+	protected short getTerminologyComponentId(RevisionDocument revision) {
+		if (revision instanceof SnomedConceptDocument) {
+			return SnomedTerminologyComponentConstants.CONCEPT_NUMBER;
+		} else if (revision instanceof SnomedDescriptionIndexEntry) {
+			return SnomedTerminologyComponentConstants.DESCRIPTION_NUMBER;
+		} else if (revision instanceof SnomedRelationshipIndexEntry) {
+			return SnomedTerminologyComponentConstants.RELATIONSHIP_NUMBER;
+		} else if (revision instanceof SnomedConstraintDocument) {
+			return SnomedTerminologyComponentConstants.PREDICATE_TYPE_ID;
+		} else if (revision instanceof SnomedRefSetMemberIndexEntry) {
+			return SnomedTerminologyComponentConstants.REFSET_MEMBER_NUMBER;
+		}
+		throw new UnsupportedOperationException("Unsupported revision document: " + revision);
+	}
+	
+	@Override
 	protected Collection<ChangeSetProcessor> getChangeSetProcessors() {
 		return ImmutableList.<ChangeSetProcessor>builder()
 				.add(new ConceptChangeProcessor(DoiDataProvider.INSTANCE, SnomedIconProvider.getInstance().getAvailableIconIds(), statedTaxonomy, inferredTaxonomy))
@@ -193,7 +214,7 @@ public final class SnomedCDOChangeProcessor extends BaseCDOChangeProcessor {
 	 * @param inferredConceptIds 
 	 */
 	private void prepareTaxonomyBuilders(final ICDOCommitChangeSet commitChangeSet, final RevisionSearcher searcher, final LongSet statedConceptIds, final LongSet inferredConceptIds) {
-		log().info("Retrieving taxonomic information from store.");
+		log().trace("Retrieving taxonomic information from store.");
 		final IStoreAccessor accessor = StoreThreadLocal.getAccessor();
 		
 		final FeatureToggles features = ApplicationContext.getServiceForClass(FeatureToggles.class);

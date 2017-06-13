@@ -19,9 +19,9 @@ Required Eclipse plug-ins (install the listed features):
 *Note: you may have to untick the `Show only the latest versions of the available software` checkbox to get older versions of a feature. Please use the exact version specified below, not the latest point release.*
 
 * Xtext/Xtend (http://download.eclipse.org/modeling/tmf/xtext/updates/composite/releases/)
- * MWE 2 Language SDK 2.8.1
- * Xtend IDE 2.8.4
- * Xtext Complete SDK 2.8.4
+ * MWE 2 language SDK 2.9.0 (MWE)
+ * Xtend IDE 2.11.0 (Xtext)
+ * Xtext Complete SDK 2.11.0 (Xtext)
 * Optional: Maven integration (http://download.eclipse.org/technology/m2e/releases) 
  
 ### Eclipse Preferences
@@ -31,6 +31,9 @@ Make sure you have the following preferences enabled/disabled.
 * The *Plugin execution not covered by lifecycle configuration: org.apache.maven.plugins:maven-clean-plugin:2.5:clean* type of errors can be ignored or changed to *Warnings* in *Preferences->Maven->Errors/Warnings*.
 * Set the workspace encoding to *UTF-8* (Preferences->General->Workspace)
 * Set the line endings to *Unix* style (Preferences->General->Workspace)
+
+### Git configuration
+
 * Make sure the Git line endings are set to *input* (Preferences->Team->Git->Configuration - add key if missing *core.autocrlf = input*)
 
 ### Target platform

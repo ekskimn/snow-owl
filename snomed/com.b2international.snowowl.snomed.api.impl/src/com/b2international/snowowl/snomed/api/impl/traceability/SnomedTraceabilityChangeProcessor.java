@@ -54,6 +54,7 @@ import com.b2international.snowowl.datastore.cdo.CDOIDUtils;
 import com.b2international.snowowl.datastore.index.DelegatingIndexCommitChangeSet;
 import com.b2international.snowowl.datastore.index.ImmutableIndexCommitChangeSet;
 import com.b2international.snowowl.datastore.index.IndexCommitChangeSet;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Component;
 import com.b2international.snowowl.snomed.Concept;
@@ -70,10 +71,10 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserR
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipTarget;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationshipType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedDescriptionLookupService;
@@ -196,11 +197,6 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 		return SpecialUserStore.SYSTEM_USER_NAME.equals(commitChangeSet.getUserId());
 	}
 	
-	@Override
-	public boolean hadChangesToProcess() {
-		return !entry.getChanges().isEmpty() || isSystemCommit();
-	}
-	
 	private void processAddition(CDOObject newComponent) {
 		final EClass eClass = newComponent.eClass();
 
@@ -280,7 +276,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 				final IEventBus bus = ApplicationContext.getServiceForClass(IEventBus.class);
 			
 				final SnomedConcepts concepts = SnomedRequests.prepareSearchConcept()
-						.setComponentIds(conceptIds)
+					.filterByIds(conceptIds)
 						.setOffset(0)
 						.setLimit(entry.getChanges().size())
 						.setExpand("descriptions(expand(inactivationProperties())),relationships(expand(destination()))")
@@ -336,7 +332,7 @@ public class SnomedTraceabilityChangeProcessor implements ICDOChangeProcessor {
 			hasChildrenBulkRequest.add(hasChildrenSearchRequest);
 		}
 		
-		final BulkResponse relationshipResponses = SnomedRequests.prepareBulkRead()
+		final BulkResponse relationshipResponses = RepositoryRequests.prepareBulkRead()
 			.setBody(hasChildrenBulkRequest)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 			.execute(bus)

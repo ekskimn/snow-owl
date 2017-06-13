@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ import com.google.common.collect.Lists;
 /**
  * @since 5.2
  */
-final class CommitInfoSearchRequest extends SearchRequest<CommitInfos> {
+final class CommitInfoSearchRequest extends SearchResourceRequest<RepositoryContext, CommitInfos> {
 
 	private static final long serialVersionUID = 1L;
 	
@@ -59,14 +59,16 @@ final class CommitInfoSearchRequest extends SearchRequest<CommitInfos> {
 		final Searcher searcher = context.service(Searcher.class);
 		final ExpressionBuilder builder = Expressions.builder();
 		
+		addIdFilter(builder, CommitInfoDocument.Expressions::ids);
 		addBranchClause(builder);
 		addUserIdClause(builder);
 		addCommentClause(builder);
 		addTimeStampClause(builder);
 		
-		final Query<CommitInfoDocument> query = Query
-				.select(CommitInfoDocument.class)
+		final Query<CommitInfoDocument> query = select(CommitInfoDocument.class)
 				.where(builder.build())
+				.withScores(containsKey(OptionKey.COMMENT))
+				.sortBy(sortBy())
 				.offset(offset())
 				.limit(limit())
 				.build();
@@ -88,14 +90,14 @@ final class CommitInfoSearchRequest extends SearchRequest<CommitInfos> {
 	private void addBranchClause(final ExpressionBuilder builder) {
 		if (containsKey(OptionKey.BRANCH)) {
 			final String branch = getString(OptionKey.BRANCH);
-			builder.must(branch(branch));
+			builder.filter(branch(branch));
 		}
 	}
 
 	private void addUserIdClause(final ExpressionBuilder builder) {
 		if (containsKey(OptionKey.USER_ID)) {
 			final String userId = getString(OptionKey.USER_ID);
-			builder.must(userId(userId));
+			builder.filter(userId(userId));
 		}
 	}
 
@@ -114,13 +116,8 @@ final class CommitInfoSearchRequest extends SearchRequest<CommitInfos> {
 	private void addTimeStampClause(final ExpressionBuilder builder) {
 		if (containsKey(OptionKey.TIME_STAMP)) {
 			final Long timeStamp = get(OptionKey.TIME_STAMP, Long.class);
-			builder.must(timeStamp(timeStamp));
+			builder.filter(timeStamp(timeStamp));
 		}
-	}
-
-	@Override
-	protected Class<CommitInfos> getReturnType() {
-		return CommitInfos.class;
 	}
 
 }

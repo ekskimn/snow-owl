@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -145,6 +145,7 @@ public abstract class SnomedConstants {
 		
 		public static final String DESCRIPTION_TYPE_ROOT_CONCEPT = "900000000000446008";
 		public static final String DESCRIPTION_FORMAT_TYPE_ROOT_CONCEPT = "900000000000539002";
+		public static final String DESCRIPTION_FORMAT_PLAIN_TEXT = "900000000000540000";
 		
 		//ref sets
 		public static final String REFSET_ROOT_CONCEPT = "900000000000455006";
@@ -307,6 +308,7 @@ public abstract class SnomedConstants {
 		// Modules
 		public static final String MODULE_ROOT = "900000000000443000";
 		public static final String MODULE_SCT_CORE = "900000000000207008";
+		public static final String MODULE_SCT_MODEL_COMPONENT = "900000000000012004";
 		public static final String MODULE_B2I_EXTENSION = "636635721000154103";
 		public static final String B2I_NAMESPACE = "1000154";
 

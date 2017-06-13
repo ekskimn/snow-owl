@@ -67,9 +67,4 @@ public final class ReadBranchRequest extends BranchRequest<Branch> {
 		return branch;
 	}
 	
-	@Override
-	protected Class<Branch> getReturnType() {
-		return Branch.class;
-	}
-	
 }

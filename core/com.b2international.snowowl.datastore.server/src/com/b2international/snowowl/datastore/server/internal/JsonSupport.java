@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,24 +19,23 @@ import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataHolder;
 import com.b2international.snowowl.core.MetadataHolderMixin;
 import com.b2international.snowowl.core.MetadataMixin;
-import com.b2international.snowowl.datastore.review.ConceptChangesMixin;
+import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.server.internal.branch.BranchImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.BranchImplMixin;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOBranchImplMixin;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOMainBranchImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.CDOMainBranchImplMixin;
-import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalBranchMixin;
 import com.b2international.snowowl.datastore.server.internal.branch.MainBranchImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.MainBranchImplMixin;
 import com.b2international.snowowl.datastore.server.internal.review.BranchStateImpl;
 import com.b2international.snowowl.datastore.server.internal.review.BranchStateImplMixin;
-import com.b2international.snowowl.datastore.server.internal.review.ConceptChangesImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.MergeReviewImplMixin;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImplMixin;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -47,19 +46,19 @@ public class JsonSupport {
 	public static ObjectMapper getDefaultObjectMapper() {
 		final ObjectMapper mapper = new ObjectMapper();
 		
-		mapper.addMixInAnnotations(Metadata.class, MetadataMixin.class);
-		mapper.addMixInAnnotations(MetadataHolder.class, MetadataHolderMixin.class);
+		mapper.setSerializationInclusion(Include.NON_NULL);
+		mapper.addMixIn(Metadata.class, MetadataMixin.class);
+		mapper.addMixIn(MetadataHolder.class, MetadataHolderMixin.class);
 		
-		mapper.addMixInAnnotations(BranchImpl.class, BranchImplMixin.class);
-		mapper.addMixInAnnotations(MainBranchImpl.class, MainBranchImplMixin.class);
-		mapper.addMixInAnnotations(InternalBranch.class, InternalBranchMixin.class);
+		mapper.addMixIn(BranchImpl.class, BranchImplMixin.class);
+		mapper.addMixIn(MainBranchImpl.class, MainBranchImplMixin.class);
+		mapper.addMixIn(InternalBranch.class, InternalBranchMixin.class);
 		
-		mapper.addMixInAnnotations(CDOBranchImpl.class, CDOBranchImplMixin.class);
-		mapper.addMixInAnnotations(CDOMainBranchImpl.class, CDOMainBranchImplMixin.class);
+		mapper.addMixIn(CDOBranchImpl.class, CDOBranchImplMixin.class);
+		mapper.addMixIn(CDOMainBranchImpl.class, CDOMainBranchImplMixin.class);
 		
-		mapper.addMixInAnnotations(ReviewImpl.class, ReviewImplMixin.class);
-		mapper.addMixInAnnotations(BranchStateImpl.class, BranchStateImplMixin.class);
-		mapper.addMixInAnnotations(ConceptChangesImpl.class, ConceptChangesMixin.class);
+		mapper.addMixIn(ReviewImpl.class, ReviewImplMixin.class);
+		mapper.addMixIn(BranchStateImpl.class, BranchStateImplMixin.class);
 		mapper.addMixInAnnotations(MergeReviewImpl.class, MergeReviewImplMixin.class);
 		return mapper;
 	}

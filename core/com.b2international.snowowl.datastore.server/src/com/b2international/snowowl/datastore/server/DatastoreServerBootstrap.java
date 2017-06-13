@@ -25,24 +25,38 @@ import org.eclipse.net4j.util.container.IManagedContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.b2international.collections.PrimitiveCollectionModule;
+import com.b2international.index.Index;
+import com.b2international.index.Indexes;
+import com.b2international.index.mapping.Mappings;
+import com.b2international.snowowl.core.Repository;
+import com.b2international.snowowl.core.RepositoryInfo.Health;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.config.ClientPreferences;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
+import com.b2international.snowowl.core.domain.RepositoryContextProvider;
+import com.b2international.snowowl.core.events.Notifications;
+import com.b2international.snowowl.core.events.Request;
+import com.b2international.snowowl.core.events.util.ApiRequestHandler;
 import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.core.setup.ModuleConfig;
 import com.b2international.snowowl.core.setup.PreRunCapableBootstrapFragment;
 import com.b2international.snowowl.core.users.SpecialUserStore;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.CDOConnectionFactoryProvider;
+import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.config.IndexConfiguration;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.net4j.Net4jUtils;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
+import com.b2international.snowowl.datastore.remotejobs.RemoteJobTracker;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManagerImpl;
+import com.b2international.snowowl.datastore.server.internal.DefaultRepositoryContextProvider;
 import com.b2international.snowowl.datastore.server.internal.DefaultRepositoryManager;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedEditingContextFactoryProvider;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedRepositoryClassLoaderProviderRegistry;
@@ -53,10 +67,12 @@ import com.b2international.snowowl.datastore.server.session.VersionProcessor;
 import com.b2international.snowowl.datastore.serviceconfig.ServiceConfigJobManager;
 import com.b2international.snowowl.datastore.session.IApplicationSessionManager;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.eventbus.Pipe;
 import com.b2international.snowowl.eventbus.net4j.EventBusNet4jUtil;
 import com.b2international.snowowl.rpc.RpcConfiguration;
 import com.b2international.snowowl.rpc.RpcProtocol;
 import com.b2international.snowowl.rpc.RpcUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Stopwatch;
 
 /**
@@ -65,19 +81,24 @@ import com.google.common.base.Stopwatch;
 @ModuleConfig(fieldName = "reviewManager", type = ReviewConfiguration.class)
 public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment {
 
-	private static final Logger LOG = LoggerFactory.getLogger(DatastoreServerBootstrap.class);
+	private static final Logger LOG = LoggerFactory.getLogger("core");
 
 	private static final String REINDEX_KEY = "snowowl.reindex-mode";
 	
 	@Override
 	public void init(SnowOwlConfiguration configuration, Environment env) throws Exception {
 		final IManagedContainer container = env.container();
+		final boolean gzip = configuration.isGzip();
 		final RpcConfiguration rpcConfig = configuration.getModuleConfig(RpcConfiguration.class);
-		LOG.debug("Preparing RPC communication with config {}", rpcConfig);
-		RpcUtil.prepareContainer(container, rpcConfig);
-		LOG.debug("Preparing EventBus communication");
-		EventBusNet4jUtil.prepareContainer(container);
+		LOG.debug("Preparing RPC communication (config={},gzip={})", rpcConfig, gzip);
+		RpcUtil.prepareContainer(container, rpcConfig, gzip);
+		LOG.debug("Preparing EventBus communication (gzip={})", gzip);
+		EventBusNet4jUtil.prepareContainer(container, gzip);
 		env.services().registerService(IEventBus.class, EventBusNet4jUtil.getBus(container));
+		LOG.debug("Preparing JSON support");
+		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
+		mapper.registerModule(new PrimitiveCollectionModule());
+		env.services().registerService(ObjectMapper.class, mapper);
 	}
 
 	@Override
@@ -111,13 +132,13 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 
 			env.services().registerService(RepositoryManager.class, new DefaultRepositoryManager());
 			env.services().registerService(EditingContextFactoryProvider.class, new ExtensionBasedEditingContextFactoryProvider());
-			env.services().registerService(RepositoryClassLoaderProviderRegistry.class, new ExtensionBasedRepositoryClassLoaderProviderRegistry());
 			
 			LOG.debug("<<< Server-side datastore bundle started. [{}]", serverStopwatch);
 		} else {
 			LOG.debug("Snow Owl application is running in remote mode.");
 			LOG.info("Connecting to Snow Owl Terminology Server at {}", env.service(ClientPreferences.class).getCDOUrl());
 		}
+		
 		if (configuration.isSystemUserNeeded() || env.isServer()) {
 			try {
 				connectSystemUser(env.container());
@@ -125,6 +146,10 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 				throw new SnowowlRuntimeException(e);
 			}
 		}
+		
+		env.services().registerService(RepositoryClassLoaderProviderRegistry.class, new ExtensionBasedRepositoryClassLoaderProviderRegistry());
+		final ClassLoader classLoader = env.service(RepositoryClassLoaderProviderRegistry.class).getClassLoader();
+		env.services().registerService(Notifications.class, new Notifications(env.service(IEventBus.class), classLoader));
 	}
 
 	private void makeConfigReindexFriendly(SnowOwlConfiguration configuration) {
@@ -145,9 +170,41 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		ServiceConfigJobManager.INSTANCE.registerServices(monitor);
 		
 		if (env.isEmbedded() || env.isServer()) {
+			initializeJobSupport(env, configuration);
+			initializeRequestSupport(env, configuration.getModuleConfig(RepositoryConfiguration.class).getNumberOfWorkers());
 			initializeRepositories(configuration, env);
-			verifyRepositories(configuration, env);
+			initializeContent(env);
 		}
+	}
+	
+	private void initializeJobSupport(Environment env, SnowOwlConfiguration configuration) {
+		final Index index = Indexes.createIndex("jobs", env.service(ObjectMapper.class), new Mappings(RemoteJobEntry.class), env.service(IndexSettings.class));
+		// TODO make this configurable
+		final long defaultJobCleanUpInterval = TimeUnit.MINUTES.toMillis(1);
+		env.services()
+			.registerService(RemoteJobTracker.class, 
+				new RemoteJobTracker(
+					index, 
+					env.service(IEventBus.class), 
+					env.service(ObjectMapper.class), 
+					defaultJobCleanUpInterval)
+			);
+	}
+	
+	private void initializeRequestSupport(Environment env, int numberOfWorkers) {
+		final IEventBus events = env.service(IEventBus.class);
+		final Handlers handlers = new Handlers(numberOfWorkers);
+		final ClassLoader classLoader = env.service(RepositoryClassLoaderProviderRegistry.class).getClassLoader();
+		for (int i = 0; i < numberOfWorkers; i++) {
+			handlers.registerHandler(Request.ADDRESS, new ApiRequestHandler(env, classLoader));
+		}
+
+		// register number of cores event bridge/pipe between events and handlers
+		for (int i = 0; i < Runtime.getRuntime().availableProcessors(); i++) {
+			events.registerHandler(Request.ADDRESS, new Pipe(handlers, Request.ADDRESS));
+		}
+		env.services().registerService(Handlers.class, handlers);
+		env.services().registerService(RepositoryContextProvider.class, new DefaultRepositoryContextProvider(env.service(RepositoryManager.class)));
 	}
 
 	private void initializeRepositories(SnowOwlConfiguration configuration, Environment env) {
@@ -160,40 +217,29 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		RepositoryConfiguration repositoryConfig = configuration.getModuleConfig(RepositoryConfiguration.class);
 		final ICDORepositoryManager cdoRepositoryManager = env.service(ICDORepositoryManager.class);
 		for (String repositoryId : cdoRepositoryManager.uuidKeySet()) {
-			repositories
+			Repository repo = repositories
 				.prepareCreate(repositoryId, cdoRepositoryManager.getByUuid(repositoryId).getSnowOwlTerminologyComponentId())
-				.setNumberOfWorkers(repositoryConfig.getNumberOfWorkers())
 				.setMergeMaxResults(repositoryConfig.getMergeMaxResults())
 				.build(env);
+			if (repo.health() == Health.GREEN) {
+				LOG.info("Started repository '{}' with status '{}'", repo.id(), repo.health());
+			} else {
+				LOG.warn("Started repository '{}' with status '{}'. Diagnosis: {}.", repo.id(), repo.health(), repo.diagnosis());
+			}
 		}
 		
 		LOG.debug("<<< Branch and review services registered. [{}]", branchStopwatch);
 	}
-
-	private void verifyRepositories(SnowOwlConfiguration configuration, Environment env) {
-		final Stopwatch stopwatch = Stopwatch.createStarted();
-		LOG.debug(">>> Verifying repository consistency.");
-		
-		final DefaultRepositoryManager repositories = (DefaultRepositoryManager) env.service(RepositoryManager.class);
-		
-		List<InternalRepository> inconsistentRepositories = repositories.repositories()
-			.stream()
-			.filter(repository -> repository instanceof InternalRepository).map(InternalRepository.class::cast)
-			.filter(repository -> !repository.isConsistent(BranchPathUtils.createMainPath()))
-			.collect(Collectors.toList());
-		
-		if (!inconsistentRepositories.isEmpty()) {
-			String message = String.format("Found inconsistent repositories: %s.", inconsistentRepositories.stream().map(repository -> repository.getCdoRepository().getRepositoryName()).toArray());
-
-			boolean reindexMode = isInReindexMode();
-			if (reindexMode) {
-				LOG.error("{} Starting Snow Owl Terminology Server in reindex mode.", message);
-			} else {
-				throw new SnowOwlApplication.InitializationException(message);
+	
+	private void initializeContent(Environment env) {
+		final RepositoryManager repositories = env.service(RepositoryManager.class);
+		for (Repository	repository : repositories.repositories()) {
+			final String repositoryId = repository.id();
+			if (repository.health() == Health.GREEN) {
+				final ICDORepository cdoRepository = ((InternalRepository) repository).getCdoRepository(); 
+				RepositoryInitializerRegistry.INSTANCE.getInitializer(repositoryId).initialize(cdoRepository);
 			}
 		}
-		
-		LOG.debug("<<< Repository consistency verified. [{}]", stopwatch);
 	}
 
 	private void connectSystemUser(IManagedContainer container) throws SnowowlServiceException {

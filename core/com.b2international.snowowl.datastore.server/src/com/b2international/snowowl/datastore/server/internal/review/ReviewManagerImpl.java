@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2016 B2i Healthcare Pte Ltd, http://b2i.sg
+ * Copyright 2011-2017 B2i Healthcare Pte Ltd, http://b2i.sg
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -50,7 +51,6 @@ import com.b2international.index.revision.Revision;
 import com.b2international.index.revision.RevisionCompare;
 import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.branch.Branch;
-import com.b2international.snowowl.core.events.RepositoryEvent;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.events.BranchChangedEvent;
@@ -61,10 +61,10 @@ import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.datastore.server.ReviewConfiguration;
 import com.b2international.snowowl.datastore.server.internal.InternalRepository;
-import com.b2international.snowowl.eventbus.IHandler;
-import com.b2international.snowowl.eventbus.IMessage;
 import com.fasterxml.jackson.databind.util.ISO8601Utils;
 import com.google.common.collect.ImmutableMap;
+
+import io.reactivex.disposables.Disposable;
 
 /**
  * @since 4.2
@@ -115,42 +115,6 @@ public class ReviewManagerImpl implements ReviewManager {
 		}
 	}
 
-	private final class StaleHandler implements IHandler<IMessage> {
-		@Override
-		public void handle(final IMessage message) {
-			final RepositoryEvent changeEvent = message.body(RepositoryEvent.class);
-			if (changeEvent instanceof BranchChangedEvent) {
-				final String path = ((BranchChangedEvent) changeEvent).getBranch();
-				
-				store.write(new IndexWrite<Void>() {
-					@Override
-					public Void execute(Writer index) throws IOException {
-						final Hits<ReviewImpl> affectedReviews = index.searcher().search(
-								Query.select(ReviewImpl.class)
-								.where(Expressions.builder()
-										.must(Expressions.nestedMatch("source", Expressions.exactMatch("path", path)))
-										.must(Expressions.nestedMatch("target", Expressions.exactMatch("path", path)))
-										.build()
-										)
-								.limit(Integer.MAX_VALUE)
-								.build());
-						
-						if (affectedReviews.getTotal() > 0) {
-							for (final ReviewImpl affectedReview : affectedReviews) {
-								ReviewImpl newReview = updateStatus(affectedReview, ReviewStatus.STALE);
-								if (newReview != null) {
-									index.put(newReview.id(), newReview);
-								}
-							}
-							index.commit();
-						}
-						return null;
-					}
-				});
-			}
-		}
-	}
-
 	private final class CleanupTask extends TimerTask {
 		@Override
 		public void run() {
@@ -178,7 +142,7 @@ public class ReviewManagerImpl implements ReviewManager {
 						
 							index.removeAll(ImmutableMap.of(
 									ReviewImpl.class, ids,
-									ConceptChangesImpl.class, ids
+									ConceptChanges.class, ids
 									));
 							
 							index.commit();
@@ -194,8 +158,8 @@ public class ReviewManagerImpl implements ReviewManager {
 
 		private Expression buildQuery(ReviewStatus status, long beforeTimestamp) {
 			return Expressions.builder()
-					.must(Expressions.exactMatch(ReviewImpl.Fields.STATUS, status.toString()))
-					.must(Expressions.matchRange(ReviewImpl.Fields.LAST_UPDATED, null, ISO8601Utils.format(new Date(beforeTimestamp))))
+					.filter(Expressions.exactMatch(ReviewImpl.Fields.STATUS, status.toString()))
+					.filter(Expressions.matchRange(ReviewImpl.Fields.LAST_UPDATED, null, ISO8601Utils.format(new Date(beforeTimestamp))))
 					.build();
 		}
 	}
@@ -205,13 +169,14 @@ public class ReviewManagerImpl implements ReviewManager {
 	private final Index store;
 	private final RevisionIndex revisionIndex;
 	private final IJobChangeListener jobChangeListener = new ReviewJobChangeListener();
-	private final StaleHandler staleHandler = new StaleHandler();
 	private final TimerTask cleanupTask = new CleanupTask();
+	private final Disposable notificationSubscription;
 
 	private static final long CLEANUP_INTERVAL = TimeUnit.MINUTES.toMillis(1L);
 
 	private final long keepOtherMillis;
 	private final long keepCurrentMillis;
+	private final AtomicBoolean disposed = new AtomicBoolean(false);
 
 	private static class Holder {
 		private static final Timer CLEANUP_TIMER = new Timer("Review cleanup", true);
@@ -230,12 +195,54 @@ public class ReviewManagerImpl implements ReviewManager {
 
 		// Check every minute if there's something to remove
 		Holder.CLEANUP_TIMER.schedule(cleanupTask, CLEANUP_INTERVAL, CLEANUP_INTERVAL);
+		notificationSubscription = repository.notifications()
+			.ofType(BranchChangedEvent.class)
+			.subscribe(this::onBranchChange);
 	}
 	
-	public IHandler<IMessage> getStaleHandler() {
-		return staleHandler;
+	@Override
+	public boolean isDisposed() {
+		return disposed.get();
 	}
-
+	
+	@Override
+	public void dispose() {
+		if (disposed.compareAndSet(false, true)) {
+			cleanupTask.cancel();
+			notificationSubscription.dispose();
+		}
+	}
+	
+	/*Handles repository specific branch change events*/
+	private void onBranchChange(BranchChangedEvent event) {
+		final String path = event.getBranch();
+		store.write(new IndexWrite<Void>() {
+			@Override
+			public Void execute(Writer index) throws IOException {
+				final Hits<ReviewImpl> affectedReviews = index.searcher().search(
+						Query.select(ReviewImpl.class)
+						.where(Expressions.builder()
+								.should(Expressions.nestedMatch("source", Expressions.exactMatch("path", path)))
+								.should(Expressions.nestedMatch("target", Expressions.exactMatch("path", path)))
+								.build()
+								)
+						.limit(Integer.MAX_VALUE)
+						.build());
+				
+				if (affectedReviews.getTotal() > 0) {
+					for (final ReviewImpl affectedReview : affectedReviews) {
+						ReviewImpl newReview = updateStatus(affectedReview, ReviewStatus.STALE);
+						if (newReview != null) {
+							index.put(newReview.id(), newReview);
+						}
+					}
+					index.commit();
+				}
+				return null;
+			}
+		});
+	}
+	
 	@Override
 	public Review createReview(final Branch source, final Branch target) {
 		if (source.path().equals(target.path())) {
@@ -371,7 +378,7 @@ public class ReviewManagerImpl implements ReviewManager {
 			}
 		}
 		
-		final ConceptChangesImpl convertedChanges = new ConceptChangesImpl(id, newConcepts, changedConcepts, deletedConcepts);
+		final ConceptChanges convertedChanges = new ConceptChanges(id, newConcepts, changedConcepts, deletedConcepts);
 
 		try {
 			getReview(id);
@@ -409,7 +416,7 @@ public class ReviewManagerImpl implements ReviewManager {
 		final ConceptChanges conceptChanges = store.read(new IndexRead<ConceptChanges>() {
 			@Override
 			public ConceptChanges execute(Searcher index) throws IOException {
-				return index.get(ConceptChangesImpl.class, id);
+				return index.get(ConceptChanges.class, id);
 			}
 		});
 
@@ -426,7 +433,7 @@ public class ReviewManagerImpl implements ReviewManager {
 			public Review execute(Writer index) throws IOException {
 				index.removeAll(ImmutableMap.of(
 						ReviewImpl.class, Collections.singleton(review.id()),
-						ConceptChangesImpl.class, Collections.singleton(review.id())));
+						ConceptChanges.class, Collections.singleton(review.id())));
 				index.commit();
 				return review;
 			}

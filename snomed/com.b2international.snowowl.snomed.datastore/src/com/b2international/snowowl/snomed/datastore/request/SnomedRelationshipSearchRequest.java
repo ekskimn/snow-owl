@@ -24,9 +24,9 @@ import java.io.IOException;
 import com.b2international.index.Hits;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.query.Query;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
+import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
@@ -55,7 +55,7 @@ final class SnomedRelationshipSearchRequest extends SnomedComponentSearchRequest
 		
 		final ExpressionBuilder queryBuilder = Expressions.builder();
 		addActiveClause(queryBuilder);
-		addComponentIdFilter(queryBuilder);
+		addIdFilter(queryBuilder, RevisionDocument.Expressions::ids);
 		addModuleClause(queryBuilder);
 		addNamespaceFilter(queryBuilder);
 		addEffectiveTimeClause(queryBuilder);
@@ -69,15 +69,16 @@ final class SnomedRelationshipSearchRequest extends SnomedComponentSearchRequest
 		if (containsKey(OptionKey.GROUP_MIN) || containsKey(OptionKey.GROUP_MAX)) {
 			final int from = containsKey(OptionKey.GROUP_MIN) ? get(OptionKey.GROUP_MIN, Integer.class) : 0;
 			final int to = containsKey(OptionKey.GROUP_MAX) ? get(OptionKey.GROUP_MAX, Integer.class) : Integer.MAX_VALUE;
-			queryBuilder.must(group(from, to));
+			queryBuilder.filter(group(from, to));
 		}
 		
 		if (containsKey(OptionKey.UNION_GROUP)) {
-			queryBuilder.must(unionGroup(get(OptionKey.UNION_GROUP, Integer.class)));
+			queryBuilder.filter(unionGroup(get(OptionKey.UNION_GROUP, Integer.class)));
 		}
 		
-		final Hits<SnomedRelationshipIndexEntry> hits = searcher.search(Query.selectPartial(SnomedRelationshipIndexEntry.class, fields())
+		final Hits<SnomedRelationshipIndexEntry> hits = searcher.search(select(SnomedRelationshipIndexEntry.class)
 				.where(queryBuilder.build())
+				.sortBy(sortBy())
 				.offset(offset())
 				.limit(limit())
 				.build());
@@ -93,10 +94,5 @@ final class SnomedRelationshipSearchRequest extends SnomedComponentSearchRequest
 	@Override
 	protected SnomedRelationships createEmptyResult(int offset, int limit) {
 		return new SnomedRelationships(offset, limit, 0);
-	}
-
-	@Override
-	protected Class<SnomedRelationships> getReturnType() {
-		return SnomedRelationships.class;
 	}
 }

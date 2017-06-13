@@ -73,10 +73,9 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	private final LongSet visitedConcepts = PrimitiveSets.newLongOpenHashSet();
 	private final LongSet visitedRefSets = PrimitiveSets.newLongOpenHashSet();
 
-	private final RevisionIndex index;
 
 	private String codeSystemShortName;
-	private String codeSystemOID;
+	private final RevisionIndex index;
 
 	public SnomedImportContext(RevisionIndex index) {
 		this.index = index;
@@ -466,19 +465,5 @@ public class SnomedImportContext implements ISnomedPostProcessorContext, AutoClo
 	 */
 	public void setCodeSystemShortName(String codeSystemShortName) {
 		this.codeSystemShortName = codeSystemShortName;
-	}
-
-	/**
-	 * @return the snomedReleaseOID
-	 */
-	public String getCodeSystemOID() {
-		return codeSystemOID;
-	}
-
-	/**
-	 * @param codeSystemOID the snomedReleaseOID to set
-	 */
-	public void setCodeSystemOID(String codeSystemOID) {
-		this.codeSystemOID = codeSystemOID;
 	}
 }

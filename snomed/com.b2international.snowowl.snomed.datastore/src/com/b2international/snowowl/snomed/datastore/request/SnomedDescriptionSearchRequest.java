@@ -33,12 +33,11 @@ import com.b2international.index.Hits;
 import com.b2international.index.query.Expression;
 import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Expressions.ExpressionBuilder;
-import com.b2international.index.query.Query;
-import com.b2international.index.query.SortBy;
 import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.datastore.converter.SnomedConverters;
@@ -51,6 +50,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptio
 final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<SnomedDescriptions> {
 
 	enum OptionKey {
+		EXACT_TERM,
 		TERM,
 		CONCEPT,
 		TYPE,
@@ -72,7 +72,7 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 		final ExpressionBuilder queryBuilder = Expressions.builder();
 		// Add (presumably) most selective filters first
 		addActiveClause(queryBuilder);
-		addComponentIdFilter(queryBuilder);
+		addIdFilter(queryBuilder, RevisionDocument.Expressions::ids);
 		addLocaleFilter(context, queryBuilder);
 		addModuleClause(queryBuilder);
 		addNamespaceFilter(queryBuilder);
@@ -83,8 +83,6 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 		addEclFilter(context, queryBuilder, OptionKey.CONCEPT, SnomedDescriptionIndexEntry.Expressions::concepts);
 		addEclFilter(context, queryBuilder, OptionKey.TYPE, SnomedDescriptionIndexEntry.Expressions::types);
 		
-		SortBy sortBy = SortBy.NONE;
-		
 		if (containsKey(OptionKey.TERM)) {
 			final String searchTerm = getString(OptionKey.TERM);
 			if (!containsKey(OptionKey.USE_FUZZY)) {
@@ -92,14 +90,17 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 			} else {
 				queryBuilder.must(fuzzy(searchTerm));
 			}
-			sortBy = SortBy.SCORE;
+		}
+		
+		if (containsKey(OptionKey.EXACT_TERM)) {
+			queryBuilder.must(exactTerm(getString(OptionKey.EXACT_TERM)));
 		}
 
-		final Hits<SnomedDescriptionIndexEntry> hits = searcher.search(Query.select(SnomedDescriptionIndexEntry.class)
+		final Hits<SnomedDescriptionIndexEntry> hits = searcher.search(select(SnomedDescriptionIndexEntry.class)
 				.where(queryBuilder.build())
 				.offset(offset())
 				.limit(limit())
-				.sortBy(sortBy)
+				.sortBy(sortBy())
 				.withScores(containsKey(OptionKey.TERM))
 				.build());
 		if (limit() < 1 || hits.getTotal() < 1) {
@@ -147,7 +148,7 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 
 	private void addLanguageFilter(ExpressionBuilder queryBuilder) {
 		if (containsKey(OptionKey.LANGUAGE)) {
-			queryBuilder.must(languageCodes(getCollection(OptionKey.LANGUAGE, String.class)));
+			queryBuilder.filter(languageCodes(getCollection(OptionKey.LANGUAGE, String.class)));
 		}
 	}
 
@@ -172,11 +173,6 @@ final class SnomedDescriptionSearchRequest extends SnomedComponentSearchRequest<
 			}
 		}
 		
-		queryBuilder.must(languageRefSetExpression.build());
-	}
-
-	@Override
-	protected Class<SnomedDescriptions> getReturnType() {
-		return SnomedDescriptions.class;
+		queryBuilder.filter(languageRefSetExpression.build());
 	}
 }

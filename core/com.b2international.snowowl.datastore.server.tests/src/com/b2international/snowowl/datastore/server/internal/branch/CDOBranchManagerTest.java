@@ -53,12 +53,13 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.domain.RepositoryContextProvider;
+import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.cdo.ICDOConflictProcessor;
 import com.b2international.snowowl.datastore.server.internal.InternalRepository;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
-import com.google.common.base.Function;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.Futures;
@@ -76,6 +77,7 @@ public class CDOBranchManagerTest {
 	private MockInternalCDOBranchManager cdoBranchManager;
 	
 	private CDOBranchManagerImpl manager;
+	private CDOMainBranchImpl main;
 	
 	private InternalRepository repository;
 	private ServiceProvider context;
@@ -94,11 +96,13 @@ public class CDOBranchManagerTest {
 		when(repository.getCdoBranchManager()).thenReturn(cdoBranchManager);
 		when(repository.getCdoMainBranch()).thenReturn(mainBranch);
 		when(repository.getConflictProcessor()).thenReturn(conflictProcessor);
-		store = Indexes.createIndex(UUID.randomUUID().toString(), JsonSupport.getDefaultObjectMapper(), new Mappings(CDOMainBranchImpl.class, CDOBranchImpl.class, InternalBranch.class));
+		final ObjectMapper mapper = JsonSupport.getDefaultObjectMapper();
+		store = Indexes.createIndex(UUID.randomUUID().toString(), mapper, new Mappings(CDOMainBranchImpl.class, CDOBranchImpl.class, InternalBranch.class));
 		store.admin().create();
 		when(repository.getIndex()).thenReturn(store);
 		
-		manager = new CDOBranchManagerImpl(repository);
+		manager = new CDOBranchManagerImpl(repository, mapper);
+		main = (CDOMainBranchImpl) manager.getMainBranch();
 		
 		context = mock(ServiceProvider.class);
 		final RepositoryContextProvider repositoryContextProvider = mock(RepositoryContextProvider.class);
@@ -111,7 +115,7 @@ public class CDOBranchManagerTest {
 		when(repositoryContext.service(ReviewManager.class)).thenReturn(reviewManager);
 		when(repositoryContext.service(BranchManager.class)).thenReturn(manager);
 		
-		when(repositoryContextProvider.get(context, repository.id())).thenReturn(repositoryContext);
+		when(repositoryContextProvider.get(repository.id())).thenReturn(repositoryContext);
 		when(context.service(RepositoryContextProvider.class)).thenReturn(repositoryContextProvider);
 	}
 	
@@ -122,59 +126,57 @@ public class CDOBranchManagerTest {
 	
 	@Test
 	public void updateMetadataShouldReturnNewInstanceWithProperType() throws Exception {
-		final MetadataHolder newMain = manager.getMainBranch().withMetadata(new MetadataImpl());
+		final InternalBranch newMain = main.withMetadata(new MetadataImpl());
 		assertTrue(newMain instanceof CDOMainBranchImpl);
 	}
 	
 	@Test
 	public void whenGettingMainBranch_ThenItShouldBeReturned_AndAssociatedWithItsCDOBranch() throws Exception {
-		final Branch main = manager.getMainBranch();
 		final CDOBranch cdoBranch = manager.getCDOBranch(main);
 		assertEquals(main.path(), cdoBranch.getPathName());
 	}
 	
 	@Test
 	public void whenCreatingBranch_ThenItShouldBeCreated_AndACDOBranchShouldBeAssociatedWithIt() throws Exception {
-		final Branch a = manager.getMainBranch().createChild("a");
-		final CDOBranch cdoBranch = manager.getCDOBranch(a);
-		assertEquals(a.path(), cdoBranch.getPathName());
+		final Branch branchA = main.createChild("a");
+		final CDOBranch cdoBranch = manager.getCDOBranch(branchA);
+		assertEquals(branchA.path(), cdoBranch.getPathName());
 	}
 	
 	@Test
 	public void whenCreatingDeepBranch_ThenItShouldBeCreatedAndAssociatedWithCDOBranches() throws Exception {
-		final Branch a = manager.getMainBranch().createChild("a");
-		final Branch b = a.createChild("b");
-		final CDOBranch cdoBranchA = manager.getCDOBranch(a);
-		assertEquals(a.path(), cdoBranchA.getPathName());
-		final CDOBranch cdoBranchB = manager.getCDOBranch(b);
-		assertEquals(b.path(), cdoBranchB.getPathName());
+		final Branch branchA = main.createChild("a");
+		final Branch branchB = branchA.createChild("b");
+		final CDOBranch cdoBranchA = manager.getCDOBranch(branchA);
+		assertEquals(branchA.path(), cdoBranchA.getPathName());
+		final CDOBranch cdoBranchB = manager.getCDOBranch(branchB);
+		assertEquals(branchB.path(), cdoBranchB.getPathName());
 	}
 	
 	@Test(expected = IllegalArgumentException.class)
 	public void whenGettingCDOBranchOfDeletedBranch_ThenThrowException() throws Exception {
-		final Branch a = manager.getMainBranch().createChild("a");
-		final Branch deletedA = a.delete();
+		whenCreatingBranch_ThenItShouldBeCreated_AndACDOBranchShouldBeAssociatedWithIt();
+		final Branch deletedA = manager.getBranch("MAIN/a").delete();
 		manager.getCDOBranch(deletedA);
 	}
 	
 	@Test
 	public void whenRebasingChildBranchInForwardState_ThenManagerShouldReopenAssociatedCDOBranch() throws Exception {
-		final Branch a = manager.getMainBranch().createChild("a");
-		final CDOBranch cdoBranchA = manager.getCDOBranch(a);
+		final Branch branchA = main.createChild("a");
+		final CDOBranch cdoBranchA = manager.getCDOBranch(branchA);
 
 		// commit and rebase
-		manager.handleCommit((InternalBranch) a.parent(), clock.getTimeStamp());
+		manager.handleCommit(main, clock.getTimeStamp());
+		Branch rebasedBranchA = branchA.rebase(branchA.parent(), "Rebase");
 		
-		final Branch rebasedBranchA = a.rebase(a.parent(), "Rebase");
 		final CDOBranch rebasedCdoBranchA = manager.getCDOBranch(rebasedBranchA);
 		assertNotEquals(rebasedCdoBranchA.getID(), cdoBranchA.getID());
 	}
 	
 	@Test
 	public void whenCreatingBranchThenAssignNewSegmentsToParentAndChild() throws Exception {
-		final InternalCDOBasedBranch a = (InternalCDOBasedBranch) manager.getMainBranch().createChild("a");
+		final InternalCDOBasedBranch a = (InternalCDOBasedBranch) main.createChild("a");
 		final InternalCDOBasedBranch parent = (InternalCDOBasedBranch) a.parent();
-		
 		assertThat(a.segmentId()).isEqualTo(1);
 		assertThat(a.segments()).containsOnly(1);
 		assertThat(a.parentSegments()).containsOnly(0);
@@ -186,7 +188,7 @@ public class CDOBranchManagerTest {
 	
 	@Test
 	public void whenRebasingChildBranchReassignSegments() throws Exception {
-		final Branch a = manager.getMainBranch().createChild("a");
+		final Branch a = main.createChild("a");
 		// make a commit on MAIN
 		manager.handleCommit((InternalBranch) a.parent(), clock.getTimeStamp());
 		// rebase child
@@ -203,7 +205,7 @@ public class CDOBranchManagerTest {
 	
 	@Test
 	public void whenCreatingDeepBranchAssignCorrectSegments() throws Exception {
-		final InternalCDOBasedBranch c = (InternalCDOBasedBranch) manager.getMainBranch().createChild("a").createChild("b").createChild("c");
+		final InternalCDOBasedBranch c = (InternalCDOBasedBranch) main.createChild("a").createChild("b").createChild("c");
 		
 		final InternalCDOBasedBranch a = (InternalCDOBasedBranch) manager.getBranch("MAIN/a");
 		assertThat(a.segmentId()).isEqualTo(4);
@@ -229,7 +231,7 @@ public class CDOBranchManagerTest {
 	
 	@Test
 	public void whenCreatingNestedBranch_ThenMetadataOnParentShouldBePreserved() throws Exception {
-		manager.getMainBranch().createChild("a");
+		main.createChild("a");
 		manager.getBranch("MAIN/a").update(new MetadataImpl(ImmutableMap.<String, Object>of("key", "value")));	
 		final Branch b = manager.getBranch("MAIN/a").createChild("b");
 		assertEquals(ImmutableMap.<String, Object>of("key", "value"), b.parent().metadata());
@@ -237,21 +239,10 @@ public class CDOBranchManagerTest {
 	
 	@Test
 	public void updateMetadata() throws Exception {
-		final InternalBranch branchA = (InternalBranch) manager.getMainBranch().createChild("a", new MetadataImpl(ImmutableMap.<String, Object>of("test", 0)));
+		final InternalBranch branchA = (InternalBranch) main.createChild("a", new MetadataImpl(ImmutableMap.<String, Object>of("test", 0)));
 		final long commitTimestamp = clock.getTimeStamp();
-		final IndexWrite<Void> timestampUpdate = manager.update(branchA.getClass(), branchA.path(), new Function<InternalBranch, InternalBranch>() {
-			@Override
-			public InternalBranch apply(InternalBranch input) {
-				return input.withHeadTimestamp(commitTimestamp);
-			}
-		});
-		
-		final IndexWrite<Void> metadataUpdate = manager.update(branchA.getClass(), branchA.path(), new Function<InternalBranch, InternalBranch>() {
-			@Override
-			public InternalBranch apply(InternalBranch input) {
-				return input.withMetadata(new MetadataImpl(ImmutableMap.<String, Object>of("test", 1)));
-			}
-		});
+		final IndexWrite<Void> timestampUpdate = manager.update(branchA.getClass(), branchA.path(), InternalBranch.WITH_HEADTIMESTAMP, ImmutableMap.of("headTimestamp", commitTimestamp));
+		final IndexWrite<Void> metadataUpdate = manager.update(branchA.getClass(), branchA.path(), InternalBranch.WITH_METADATA, ImmutableMap.of("metadata", new MetadataImpl(ImmutableMap.<String, Object>of("test", 1))));
 		final Collection<IndexWrite<Void>> parallelUpdates = ImmutableList.of(timestampUpdate, metadataUpdate);
 		
 		final CyclicBarrier barrier = new CyclicBarrier(parallelUpdates.size());

@@ -95,7 +95,11 @@ public interface SnomedExportContext {
 	 * @return namespace for directory and file names.
 	 */
 	String getNamespaceId();
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 2146eb3708956a2faefe69a150477673a6a10aa8
 	/**
 	 * Returns the path to '&lt;path_to_export_temp_dir&gt;\SnomedCT_Release_&lt;namespace&gt;'
 	 */

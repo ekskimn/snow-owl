@@ -79,10 +79,10 @@ import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CDOEditingContext;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
+import com.b2international.snowowl.datastore.cdo.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.cdo.ICDOTransactionAggregator;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
-import com.b2international.snowowl.datastore.server.CDOServerCommitBuilder;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
 import com.b2international.snowowl.importer.AbstractImportUnit;
 import com.b2international.snowowl.importer.AbstractLoggingImporter;
@@ -341,11 +341,15 @@ public abstract class AbstractSnomedImporter<T extends AbstractComponentRow, C e
 			throw new ImportException("Couldn't read row from release file.", e);
 		} finally {
 			
-			Closeables.closeQuietly(releaseFileListReader);
-			
-			for (final ComponentImportEntry importEntry : importEntries.values()) {
-				Closeables.closeQuietly(importEntry.getWriter());
+			try {
+				Closeables.close(releaseFileListReader, true);
+				for (final ComponentImportEntry importEntry : importEntries.values()) {
+					Closeables.close(importEntry.getWriter(), true);
+				}
+			} catch (IOException e) {
+				throw new RuntimeException(e);
 			}
+			
 		}
 
 		return createImportUnits(importEntries);
@@ -554,7 +558,11 @@ public abstract class AbstractSnomedImporter<T extends AbstractComponentRow, C e
 				}
 			}
 		} finally {
-			Closeables.closeQuietly(sliceBeanReader);
+			try {
+				Closeables.close(sliceBeanReader, true);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 

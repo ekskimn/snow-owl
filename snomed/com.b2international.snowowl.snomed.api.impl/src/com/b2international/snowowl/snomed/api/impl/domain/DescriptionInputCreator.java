@@ -7,8 +7,8 @@ import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserD
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
-import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentCreateRequest;
-import com.b2international.snowowl.snomed.datastore.request.BaseSnomedComponentUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequest;
@@ -133,12 +133,12 @@ public class DescriptionInputCreator extends AbstractInputCreator implements Com
 	}
 
 	@Override
-	public boolean canCreateInput(final Class<? extends BaseSnomedComponentCreateRequest> inputType) {
-		return SnomedDescriptionCreateRequest.class.isAssignableFrom(inputType);
+	public boolean canCreateInput(Class<? extends SnomedComponentCreateRequest> inputType) {
+		return ClassUtils.isClassAssignableFrom(SnomedDescriptionCreateRequest.class, inputType.getName());
 	}
 
 	@Override
-	public boolean canCreateUpdate(final Class<? extends BaseSnomedComponentUpdateRequest> updateType) {
-		return SnomedDescriptionUpdateRequest.class.isAssignableFrom(updateType);
+	public boolean canCreateUpdate(Class<? extends SnomedComponentUpdateRequest> updateType) {
+		return ClassUtils.isClassAssignableFrom(SnomedDescriptionUpdateRequest.class, updateType.getName());
 	}
 }

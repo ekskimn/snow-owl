@@ -48,6 +48,7 @@ import com.b2international.snowowl.core.domain.RepositoryContextProvider;
 import com.b2international.snowowl.core.exceptions.AlreadyExistsException;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
+import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.internal.JsonSupport;
@@ -108,7 +109,7 @@ public class BranchManagerTest {
 		when(repositoryContext.service(ReviewManager.class)).thenReturn(reviewManager);
 		when(repositoryContext.service(BranchManager.class)).thenReturn(manager);
 		
-		when(repositoryContextProvider.get(context, "")).thenReturn(repositoryContext);
+		when(repositoryContextProvider.get("")).thenReturn(repositoryContext);
 		when(context.service(RepositoryContextProvider.class)).thenReturn(repositoryContextProvider);
 	}
 	

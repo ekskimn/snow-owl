@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.UUID;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
@@ -58,9 +57,8 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Equival
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChange;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChangeList;
-import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
@@ -211,11 +209,11 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		writer.addDocument(updatedDocument);
 	}
 
-	public void updateClassificationRunStatus(final UUID id, final ClassificationStatus newStatus) throws IOException {
+	public void updateClassificationRunStatus(final String id, final ClassificationStatus newStatus) throws IOException {
 		updateClassificationRunStatus(id, newStatus, null);
 	}
 
-	public void updateClassificationRunStatus(final UUID id, final ClassificationStatus newStatus, final GetResultResponseChanges changes) throws IOException {
+	public void updateClassificationRunStatus(final String id, final ClassificationStatus newStatus, final GetResultResponseChanges changes) throws IOException {
 
 		final Document sourceDocument = getClassificationRunDocument(id);
 		if (null == sourceDocument) {
@@ -238,7 +236,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 				classificationRun.setCompletionDate(new Date());
 			}
 			
-			final ClassificationIssueFlags issueFlags = indexChanges(sourceDocument, changes);
+			final ClassificationIssueFlags issueFlags = indexChanges(sourceDocument, id, changes);
 			classificationRun.setInferredRelationshipChangesFound(!changes.getRelationshipEntries().isEmpty());
 			classificationRun.setRedundantStatedRelationshipsFound(issueFlags.isRedundantStatedFound());
 			classificationRun.setEquivalentConceptsFound(issueFlags.isEquivalentConceptsFound());
@@ -267,8 +265,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		commit();
 	}
 
-	private ClassificationIssueFlags indexChanges(Document sourceDocument, final GetResultResponseChanges changes) throws IOException {
-		final UUID id = changes.getClassificationId();
+	private ClassificationIssueFlags indexChanges(Document sourceDocument, String id, final GetResultResponseChanges changes) throws IOException {
 		final IBranchPath branchPath = BranchPathUtils.createPath(sourceDocument.get(FIELD_BRANCH_PATH));
 		final String userId = sourceDocument.get(FIELD_USER_ID);
 		final long creationDate = sourceDocument.getField(FIELD_CREATION_DATE).numericValue().longValue();
@@ -279,19 +276,19 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		for (final AbstractEquivalenceSet equivalenceSet : equivalenceSets) {
 
 			final List<IEquivalentConcept> convertedEquivalentConcepts = newArrayList();
-			for (final SnomedConcept equivalentEntry : equivalenceSet.getConcepts()) {
-				addEquivalentConcept(convertedEquivalentConcepts, equivalentEntry);
+			for (final String equivalentId : equivalenceSet.getConceptIds()) {
+				addEquivalentConcept(convertedEquivalentConcepts, equivalentId);
 			}
 
 			if (equivalenceSet instanceof EquivalenceSet) {
-				addEquivalentConcept(convertedEquivalentConcepts, ((EquivalenceSet) equivalenceSet).getSuggestedConcept());
+				addEquivalentConcept(convertedEquivalentConcepts, ((EquivalenceSet) equivalenceSet).getSuggestedConceptId());
 			}
 			
 			final EquivalentConceptSet convertedEquivalenceSet = new EquivalentConceptSet();
 			convertedEquivalenceSet.setUnsatisfiable(equivalenceSet.isUnsatisfiable());
 			convertedEquivalenceSet.setEquivalentConcepts(convertedEquivalentConcepts);
 
-			indexResult(id, branchPath, userId, creationDate, EquivalentConceptSet.class, equivalenceSet.getConcepts().get(0).getId(), convertedEquivalenceSet);
+			indexResult(id, branchPath, userId, creationDate, EquivalentConceptSet.class, equivalenceSet.getConceptIds().get(0), convertedEquivalenceSet);
 		}
 
 		for (final RelationshipChangeEntry relationshipChange : changes.getRelationshipEntries()) {
@@ -329,9 +326,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		return classificationIssueFlags;
 	}
 
-	private void addEquivalentConcept(final List<IEquivalentConcept> convertedEquivalentConcepts, final SnomedConcept equivalentEntry) {
+	private void addEquivalentConcept(final List<IEquivalentConcept> convertedEquivalentConcepts, final String equivalentId) {
 		final EquivalentConcept convertedConcept = new EquivalentConcept();
-		convertedConcept.setId(equivalentEntry.getId());
+		convertedConcept.setId(equivalentId);
 		convertedEquivalentConcepts.add(convertedConcept);
 	}
 
@@ -365,7 +362,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		return result;
 	}
 
-	private <T> void indexResult(final UUID id, final IBranchPath branchPath, final String userId, final long creationDate,
+	private <T> void indexResult(final String id, final IBranchPath branchPath, final String userId, final long creationDate,
 			final Class<T> clazz, String componentId, final T value) throws IOException {
 
 		final Document doc = new Document();
@@ -381,7 +378,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		writer.addDocument(doc);
 	}
 
-	private Document getClassificationRunDocument(final UUID id) throws IOException {
+	private Document getClassificationRunDocument(final String id) throws IOException {
 		final Query query = Fields.newQuery()
 				.field(FIELD_CLASS, ClassificationRun.class.getSimpleName())
 				.field(FIELD_ID, id.toString())

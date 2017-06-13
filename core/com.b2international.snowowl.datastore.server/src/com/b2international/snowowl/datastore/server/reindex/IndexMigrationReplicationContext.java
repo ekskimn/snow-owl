@@ -47,9 +47,9 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
+import com.b2international.snowowl.datastore.cdo.DelegatingTransaction;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator;
 import com.b2international.snowowl.datastore.replicate.BranchReplicator.SkipBranchException;
-import com.b2international.snowowl.datastore.server.DelegatingTransaction;
 import com.b2international.snowowl.terminologymetadata.TerminologymetadataPackage;
 import com.google.common.collect.Sets;
 
