@@ -52,6 +52,8 @@ import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.datastore.file.FileRegistry;
 import com.b2international.snowowl.datastore.review.BranchState;
+import com.b2international.snowowl.datastore.review.ConceptChanges;
+import com.b2international.snowowl.datastore.review.ConceptChangesMixin;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.eventbus.IEventBus;

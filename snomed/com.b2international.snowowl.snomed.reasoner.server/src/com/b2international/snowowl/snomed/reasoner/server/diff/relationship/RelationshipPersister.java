@@ -19,6 +19,7 @@ import java.util.Collection;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.branch.Branch;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.Concept;
 import com.b2international.snowowl.snomed.Relationship;
@@ -30,7 +31,6 @@ import com.b2international.snowowl.snomed.datastore.StatementFragment;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 import com.b2international.snowowl.snomed.datastore.model.SnomedModelExtensions;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChange.Nature;
 import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChangeProcessor;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedConcreteDataTypeRefSet;
@@ -61,7 +61,7 @@ public class RelationshipPersister extends OntologyChangeProcessor<StatementFrag
 		this.universalRelationshipConcept = context.lookup(Concepts.UNIVERSAL_RESTRICTION_MODIFIER, Concept.class);
 		
 		final IEventBus eventBus = ApplicationContext.getServiceForClass(IEventBus.class);
-		final Branch editingContextBranch = SnomedRequests.branching()
+		final Branch editingContextBranch = RepositoryRequests.branching()
 				.prepareGet(context.getBranch())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(eventBus)

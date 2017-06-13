@@ -18,6 +18,7 @@ package com.b2international.snowowl.snomed.datastore.internal.rf2;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Date;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
@@ -29,7 +30,9 @@ import org.eclipse.net4j.util.io.ExtendedDataOutputStream;
 import org.eclipse.net4j.util.om.monitor.OMMonitor;
 
 import com.b2international.snowowl.core.api.Net4jProtocolConstants;
+import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.datastore.net4j.RequestCancelationRunnable;
+import com.b2international.snowowl.snomed.SnomedConstants;
 import com.b2international.snowowl.snomed.datastore.SnomedMapSetSetting;
 import com.b2international.snowowl.snomed.datastore.internal.rf2.SnomedExportResult.Result;
 import com.google.common.base.Strings;
@@ -76,8 +79,8 @@ public class SnomedExportClientRequest extends RequestWithMonitoring<File> {
 		out.writeUTF(model.getUserId());
 		out.writeUTF(model.getClientBranch().path());
 		
-		out.writeUTF(Strings.nullToEmpty(model.getStartEffectiveTime()));
-		out.writeUTF(Strings.nullToEmpty(model.getEndEffectiveTime()));
+		out.writeUTF(Strings.nullToEmpty(convertToString(model.getStartEffectiveTime())));
+		out.writeUTF(Strings.nullToEmpty(convertToString(model.getEndEffectiveTime())));
 		
 		out.writeInt(model.getReleaseType().getValue());
 		out.writeUTF(model.getUnsetEffectiveTimeLabel());
@@ -110,6 +113,10 @@ public class SnomedExportClientRequest extends RequestWithMonitoring<File> {
 		out.writeUTF(model.getNamespace());
 		out.writeUTF(model.getCodeSystemShortName());
 		out.writeBoolean(model.isExtensionOnly());
+	}
+
+	private String convertToString(Date date) {
+		return EffectiveTimes.format(date, SnomedConstants.RF2_EFFECTIVE_TIME_FORMAT);
 	}
 
 	@Override

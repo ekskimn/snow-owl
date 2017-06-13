@@ -15,8 +15,7 @@
  */
 package com.b2international.snowowl.datastore.server;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.net4j.jvm.IJVMConnector;
@@ -32,7 +31,6 @@ import com.b2international.index.mapping.Mappings;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.RepositoryInfo.Health;
 import com.b2international.snowowl.core.RepositoryManager;
-import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.api.SnowowlServiceException;
 import com.b2international.snowowl.core.config.ClientPreferences;
@@ -45,11 +43,11 @@ import com.b2international.snowowl.core.setup.Environment;
 import com.b2international.snowowl.core.setup.ModuleConfig;
 import com.b2international.snowowl.core.setup.PreRunCapableBootstrapFragment;
 import com.b2international.snowowl.core.users.SpecialUserStore;
-import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.CDOConnectionFactoryProvider;
 import com.b2international.snowowl.datastore.cdo.ICDORepository;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.config.IndexConfiguration;
+import com.b2international.snowowl.datastore.config.IndexSettings;
 import com.b2international.snowowl.datastore.config.RepositoryConfiguration;
 import com.b2international.snowowl.datastore.net4j.Net4jUtils;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
@@ -61,6 +59,7 @@ import com.b2international.snowowl.datastore.server.internal.DefaultRepositoryMa
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedEditingContextFactoryProvider;
 import com.b2international.snowowl.datastore.server.internal.ExtensionBasedRepositoryClassLoaderProviderRegistry;
 import com.b2international.snowowl.datastore.server.internal.InternalRepository;
+import com.b2international.snowowl.datastore.server.internal.JsonSupport;
 import com.b2international.snowowl.datastore.server.session.ApplicationSessionManager;
 import com.b2international.snowowl.datastore.server.session.LogListener;
 import com.b2international.snowowl.datastore.server.session.VersionProcessor;

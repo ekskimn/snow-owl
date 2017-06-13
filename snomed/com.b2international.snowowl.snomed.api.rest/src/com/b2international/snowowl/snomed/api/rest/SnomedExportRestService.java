@@ -255,7 +255,7 @@ public class SnomedExportRestService extends AbstractSnomedRestService {
 
 		exports.remove(exportId);
 		file.deleteOnExit();
-		return new ResponseEntity<FileSystemResource>(exportZipResource, httpHeaders, HttpStatus.OK);
+		return new ResponseEntity(exportZipResource, httpHeaders, HttpStatus.OK);
 	}
 	
 	private URI getExportRunURI(UUID exportId) {

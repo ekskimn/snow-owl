@@ -16,6 +16,8 @@
 package com.b2international.snowowl.datastore;
 
 import static com.b2international.index.query.Expressions.exactMatch;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Strings.nullToEmpty;
 
 import java.util.Objects;
 

@@ -16,11 +16,12 @@
 package com.b2international.snowowl.datastore.request;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
+import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.datastore.events.CreateMergeReviewRequest;
 import com.b2international.snowowl.datastore.review.MergeReview;
 
-public final class MergeReviewCreateRequestBuilder extends BaseRepositoryRequestBuilder<MergeReviewCreateRequestBuilder, MergeReview> {
+public final class MergeReviewCreateRequestBuilder extends BaseRequestBuilder<MergeReviewCreateRequestBuilder, RepositoryContext,  MergeReview> implements RepositoryRequestBuilder<MergeReview> {
 	
 	private String sourceBranch;
 	private String targetBranch;

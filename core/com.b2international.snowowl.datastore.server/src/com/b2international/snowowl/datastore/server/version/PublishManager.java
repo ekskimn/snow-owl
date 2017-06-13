@@ -245,10 +245,6 @@ public abstract class PublishManager implements IPublishManager {
 				.getSync().getTotal() == 0;
 	}
 	
-	private IBranchPath getParentBranchPath() {
-		return null == getConfiguration() ? getMainPath() : BranchPathUtils.createPath(getConfiguration().getParentBranchPath());
-	}
-
 	private void publishTerminologyMetadataChanges(final PublishOperationConfiguration configuration) throws SnowowlServiceException {
 		if (couldCreateVersion(configuration)) {
 			processTerminologyMetadataChanges(configuration);

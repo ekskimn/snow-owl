@@ -96,7 +96,7 @@ public class SnomedExportConfiguration implements ISnomedExportConfiguration {
 	}
 
 	@Override
-	public boolean isIncludeUnpublished() {
+	public boolean isIncludeUnpublised() {
 		return includeUnpublished;
 	}
 	
@@ -109,5 +109,4 @@ public class SnomedExportConfiguration implements ISnomedExportConfiguration {
 	public boolean isExtensionOnly() {
 		return extensionOnly;
 	}
-	
 }

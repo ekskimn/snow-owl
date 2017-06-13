@@ -403,6 +403,7 @@ public abstract class CDOCommitInfoUtils {
 						if (excludedUsersPredicate.apply(userId)) {
 							$[i.getAndIncrement()] = info;
 						}
+					}
 				});
 				
 				return Arrays2.iterator(Arrays.copyOf($, i.get()));

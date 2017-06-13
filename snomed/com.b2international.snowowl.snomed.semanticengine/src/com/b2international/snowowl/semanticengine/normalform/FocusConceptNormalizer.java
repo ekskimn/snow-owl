@@ -15,36 +15,27 @@
  */
 package com.b2international.snowowl.semanticengine.normalform;
 
-import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
-import static com.google.common.collect.Maps.newHashMap;
-
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
-import com.b2international.collections.PrimitiveSets;
-import com.b2international.collections.longs.LongSet;
-import com.b2international.snowowl.core.domain.IComponent;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.dsl.scg.Concept;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.semanticengine.subsumption.SubsumptionTester;
+import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Collections2;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.UncheckedExecutionException;
 
 /**
  * <b>5.3.3 Normalize focus concepts</b><br/>
@@ -75,35 +66,6 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
  */
 public class FocusConceptNormalizer {
 	
-	private final class ParentCacheLoader extends CacheLoader<String, SnomedConcept> {
-		
-		@Override
-		public SnomedConcept load(String conceptId) throws Exception {
-			SnomedConcept conceptWithParents = SnomedRequests.prepareGetConcept()
-				.setComponentId(conceptId)
-				.setExpand("ancestors(direct:true,form:\"inferred\")")
-				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-				.execute(getServiceForClass(IEventBus.class))
-				.getSync();
-			
-			return conceptWithParents;
-		}
-
-		@Override
-		public Map<String, SnomedConcept> loadAll(Iterable<? extends String> conceptIds) throws Exception {
-			Collection<String> conceptIdSet = ImmutableSet.copyOf(conceptIds);
-			SnomedConcepts conceptsWithParents = SnomedRequests.prepareSearchConcept()
-					.setComponentIds(conceptIdSet)
-					.setLimit(conceptIdSet.size())
-					.setExpand("ancestors(direct:true,form:\"inferred\")")
-					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-					.execute(getServiceForClass(IEventBus.class))
-					.getSync();
-
-			return Maps.uniqueIndex(conceptsWithParents, IComponent.ID_FUNCTION);
-		}
-	}
-
 	private final String branchPath;
 	private final SubsumptionTester subsumptionTester;
 	
@@ -126,11 +88,6 @@ public class FocusConceptNormalizer {
 		return new FocusConceptNormalizationResult(filteredPrimitiveSuperTypes, mergedFocusConceptDefinitions);
 	}
 	
-	public Collection<SnomedConcept> collectNonRedundantProximalPrimitiveSuperTypes(Collection<String> focusConceptIds) {
-		final Map<String, SnomedConcept> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(focusConceptIds);
-		return filterRedundantSuperTypes(proximalPrimitiveSupertypes).values();
-	}
-
 	private Collection<SnomedConceptDocument> collectProximalPrimitiveSupertypes(Collection<String> focusConceptIds) {
 		Set<SnomedConceptDocument> proximatePrimitiveSuperTypes = new HashSet<>();
 

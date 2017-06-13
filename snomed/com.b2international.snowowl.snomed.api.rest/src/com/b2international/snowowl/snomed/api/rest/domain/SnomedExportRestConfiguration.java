@@ -41,7 +41,6 @@ public class SnomedExportRestConfiguration {
 	@NotEmpty
 	private String namespaceId = "INT";
 	
-	private String namespaceId;
 	private Collection<String> moduleIds;
 	private Date startEffectiveTime;
 	private Date endEffectiveTime;

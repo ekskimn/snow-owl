@@ -63,13 +63,8 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 	private boolean extendedDescriptionTypesForRf1;
 	private boolean includeUnpublised;
 
-<<<<<<< HEAD:snomed/com.b2international.snowowl.snomed.exporter/src/com/b2international/snowowl/snomed/exporter/model/SnomedRf2ExportModel.java
 	private Date startEffectiveTime;
 	private Date endEffectiveTime;
-=======
-	private String startEffectiveTime;
-	private String endEffectiveTime;
->>>>>>> 2146eb3708956a2faefe69a150477673a6a10aa8:snomed/com.b2international.snowowl.snomed.datastore/src/com/b2international/snowowl/snomed/datastore/internal/rf2/SnomedRf2ExportModel.java
 	private ContentSubType releaseType;
 	private Set<SnomedMapSetSetting> settings;
 	private Set<String> modulesToExport;
@@ -194,7 +189,6 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 		return modulesToExport;
 	}
 
-<<<<<<< HEAD:snomed/com.b2international.snowowl.snomed.exporter/src/com/b2international/snowowl/snomed/exporter/model/SnomedRf2ExportModel.java
 	public Date getStartEffectiveTime() {
 		return startEffectiveTime;
 	}
@@ -208,21 +202,6 @@ public final class SnomedRf2ExportModel extends SnomedExportModel {
 	}
 
 	public void setEndEffectiveTime(Date endEffectiveTime) {
-=======
-	public String getStartEffectiveTime() {
-		return startEffectiveTime;
-	}
-
-	public void setStartEffectiveTime(String startEffectiveTime) {
-		this.startEffectiveTime = startEffectiveTime;
-	}
-
-	public String getEndEffectiveTime() {
-		return endEffectiveTime;
-	}
-
-	public void setEndEffectiveTime(String endEffectiveTime) {
->>>>>>> 2146eb3708956a2faefe69a150477673a6a10aa8:snomed/com.b2international.snowowl.snomed.datastore/src/com/b2international/snowowl/snomed/datastore/internal/rf2/SnomedRf2ExportModel.java
 		this.endEffectiveTime = endEffectiveTime;
 	}
 

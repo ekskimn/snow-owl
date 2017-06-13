@@ -92,7 +92,7 @@ public final class SnomedDescriptionUpdateRequest extends SnomedComponentUpdateR
 		final Description description = context.lookup(getComponentId(), Description.class);
 
 		boolean changed = false;
-		changed |= updateModule(context, description, getModuleId());
+		changed |= updateModule(context, description);
 		changed |= updateCaseSignificance(context, description, caseSignificance);
 		changed |= updateTypeId(context, description);
 		changed |= updateTerm(context, description);

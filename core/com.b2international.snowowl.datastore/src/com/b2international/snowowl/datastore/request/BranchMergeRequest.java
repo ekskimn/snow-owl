@@ -28,6 +28,8 @@ import com.google.common.base.Strings;
  */
 public final class BranchMergeRequest extends AbstractBranchChangeRequest<Merge> {
 
+	private static final long serialVersionUID = 1L;
+
 	private static String commitMessageOrDefault(final String sourcePath, final String targetPath, final String commitMessage) {
 		return !Strings.isNullOrEmpty(commitMessage) 
 				? commitMessage 

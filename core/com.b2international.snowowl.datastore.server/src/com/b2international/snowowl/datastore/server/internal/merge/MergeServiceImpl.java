@@ -35,7 +35,7 @@ import com.google.common.collect.FluentIterable;
 public class MergeServiceImpl implements MergeService {
 
 	private final Repository repository;
-	private final Cache<UUID, AbstractBranchChangeJob> merges;
+	private final Cache<UUID, AbstractBranchChangeRemoteJob> merges;
 	
 	public MergeServiceImpl(Repository repository, int mergeMaxResults) {
 		this.repository = repository;
@@ -44,22 +44,17 @@ public class MergeServiceImpl implements MergeService {
 				.build();
 	}
 
-	private AbstractBranchChangeJob registerJob(UUID id, String source, String target, String commitMessage, String reviewId) {
-		AbstractBranchChangeJob job = AbstractBranchChangeJob.create(repository, id, source, target, commitMessage, reviewId);
-		merges.put(id, job);
-		return job;
-	}
-	
 	@Override
-	public Merge enqueue(UUID id, String source, String target, String commitMessage, String reviewId) {
-		AbstractBranchChangeJob job = registerJob(id, source, target, commitMessage, reviewId);
+	public Merge enqueue(String source, String target, String commitMessage, String reviewId) {
+		AbstractBranchChangeRemoteJob job = AbstractBranchChangeRemoteJob.create(repository, source, target, commitMessage, reviewId);
+		merges.put(job.getMerge().getId(), job);
 		job.schedule();
 		return job.getMerge();
 	}
 
 	@Override
 	public Merge getMerge(UUID id) {
-		AbstractBranchChangeJob job = merges.getIfPresent(id);
+		AbstractBranchChangeRemoteJob job = merges.getIfPresent(id);
 		
 		if (job != null) {
 			return job.getMerge();
@@ -72,9 +67,9 @@ public class MergeServiceImpl implements MergeService {
 	public MergeCollection search(Predicate<Merge> query) {
 		List<Merge> results = FluentIterable
 				.from(merges.asMap().values())
-				.transform(new Function<AbstractBranchChangeJob, Merge>() {
+				.transform(new Function<AbstractBranchChangeRemoteJob, Merge>() {
 					@Override
-					public Merge apply(AbstractBranchChangeJob input) {
+					public Merge apply(AbstractBranchChangeRemoteJob input) {
 						return input.getMerge();
 					}
 				})
@@ -86,7 +81,7 @@ public class MergeServiceImpl implements MergeService {
 
 	@Override
 	public void deleteMerge(UUID id) {
-		AbstractBranchChangeJob job = merges.asMap().remove(id);
+		AbstractBranchChangeRemoteJob job = merges.asMap().remove(id);
 		
 		if (job != null) {
 			job.cancel();

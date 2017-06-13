@@ -44,6 +44,7 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.domain.TransactionContext;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.snomed.api.rest.domain.ChangeRequest;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.domain.SnomedRefSetRestInput;
@@ -168,7 +169,7 @@ public class SnomedReferenceSetRestService extends AbstractSnomedRestService {
 
 			final Principal principal) {
 		
-		final Branch branch = SnomedRequests.branching()
+		final Branch branch = RepositoryRequests.branching()
 				.prepareGet(branchPath)
 				.build(repositoryId)
 				.execute(bus).getSync();

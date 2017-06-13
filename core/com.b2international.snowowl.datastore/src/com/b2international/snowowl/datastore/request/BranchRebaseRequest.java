@@ -15,8 +15,6 @@
  */
 package com.b2international.snowowl.datastore.request;
 
-import java.util.UUID;
-
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.merge.Merge;
@@ -36,6 +34,8 @@ import com.google.common.base.Strings;
  * @since 4.6
  */
 public final class BranchRebaseRequest extends AbstractBranchChangeRequest<Merge> {
+
+	private static final long serialVersionUID = 1L;
 
 	private static String commitMessageOrDefault(final String sourcePath, final String targetPath, final String commitMessage) {
 		return !Strings.isNullOrEmpty(commitMessage) 

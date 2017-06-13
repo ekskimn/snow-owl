@@ -47,8 +47,13 @@ import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConst
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedIconProvider;
-import com.b2international.snowowl.snomed.datastore.index.change.*;
+import com.b2international.snowowl.snomed.datastore.index.change.ConceptChangeProcessor;
+import com.b2international.snowowl.snomed.datastore.index.change.ConstraintChangeProcessor;
+import com.b2international.snowowl.snomed.datastore.index.change.DescriptionChangeProcessor;
+import com.b2international.snowowl.snomed.datastore.index.change.RefSetMemberChangeProcessor;
+import com.b2international.snowowl.snomed.datastore.index.change.RelationshipChangeProcessor;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDocument;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemberIndexEntry;
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;

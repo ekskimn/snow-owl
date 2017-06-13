@@ -86,7 +86,7 @@ public class SnomedImportRestConfiguration implements SnomedStandardImportRestCo
 	@Override
 	public ISnomedImportConfiguration toConfig() {
 		final String shortNameOrDefault = StringUtils.isEmpty(getCodeSystemShortName()) 
-				? SNOMED_INT_SHORT_NAME 
+				? SNOMED_SHORT_NAME 
 				: getCodeSystemShortName();
 		
 		if (getPatchReleaseVersion() == null) {

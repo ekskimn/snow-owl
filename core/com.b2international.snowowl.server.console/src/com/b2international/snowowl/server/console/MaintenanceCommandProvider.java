@@ -44,7 +44,9 @@ import com.b2international.index.query.Expressions;
 import com.b2international.index.query.Query;
 import com.b2international.index.revision.Purge;
 import com.b2international.snowowl.core.ApplicationContext;
+import com.b2international.snowowl.core.Repositories;
 import com.b2international.snowowl.core.Repository;
+import com.b2international.snowowl.core.RepositoryInfo;
 import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
@@ -54,10 +56,11 @@ import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
+import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
+import com.b2international.snowowl.datastore.request.repository.RepositorySearchRequestBuilder;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
 import com.b2international.snowowl.datastore.server.internal.branch.BranchManagerImpl;
-import com.b2international.snowowl.datastore.server.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
 import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
 import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
@@ -77,11 +80,13 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 
 /**
@@ -485,18 +490,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 	}
 	
 	private <T> void printLine(final CommandInterpreter interpreter, T item, Function<T, Object>...values) {
-		interpreter.println(String.format(COLUMN_FORMAT, newArrayList(values).stream().map(func -> func.apply(item)).toArray()));
-	}
-
-	private List<String> resolveArguments(CommandInterpreter interpreter) {
-		List<String> results = Lists.newArrayList();
-		String argument = interpreter.nextArgument();
-		while(!isNullOrEmpty(argument)) {
-			results.add(argument);
-			argument = interpreter.nextArgument();
-		}
-		
-		return results;
+		interpreter.println(String.format(COLUMN_FORMAT, Lists.newArrayList(values).stream().map(func -> func.apply(item)).toArray()));
 	}
 
 	public synchronized void createDbIndex(CommandInterpreter interpreter) {

@@ -18,12 +18,14 @@ package com.b2international.snowowl.datastore.events;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.domain.RepositoryContext;
-import com.b2international.snowowl.core.events.BaseRequest;
+import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.MergeReviewManager;
 
-public class CreateMergeReviewRequest extends BaseRequest<RepositoryContext, MergeReview> {
+public class CreateMergeReviewRequest implements Request<RepositoryContext, MergeReview> {
+
+	private static final long serialVersionUID = 1L;
 
 	private final String sourcePath;
 	private final String targetPath;
@@ -49,9 +51,4 @@ public class CreateMergeReviewRequest extends BaseRequest<RepositoryContext, Mer
 		}
 	}
 	
-	@Override
-	protected Class<MergeReview> getReturnType() {
-		return MergeReview.class;
-	}
-
 }

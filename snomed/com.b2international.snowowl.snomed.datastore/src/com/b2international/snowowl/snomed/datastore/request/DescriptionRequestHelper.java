@@ -36,7 +36,6 @@ import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.google.common.base.Function;
-import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
@@ -95,45 +94,6 @@ public abstract class DescriptionRequestHelper {
 			}
 		}
 	}	
-
-	/**
-	 * Extracts the language reference set identifier from the specified list of {@link ExtendedLocale}s. 
-	 * <p>
-	 * The identifiers may come from the value itself, if it includes a reference set ID (eg. {@code en-x-12345678901}),
-	 * or from the language tag part, if it is well known (eg. {@code en-US}).
-	 * <p>
-	 * If no element from the input list can be converted, an {@link IllegalArgumentException} is thrown; no exception occurs
-	 * if only some of the {@code ExtendedLocale}s could not be transformed into a language reference set identifier, however. 
-	 *  
-	 * @param locales  the extended locale list to process (may not be {@code null})
-	 * @return the converted language reference set identifiers
-	 */
-	public static List<String> getLanguageRefSetIds(List<ExtendedLocale> locales) {
-		List<String> languageRefSetIds = newArrayList();
-		List<ExtendedLocale> unconvertableLocales = new ArrayList<ExtendedLocale>();
-	
-		for (ExtendedLocale extendedLocale : locales) {
-			String languageRefSetId;
-	
-			if (!extendedLocale.getLanguageRefSetId().isEmpty()) {
-				languageRefSetId = extendedLocale.getLanguageRefSetId();
-			} else {
-				languageRefSetId = LanguageCodeReferenceSetIdentifierMapping.getReferenceSetIdentifier(extendedLocale.getLanguageTag());
-			}
-	
-			if (languageRefSetId == null) {
-				unconvertableLocales.add(extendedLocale);
-			} else {
-				languageRefSetIds.add(languageRefSetId);
-			}
-		}
-	
-		if (languageRefSetIds.isEmpty() && !unconvertableLocales.isEmpty()) {
-			throw new IllegalArgumentException("Don't know how to convert extended locale " + unconvertableLocales.get(0).toString() + " to a language reference set identifier.");
-		}
-		
-		return languageRefSetIds;
-	}
 
 	/**
 	 * Extracts the language reference set identifier from the specified list of {@link ExtendedLocale}s. 

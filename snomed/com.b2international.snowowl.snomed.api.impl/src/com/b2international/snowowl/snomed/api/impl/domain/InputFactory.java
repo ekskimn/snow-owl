@@ -2,7 +2,6 @@ package com.b2international.snowowl.snomed.api.impl.domain;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,11 +10,9 @@ import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponentWithId;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConceptUpdate;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 public class InputFactory {
@@ -30,7 +27,7 @@ public class InputFactory {
 	}
 
 	public <I extends SnomedComponentCreateRequest> I createComponentInput(String branchPath, ISnomedBrowserComponentWithId component, Class<I> inputType) {
-		return getInputDelegate(inputType).createInput(branchPath, component, this);
+		return getInputDelegate(inputType).createInput(component, this);
 	}
 
 	public <I extends SnomedComponentCreateRequest> List<I> createComponentInputs(String branchPath,

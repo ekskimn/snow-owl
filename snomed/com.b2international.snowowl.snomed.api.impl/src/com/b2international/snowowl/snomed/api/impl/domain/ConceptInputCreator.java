@@ -6,12 +6,11 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescription;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConceptUpdate;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
@@ -52,11 +51,11 @@ public class ConceptInputCreator extends AbstractInputCreator implements Compone
 		}
 		
 		for (ISnomedBrowserRelationship relationship : concept.getRelationships()) {
-			builder.addRelationship(inputFactory.createComponentInput(relationship, SnomedRelationshipCreateRequest.class));
+			builder.addRelationship(inputFactory.createComponentInput(getBranch().path(), relationship, SnomedRelationshipCreateRequest.class));
 		}
 		
 		for (ISnomedBrowserDescription description : concept.getDescriptions()) {
-			builder.addDescription(inputFactory.createComponentInput(description, SnomedDescriptionCreateRequest.class));
+			builder.addDescription(inputFactory.createComponentInput(getBranch().path(), description, SnomedDescriptionCreateRequest.class));
 		}
 
 		// TODO remove cast, use only Request interfaces with proper type

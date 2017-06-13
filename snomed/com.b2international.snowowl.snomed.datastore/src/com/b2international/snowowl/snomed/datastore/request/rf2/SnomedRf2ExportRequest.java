@@ -199,8 +199,8 @@ final class SnomedRf2ExportRequest implements Request<BranchContext, UUID> {
 			model.getModulesToExport().addAll(modules);
 		}
 		
-		model.setStartEffectiveTime(startEffectiveTime);
-		model.setEndEffectiveTime(endEffectiveTime);
+		model.setStartEffectiveTime(EffectiveTimes.parse(startEffectiveTime, DateFormats.SHORT));
+		model.setEndEffectiveTime(EffectiveTimes.parse(endEffectiveTime, DateFormats.SHORT));
 		model.setIncludeUnpublised(includeUnpublished);
 		
 		if (StringUtils.isEmpty(transientEffectiveTime)) {

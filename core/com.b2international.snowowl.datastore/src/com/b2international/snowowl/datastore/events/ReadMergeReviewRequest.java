@@ -24,6 +24,8 @@ import com.b2international.snowowl.datastore.review.MergeReviewManager;
  */
 public class ReadMergeReviewRequest extends ReviewRequest<MergeReview> {
 
+	private static final long serialVersionUID = 1L;
+
 	public ReadMergeReviewRequest(final String reviewId) {
 		super(reviewId);
 	}
@@ -32,10 +34,4 @@ public class ReadMergeReviewRequest extends ReviewRequest<MergeReview> {
 	public MergeReview execute(RepositoryContext context) {
 		return context.service(MergeReviewManager.class).getMergeReview(getReviewId());
 	}
-	
-	@Override
-	protected Class<MergeReview> getReturnType() {
-		return MergeReview.class;
-	}
-	
 }

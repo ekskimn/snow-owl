@@ -2,13 +2,14 @@ package com.b2international.snowowl.snomed.api.impl.domain;
 
 import java.util.Map;
 
+import com.b2international.commons.ClassUtils;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserDescription;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.DescriptionInactivationIndicator;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionUpdateRequest;

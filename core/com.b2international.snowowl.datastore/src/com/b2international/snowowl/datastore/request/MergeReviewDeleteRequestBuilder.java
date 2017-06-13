@@ -16,6 +16,7 @@
 package com.b2international.snowowl.datastore.request;
 
 import com.b2international.snowowl.core.domain.RepositoryContext;
+import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.datastore.events.DeleteMergeReviewRequest;
 import com.b2international.snowowl.datastore.review.MergeReview;
@@ -23,7 +24,7 @@ import com.b2international.snowowl.datastore.review.MergeReview;
 /**
  * @since 5.0
  */
-public final class MergeReviewDeleteRequestBuilder extends BaseRepositoryRequestBuilder<MergeReviewDeleteRequestBuilder, MergeReview> {
+public final class MergeReviewDeleteRequestBuilder extends BaseRequestBuilder<MergeReviewDeleteRequestBuilder, RepositoryContext, MergeReview> implements RepositoryRequestBuilder<MergeReview> {
 
 	private final String reviewId;
 

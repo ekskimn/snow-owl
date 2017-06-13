@@ -17,14 +17,11 @@ package com.b2international.snowowl.datastore.server.internal;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.collect.Iterables.getLast;
-import static com.google.common.collect.Iterables.transform;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -36,15 +33,15 @@ import org.eclipse.emf.cdo.common.branch.CDOBranch;
 import org.eclipse.emf.cdo.common.branch.CDOBranchManager;
 import org.eclipse.emf.cdo.common.commit.CDOCommitInfo;
 import org.eclipse.emf.cdo.common.commit.CDOCommitInfoHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.b2international.commons.platform.Extensions;
 import com.b2international.index.DefaultIndex;
 import com.b2international.index.Index;
 import com.b2international.index.IndexClient;
 import com.b2international.index.IndexClientFactory;
+import com.b2international.index.IndexRead;
 import com.b2international.index.Indexes;
+import com.b2international.index.Searcher;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.index.revision.DefaultRevisionIndex;
 import com.b2international.index.revision.RevisionBranch;
@@ -53,7 +50,6 @@ import com.b2international.index.revision.RevisionIndex;
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.domain.DelegatingRepositoryContext;
@@ -62,6 +58,7 @@ import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.events.RepositoryEvent;
 import com.b2international.snowowl.core.merge.MergeService;
 import com.b2international.snowowl.core.setup.Environment;
+import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.CodeSystemEntry;
 import com.b2international.snowowl.datastore.CodeSystemVersionEntry;
 import com.b2international.snowowl.datastore.cdo.CDOCommitInfoUtils;
@@ -88,7 +85,6 @@ import com.b2international.snowowl.datastore.review.MergeReviewManager;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.datastore.review.ReviewManager;
 import com.b2international.snowowl.datastore.server.CDOServerUtils;
-import com.b2international.snowowl.datastore.server.RepositoryClassLoaderProviderRegistry;
 import com.b2international.snowowl.datastore.server.ReviewConfiguration;
 import com.b2international.snowowl.datastore.server.cdo.CDOConflictProcessorBroker;
 import com.b2international.snowowl.datastore.server.cdo.ICDOConflictProcessor;
@@ -102,12 +98,9 @@ import com.b2international.snowowl.datastore.server.internal.review.MergeReviewM
 import com.b2international.snowowl.datastore.server.internal.review.ReviewImpl;
 import com.b2international.snowowl.datastore.server.internal.review.ReviewManagerImpl;
 import com.b2international.snowowl.eventbus.IEventBus;
-import com.b2international.snowowl.eventbus.Pipe;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.MapMaker;
 import com.google.common.collect.Ordering;
 import com.google.inject.Provider;
@@ -116,8 +109,6 @@ import com.google.inject.Provider;
  * @since 4.1
  */
 public final class CDOBasedRepository extends DelegatingServiceProvider implements InternalRepository, CDOCommitInfoHandler {
-	
-	private static final Logger LOG = LoggerFactory.getLogger(CDOBasedRepository.class);
 	
 	private static final String REINDEX_DIAGNOSIS_TEMPLATE = "Run reindex to synchronize index with the database. Command: 'snowowl reindex %s%s'.";
 	private static final String RESTORE_DIAGNOSIS = "Inconsistent database and index. Shutdown and restore database and indexes from a backup.";
@@ -164,15 +155,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		} else {
 			event.publish(events());
 		}
-	}
-	
-	@Override
-	public IEventBus handlers() {
-		return handlers;
-	}
-	
-	private String address() {
-		return String.format("/%s", repositoryId);
 	}
 	
 	@Override
@@ -279,22 +261,6 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		bind(RevisionIndex.class, revisionIndex);
 		// initialize the index
 		index.admin().create();
-	}
-
-	private Map<String, Object> initIndexSettings() {
-		final ImmutableMap.Builder<String, Object> builder = ImmutableMap.<String, Object>builder();
-		builder.put(IndexClientFactory.DIRECTORY, getDelegate().getDataDirectory() + "/indexes");
-		
-		final IndexConfiguration config = service(SnowOwlConfiguration.class)
-				.getModuleConfig(RepositoryConfiguration.class).getIndexConfiguration();
-		
-		builder.put(IndexClientFactory.COMMIT_INTERVAL_KEY, config.getCommitInterval());
-		builder.put(IndexClientFactory.TRANSLOG_SYNC_INTERVAL_KEY, config.getTranslogSyncInterval());
-		
-		final SlowLogConfig slowLog = createSlowLogConfig(config);
-		builder.put(IndexClientFactory.SLOW_LOG_KEY, slowLog);
-		
-		return builder.build();
 	}
 
 	private Collection<Class<?>> getToolingTypes(String toolingId) {

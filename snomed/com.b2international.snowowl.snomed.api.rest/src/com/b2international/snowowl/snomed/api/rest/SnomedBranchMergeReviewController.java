@@ -42,6 +42,7 @@ import com.b2international.commons.collections.Procedure;
 import com.b2international.snowowl.core.exceptions.ApiValidation;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
 import com.b2international.snowowl.core.exceptions.ConflictException;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.ReviewStatus;
 import com.b2international.snowowl.eventbus.IEventBus;
@@ -53,7 +54,6 @@ import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.DeferredResults;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -88,8 +88,8 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 		ApiValidation.checkInput(request);
 		final DeferredResult<ResponseEntity<Void>> result = new DeferredResult<>();
 		final ControllerLinkBuilder linkTo = linkTo(getClass());
-		SnomedRequests
-			.mergeReview()
+		RepositoryRequests
+			.mergeReviews()
 			.prepareCreate()
 			.setSource(request.getSource())
 			.setTarget(request.getTarget())
@@ -113,8 +113,8 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 	})
 	@RequestMapping(value="/{id}", method=RequestMethod.GET)
 	public DeferredResult<MergeReview> getMergeReview(@PathVariable("id") final String mergeReviewId) {
-		return DeferredResults.wrap(SnomedRequests
-				.mergeReview()
+		return DeferredResults.wrap(RepositoryRequests
+				.mergeReviews()
 				.prepareGet(mergeReviewId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus));
@@ -155,8 +155,8 @@ public class SnomedBranchMergeReviewController extends AbstractSnomedRestService
 			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
 		}
 		
-		MergeReview mergeReview = SnomedRequests
-				.mergeReview()
+		MergeReview mergeReview = RepositoryRequests
+				.mergeReviews()
 				.prepareGet(mergeReviewId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)

@@ -28,7 +28,6 @@ import com.b2international.snowowl.api.japi.commitinfo.CommitInfoRequestTest;
 import com.b2international.snowowl.api.rest.auth.BasicAuthenticationTest;
 import com.b2international.snowowl.api.rest.codesystem.CodeSystemApiTest;
 import com.b2international.snowowl.api.rest.info.RepositoryApiTest;
-import com.b2international.snowowl.snomed.api.impl.SnomedReleases;
 import com.b2international.snowowl.snomed.common.ContentSubType;
 import com.b2international.snowowl.snomed.core.domain.SnomedReleases;
 import com.b2international.snowowl.test.commons.BundleStartRule;

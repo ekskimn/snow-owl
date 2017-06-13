@@ -27,6 +27,8 @@ import com.b2international.snowowl.core.events.Request;
  */
 public abstract class ReviewRequest<B> implements Request<RepositoryContext, B> {
 
+	private static final long serialVersionUID = 1L;
+
 	private final String reviewId;
 
 	public ReviewRequest(final String reviewId) {

@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.datastore.events;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.b2international.snowowl.core.branch.Branch;
@@ -28,6 +29,8 @@ import com.google.common.collect.ImmutableList;
  */
 public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
 	
+	private static final long serialVersionUID = 1L;
+
 	private boolean immediateChildrenOnly;
 	
 	public ReadBranchChildrenRequest(String branchPath, boolean immediateChildrenOnly) {
@@ -39,7 +42,8 @@ public final class ReadBranchChildrenRequest extends BranchRequest<Branches> {
 	public Branches execute(RepositoryContext context) {
 		final Branch branch = context.service(BranchManager.class).getBranch(getBranchPath());
 		if (immediateChildrenOnly) {
-			return new Branches(ImmutableList.copyOf(branch.immediateChildren()));
+			Collection<? extends Branch> immediateChildren = branch.immediateChildren();
+			return new Branches(ImmutableList.copyOf(branch.immediateChildren()), 0, immediateChildren.size(), immediateChildren.size());
 		}
 		final List<Branch> children = ImmutableList.copyOf(branch.children());
 		return new Branches(children, 0, children.size(), children.size());

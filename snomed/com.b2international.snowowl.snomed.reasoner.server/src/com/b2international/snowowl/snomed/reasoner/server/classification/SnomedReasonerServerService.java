@@ -253,11 +253,6 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 		return new GetResultResponse(responseType, doGetResult(classificationId, taxonomy));  
 	}
 	
-	@Override
-	public void removeResult(final UUID classificationId) {
-		taxonomyResultRegistry.remove(classificationId);
-	}
-
 	private GetResultResponseChanges doGetResult(String classificationId, ReasonerTaxonomy taxonomy) {
 		
 		IBranchPath branchPath = taxonomy.getBranchPath();
@@ -297,7 +292,6 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 				
 				RelationshipChangeEntry entry = new RelationshipChangeEntry(
 						changeNature, 
-						id,
 						sourceComponent, 
 						typeComponent, 
 						destinationComponent, 
@@ -388,7 +382,6 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 							}
 						})
 						.getSync();
-			}
 			changeConceptCache.put(id, concept);
 			return concept;
 		}

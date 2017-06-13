@@ -2,8 +2,8 @@ package com.b2international.snowowl.snomed.api.impl.domain;
 
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserRelationship;
-import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedComponentCreateRequest;
+import com.b2international.snowowl.snomed.datastore.request.SnomedComponentUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipCreateRequestBuilder;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUpdateRequest;
@@ -79,7 +79,7 @@ public class RelationshipInputCreator extends AbstractInputCreator implements Co
 	}
 
 	@Override
-	public boolean canCreateInput(Class<? extends BaseSnomedComponentCreateRequest> inputType) {
+	public boolean canCreateInput(Class<? extends SnomedComponentCreateRequest> inputType) {
 		return SnomedRelationshipCreateRequest.class.isAssignableFrom(inputType);
 	}
 	

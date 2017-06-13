@@ -16,6 +16,8 @@ import org.ihtsdo.drools.response.InvalidContent;
 import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.BadRequestException;
+import com.b2international.snowowl.datastore.request.Branching;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.DescriptionService;
@@ -29,7 +31,6 @@ import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
 import com.b2international.snowowl.snomed.core.domain.BranchMetadataResolver;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -47,8 +48,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 
 	@Override
 	public List<ISnomedInvalidContent> validateConcept(String branchPath, ISnomedBrowserConcept browserConcept, List<ExtendedLocale> locales) {
-		final Branch branch = SnomedRequests.branching()
-				.prepareGet(branchPath)
+		final Branch branch = RepositoryRequests.branching().prepareGet(branchPath)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)
 				.getSync();
