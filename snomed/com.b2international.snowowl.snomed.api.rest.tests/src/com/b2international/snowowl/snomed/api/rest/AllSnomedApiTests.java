@@ -26,12 +26,20 @@ import com.b2international.snowowl.snomed.api.japi.branches.BranchCompareRequest
 import com.b2international.snowowl.snomed.api.japi.branches.SnomedBranchRequestTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedBranchingApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeApiTest;
-import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeConflictTest;
+import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedReviewApiTest;
 import com.b2international.snowowl.snomed.api.rest.browser.SnomedBrowserApiTest;
 import com.b2international.snowowl.snomed.api.rest.classification.SnomedClassificationApiTest;
-import com.b2international.snowowl.snomed.api.rest.components.*;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedConceptApiTest;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedDescriptionApiTest;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedRefSetApiTest;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedRefSetBulkApiTest;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedRefSetMemberApiTest;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedRefSetMemberParameterizedTest;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedRefSetParameterizedTest;
+import com.b2international.snowowl.snomed.api.rest.components.SnomedRelationshipApiTest;
+import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionCreationTest;
 import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionDowngradeTest;
 import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionUpgradeTest;
 import com.b2international.snowowl.snomed.api.rest.ext.SnomedExtensionVersioningTest;
@@ -76,7 +84,12 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	SnomedBrowserApiTest.class,
 	SnomedClassificationApiTest.class,
 	SnomedExportApiTest.class,
+	//extension tests
 	SnomedExportApiExtensionTest.class,
+	SnomedExtensionCreationTest.class,
+	SnomedExtensionVersioningTest.class,
+	SnomedExtensionUpgradeTest.class,
+	SnomedExtensionDowngradeTest.class,
 	// Java API test cases
 	SnomedBranchRequestTest.class,
 	BranchCompareRequestTest.class

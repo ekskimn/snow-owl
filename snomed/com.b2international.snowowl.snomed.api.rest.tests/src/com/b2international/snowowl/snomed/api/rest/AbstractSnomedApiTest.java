@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.Rule;
