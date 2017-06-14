@@ -83,7 +83,8 @@ public class SnomedImportApiExamplesTest extends AbstractSnomedImportApiTest {
 		assertImportFileCanNotBeImported("SnomedCT_Release_INT_20150131_patch_release_concept.zip");
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "PRIMITIVE");
 		
-		assertPatchImportFileCanNotBeImported("SnomedCT_Release_INT_20150131_patch_release_concept.zip", "2014-07-31");
+		//Patch content will now allow dates other than the patch date to be modified
+		assertPatchImportFileCanBeImported("SnomedCT_Release_INT_20150131_patch_release_concept.zip", "2014-07-31");
 		assertConceptPropertyEquals(testBranchPath, "63961392103", "definitionStatus", "PRIMITIVE");
 		
 		assertPatchImportFileCanBeImported("SnomedCT_Release_INT_20150131_patch_release_concept.zip", "2015-01-31");
