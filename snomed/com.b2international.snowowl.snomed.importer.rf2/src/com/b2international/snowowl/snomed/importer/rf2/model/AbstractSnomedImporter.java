@@ -278,7 +278,6 @@ public abstract class AbstractSnomedImporter<T extends AbstractComponentRow, C e
 	}
 	
 	private boolean skipCurrentRow(final Date rf2RowDate, final Date existingComponentDate) {
-		
 		/*
 		 * The RF2 row has to be imported if either the current component is unpublished, the incoming row has no effective
 		 * date set or if this is a release patch import. 
@@ -287,14 +286,12 @@ public abstract class AbstractSnomedImporter<T extends AbstractComponentRow, C e
 			return false;
 		} else if (rf2RowDate == null) {
 			return false;
+		} else if (importContext.isReleasePatch()) {
+			//Patching will allow any scope of effectiveTime manipulation.  Take care!
+			return false;
 		} else {
-			if (existingComponentDate.getTime() >= rf2RowDate.getTime()) {
-				// Skip unless patching this release date
-				boolean patchingThisReleaseDate = importContext.isReleasePatch() && importContext.getPatchReleaseVersion().getTime() == existingComponentDate.getTime();
-				return !patchingThisReleaseDate;
-			} else {
-				return false;
-			}
+			//Skip row if the we're not advancing the published date
+			return existingComponentDate.getTime() >= rf2RowDate.getTime();
 		}
 	}
 	
