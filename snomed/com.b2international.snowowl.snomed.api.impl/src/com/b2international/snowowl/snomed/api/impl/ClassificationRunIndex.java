@@ -42,6 +42,7 @@ import com.b2international.index.lucene.QueryBuilderBase.QueryBuilder;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.classification.ChangeNature;
@@ -164,17 +165,18 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		}
 	}
 
-	public List<IClassificationRun> getAllClassificationRuns(final String branchPath) throws IOException {
+	public List<IClassificationRun> getAllClassificationRuns(final StorageRef storageRef, final String userId) throws IOException {
 		final Query query = Fields.newQuery()
 				.field(FIELD_CLASS, ClassificationRun.class.getSimpleName())
-				.field(FIELD_BRANCH_PATH, branchPath)
+				.field(FIELD_USER_ID, userId)
+				.field(FIELD_BRANCH_PATH, storageRef.getBranchPath())
 				.matchAll();
 		
 		return this.<IClassificationRun>search(query, ClassificationRun.class);
 	}
 
-	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId) throws IOException {
-		final Query query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, branchPath, null);
+	public IClassificationRun getClassificationRun(final StorageRef storageRef, final String classificationId, String userId) throws IOException {
+		final Query query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, storageRef, null, userId);
 
 		try {
 			return Iterables.getOnlyElement(search(query, ClassificationRun.class, 1));
@@ -296,7 +298,6 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 			final RelationshipChange convertedRelationshipChange = new RelationshipChange();
 			final ChangeNature changeNature = Nature.INFERRED.equals(relationshipChange.getNature()) ? ChangeNature.INFERRED : ChangeNature.REDUNDANT;
 			convertedRelationshipChange.setChangeNature(changeNature);
-			convertedRelationshipChange.setId(relationshipChange.getId());
 			convertedRelationshipChange.setDestinationId(Long.toString(relationshipChange.getDestination().getId()));
 			convertedRelationshipChange.setDestinationNegated(relationshipChange.isDestinationNegated());
 
@@ -337,9 +338,8 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	 * @param classificationId
 	 * @return
 	 */
-	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId) throws IOException {
-
-		final Query query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, branchPath, null);
+	public List<IEquivalentConceptSet> getEquivalentConceptSets(final StorageRef storageRef, final String classificationId, final String userId) throws IOException {
+		final Query query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, storageRef, null, userId);
 		return this.<IEquivalentConceptSet>search(query, EquivalentConceptSet.class);
 	}
 
@@ -351,9 +351,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	 * @param limit
 	 * @return
 	 */
-	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String sourceConceptId, final int offset, final int limit) throws IOException {
+	public IRelationshipChangeList getRelationshipChanges(final StorageRef storageRef, final String classificationId, final String sourceConceptId, final int offset, final int limit, final String userId) throws IOException {
 
-		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, branchPath, sourceConceptId);
+		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, storageRef, sourceConceptId, userId);
 		final RelationshipChangeList result = new RelationshipChangeList();
 
 		result.setTotal(getHitCount(query));
@@ -386,11 +386,12 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		return Iterables.getFirst(search(query, 1), null);
 	}
 
-	private Query createClassQuery(final String className, final String classificationId, final String branchPath, String componentId) {
+	private Query createClassQuery(final String className, final String classificationId, StorageRef storageRef, final String componentId, String userId) {
 		final QueryBuilder query = Fields.newQuery()
 				.field(FIELD_CLASS, className)
 				.field(FIELD_ID, classificationId)
-				.field(FIELD_BRANCH_PATH, branchPath);
+				.field(FIELD_USER_ID, userId)
+				.field(FIELD_BRANCH_PATH, storageRef.getBranchPath());
 		if (componentId != null) {
 			query.field(FIELD_COMPONENT_ID, componentId);
 		}

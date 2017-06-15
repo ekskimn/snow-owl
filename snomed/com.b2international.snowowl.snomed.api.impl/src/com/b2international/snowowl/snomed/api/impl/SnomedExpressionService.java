@@ -26,6 +26,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.index.entry.SnomedConceptDocument;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.collect.Collections2;
@@ -69,8 +70,8 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 			}
 		}
 		
-		final Collection<SnomedConcept> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
-		for (SnomedConcept superType : superTypes) {
+		final Collection<SnomedConceptDocument> superTypes = focusConceptNormalizer.collectNonRedundantProximalPrimitiveSuperTypes(parents);
+		for (SnomedConceptDocument superType : superTypes) {
 			expression.addConcept(getCreateConcept(superType, concepts));
 		}
 		
@@ -91,6 +92,17 @@ public class SnomedExpressionService implements ISnomedExpressionService {
 				.getSync();
 	}
 
+	private ISnomedExpressionConcept getCreateConcept(SnomedConceptDocument concept, Map<String, SnomedExpressionConcept> concepts) {
+		final String conceptId = concept.getId();
+		
+		if (!concepts.containsKey(conceptId)) {
+			boolean primitive = concept.isPrimitive();
+			concepts.put(conceptId, new SnomedExpressionConcept(conceptId, primitive));
+		}
+		
+		return concepts.get(conceptId);
+	}
+	
 	private ISnomedExpressionConcept getCreateConcept(SnomedConcept concept, Map<String, SnomedExpressionConcept> concepts) {
 		final String conceptId = concept.getId();
 		

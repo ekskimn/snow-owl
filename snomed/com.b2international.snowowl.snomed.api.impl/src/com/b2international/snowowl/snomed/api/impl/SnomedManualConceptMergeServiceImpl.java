@@ -8,9 +8,9 @@ import javax.annotation.Resource;
 
 import com.b2international.commons.FileUtils;
 import com.b2international.snowowl.core.SnowOwlApplication;
+import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
-import com.b2international.snowowl.snomed.api.domain.exception.SnomedPersistanceException;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -30,13 +30,13 @@ public class SnomedManualConceptMergeServiceImpl {
 		storeRoot = SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory().getPath();
 	}
 
-	public void storeConceptChanges(String branchPath, String mergeReviewId, ISnomedBrowserConcept conceptUpdate) throws SnomedPersistanceException {
+	public void storeConceptChanges(String branchPath, String mergeReviewId, ISnomedBrowserConcept conceptUpdate) {
 		try {
 			File conceptFile = getConceptStorePath(branchPath, mergeReviewId, conceptUpdate.getConceptId());
 			conceptFile.getParentFile().mkdirs();
 			objectMapper.writeValue(conceptFile, conceptUpdate);
 		} catch (IOException e) {
-			throw new SnomedPersistanceException("Failed to persist manual concept merge.", e);
+			throw new SnowowlRuntimeException("Failed to persist manual concept merge.", e);
 		}
 	}
 

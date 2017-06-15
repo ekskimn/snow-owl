@@ -41,7 +41,7 @@ public interface ISnomedClassificationService {
 	 * @throws NotFoundException
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found
 	 */
-	List<IClassificationRun> getAllClassificationRuns(String branchPath);
+	List<IClassificationRun> getAllClassificationRuns(String branchPath, String userId);
 
 	/**
 	 * Starts a classification run.
@@ -79,7 +79,7 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	IClassificationRun getClassificationRun(String branchPath, String classificationId);
+	IClassificationRun getClassificationRun(String branchPath, String classificationId, String userId);
 
 	/**
 	 * Retrieves the list of equivalent concept sets found during classification. Concepts in an equivalence set were considered
@@ -100,7 +100,7 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not
 	 *             found or the classification run not found with the specified parameters
 	 */
-	List<IEquivalentConceptSet> getEquivalentConceptSets(String branchPath, String classificationId, List<ExtendedLocale> locales);
+	List<IEquivalentConceptSet> getEquivalentConceptSets(String branchPath, String classificationId, List<ExtendedLocale> locales, String userId);
 
 	/**
 	 * Retrieves the pageable list of suggested relationship changes found during classification.
@@ -126,7 +126,8 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, int offset, int limit);
+	IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit);
+	IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String userId, int offset, int limit);
 
 	/**
 	 * Computes an inferred preview of an existing concept, with all inferred relationships displayed which will be present after saving.
@@ -142,7 +143,7 @@ public interface ISnomedClassificationService {
 	 * 
 	 * @return the inferred preview of the concept
 	 */
-	ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> extendedLocales);
+	ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> extendedLocales, String principalName);
 
 	/**
 	 * Persists suggested changes for the specified classification run to the terminology store.
@@ -177,5 +178,5 @@ public interface ISnomedClassificationService {
 	 *             - if SNOMED CT as a code system is not registered or the branch associated with the given branchPath is not found or the
 	 *             classification run not found with the specified parameters
 	 */
-	void removeClassificationRun(String branchPath, String classificationId);
+	void removeClassificationRun(String branchPath, String classificationId, String userId);
 }

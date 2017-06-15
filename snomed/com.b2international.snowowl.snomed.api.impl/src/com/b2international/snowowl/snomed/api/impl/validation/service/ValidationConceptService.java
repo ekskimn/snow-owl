@@ -18,8 +18,7 @@ public class ValidationConceptService implements ConceptService {
 
 	@Override
 	public boolean isActive(String conceptId) {
-		return SnomedRequests.prepareGetConcept()
-				.setComponentId(conceptId)
+		return SnomedRequests.prepareGetConcept(conceptId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync()

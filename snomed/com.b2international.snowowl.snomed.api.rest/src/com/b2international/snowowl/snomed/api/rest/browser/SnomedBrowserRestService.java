@@ -50,12 +50,14 @@ import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConst
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserDescriptionResult;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserParentConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
+import com.b2international.snowowl.snomed.api.impl.SnomedServiceHelper;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedRestService;
 import com.b2international.snowowl.snomed.api.rest.domain.RestApiError;
 import com.b2international.snowowl.snomed.api.rest.util.Responses;
 import com.b2international.snowowl.snomed.api.validation.ISnomedBrowserValidationService;
 import com.b2international.snowowl.snomed.api.validation.ISnomedInvalidContent;
+import com.google.common.collect.ImmutableList;
 import com.wordnik.swagger.annotations.Api;
 import com.wordnik.swagger.annotations.ApiOperation;
 import com.wordnik.swagger.annotations.ApiParam;
@@ -105,7 +107,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			final String acceptLanguage) {
 
 		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
-		return browserService.getConceptDetails(branchPath, conceptId, extendedLocales);
+		return browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), extendedLocales);
 	}
 
 	@ApiOperation(
@@ -212,7 +214,9 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			throw new BadRequestException("The concept ID in the request body does not match the ID in the URL.");
 		}
 		
-		return browserService.update(branchPath, concept, userId, extendedLocales);
+		
+		browserService.update(branchPath, ImmutableList.of(concept), userId, extendedLocales);
+		return browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, concept.getConceptId()), extendedLocales);
 	}
 
 	@ApiOperation(
@@ -298,11 +302,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String languageSetting,
-			
-			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
-			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
-			final SnomedBrowserDescriptionType preferredDescriptionType) {
+			final String languageSetting) {
 		
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -315,7 +315,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptParents(ref, extendedLocales, preferredDescriptionType);
+		return browserService.getConceptParents(ref, extendedLocales);
 	}
 	
 	@ApiOperation(
@@ -344,11 +344,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Stated or inferred form", allowableValues="stated, inferred")
 			@RequestParam(value="form", defaultValue="inferred")
-			final String form,
-			
-			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
-			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
-			final SnomedBrowserDescriptionType preferredDescriptionType) {
+			final String form) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -362,7 +358,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		
 		if ("stated".equals(form) || "inferred".equals(form)) {
 			final IComponentRef ref = createComponentRef(branchPath, conceptId);
-			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form), preferredDescriptionType);
+			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form));
 		}
 		
 		throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
@@ -377,9 +373,9 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(
-			value="/{path:**}/descriptions",
+			value="/descriptions-fsn",
 			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsFSN(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -398,11 +394,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String languageSetting,
-			
-			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
-			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
-			final SnomedBrowserDescriptionType preferredDescriptionType) {
+			final String languageSetting) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -415,7 +407,53 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final StorageRef ref = new StorageRef(repositoryId, branchPath);
-		return browserService.getDescriptions(ref, query, extendedLocales, offset, limit, preferredDescriptionType);
+		return browserService.getDescriptions(ref, query, extendedLocales, SnomedBrowserDescriptionType.FSN, offset, limit);
+	}
+
+	@ApiOperation(
+			value = "Retrieve descriptions matching a query (sets PT to property 'fsn' in concept section)",
+			notes = "Returns a list of descriptions which have a term matching the specified query string on a version.",
+			response=Void.class)
+	@ApiResponses({
+			@ApiResponse(code = 200, message = "OK"),
+			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
+	})
+	@RequestMapping(
+			value="/descriptions",
+			method = RequestMethod.GET)
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsPT(
+			@ApiParam(value="The branch path")
+			@PathVariable(value="path")
+			final String branchPath,
+
+			@ApiParam(value="The query string")
+			@RequestParam(value="query")
+			final String query,
+
+			@ApiParam(value="The starting offset in the list")
+			@RequestParam(value="offset", defaultValue="0", required=false)
+			final int offset,
+
+			@ApiParam(value="The maximum number of items to return")
+			@RequestParam(value="limit", defaultValue="50", required=false)
+			final int limit,
+
+			@ApiParam(value="Language codes and reference sets, in order of preference")
+			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
+			final String languageSetting) {
+
+		final List<ExtendedLocale> extendedLocales;
+		
+		try {
+			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
+		} catch (IOException e) {
+			throw new BadRequestException(e.getMessage());
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException(e.getMessage());
+		}
+		
+		final StorageRef ref = new StorageRef(repositoryId, branchPath);
+		return browserService.getDescriptions(ref, query, extendedLocales, SnomedBrowserDescriptionType.SYNONYM, offset, limit);
 	}
 
 	@ApiOperation(

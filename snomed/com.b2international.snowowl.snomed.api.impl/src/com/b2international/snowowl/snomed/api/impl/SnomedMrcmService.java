@@ -22,10 +22,11 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
+import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraint;
 import com.b2international.snowowl.snomed.core.domain.constraint.SnomedConstraints;
+import com.b2international.snowowl.snomed.core.domain.constraint.SnomedRelationshipConstraint;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument;
 import com.b2international.snowowl.snomed.datastore.snor.SnomedConstraintDocument.PredicateType;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableSet;
@@ -45,23 +46,23 @@ public class SnomedMrcmService {
 		
 		final Set<String> selfIds = Collections.singleton(conceptId);
 		final Set<String> refSetIds = Collections.emptySet();
-		final Set<String> parentIds = SnomedRequests.prepareGetConcept()
-				.setComponentId(conceptId)
+		final Set<String> parentIds = SnomedRequests.prepareGetConcept(conceptId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
 				.then(SnomedConcept.GET_ANCESTORS) // XXX: includes inferred and stated concepts
 				.getSync();
 		
-		Collection<SnomedConstraintDocument> constraintDocuments = SnomedRequests.prepareGetApplicablePredicates(branch, selfIds, parentIds, refSetIds).getSync();
+		Collection<SnomedConstraint> constraintDocuments = SnomedRequests.prepareGetApplicablePredicates(branch, selfIds, parentIds, refSetIds).getSync();
 		List<Predicate> predicates = new ArrayList<>();
 		
-		for (SnomedConstraintDocument predicateIndexEntry : constraintDocuments) {
-			PredicateType type = predicateIndexEntry.getType();
-			if (type == PredicateType.RELATIONSHIP) {
+		for (SnomedConstraint predicateIndexEntry : constraintDocuments) {
+			if (predicateIndexEntry instanceof SnomedRelationshipConstraint) {
 				Predicate predicate = new Predicate();
-				predicate.setType(type);
-				predicate.setRelationshipTypeExpression(predicateIndexEntry.getRelationshipTypeExpression());
-				predicate.setRelationshipValueExpression(predicateIndexEntry.getRelationshipValueExpression());
+				predicate.setType(PredicateType.RELATIONSHIP);
+				SnomedRelationshipConstraint relationshipConstraint = ((SnomedRelationshipConstraint) predicateIndexEntry);
+				
+				predicate.setRelationshipTypeExpression(relationshipConstraint.getType());
+				predicate.setRelationshipValueExpression(relationshipConstraint.getDestinationExpression());
 				predicates.add(predicate);
 			}
 		}
@@ -78,12 +79,12 @@ public class SnomedMrcmService {
 		StringBuilder builder = new StringBuilder();
 		
 		if (!ruleParentIds.isEmpty()) {
-			Collection<SnomedConstraintDocument> constraintDocuments = SnomedRequests.prepareGetApplicablePredicates(branchPath, selfIds, ruleParentIds, refSetIds).getSync();
+			Collection<SnomedConstraint> constraints = SnomedRequests.prepareGetApplicablePredicates(branchPath, selfIds, ruleParentIds, refSetIds).getSync();
 			Set<String> typeExpressions = new HashSet<>();
 			
-			for (SnomedConstraintDocument predicateIndexEntry : constraintDocuments) {
-				if (predicateIndexEntry.getType() == PredicateType.RELATIONSHIP) {
-					typeExpressions.add(predicateIndexEntry.getRelationshipTypeExpression());
+			for (SnomedConstraint constraint : constraints) {
+				if (constraint instanceof SnomedRelationshipConstraint) {
+					typeExpressions.add(((SnomedRelationshipConstraint) constraint).getType());
 				}
 			}
 			if (typeExpressions.isEmpty()) {
@@ -115,8 +116,7 @@ public class SnomedMrcmService {
 	public SnomedConcepts getAttributeValues(String branchPath, String attributeId, String termPrefix, 
 			int offset, int limit, List<ExtendedLocale> locales, String expand) {
 		
-		final Collection<String> ancestorIds = SnomedRequests.prepareGetConcept()
-				.setComponentId(attributeId)
+		final Collection<String> ancestorIds = SnomedRequests.prepareGetConcept(attributeId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.then(new Function<SnomedConcept, Collection<String>>() {
@@ -140,18 +140,24 @@ public class SnomedMrcmService {
 				.execute(bus)
 				.getSync();
 		
-		for (SnomedConstraintDocument constraint : constraints) {
-			relationshipTypeExpression = constraint.getRelationshipTypeExpression();
+		for (SnomedConstraint constraint : constraints) {
+			
+			if (!(constraint instanceof SnomedRelationshipConstraint))
+				continue;
+			
+			SnomedRelationshipConstraint relationshipConstraint = (SnomedRelationshipConstraint) constraint;
+			
+			relationshipTypeExpression = relationshipConstraint.getType();
 			if (relationshipTypeExpression.startsWith("<")) {
 				String relationshipTypeId = relationshipTypeExpression.replace("<", "");
 				if ((relationshipTypeExpression.startsWith("<<") && 
 						(relationshipTypeId.equals(attributeId) || ancestorIds.contains(relationshipTypeId)))
 						|| ancestorIds.contains(relationshipTypeId)) {
-					relationshipValueExpression = constraint.getRelationshipValueExpression();
+					relationshipValueExpression = relationshipConstraint.getDestinationExpression();
 					break;
 				}
 			} else if (relationshipTypeExpression.equals(attributeId)) {
-				relationshipValueExpression = constraint.getRelationshipValueExpression();
+				relationshipValueExpression = relationshipConstraint.getDestinationExpression();
 				break;
 			}
 		}

@@ -15,7 +15,7 @@ import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 
 public class SnomedServiceHelper {
 
-	protected static IComponentRef createComponentRef(final String branchPath, final String componentId) {
+	public static IComponentRef createComponentRef(final String branchPath, final String componentId) {
 		final ComponentRef conceptRef = new ComponentRef(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath, componentId);
 		conceptRef.checkStorageExists();
 		return conceptRef;

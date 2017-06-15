@@ -38,6 +38,7 @@ import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.exceptions.InvalidStateException;
 import com.b2international.snowowl.core.merge.Merge;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
+import com.b2international.snowowl.datastore.request.RepositoryRequests;
 import com.b2international.snowowl.datastore.review.ConceptChanges;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.ReviewManager;
@@ -282,8 +283,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		}
 
 		private SnomedConcept getConcept(final String path, final String conceptId) {
-			return SnomedRequests.prepareGetConcept()
-				.setComponentId(conceptId)
+			return SnomedRequests.prepareGetConcept(conceptId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, path)
 				.execute(bus)
 				.getSync();
@@ -446,10 +446,11 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			super(conceptId, parameters);
 		}
 
+		
 		@Override
 		protected ISnomedBrowserMergeReviewDetail onSuccess() throws IOException {
-			final ISnomedBrowserConcept sourceConcept = browserService.getConceptDetails(parameters.getSourcePath(), conceptId, parameters.getExtendedLocales());
-			final ISnomedBrowserConcept targetConcept = browserService.getConceptDetails(parameters.getTargetPath(), conceptId, parameters.getExtendedLocales());
+			final ISnomedBrowserConcept sourceConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(parameters.getSourcePath(), conceptId), parameters.getExtendedLocales());
+			final ISnomedBrowserConcept targetConcept = browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(parameters.getTargetPath(), conceptId), parameters.getExtendedLocales());
 
 			final ISnomedBrowserConcept autoMergedConcept = mergeConcepts(sourceConcept, targetConcept, parameters.getExtendedLocales());
 			final ISnomedBrowserConcept manuallyMergedConcept = manualConceptMergeService.exists(parameters.getTargetPath(), parameters.getMergeReviewId(), conceptId) 
@@ -584,7 +585,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final Set<String> sourceDescriptionIds = Sets.newHashSet();
 		final Set<String> sourceRelationshipIds = Sets.newHashSet();
 		
-		ConceptChanges sourceChanges = SnomedRequests.review()
+		ConceptChanges sourceChanges = RepositoryRequests.reviews()
 				.prepareGetConceptChanges(mergeReview.sourceToTargetReviewId())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)
@@ -606,7 +607,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		if (!sourceDescriptionIds.isEmpty()) {
 			
 			sourceConceptIds.addAll(SnomedRequests.prepareSearchDescription()
-				.setComponentIds(sourceDescriptionIds)
+				.filterByIds(sourceDescriptionIds)
 				.setLimit(sourceDescriptionIds.size())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.sourcePath())
 				.execute(bus)
@@ -628,7 +629,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		if (!sourceRelationshipIds.isEmpty()) {
 			
 			sourceConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
-				.setComponentIds(sourceRelationshipIds)
+				.filterByIds(sourceRelationshipIds)
 				.setLimit(sourceRelationshipIds.size())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.sourcePath())
 				.execute(bus)
@@ -648,7 +649,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		
 		sourceConceptIds.removeAll(sourceChanges.deletedConcepts());
 		
-		ConceptChanges targetChanges = SnomedRequests.review()
+		ConceptChanges targetChanges = RepositoryRequests.reviews()
 				.prepareGetConceptChanges(mergeReview.targetToSourceReviewId())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)
@@ -674,7 +675,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		if (!targetDescriptionIds.isEmpty()) {
 			
 			targetConceptIds.addAll(SnomedRequests.prepareSearchDescription()
-				.setComponentIds(targetDescriptionIds)
+				.filterByIds(targetDescriptionIds)
 				.setLimit(targetDescriptionIds.size())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.targetPath())
 				.execute(bus)
@@ -696,7 +697,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		if (!targetRelationshipIds.isEmpty()) {
 			
 			targetConceptIds.addAll(SnomedRequests.prepareSearchRelationship()
-				.setComponentIds(targetRelationshipIds)
+				.filterByIds(targetRelationshipIds)
 				.setLimit(targetRelationshipIds.size())
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, mergeReview.targetPath())
 				.execute(bus)
@@ -757,10 +758,10 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		new MergeReviewDeleteHandler(address, bus, mergeReview).register();
 		new ManualMergeDeleteHandler(address, bus, manualConceptMergeService, mergeReviewId).register();
 		
-		return SnomedRequests
+		return RepositoryRequests
 			.merging()
 			.prepareCreate()
-			.setId(mergeId)
+//			.setId(mergeId)
 			.setSource(sourcePath)
 			.setTarget(targetPath)
 			.setReviewId(mergeReview.sourceToTargetReviewId())
@@ -776,7 +777,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	}
 	
 	private MergeReview getMergeReview(final String mergeReviewId) {
-		return SnomedRequests.mergeReview()
+		return RepositoryRequests.mergeReviews()
 				.prepareGet(mergeReviewId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 				.execute(bus)

@@ -228,5 +228,10 @@ public class FocusConceptNormalizer {
 			}
 		});
 	}
+
+	public Collection<SnomedConceptDocument> collectNonRedundantProximalPrimitiveSuperTypes(Set<String> parents) {
+		Collection<SnomedConceptDocument> proximalPrimitiveSupertypes = collectProximalPrimitiveSupertypes(parents);
+		return filterRedundantSuperTypes(proximalPrimitiveSupertypes);
+	}
 	
 }

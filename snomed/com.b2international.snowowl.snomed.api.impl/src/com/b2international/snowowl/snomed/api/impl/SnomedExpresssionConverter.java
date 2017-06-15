@@ -74,8 +74,7 @@ public class SnomedExpresssionConverter {
 
 	private SnomedExpressionConcept convert(Concept concept) {
 		// TODO: Collect all concepts in advance by traversing the expression 
-		return SnomedRequests.prepareGetConcept()
-			.setComponentId(concept.getId())
+		return SnomedRequests.prepareGetConcept(concept.getId())
 			.setLocales(extendedLocales)
 			.setExpand("fsn()")
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)

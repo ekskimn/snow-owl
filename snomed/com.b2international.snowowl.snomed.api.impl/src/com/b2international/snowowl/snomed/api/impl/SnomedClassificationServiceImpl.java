@@ -318,7 +318,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId, final String userId) {
 
 		final StorageRef storageRef = createStorageRef(branchPath);
-
+		
 		try {
 			return indexService.getClassificationRun(storageRef, classificationId, userId);
 		} catch (final IOException e) {
@@ -330,8 +330,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales, final String userId) {
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
-		final StorageRef storageRef = createStorageRef(branchPath);
-
+		StorageRef storageRef = createStorageRef(branchPath);
 		try {
 			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(storageRef, classificationId, userId);
 			final Set<String> conceptIds = newHashSet();
@@ -360,20 +359,20 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			throw new RuntimeException(e);
 		}
 	}
-
+	
 	@Override
 	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String userId, final int offset, final int limit) {
 		return getRelationshipChanges(branchPath, classificationId, null, userId, offset, limit);
 	}
-
-	private IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit) {
+	
+		
+	@Override
+	public IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit) {
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
-
-		final StorageRef storageRef = createStorageRef(branchPath);
-
+		StorageRef storageRef = createStorageRef(branchPath);
 		try {
-			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, userId, offset, limit);
+			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, offset, limit, userId);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}

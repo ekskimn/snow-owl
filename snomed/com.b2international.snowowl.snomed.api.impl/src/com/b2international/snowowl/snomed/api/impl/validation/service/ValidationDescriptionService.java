@@ -181,7 +181,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 		hierarchyRootIds = new HashSet<>();
 
 		final SnomedConcepts rootConcepts = SnomedRequests.prepareSearchConcept()
-				.setComponentIds(Arrays.asList(Concepts.ROOT_CONCEPT))
+				.filterByIds(Arrays.asList(Concepts.ROOT_CONCEPT))
 				.setExpand("descendants(form:\"inferred\",direct:true)")
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
@@ -289,7 +289,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			SnomedConcept hierarchyConcept = null;
 
 			try {
-				hierarchyConcept = SnomedRequests.prepareGetConcept().setComponentId(lookupId)
+				hierarchyConcept = SnomedRequests.prepareGetConcept(lookupId)
 						.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 						.execute(bus)
@@ -308,7 +308,7 @@ public class ValidationDescriptionService implements org.ihtsdo.drools.service.D
 			try {
 
 				for (String conceptId : matchingConceptIds) {
-					SnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept().setComponentId(conceptId)
+					SnomedConcept iSnomedConcept = SnomedRequests.prepareGetConcept(conceptId)
 							.setExpand(String.format("ancestors(form:\"inferred\",direct:%s,offset:%d,limit:%d)", "false", 0, 1000))
 							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 							.execute(bus)
