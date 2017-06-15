@@ -16,15 +16,17 @@
 package com.b2international.snowowl.snomed.api.rest.branches;
 
 import static com.b2international.snowowl.datastore.BranchPathUtils.createPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.*;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
+
+import java.util.Map;
 
 import org.junit.Test;
 
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
+import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
 import com.google.common.collect.ImmutableMap;
 
 /**
@@ -34,57 +36,56 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void readNonExistentBranch() {
-		getBranch(createPath("MAIN/x/y/z")).statusCode(404);
+		SnomedBranchingRestRequests.getBranch(createPath("MAIN/x/y/z")).statusCode(404);
 	}
 
 	@Test
 	public void createBranchWithNonexistentParent() {
-		createBranch(createPath("MAIN/x/y/z")).statusCode(400);
+		SnomedBranchingRestRequests.createBranch(createPath("MAIN/x/y/z")).statusCode(400);
 	}
 
 	@Test
 	public void updateMetadata() throws Exception {
-		updateBranch(branchPath, ImmutableMap.of("key", "value"));
-		getBranch(branchPath).body("metadata.key", equalTo("value"));
+		SnomedBranchingRestRequests.updateBranch(branchPath, ImmutableMap.of("key", "value"));
+		SnomedBranchingRestRequests.getBranch(branchPath).body("metadata.key", equalTo("value"));
 	}
 
 	@Test
 	public void updateMainMetadata() throws Exception {
 		// XXX: modifies MAIN branch, may affect other tests
-		updateBranch(BranchPathUtils.createMainPath(), ImmutableMap.of("key", "value"));
-		getBranch(BranchPathUtils.createMainPath()).body("metadata.key", equalTo("value"));
+		SnomedBranchingRestRequests.updateBranch(BranchPathUtils.createMainPath(), ImmutableMap.of("key", "value"));
+		SnomedBranchingRestRequests.getBranch(BranchPathUtils.createMainPath()).body("metadata.key", equalTo("value"));
 	}
 
 	@Test
 	public void createChildBranch() {
 		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
-		createBranch(a).statusCode(201);
-		getBranch(a).statusCode(200);
+		SnomedBranchingRestRequests.createBranch(a).statusCode(201);
+		SnomedBranchingRestRequests.getBranch(a).statusCode(200);
 	}
 
 	@Test
 	public void createChildBranchWithMetadata() {
 		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
-		createBranch(a, ImmutableMap.of("key", "value")).statusCode(201);
-		getBranch(a).statusCode(200).body("metadata.key", equalTo("value"));
+		SnomedBranchingRestRequests.createBranch(a, ImmutableMap.of("key", "value")).statusCode(201);
+		SnomedBranchingRestRequests.getBranch(a).statusCode(200).body("metadata.key", equalTo("value"));
 	}
 
 	@Test
 	public void createBranchWithMetadataAndUpdateMetadata() {
 		final String description = "Description of branch";
-		final Map<?, ?> metadata = ImmutableMap.of("description", description);
-
-		givenBranchWithPathAndMetadata(testBranchPath, metadata);
-		assertBranchExists(testBranchPath)
-		.and().body("metadata.description", equalTo(description));
+		final Map<String, String> metadata = ImmutableMap.of("description", description);
+		
+		SnomedBranchingRestRequests.createBranch(branchPath, metadata);
+		SnomedBranchingRestRequests.getBranch(branchPath).body("metadata.description", equalTo(description));
 		
 		final String descriptionUpdated = "Description of branch";
 		final String title = "Title of branch";
-		final Map<?, ?> metadataUpdated = ImmutableMap.of("description", descriptionUpdated, "title", title);
-		whenUpdatingBranchWithPathAndMetadata(testBranchPath, metadataUpdated);
 		
-		assertBranchReadWithStatus(testBranchPath, 200)
-			.and()
+		final Map<?, ?> metadataUpdated = ImmutableMap.of("description", descriptionUpdated, "title", title);
+		SnomedBranchingRestRequests.updateBranch(branchPath, metadataUpdated);
+		
+		SnomedBranchingRestRequests.getBranch(branchPath)
 			.body("metadata.description", equalTo(descriptionUpdated))
 			.body("metadata.title", equalTo(title));
 	}
@@ -92,16 +93,16 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 	@Test
 	public void createBranchTwice() {
 		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
-		createBranch(a).statusCode(201);
-		createBranch(a).statusCode(409);
+		SnomedBranchingRestRequests.createBranch(a).statusCode(201);
+		SnomedBranchingRestRequests.createBranch(a).statusCode(409);
 	}
 
 	@Test
 	public void deleteChildBranch() {
 		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
-		createBranch(a).statusCode(201);
-		deleteBranch(a).statusCode(204);
-		getBranch(a).statusCode(200).body("deleted", equalTo(true));
+		SnomedBranchingRestRequests.createBranch(a).statusCode(201);
+		SnomedBranchingRestRequests.deleteBranch(a).statusCode(204);
+		SnomedBranchingRestRequests.getBranch(a).statusCode(200).body("deleted", equalTo(true));
 	}
 
 	@Test
@@ -109,13 +110,13 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 		IBranchPath a = createPath(branchPath, "a");
 		IBranchPath b = createPath(a, "b");
 
-		createBranchRecursively(b);
-		getBranch(b).statusCode(200);
-		getBranch(a).statusCode(200);
+		SnomedBranchingRestRequests.createBranchRecursively(b);
+		SnomedBranchingRestRequests.getBranch(b).statusCode(200);
+		SnomedBranchingRestRequests.getBranch(a).statusCode(200);
 
-		deleteBranch(a).statusCode(204);
-		getBranch(a).statusCode(200).body("deleted", equalTo(true));
-		getBranch(b).statusCode(200).body("deleted", equalTo(true));
+		SnomedBranchingRestRequests.deleteBranch(a).statusCode(204);
+		SnomedBranchingRestRequests.getBranch(a).statusCode(200).body("deleted", equalTo(true));
+		SnomedBranchingRestRequests.getBranch(b).statusCode(200).body("deleted", equalTo(true));
 	}
 
 	@Test
@@ -123,10 +124,10 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 		IBranchPath a = createPath(branchPath, "a");
 		IBranchPath b = createPath(a, "b");
 
-		createBranch(a).statusCode(201);
-		deleteBranch(a).statusCode(204);
+		SnomedBranchingRestRequests.createBranch(a).statusCode(201);
+		SnomedBranchingRestRequests.deleteBranch(a).statusCode(204);
 
-		createBranch(b).statusCode(400);
+		SnomedBranchingRestRequests.createBranch(b).statusCode(400);
 	}
 
 	@Test
@@ -134,13 +135,13 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 		IBranchPath a = createPath(branchPath, "a");
 		IBranchPath b = createPath(a, "b");
 
-		createBranchRecursively(b);
+		SnomedBranchingRestRequests.createBranchRecursively(b);
 
-		getAllBranches().statusCode(200)
+		SnomedBranchingRestRequests.getAllBranches().statusCode(200)
 				.body("items.name", hasItem(a.lastSegment()))
 				.body("items.name", hasItem(b.lastSegment()));
 
-		getBranchChildren(branchPath).statusCode(200)
+		SnomedBranchingRestRequests.getBranchChildren(branchPath).statusCode(200)
 				.body("items.name", hasItem(a.lastSegment()))
 				.body("items.name", hasItem(b.lastSegment()));
 	}

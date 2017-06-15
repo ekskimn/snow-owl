@@ -23,6 +23,7 @@ import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.ValidatableResponse;
 
@@ -32,7 +33,20 @@ import com.jayway.restassured.response.ValidatableResponse;
 public abstract class CodeSystemRestRequests {
 
 	public static ValidatableResponse createCodeSystem(IBranchPath branchPath, String shortName) {
-		Map<?,?> requestBody = ImmutableMap.builder()
+		return createCodeSystem(branchPath, shortName, defaultCodeSystemBodyBuilder(branchPath, shortName).build());
+	}
+	public static ValidatableResponse createCodeSystem(IBranchPath branchPath, String shortName, Map<?,?> codeSystemRequestBody) {
+		Map<?,?> requestBody = codeSystemRequestBody;
+
+		return givenAuthenticatedRequest(SnomedApiTestConstants.ADMIN_API)
+				.contentType(ContentType.JSON)
+				.body(requestBody)
+				.post("/codesystems")
+				.then();
+	}
+
+	public static Builder<String, String> defaultCodeSystemBodyBuilder(IBranchPath branchPath, String shortName) {
+		return ImmutableMap.<String, String>builder()
 				.put("name", "name")
 				.put("branchPath", branchPath.getPath())
 				.put("shortName", shortName)
@@ -42,14 +56,7 @@ public abstract class CodeSystemRestRequests {
 				.put("terminologyId", SnomedTerminologyComponentConstants.CONCEPT)
 				.put("oid", "oid_" + shortName)
 				.put("primaryLanguage", "primaryLanguage")
-				.put("organizationLink", "organizationLink")
-				.build();
-
-		return givenAuthenticatedRequest(SnomedApiTestConstants.ADMIN_API)
-				.contentType(ContentType.JSON)
-				.body(requestBody)
-				.post("/codesystems")
-				.then();
+				.put("organizationLink", "organizationLink");
 	}
 
 	public static ValidatableResponse getCodeSystem(String id) {

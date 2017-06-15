@@ -118,7 +118,7 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 			final String patchReleaseVersion) {
 		final Map<?, ?> importConfiguration = ImmutableMap.builder()
 				.put("type", Rf2ReleaseType.DELTA.name())
-				.put("branchPath", testBranchPath.getPath())
+				.put("branchPath", branchPath.getPath())
 				.put("patchReleaseVersion", patchReleaseVersion)
 				.build();
 		return importConfiguration;
@@ -127,7 +127,7 @@ public abstract class AbstractSnomedImportApiTest extends AbstractSnomedApiTest 
 	private Map<?, ?> newImportConfiguration() {
 		final Map<?, ?> importConfiguration = ImmutableMap.builder()
 				.put("type", Rf2ReleaseType.DELTA.name())
-				.put("branchPath", testBranchPath.getPath())
+				.put("branchPath", branchPath.getPath())
 				.put("createVersions", true)
 				.build();
 		return importConfiguration;

@@ -1,29 +1,25 @@
 package com.b2international.snowowl.snomed.api.rest.io;
 
 import java.util.Map;
-import java.util.UUID;
 
 import org.junit.Test;
 
-import com.b2international.snowowl.core.api.IBranchPath;
-import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.api.rest.BranchBase;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
 import com.google.common.collect.ImmutableMap;
 
 /**
  * @since 5.0.6
  */
+@BranchBase(Branch.MAIN_PATH)
 public class SnomedImportApiExtensionImportTest extends AbstractSnomedImportApiTest {
 
 	private static final String DANISH_LANGUAGE_REFSET = "554461000005103";
 
 	@Override
-	protected IBranchPath createRandomBranchPath() {
-		return createNestedBranch(BranchPathUtils.createMainPath(), UUID.randomUUID().toString(), getExtensionName());
-	}
-	
-	private String getExtensionName() {
+	protected String getAdditionalPathSegment() {
 		return "SNOMEDCT-DK";
 	}
 	
@@ -31,15 +27,15 @@ public class SnomedImportApiExtensionImportTest extends AbstractSnomedImportApiT
 	public void extensionCanBeImported() {
 		// create extension branch first
 		Map<?, ?> extensionBranchMetadata = createMetadata();
-		updateBranchWithMetadata(extensionBranchMetadata);
+		updateBranchWithMetadata(branchPath, extensionBranchMetadata);
 
 		// create the code system of the exentsion branch		
-		createSnomedExtensionCodeSystem(getExtensionName(), testBranchPath.getPath(), "DAN");
+		createSnomedExtensionCodeSystem(getAdditionalPathSegment(), branchPath.getPath(), "DAN");
 		
 		
 		final Map<?, ?> importConfiguration = ImmutableMap.builder()
 				.put("type", Rf2ReleaseType.DELTA.name())
-				.put("branchPath", testBranchPath.getPath())
+				.put("branchPath", branchPath.getPath())
 				.put("createVersions", true)
 				.build();
 		

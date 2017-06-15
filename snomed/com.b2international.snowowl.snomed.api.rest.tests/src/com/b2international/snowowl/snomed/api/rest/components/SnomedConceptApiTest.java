@@ -17,42 +17,57 @@ package com.b2international.snowowl.snomed.api.rest.components;
 
 import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
-import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP;
-import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.INVALID_ACCEPTABILITY_MAP;
-import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeMerged;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertBranchCanBeRebased;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.assertMergeJobFails;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.givenBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingApiAssert.whenDeletingBranchWithPath;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.*;
-import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.newHashMap;
-import static org.hamcrest.CoreMatchers.either;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests.createCodeSystem;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.createVersion;
+import static com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString;
+import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.UK_ACCEPTABLE_MAP;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests.createBranchRecursively;
+import static com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests.deleteBranch;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.createComponent;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.deleteComponent;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.getComponent;
+import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.updateComponent;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createConceptRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRefSet;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createRelationshipRequestBody;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reactivateConcept;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.reserveComponentId;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.endsWith;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.everyItem;
 import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.merge.Merge;
+import com.b2international.snowowl.core.merge.MergeConflict;
+import com.b2international.snowowl.core.merge.MergeConflict.ConflictType;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
+import com.b2international.snowowl.snomed.api.rest.SnomedBranchingRestRequests;
+import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
-import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
-import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
+import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
 import com.b2international.snowowl.snomed.core.domain.AssociationType;
 import com.b2international.snowowl.snomed.core.domain.CaseSignificance;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
@@ -61,7 +76,9 @@ import com.b2international.snowowl.snomed.core.domain.InactivationIndicator;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
+import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
+import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMember;
 import com.b2international.snowowl.snomed.core.domain.refset.SnomedReferenceSetMembers;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
@@ -440,60 +457,59 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 
 	@Test
 	public void deleteConceptOnNestedBranchThenRebase() {
-		
-		givenBranchWithPath(testBranchPath);
+		SnomedBranchingRestRequests.createBranch(branchPath);
 
-		IBranchPath projectPath = BranchPathUtils.createPath(testBranchPath, "P");
-		givenBranchWithPath(projectPath);
+		IBranchPath projectPath = BranchPathUtils.createPath(branchPath, "P");
+		SnomedBranchingRestRequests.createBranch(projectPath);
 		
 		IBranchPath firstTaskPath = BranchPathUtils.createPath(projectPath, "1");
-		givenBranchWithPath(firstTaskPath);
+		SnomedBranchingRestRequests.createBranch(firstTaskPath);
 		
 		// Create new concept, promote to project
-
-		final Map<?, ?> requestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
-		String concept = assertComponentCreated(firstTaskPath, SnomedComponentType.CONCEPT, requestBody);
-		assertComponentExists(firstTaskPath, SnomedComponentType.CONCEPT, concept);
-		
-		assertBranchCanBeMerged(firstTaskPath, "Merging first task into project");
+		String concept = SnomedRestFixtures.createNewConcept(firstTaskPath);
+		SnomedRestFixtures.merge(firstTaskPath, firstTaskPath.getParent(), "Merging first task into project").body("status", equalTo(Merge.Status.COMPLETED.name()));
 		
 		// Create task A, modify concept
 		
 		IBranchPath taskAPath = BranchPathUtils.createPath(projectPath, "A");
-		givenBranchWithPath(taskAPath);
+		SnomedBranchingRestRequests.createBranch(taskAPath);
 		
-		assertComponentExists(taskAPath, SnomedComponentType.CONCEPT, concept);
-		
-		assertComponentHasProperty(taskAPath, SnomedComponentType.CONCEPT, concept, "definitionStatus", DefinitionStatus.PRIMITIVE.name());
+		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(204);
+		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").body("definitionStatus", equalTo(DefinitionStatus.PRIMITIVE.name()));
 		
 		final Map<?, ?> changeOnTask = ImmutableMap.builder()
 				.put("definitionStatus", DefinitionStatus.FULLY_DEFINED)
 				.put("commitComment", "Changed definition status on task A")
 				.build();
 		
-		assertComponentCanBeUpdated(taskAPath, SnomedComponentType.CONCEPT, concept, changeOnTask);
-		assertComponentHasProperty(taskAPath, SnomedComponentType.CONCEPT, concept, "definitionStatus", DefinitionStatus.FULLY_DEFINED.name());
-		
+		SnomedComponentRestRequests.updateComponent(taskAPath, SnomedComponentType.CONCEPT, concept, changeOnTask);
+		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").body("definitionStatus", equalTo(DefinitionStatus.FULLY_DEFINED.name()));
 		// Create task B, delete concept, promote to project
 		
 		IBranchPath taskBPath = BranchPathUtils.createPath(projectPath, "B");
-		givenBranchWithPath(taskBPath);
+		SnomedBranchingRestRequests.createBranch(taskBPath);
 		
-		assertComponentExists(taskBPath, SnomedComponentType.CONCEPT, concept);
-		assertComponentCanBeDeleted(taskBPath, SnomedComponentType.CONCEPT, concept);
-		assertComponentNotExists(taskBPath, SnomedComponentType.CONCEPT, concept);
-		
-		assertBranchCanBeMerged(taskBPath, "Merging task B into project");
+		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(204);
+		SnomedComponentRestRequests.deleteComponent(taskBPath, SnomedComponentType.CONCEPT, concept, true);
+		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(404);
+		SnomedRestFixtures.merge(taskBPath, taskBPath.getParent(), "Merging task B into project").body("status", equalTo(Merge.Status.COMPLETED.name()));
 
 		// Rebase task A - does not rebase as expected
 		
-		assertMergeJobFails(taskAPath.getParent(), taskAPath, "Rebasing task A should fail");
+		Collection<MergeConflict> conflicts = SnomedRestFixtures.merge(taskAPath, taskAPath.getParent(), "Rebasing task A should fail")
+								.body("status", equalTo(Merge.Status.CONFLICTS.name()))
+								.extract().as(Merge.class)
+								.getConflicts();
+//		assertMergeJobFails(taskAPath.getParent(), taskAPath, "");
+		assertEquals(1, conflicts.size());
 
+		MergeConflict conflict = Iterables.getOnlyElement(conflicts);
+		assertEquals(ConflictType.CONFLICTING_CHANGE, conflict.getType());
+		
 		// Delete concept on task A and rebase again.
 		
-		assertComponentCanBeDeleted(taskAPath, SnomedComponentType.CONCEPT, concept);
-		
-		assertBranchCanBeRebased(taskAPath, "Rebase task A");
+		SnomedComponentRestRequests.deleteComponent(taskAPath, SnomedComponentType.CONCEPT, concept, true).assertThat().statusCode(204);
+		SnomedRestFixtures.merge(taskAPath, taskAPath.getParent(), "Rebase task A").body("status", equalTo(Merge.Status.COMPLETED.name()));
 		
 	}
 	

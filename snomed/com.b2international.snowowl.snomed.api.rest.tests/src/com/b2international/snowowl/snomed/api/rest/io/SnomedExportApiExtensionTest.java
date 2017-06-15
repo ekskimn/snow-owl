@@ -1,11 +1,5 @@
 package com.b2international.snowowl.snomed.api.rest.io;
 
-import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.MODULE_SCT_CORE;
-import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.ROOT_CONCEPT;
-import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.ACCEPTABLE_ACCEPTABILITY_MAP;
-import static com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants.PREFERRED_ACCEPTABILITY_MAP;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.assertComponentCreated;
-import static com.b2international.snowowl.snomed.api.rest.SnomedComponentApiAssert.givenConceptRequestBody;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import java.io.File;
@@ -18,19 +12,16 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.b2international.commons.platform.PlatformUtil;
-import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
-import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
-import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
+import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
@@ -41,17 +32,17 @@ import com.google.common.collect.Multimap;
  * @since 5.0.6
  */
 public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
-
+	
 	
 	@Override
-	protected IBranchPath createRandomBranchPath() {
-		return createNestedBranch(BranchPathUtils.createMainPath(), UUID.randomUUID().toString(), "SNOMEDCT-EXT-" + System.nanoTime());
+	protected String getAdditionalPathSegment() {
+		return "SNOMEDCT-EXT-" + System.nanoTime();
 	}
-
+	
 	@Test
 	public void validateDeltaExportArchiveStructure() throws Exception {
 		setupExtension();
-		Date versionEffectiveTime = assertNewVersionCreated(testBranchPath, testBranchPath.lastSegment(), true);
+		Date versionEffectiveTime = assertNewVersionCreated(branchPath, branchPath.lastSegment(), true);
 		
 		String effectiveTimeString = Dates.formatByGmt(versionEffectiveTime, DateFormats.SHORT);
 		final File exportArchive = downloadExportArchive(effectiveTimeString);
@@ -68,11 +59,10 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 	public void validateExtensionDeltaExportFileSplitting() throws Exception {
 		setupExtension();
 		// create new concept with both 'en' and 'da' languages
-		final Map<?, ?> conceptRequestBody = givenConceptRequestBody(null, ROOT_CONCEPT, MODULE_SCT_CORE, PREFERRED_ACCEPTABILITY_MAP, false);
-		String conceptId = assertComponentCreated(testBranchPath, SnomedComponentType.CONCEPT, conceptRequestBody);
+		String conceptId = SnomedRestFixtures.createNewConcept(branchPath);
 		addPolyglotDescriptions(conceptId);
 		
-		Date versionEffectiveTime = assertNewVersionCreated(testBranchPath, testBranchPath.lastSegment(), false);
+		Date versionEffectiveTime = assertNewVersionCreated(branchPath, branchPath.lastSegment(), false);
 		String effectiveTimeString = Dates.formatByGmt(versionEffectiveTime, DateFormats.SHORT);
 		
 		final File exportArchive = downloadExportArchive(effectiveTimeString);
@@ -108,17 +98,10 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 	}
 	
 	private void addPolyglotDescriptions(String conceptId) {
-		final String englishTextDefinitionTerm = "Text Definition with effective time";
-		createAcceptableDescription(conceptId, englishTextDefinitionTerm, "en", Concepts.TEXT_DEFINITION);
-		
-		final String danishTextDefinitionTerm = "Danish Text Definition with effective time";
-		createAcceptableDescription(conceptId, danishTextDefinitionTerm, "da", Concepts.TEXT_DEFINITION);
-		
-		final String englishDescriptionTerm = "Description with effective time";
-		createAcceptableDescription(conceptId, englishDescriptionTerm, "en", Concepts.SYNONYM);
-		
-		final String danishDescriptionTerm = "Danish Description with effective time";
-		createAcceptableDescription(conceptId, danishDescriptionTerm, "da", Concepts.SYNONYM);
+		SnomedRestFixtures.createNewDescription(branchPath, conceptId, Concepts.TEXT_DEFINITION, SnomedRestFixtures.ACCEPTABLE_ACCEPTABILITY_MAP, "en");
+		SnomedRestFixtures.createNewDescription(branchPath, conceptId, Concepts.TEXT_DEFINITION, SnomedRestFixtures.ACCEPTABLE_ACCEPTABILITY_MAP, "da");
+		SnomedRestFixtures.createNewDescription(branchPath, conceptId, Concepts.SYNONYM, SnomedRestFixtures.ACCEPTABLE_ACCEPTABILITY_MAP, "en");
+		SnomedRestFixtures.createNewDescription(branchPath, conceptId, Concepts.SYNONYM, SnomedRestFixtures.ACCEPTABLE_ACCEPTABILITY_MAP, "da");
 	}
 
 	private void assertFileSplitting(Path path) throws IOException {
@@ -174,25 +157,10 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 		return expectedStructure;
 	} 
 	
-	private String createAcceptableDescription(String conceptId, String term, String languageCode, String typeId) {
-		
-		final Map<?, ?> descriptionRequestBody = ImmutableMap.builder()
-			.put("conceptId", conceptId)
-			.put("moduleId", MODULE_SCT_CORE)
-			.put("typeId", typeId)
-			.put("term", term)
-			.put("languageCode", languageCode)
-			.put("acceptability", ACCEPTABLE_ACCEPTABILITY_MAP)
-			.put("commitComment", "new description")
-			.build();
-		
-		return assertComponentCreated(testBranchPath, SnomedComponentType.DESCRIPTION, descriptionRequestBody);
-	}
-
 	private File downloadExportArchive(String effectiveTimeString) throws Exception {
 		final Map<?, ?> config = ImmutableMap.builder()
 				.put("type", "DELTA")
-				.put("branchPath", testBranchPath.getPath())
+				.put("branchPath", branchPath.getPath())
 				.put("startEffectiveTime", effectiveTimeString)
 				.put("endEffectiveTime", effectiveTimeString)
 				.put("includeUnpublished", true)
@@ -202,7 +170,7 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 		
 		assertExportConfiguration(exportId)
 			.and().body("type", equalTo("DELTA"))
-			.and().body("branchPath", equalTo(testBranchPath.getPath()))
+			.and().body("branchPath", equalTo(branchPath.getPath()))
 			.and().body("startEffectiveTime", equalTo(effectiveTimeString))
 			.and().body("endEffectiveTime", equalTo(effectiveTimeString))
 			.and().body("includeUnpublished", equalTo(true));
@@ -215,7 +183,7 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 	
 	private void setupExtension() {
 		// codeSystem needs a versioned base branch
-		assertNewVersionCreated(testBranchPath.getParent(), "SNOMEDCT", true);
-		createSnomedExtensionCodeSystem(testBranchPath.lastSegment(), testBranchPath.getPath(), "DAN");
+		assertNewVersionCreated(branchPath.getParent(), "SNOMEDCT", true);
+		createSnomedExtensionCodeSystem(branchPath.lastSegment(), branchPath.getPath(), "DAN");
 	}
 }

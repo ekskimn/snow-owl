@@ -20,10 +20,16 @@ import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestReq
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.updateComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests.createMerge;
 import static com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests.waitForMergeJob;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static com.google.common.collect.Maps.newHashMap;
 import static org.hamcrest.CoreMatchers.equalTo;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +37,8 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.CoreTerminologyBroker;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.date.DateFormats;
+import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
@@ -50,7 +58,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.ValidatableResponse;
 
 /**
@@ -60,6 +70,16 @@ public abstract class SnomedRestFixtures {
 
 	public static final String DEFAULT_TERM = "Description term";
 	public static final String DEFAULT_LANGUAGE_CODE = "en";
+	
+	/**
+	 * An acceptability map which specifies that the corresponding description is acceptable in the UK language reference set.
+	 */
+	public static final Map<String, Acceptability> ACCEPTABLE_ACCEPTABILITY_MAP = ImmutableMap.of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.ACCEPTABLE);
+
+	/**
+	 * An acceptability map which specifies that the corresponding description is preferred in the UK language reference set.
+	 */
+	public static final Map<String, Acceptability> PREFERRED_ACCEPTABILITY_MAP = ImmutableMap.<String, Acceptability>of(Concepts.REFSET_LANGUAGE_TYPE_UK, Acceptability.PREFERRED);
 
 	public static String createNewConcept(IBranchPath conceptPath) {
 		return createNewConcept(conceptPath, Concepts.ROOT_CONCEPT);
@@ -486,6 +506,45 @@ public abstract class SnomedRestFixtures {
 		return SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class);
 	}
 
+	public static Collection<String> getEffectiveDates(final String codeSystemShortName) {
+		final Map<?, ?> response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+			.and().contentType(ContentType.JSON)
+			.when().get("/codesystems/{shortName}/versions", codeSystemShortName)
+			.then().extract().body().as(Map.class);
+		
+		if (!response.containsKey("items")) {
+			return Collections.emptyList();
+		} else {
+			final List<String> effectiveDates = Lists.newArrayList();
+			@SuppressWarnings("unchecked")
+			final List<Map<?, ?>> items = (List<Map<?, ?>>) response.get("items");
+			for (final Map<?, ?> version : items) {
+				final String effectiveDate = (String) version.get("effectiveDate");
+				effectiveDates.add(effectiveDate);
+			}
+			
+			return effectiveDates;
+		}
+	}
+	
+	public static String getLatestAvailableVersionDateAsString(final String codeSystemShortName) {
+		return Dates.formatByGmt(getLatestAvailableVersionDate(codeSystemShortName), DateFormats.SHORT);
+	}
+	
+	public static Date getLatestAvailableVersionDate(final String codeSystemShortName) {
+		Date latestEffectiveDate = new Date();
+		for (final String effectiveDate : getEffectiveDates(codeSystemShortName)) {
+			Date effDate = Dates.parse(effectiveDate, DateFormats.SHORT);
+			if (latestEffectiveDate.before(effDate)) {
+				latestEffectiveDate = effDate;
+			}
+		}
+
+		Duration oneDay = Duration.ofDays(1);
+		Instant latestEffectiveInstant = latestEffectiveDate.toInstant();
+		return Date.from(latestEffectiveInstant.plus(oneDay));
+	}
+	
 	private SnomedRestFixtures() {
 		throw new UnsupportedOperationException("This class is not supposed to be instantiated.");
 	}

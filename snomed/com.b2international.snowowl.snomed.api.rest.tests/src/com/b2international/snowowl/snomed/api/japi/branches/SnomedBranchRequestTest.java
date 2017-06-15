@@ -17,7 +17,7 @@ package com.b2international.snowowl.snomed.api.japi.branches;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -103,10 +103,7 @@ public class SnomedBranchRequestTest {
 			})
 			.getSync();
 		
-		if (error != null) {
-			assertThat(error, allOf(containsString("Branch with '"), containsString("' identifier already exists")));
-		}
-		
+		assertNull(error, error);
 		assertEquals(1, getCdoBranches(branchName).size());
 	}
 	

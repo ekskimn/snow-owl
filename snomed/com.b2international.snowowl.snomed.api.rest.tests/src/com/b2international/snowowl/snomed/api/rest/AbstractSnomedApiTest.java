@@ -15,6 +15,11 @@
  */
 package com.b2international.snowowl.snomed.api.rest;
 
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
+import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.equalTo;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -25,13 +30,17 @@ import org.junit.runner.Description;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.datastore.BranchPathUtils;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMap.Builder;
+import com.jayway.restassured.http.ContentType;
+import com.jayway.restassured.response.Response;
 
 /**
  * @since 2.0
  */
 @BranchBase(Branch.MAIN_PATH)
 public abstract class AbstractSnomedApiTest {
-
+	
 	private final class CustomTestWatcher extends TestWatcher {
 		@Override
 		protected void starting(Description description) {
@@ -47,7 +56,7 @@ public abstract class AbstractSnomedApiTest {
 						.replace("[", "_") // Remove special characters from parameterized test names
 						.replace("]", "");
 
-				branchPath = BranchPathUtils.createPath(SnomedApiTestConstants.PATH_JOINER.join(testBasePath, testClassName, testMethodName));
+				branchPath = BranchPathUtils.createPath(SnomedApiTestConstants.PATH_JOINER.skipNulls().join(testBasePath, testClassName, testMethodName, AbstractSnomedApiTest.this.getAdditionalPathSegment()));
 			} else {
 				branchPath = BranchPathUtils.createPath(testBasePath);
 			}
@@ -100,25 +109,71 @@ public abstract class AbstractSnomedApiTest {
 	@Rule 
 	public final TestWatcher watcher = new CustomTestWatcher();
 	
-	protected void updateBranchWithMetadata(Map<?, ?> metadata) {
-		whenUpdatingBranchWithPathAndMetadata(testBranchPath, metadata);
-	}
-	
 	protected void updateBranchWithMetadata(IBranchPath branchPath, Map<?, ?> metadata) {
-		whenUpdatingBranchWithPathAndMetadata(branchPath, metadata);
+		whenUpdatingBranch(branchPath, metadata).then().assertThat().statusCode(204);
 	}
 	
+	/**
+	 * additional chance to affect / append to the name of the branch to be created;
+	 * Default implementation returns null that is neglected {because of @link Joiner#skipNulls() is used}
+	 * @return
+	 */
+	protected String getAdditionalPathSegment() {
+		return null;
+	}
+
 	protected String createDefaultCodeSystem(String shortName) {
-		Map<String, String> defaultCodeSystemRequestBody = newCodeSystemRequestBody(shortName);
+		Map<String, String> defaultCodeSystemRequestBody = newCodeSystemRequestBody(shortName, branchPath.getPath()).build();
 		return createCustomizedCodeSystem(defaultCodeSystemRequestBody);
 	}
 	
 	protected String createSnomedExtensionCodeSystem(String shortName, String branchPath, String language) {
-		Map<String, String> newExtensionCodeSystemRequestBody = newCodeSystemRequestDefaultBodyBuilder(shortName, branchPath, language).put("extensionOf", "SNOMEDCT").build();
+		Map<String, String> newExtensionCodeSystemRequestBody = CodeSystemRestRequests.defaultCodeSystemBodyBuilder(BranchPathUtils.createPath(branchPath), shortName)
+																						.put("extensionOf", "SNOMEDCT").build();
 		return createCustomizedCodeSystem(newExtensionCodeSystemRequestBody);
 	}
 
 	protected String createCustomizedCodeSystem(final Map<String, String> newExtensionCodeSystemRequestBody) {
 		return assertCodeSystemCreated(newExtensionCodeSystemRequestBody);
+	}
+	
+	private static Response whenCreatingCodeSystem(final Map<?, ?> requestBody) {
+		return givenAuthenticatedRequest("/admin")
+				.with().contentType(ContentType.JSON)
+				.and().body(requestBody)
+				.when().post("/codesystems");
+	}
+	
+	public static String assertCodeSystemCreated(final Map<?, ?> requestBody) {
+		final String path = whenCreatingCodeSystem(requestBody).then().assertThat().statusCode(201)
+			.and().header("Location", containsString(String.format("%s/%s", "codesystems", requestBody.get("shortName"))))
+			.and().body(equalTo(""))
+			.and().extract().response().getHeader("Location");
+		
+		return lastPathSegment(path);
+	}
+	
+	public static Builder<String, String> newCodeSystemRequestBody(final String shortName, final String branchPath) {
+		return ImmutableMap.<String, String>builder()
+				.put("name", "CodeSystem")
+				.put("branchPath", branchPath)
+				.put("shortName", shortName)
+				.put("citation", "citation")
+				.put("iconPath", "icons/snomed.png")
+				.put("repositoryUuid", "snomedStore")
+				.put("terminologyId", "concept")
+				.put("oid", shortName)
+				.put("primaryLanguage", "ENG")
+				.put("organizationLink", "link");
+	}
+	
+	private static Response whenUpdatingBranch(final IBranchPath branchPath, final Map<?, ?> metadata) {
+		final Map<?, ?> requestBody = ImmutableMap.<String, Object> builder()
+				.put("metadata", metadata).build();
+
+		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
+				.and().contentType(ContentType.JSON)
+				.and().body(requestBody)
+				.when().put("/branches/" + branchPath);
 	}
 }
