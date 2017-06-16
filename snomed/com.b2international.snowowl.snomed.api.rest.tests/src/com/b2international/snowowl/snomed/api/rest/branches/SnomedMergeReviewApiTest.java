@@ -45,6 +45,7 @@ import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
+import com.b2international.snowowl.snomed.api.rest.SnomedReviewRestRequests;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
@@ -53,6 +54,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.http.ContentType;
 import com.jayway.restassured.response.Response;
+import com.jayway.restassured.response.ValidatableResponse;
 
 /**
  * @since 4.6
@@ -163,11 +165,11 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		SnomedBranchingRestRequests.createBranchRecursively(setupBranch);
 		
 		// Create new inferred relationship on "Finding context"
-		SnomedRestFixtures.createNewRelationship(setupBranch, Concepts.ROOT_CONCEPT, Concepts.IS_A, FINDING_CONTEXT, CharacteristicType.INFERRED_RELATIONSHIP);
+		SnomedRestFixtures.createNewRelationship(setupBranch, FINDING_CONTEXT, Concepts.IS_A, Concepts.ROOT_CONCEPT, CharacteristicType.INFERRED_RELATIONSHIP);
 		
 		
 //		// Another inferred relationship goes on the parent branch
-		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), Concepts.MODULE_ROOT, Concepts.IS_A, FINDING_CONTEXT, CharacteristicType.INFERRED_RELATIONSHIP);
+		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, CharacteristicType.INFERRED_RELATIONSHIP);
 //		assertComponentCreated(setupBranch.getParent(), SnomedComponentType.RELATIONSHIP, relationshipRequestBody);
 		
 		// See what happened on the sibling branch before merging changes to its parent
@@ -187,16 +189,15 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void createConflictingStatedMergeReview() {
-		SnomedBranchingRestRequests.createBranch(branchPath);
 		final IBranchPath setupBranch = BranchPathUtils.createPath(branchPath, "a");
 		SnomedBranchingRestRequests.createBranchRecursively(setupBranch);
 		
 		// Create new stated relationship on "Finding context"
-		SnomedRestFixtures.createNewRelationship(setupBranch, Concepts.ROOT_CONCEPT, Concepts.IS_A, FINDING_CONTEXT, CharacteristicType.STATED_RELATIONSHIP);
+		SnomedRestFixtures.createNewRelationship(setupBranch, FINDING_CONTEXT, Concepts.IS_A, Concepts.ROOT_CONCEPT, CharacteristicType.STATED_RELATIONSHIP);
 		
 		
 		// Another stated relationship goes on the parent branch
-		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), Concepts.MODULE_ROOT, Concepts.IS_A, FINDING_CONTEXT, CharacteristicType.STATED_RELATIONSHIP);
+		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, CharacteristicType.STATED_RELATIONSHIP);
 		
 		// See what happened on the sibling branch before merging changes to its parent
 		final String reviewId = andCreatedMergeReview(setupBranch.getPath(), setupBranch.getParentPath());
@@ -220,11 +221,11 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		SnomedBranchingRestRequests.createBranchRecursively(setupBranch);
 		
 		// Create new stated relationship on "Finding context"
-		SnomedRestFixtures.createNewRelationship(setupBranch, Concepts.ROOT_CONCEPT, Concepts.IS_A, FINDING_CONTEXT, CharacteristicType.STATED_RELATIONSHIP);
+		SnomedRestFixtures.createNewRelationship(setupBranch, FINDING_CONTEXT, Concepts.IS_A, Concepts.ROOT_CONCEPT, CharacteristicType.STATED_RELATIONSHIP);
 		
 		
 		// Another inferred relationship goes on the parent branch
-		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), Concepts.MODULE_ROOT, Concepts.IS_A, FINDING_CONTEXT, CharacteristicType.INFERRED_RELATIONSHIP);
+		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, CharacteristicType.INFERRED_RELATIONSHIP);
 		
 		// See what happened on the sibling branch before merging changes to its parent
 		final String reviewId = andCreatedMergeReview(setupBranch.getPath(), setupBranch.getParentPath());
@@ -247,8 +248,10 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		SnomedBranchingRestRequests.createBranch(branchPath);
 
 		// Set up a review...
-		final String reviewId = andCreatedMergeReview("MAIN", branchPath.getPath());
+		ValidatableResponse createReviewResponse = SnomedReviewRestRequests.createReview(BranchPathUtils.createMainPath(), branchPath);
+		String reviewId = SnomedReviewRestRequests.getReviewJobId(createReviewResponse);
 		assertReviewCurrent(reviewId);
+		
 		
 		// ...then commit to the branch.
 		SnomedRestFixtures.createNewConcept(branchPath);

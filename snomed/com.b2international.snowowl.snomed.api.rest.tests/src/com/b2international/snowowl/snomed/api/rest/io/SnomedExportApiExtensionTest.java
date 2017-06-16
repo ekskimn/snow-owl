@@ -21,6 +21,7 @@ import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.core.date.DateFormats;
 import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
+import com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -183,7 +184,8 @@ public class SnomedExportApiExtensionTest extends AbstractSnomedExportApiTest {
 	
 	private void setupExtension() {
 		// codeSystem needs a versioned base branch
-		assertNewVersionCreated(branchPath.getParent(), "SNOMEDCT", true);
+		String dateAsString = CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString("SNOMEDCT");
+		CodeSystemVersionRestRequests.createVersion("SNOMEDCT", dateAsString, dateAsString);
 		createSnomedExtensionCodeSystem(branchPath.lastSegment(), branchPath.getPath(), "DAN");
 	}
 }

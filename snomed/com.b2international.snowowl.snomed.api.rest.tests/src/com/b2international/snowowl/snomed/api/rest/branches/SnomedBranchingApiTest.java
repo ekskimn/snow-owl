@@ -76,16 +76,18 @@ public class SnomedBranchingApiTest extends AbstractSnomedApiTest {
 		final String description = "Description of branch";
 		final Map<String, String> metadata = ImmutableMap.of("description", description);
 		
-		SnomedBranchingRestRequests.createBranch(branchPath, metadata);
-		SnomedBranchingRestRequests.getBranch(branchPath).body("metadata.description", equalTo(description));
+		
+		IBranchPath a = BranchPathUtils.createPath(branchPath, "a");
+		SnomedBranchingRestRequests.createBranch(a, metadata).statusCode(201);
+		SnomedBranchingRestRequests.getBranch(a).statusCode(200).body("metadata.description", equalTo(description));
 		
 		final String descriptionUpdated = "Description of branch";
 		final String title = "Title of branch";
 		
 		final Map<?, ?> metadataUpdated = ImmutableMap.of("description", descriptionUpdated, "title", title);
-		SnomedBranchingRestRequests.updateBranch(branchPath, metadataUpdated);
+		SnomedBranchingRestRequests.updateBranch(a, metadataUpdated);
 		
-		SnomedBranchingRestRequests.getBranch(branchPath)
+		SnomedBranchingRestRequests.getBranch(a)
 			.body("metadata.description", equalTo(descriptionUpdated))
 			.body("metadata.title", equalTo(title));
 	}

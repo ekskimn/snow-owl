@@ -196,7 +196,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		conceptRequest.remove("relationships");
 
 		createBrowserConcept(branchPath, conceptRequest).statusCode(400)
-		.body("message", equalTo("1 validation error"));
+		.body("message", equalTo("At least one active stated IS A relationship is required."));
 	}
 
 	@Test
