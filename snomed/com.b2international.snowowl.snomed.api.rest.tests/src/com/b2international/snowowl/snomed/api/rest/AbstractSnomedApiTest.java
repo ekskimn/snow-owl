@@ -55,6 +55,8 @@ public abstract class AbstractSnomedApiTest {
 				String testMethodName = description.getMethodName()
 						.replace("[", "_") // Remove special characters from parameterized test names
 						.replace("]", "");
+				// branch path segment cannot be longer than 50 chars (and we have very long test names...)
+				testMethodName = testMethodName.substring(0, Math.min(50, testMethodName.length()));
 
 				branchPath = BranchPathUtils.createPath(SnomedApiTestConstants.PATH_JOINER.skipNulls().join(testBasePath, testClassName, testMethodName, AbstractSnomedApiTest.this.getAdditionalPathSegment()));
 			} else {
