@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -236,7 +237,7 @@ public class SnomedConceptRestService extends AbstractSnomedRestService {
 					.prepareSearchConcept()
 					.setLimit(limit)
 					.setOffset(offset)
-					.filterByIds(conceptIds)
+					.filterByIds(conceptIds == null ? Collections.emptySet() : conceptIds)
 					.filterByActive(activeFilter)
 					.filterByModule(moduleFilter)
 					.filterByEffectiveTime(effectiveTimeFilter)

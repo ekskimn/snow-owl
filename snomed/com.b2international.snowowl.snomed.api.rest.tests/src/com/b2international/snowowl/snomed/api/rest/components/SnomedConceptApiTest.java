@@ -474,7 +474,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		IBranchPath taskAPath = BranchPathUtils.createPath(projectPath, "A");
 		SnomedBranchingRestRequests.createBranch(taskAPath);
 		
-		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(204);
+		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(200);
 		SnomedComponentRestRequests.getComponent(taskAPath, SnomedComponentType.CONCEPT, concept, "").body("definitionStatus", equalTo(DefinitionStatus.PRIMITIVE.name()));
 		
 		final Map<?, ?> changeOnTask = ImmutableMap.builder()
@@ -489,7 +489,7 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		IBranchPath taskBPath = BranchPathUtils.createPath(projectPath, "B");
 		SnomedBranchingRestRequests.createBranch(taskBPath);
 		
-		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(204);
+		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(200);
 		SnomedComponentRestRequests.deleteComponent(taskBPath, SnomedComponentType.CONCEPT, concept, true);
 		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(404);
 		SnomedRestFixtures.merge(taskBPath, taskBPath.getParent(), "Merging task B into project").body("status", equalTo(Merge.Status.COMPLETED.name()));
