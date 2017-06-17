@@ -32,6 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
+import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.b2international.commons.ClassUtils;
 import com.b2international.commons.collections.Procedure;
 import com.b2international.commons.http.ExtendedLocale;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.domain.IComponent;
@@ -100,6 +102,7 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRelationshipUp
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -109,13 +112,13 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
+@Resource
 public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);
 	private static final Set<SnomedBrowserDescriptionType> SUPPORTED_DESCRIPTION_TYPES = ImmutableSet.of(SnomedBrowserDescriptionType.FSN, SnomedBrowserDescriptionType.SYNONYM); 
 	private static final List<ConceptEnum> CONCEPT_ENUMS;
 
-	
 	static {
 		final ImmutableList.Builder<ConceptEnum> conceptEnumsBuilder = ImmutableList.builder();
 		
@@ -165,6 +168,10 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	@Resource
 	private IEventBus bus;
 
+	private IEventBus bus() {
+		return Preconditions.checkNotNull(bus == null ? bus = ApplicationContext.getInstance().getServiceChecked(IEventBus.class) : bus,  "bus cannot be null!");
+	}
+	
 	@Override
 	public ISnomedBrowserConcept getConceptDetails(final IComponentRef conceptRef, final List<ExtendedLocale> locales) {
 
@@ -180,7 +187,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.setLocales(locales)
 				.setExpand("fsn(),pt(),descriptions(limit:"+Integer.MAX_VALUE+",expand(inactivationProperties())),relationships(limit:"+Integer.MAX_VALUE+",expand(type(expand(fsn())),destination(expand(fsn()))))")
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-				.execute(bus)
+				.execute(bus())
 				.getSync();
 		
 		final SnomedDescription fullySpecifiedName = concept.getFsn();
@@ -236,7 +243,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.setBody(req)
 				.setUserId(userId)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-				.execute(bus)
+				.execute(bus())
 				.getSync()
 				.getResultAs(String.class);
 		
@@ -245,7 +252,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 	}
 
 	private Branch getBranch(String branchPath) {
-		return RepositoryRequests.branching().prepareGet(branchPath).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus).getSync();
+		return RepositoryRequests.branching().prepareGet(branchPath).build(SnomedDatastoreActivator.REPOSITORY_UUID).execute(bus()).getSync();
 	}
 	
 	private RepositoryCommitRequestBuilder createBulkCommit(String branch, List<? extends ISnomedBrowserConcept> updatedConcepts, String userId, List<ExtendedLocale> locales, final String commitComment) {
@@ -280,7 +287,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 					final String commitComment = userId + " Bulk update.";
 					createBulkCommit(branch, updatedConcepts, userId, locales, commitComment)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-						.execute(bus)
+						.execute(bus())
 						.then(new Function<CommitResult, Void>() {
 							@Override public Void apply(CommitResult input) { return onSuccess(); }
 						})
@@ -319,7 +326,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final String commitComment = userId + " Bulk update.";
 		createBulkCommit(branch, updatedConcepts, userId, locales, commitComment)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-			.execute(bus)
+			.execute(bus())
 			.getSync();
 		
 		LOGGER.info("Committed bulk concept changes on {}", branch);
@@ -550,7 +557,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.all()
 				.filterByIds(destinationConceptIds)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-				.execute(bus)
+				.execute(bus())
 				.getSync();
 	}
 
@@ -588,7 +595,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 						.setExpand("ancestors(form:\"inferred\",direct:true)")
 						.setLocales(locales)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-						.execute(bus)
+						.execute(bus())
 						.getSync().getAncestors();
 			}
 
@@ -624,7 +631,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 						.filterByParent(stated ? null : conceptId)
 						.filterByStatedParent(stated ? conceptId : null)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-						.execute(bus)
+						.execute(bus())
 						.getSync();
 				
 			}
@@ -661,7 +668,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				.filterByType(Concepts.IS_A)
 				.setLimit(0)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-				.execute(bus)
+				.execute(bus())
 				.getSync().getTotal() > 0;
 	}
 
@@ -682,7 +689,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.setLimit(limit)
 			.filterByTerm(query)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
-			.execute(bus)
+			.execute(bus())
 			.getSync()
 			.getItems();
 
@@ -773,7 +780,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 				// Check if the corresponding concept exists
 				SnomedRequests.prepareGetConcept(conceptId)
 						.build(SnomedDatastoreActivator.REPOSITORY_UUID, branch)
-						.execute(bus)
+						.execute(bus())
 						.getSync();
 				
 				final SnomedBrowserConstant constant = new SnomedBrowserConstant();

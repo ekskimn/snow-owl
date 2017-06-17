@@ -7,17 +7,23 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import com.b2international.commons.FileUtils;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.SnowowlRuntimeException;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.impl.domain.browser.SnomedBrowserConcept;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 
 public class SnomedManualConceptMergeServiceImpl {
 
 	@Resource
 	private ObjectMapper objectMapper;
+	
+	private ObjectMapper objectMapper() {
+		return Preconditions.checkNotNull(objectMapper == null ? objectMapper = ApplicationContext.getInstance().getServiceChecked(ObjectMapper.class) : objectMapper,  "objectMapper cannot be null!");
+	}
 	
 	private String storeRoot;
 	
@@ -34,7 +40,7 @@ public class SnomedManualConceptMergeServiceImpl {
 		try {
 			File conceptFile = getConceptStorePath(branchPath, mergeReviewId, conceptUpdate.getConceptId());
 			conceptFile.getParentFile().mkdirs();
-			objectMapper.writeValue(conceptFile, conceptUpdate);
+			objectMapper().writeValue(conceptFile, conceptUpdate);
 		} catch (IOException e) {
 			throw new SnowowlRuntimeException("Failed to persist manual concept merge.", e);
 		}
@@ -49,10 +55,13 @@ public class SnomedManualConceptMergeServiceImpl {
 		if (!conceptFile.isFile()) {
 			throw new NotFoundException("manual concept merge", conceptId);
 		}
-		return objectMapper.readValue(conceptFile, SnomedBrowserConcept.class);
+		return objectMapper().readValue(conceptFile, SnomedBrowserConcept.class);
 	}
 	
 	private File getConceptStorePath(String branchPath, String mergeReviewId, String conceptId) {
+		if (storeRoot == null) {
+			init();
+		}
 		return new File(storeRoot + SLASH + MERGE_REVIEW_STORE + SLASH + branchPath + SLASH + mergeReviewId + SLASH + conceptId + FILE_TYPE); 
 	}
 

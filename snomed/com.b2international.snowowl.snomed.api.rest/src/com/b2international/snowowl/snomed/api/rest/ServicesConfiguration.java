@@ -43,6 +43,7 @@ import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 import com.b2international.commons.platform.PlatformUtil;
+import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.Metadata;
 import com.b2international.snowowl.core.MetadataHolder;
 import com.b2international.snowowl.core.MetadataHolderMixin;
@@ -57,7 +58,9 @@ import com.b2international.snowowl.datastore.review.ConceptChangesMixin;
 import com.b2international.snowowl.datastore.review.MergeReview;
 import com.b2international.snowowl.datastore.review.Review;
 import com.b2international.snowowl.eventbus.IEventBus;
+import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserComponent;
+import com.b2international.snowowl.snomed.api.impl.SnomedManualConceptMergeServiceImpl;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.BranchStateMixin;
 import com.b2international.snowowl.snomed.api.rest.domain.CollectionResourceMixin;
@@ -95,6 +98,9 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 
 	private SpringSwaggerConfig springSwaggerConfig;
 	private ServletContext servletContext;
+	private IEventBus eventBus;
+	private ISnomedBrowserService browserService;
+	private SnomedManualConceptMergeServiceImpl manualConceptMergeService;
 
 	private String apiVersion;
 
@@ -112,6 +118,30 @@ public class ServicesConfiguration extends WebMvcConfigurerAdapter {
 	@Autowired
 	public void setSpringSwaggerConfig(final SpringSwaggerConfig springSwaggerConfig) {
 		this.springSwaggerConfig = springSwaggerConfig;
+	}
+	
+	@Autowired
+	public void setEventBus(IEventBus eventBus) {
+		this.eventBus = eventBus;
+		if (!ApplicationContext.getInstance().exists(IEventBus.class)) {
+			ApplicationContext.getInstance().registerService(IEventBus.class, eventBus);
+		}
+	}
+	
+	@Autowired
+	public void setBrowserService(ISnomedBrowserService browserService) {
+		this.browserService = browserService;
+		if (!ApplicationContext.getInstance().exists(ISnomedBrowserService.class)) {
+			ApplicationContext.getInstance().registerService(ISnomedBrowserService.class, browserService);
+		}
+	}
+	
+	@Autowired
+	public void setManualConceptMergeService(SnomedManualConceptMergeServiceImpl manualConceptMergeService) {
+		this.manualConceptMergeService = manualConceptMergeService;
+		if (!ApplicationContext.getInstance().exists(SnomedManualConceptMergeServiceImpl.class)) {
+			ApplicationContext.getInstance().registerService(SnomedManualConceptMergeServiceImpl.class, manualConceptMergeService);
+		}
 	}
 
 	@Autowired
