@@ -39,6 +39,7 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.config.SnowOwlConfiguration;
 import com.b2international.snowowl.core.events.Notifications;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
@@ -48,6 +49,7 @@ import com.b2international.snowowl.datastore.server.domain.StorageRef;
 import com.b2international.snowowl.datastore.server.index.SingleDirectoryIndexManager;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.api.ISnomedClassificationService;
+import com.b2international.snowowl.snomed.api.browser.ISnomedBrowserService;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserConcept;
 import com.b2international.snowowl.snomed.api.domain.browser.ISnomedBrowserRelationship;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
@@ -66,12 +68,14 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.PersistChangesResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.google.common.base.Preconditions;
 import com.google.common.io.Closeables;
 
 import io.reactivex.disposables.Disposable;
@@ -89,22 +93,45 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	@Resource
 	private SnomedBrowserService browserService;
 	
+	private SnomedBrowserService browserService() {
+		return Preconditions.checkNotNull(browserService == null ? browserService = (SnomedBrowserService) ApplicationContext.getInstance().getServiceChecked(ISnomedBrowserService.class) : browserService, "browserService cannot be null!");
+	}
+	
 	@Resource
 	private IEventBus bus;
 	
 	@Resource
-	private int maxReasonerRuns;
+	private Integer maxReasonerRuns;
 
+	private Integer maxReasonerRuns() {
+		
+		return maxReasonerRuns == null ? 
+					maxReasonerRuns = ApplicationContext.getInstance().getServiceChecked(SnowOwlConfiguration.class).getModuleConfig(SnomedCoreConfiguration.class).getMaxReasonerRuns() 
+				: 
+					maxReasonerRuns;
+	}
+	
+	private IEventBus bus() {
+		return Preconditions.checkNotNull(bus == null ? bus = ApplicationContext.getInstance().getServiceChecked(IEventBus.class) : bus,  "bus cannot be null!");
+	}
+	
+	private volatile boolean initialized = false;
+	
+	private void checkServices() {
+		if (!initialized) 
+			init();
+	}
+	
 	@PostConstruct
 	protected void init() {
-		LOG.info("Initializing classification service; keeping indexed data for {} recent run(s).", maxReasonerRuns); 
+		LOG.info("Initializing classification service; keeping indexed data for {} recent run(s).", maxReasonerRuns()); 
 		
 		final File dir = new File(new File(SnowOwlApplication.INSTANCE.getEnviroment().getDataDirectory(), "indexes"), "classification_runs");
 		indexService = new ClassificationRunIndex(dir);
 		ApplicationContext.getInstance().getServiceChecked(SingleDirectoryIndexManager.class).registerIndex(indexService);
 
 		try {
-			indexService.trimIndex(maxReasonerRuns);
+			indexService.trimIndex(maxReasonerRuns());
 			indexService.invalidateClassificationRuns();
 		} catch (final IOException e) {
 			LOG.error("Failed to run housekeeping tasks for the classification index.", e);
@@ -115,6 +142,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		remoteJobSubscription = getNotifications()
 				.ofType(RemoteJobNotification.class)
 				.subscribe(this::onRemoteJobNotification);
+		
+		initialized = true;
 	}
 	
 	private void onRemoteJobNotification(RemoteJobNotification notification) {
@@ -151,6 +180,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 	
 	private void onClassifyJobChanged(RemoteJobEntry remoteJob) {
+		checkServices();
 		try {
 			
 			switch (remoteJob.getState()) {
@@ -182,6 +212,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	private void onClassifyJobFinished(RemoteJobEntry remoteJob) {
+		checkServices();
 		executorService.submit(new Runnable() {
 			@Override
 			public void run() {
@@ -212,6 +243,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	private void onPersistJobChanged(RemoteJobEntry remoteJob) {
+		checkServices();
 		try {
 
 			String classificationJobId = (String) remoteJob.getParameters().get("classificationId");
@@ -277,7 +309,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public List<IClassificationRun> getAllClassificationRuns(final String branchPath, final String userId) {
-
+		checkServices();
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
@@ -289,7 +321,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final String userId) {
-
+		checkServices();
 		final StorageRef storageRef = createStorageRef(branchPath);
 		final IBranchPath oldBranchPath = storageRef.getBranch().branchPath();
 
@@ -316,7 +348,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId, final String userId) {
-
+		checkServices();
 		final StorageRef storageRef = createStorageRef(branchPath);
 		
 		try {
@@ -328,6 +360,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales, final String userId) {
+		checkServices();
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
 		StorageRef storageRef = createStorageRef(branchPath);
@@ -341,7 +374,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 				}
 			}
 
-			final Map<String, SnomedDescription> fsnMap = new DescriptionService(bus, branchPath).getFullySpecifiedNames(conceptIds, locales);
+			final Map<String, SnomedDescription> fsnMap = new DescriptionService(bus(), branchPath).getFullySpecifiedNames(conceptIds, locales);
 			for (final IEquivalentConceptSet conceptSet : conceptSets) {
 				for (final IEquivalentConcept equivalentConcept : conceptSet.getEquivalentConcepts()) {
 					final String equivalentConceptId = equivalentConcept.getId();
@@ -368,6 +401,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		
 	@Override
 	public IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit) {
+		checkServices();
 		// Check if it exists
 		getClassificationRun(branchPath, classificationId, userId);
 		StorageRef storageRef = createStorageRef(branchPath);
@@ -380,7 +414,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales, String userId) {
-		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), locales);
+		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService().getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), locales);
 
 		// Replace ImmutableCollection of relationships
 		final List<ISnomedBrowserRelationship> relationships = new ArrayList<ISnomedBrowserRelationship>(conceptDetails.getRelationships());
@@ -399,7 +433,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 					final SnomedConcept targetConcept = SnomedRequests.prepareGetConcept(relationshipChange.getDestinationId())
 							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-							.execute(bus)
+							.execute(bus())
 							.getSync();
 					final SnomedBrowserRelationshipTarget relationshipTarget = browserService.getSnomedBrowserRelationshipTarget(targetConcept, branchPath, locales);
 					inferred.setTarget(relationshipTarget);
@@ -433,6 +467,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public void persistChanges(final String branchPath, final String classificationId, final String userId) {
+		checkServices();
 		// Check if it exists
 		IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId, userId);
 
@@ -464,7 +499,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 
 	@Override
 	public void removeClassificationRun(final String branchPath, final String classificationId, final String userId) {
-		
+		checkServices();
 		JobRequests.prepareDelete(classificationId)
 				.buildAsync()
 				.execute(getEventBus())
