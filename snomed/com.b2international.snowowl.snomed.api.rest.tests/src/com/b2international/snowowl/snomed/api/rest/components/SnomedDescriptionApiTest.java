@@ -58,6 +58,7 @@ import com.b2international.snowowl.snomed.Description;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
+import com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
 import com.b2international.snowowl.snomed.common.SnomedRf2Headers;
@@ -687,12 +688,23 @@ public class SnomedDescriptionApiTest extends AbstractSnomedApiTest {
 			.body(SnomedRf2Headers.FIELD_LANGUAGE_CODE, equalTo(SnomedRestFixtures.DEFAULT_LANGUAGE_CODE));	
 	}
 	
-	// TODO: Use description member expansion here
-
 	@Test
 	public void findUtf8Term() {
+		String descriptionId = createNewDescription(branchPath);
+		String term = "Ménière";
+		Map<?, ?> update = ImmutableMap.builder()
+				.put(SnomedRf2Headers.FIELD_TERM, term)
+				.put("commitComment", "Updated unreleased description term with special UTF8 char.")
+				.build();
+		
+		updateComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId, update).statusCode(204);
+		
+		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.DESCRIPTION, descriptionId)
+									.statusCode(200)
+									.body(SnomedRf2Headers.FIELD_TERM, equalTo(term));
+		
 		givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-			.when().get("/MAIN/concepts?term=Ménière")
+			.when().get(String.format("/%s/descriptions?term=Ménière", branchPath.getPath()))
 			.then().log().ifValidationFails()
 			.and().assertThat().statusCode(200)
 			.and().body("total", equalTo(1));
