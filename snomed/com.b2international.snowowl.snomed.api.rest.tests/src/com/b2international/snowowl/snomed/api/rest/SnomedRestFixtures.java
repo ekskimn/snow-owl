@@ -506,45 +506,6 @@ public abstract class SnomedRestFixtures {
 		return SnowOwlApplication.INSTANCE.getConfiguration().getModuleConfig(SnomedCoreConfiguration.class);
 	}
 
-	public static Collection<String> getEffectiveDates(final String codeSystemShortName) {
-		final Map<?, ?> response = givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-			.and().contentType(ContentType.JSON)
-			.when().get("/codesystems/{shortName}/versions", codeSystemShortName)
-			.then().extract().body().as(Map.class);
-		
-		if (!response.containsKey("items")) {
-			return Collections.emptyList();
-		} else {
-			final List<String> effectiveDates = Lists.newArrayList();
-			@SuppressWarnings("unchecked")
-			final List<Map<?, ?>> items = (List<Map<?, ?>>) response.get("items");
-			for (final Map<?, ?> version : items) {
-				final String effectiveDate = (String) version.get("effectiveDate");
-				effectiveDates.add(effectiveDate);
-			}
-			
-			return effectiveDates;
-		}
-	}
-	
-	public static String getLatestAvailableVersionDateAsString(final String codeSystemShortName) {
-		return Dates.formatByGmt(getLatestAvailableVersionDate(codeSystemShortName), DateFormats.SHORT);
-	}
-	
-	public static Date getLatestAvailableVersionDate(final String codeSystemShortName) {
-		Date latestEffectiveDate = new Date();
-		for (final String effectiveDate : getEffectiveDates(codeSystemShortName)) {
-			Date effDate = Dates.parse(effectiveDate, DateFormats.SHORT);
-			if (latestEffectiveDate.before(effDate)) {
-				latestEffectiveDate = effDate;
-			}
-		}
-
-		Duration oneDay = Duration.ofDays(1);
-		Instant latestEffectiveInstant = latestEffectiveDate.toInstant();
-		return Date.from(latestEffectiveInstant.plus(oneDay));
-	}
-	
 	private SnomedRestFixtures() {
 		throw new UnsupportedOperationException("This class is not supposed to be instantiated.");
 	}
