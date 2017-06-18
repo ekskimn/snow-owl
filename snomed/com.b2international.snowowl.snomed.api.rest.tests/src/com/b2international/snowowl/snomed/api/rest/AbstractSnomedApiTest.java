@@ -58,7 +58,7 @@ public abstract class AbstractSnomedApiTest {
 				// branch path segment cannot be longer than 50 chars (and we have very long test names...)
 				testMethodName = testMethodName.substring(0, Math.min(50, testMethodName.length()));
 
-				branchPath = BranchPathUtils.createPath(SnomedApiTestConstants.PATH_JOINER.skipNulls().join(testBasePath, testClassName, testMethodName, AbstractSnomedApiTest.this.getAdditionalPathSegment()));
+				branchPath = BranchPathUtils.createPath(SnomedApiTestConstants.PATH_JOINER.skipNulls().join(testBasePath, testClassName, testMethodName));
 			} else {
 				branchPath = BranchPathUtils.createPath(testBasePath);
 			}
@@ -115,15 +115,6 @@ public abstract class AbstractSnomedApiTest {
 		whenUpdatingBranch(branchPath, metadata).then().assertThat().statusCode(204);
 	}
 	
-	/**
-	 * additional chance to affect / append to the name of the branch to be created;
-	 * Default implementation returns null that is neglected {because of @link Joiner#skipNulls() is used}
-	 * @return
-	 */
-	protected String getAdditionalPathSegment() {
-		return null;
-	}
-
 	protected String createDefaultCodeSystem(String shortName) {
 		Map<String, String> defaultCodeSystemRequestBody = newCodeSystemRequestBody(shortName, branchPath.getPath()).build();
 		return createCustomizedCodeSystem(defaultCodeSystemRequestBody);
