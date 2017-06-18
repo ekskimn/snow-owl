@@ -33,10 +33,13 @@ import com.jayway.restassured.response.ValidatableResponse;
 public abstract class SnomedComponentRestRequests {
 
 	private static final Joiner COMMA_JOINER = Joiner.on(",");
+	
+	private static final String CONTENT_TYPE_UTF_8_JSON = "application/json; charset=UTF-8";
+	
 
 	public static ValidatableResponse createComponent(IBranchPath branchPath, SnomedComponentType type, Map<?, ?> requestBody) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.contentType(ContentType.JSON)
+				.contentType(CONTENT_TYPE_UTF_8_JSON)
 				.body(requestBody)
 				.post("/{path}/{componentType}", branchPath.getPath(), type.toLowerCasePlural())
 				.then();
@@ -59,7 +62,7 @@ public abstract class SnomedComponentRestRequests {
 
 	public static ValidatableResponse updateComponent(IBranchPath branchPath, SnomedComponentType type, String id, Map<?, ?> requestBody) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.contentType(ContentType.JSON)
+				.contentType(CONTENT_TYPE_UTF_8_JSON)
 				.body(requestBody)
 				.post("/{path}/{componentType}/{id}/updates", branchPath.getPath(), type.toLowerCasePlural(), id)
 				.then();
