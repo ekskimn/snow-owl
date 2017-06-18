@@ -51,15 +51,6 @@ import com.google.common.collect.Sets;
  */
 public abstract class DescriptionRequestHelper {
 
-	private static final class ExtractFirstFunction implements Function<Collection<SnomedDescription>, SnomedDescription> {
-		private static final ExtractFirstFunction INSTANCE = new ExtractFirstFunction();
-
-		@Override
-		public SnomedDescription apply(Collection<SnomedDescription> input) {
-			return Iterables.getFirst(input, null);
-		}
-	}
-
 	private static class ExtractBestFunction<T> implements Function<Collection<SnomedDescription>, SnomedDescription> {
 		
 		private final List<T> orderedValues;
