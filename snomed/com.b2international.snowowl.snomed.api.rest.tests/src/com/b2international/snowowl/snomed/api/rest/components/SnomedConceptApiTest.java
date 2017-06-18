@@ -497,7 +497,9 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		// Rebase task A - does not rebase as expected
 		
 		Collection<MergeConflict> conflicts = SnomedRestFixtures.merge(taskAPath, taskAPath.getParent(), "Rebasing task A should fail")
-								.body("status", equalTo(Merge.Status.CONFLICTS.name()))
+								.body("status", equalTo(Merge.Status.CONFLICTS.name())) 
+								//	XXX:	"message"	: 	"Branch MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P/A should be in FORWARD state to be merged into MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P. It's currently DIVERGED",
+								//	XXX:	"status" 	: 	"FAILED"
 								.extract().as(Merge.class)
 								.getConflicts();
 //		assertMergeJobFails(taskAPath.getParent(), taskAPath, "");
