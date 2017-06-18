@@ -32,7 +32,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
-import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,15 +194,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final SnomedDescriptions descriptions = concept.getDescriptions();
 		final SnomedRelationships relationships = concept.getRelationships();
 
-		final SnomedBrowserConcept result = new SnomedBrowserConcept();
-
-		
-		
-		result.setActive(concept.isActive());
-		result.setConceptId(concept.getId());
-		result.setDefinitionStatus(concept.getDefinitionStatus());
-		result.setEffectiveTime(concept.getEffectiveTime());
-		result.setModuleId(concept.getModuleId());
+		final SnomedBrowserConcept result = convertConcept(concept);
 		
 		// inactivation fields
 		result.setInactivationIndicator(concept.getInactivationIndicator());
@@ -223,6 +214,19 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 
 		result.setDescriptions(convertDescriptions(descriptions));
 		result.setRelationships(convertRelationships(relationships, conceptRef, locales));
+		
+		return result;
+	}
+
+	private SnomedBrowserConcept convertConcept(SnomedConcept concept) {
+		final SnomedBrowserConcept result = new SnomedBrowserConcept();
+		
+		result.setActive(concept.isActive());
+		result.setReleased(concept.isReleased());
+		result.setConceptId(concept.getId());
+		result.setDefinitionStatus(concept.getDefinitionStatus());
+		result.setEffectiveTime(concept.getEffectiveTime());
+		result.setModuleId(concept.getModuleId());
 		
 		return result;
 	}
@@ -704,13 +708,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final Iterable<SnomedConcept> conceptIndexEntries = getConcepts(branchPath, conceptIds);
 		final Map<String, SnomedConcept> conceptMap = Maps.uniqueIndex(conceptIndexEntries, IComponent.ID_FUNCTION);
 		
-		final Map<String, SnomedDescription> fsnPropertyMap; 
+		final Map<String, SnomedDescription> descriptionByConceptIdMap; 
 		switch (resultConceptTermType) {
 		case FSN:
-			fsnPropertyMap = descriptionService.getFullySpecifiedNames(conceptIds, locales);
+			descriptionByConceptIdMap = descriptionService.getFullySpecifiedNames(conceptIds, locales);
 			break;
 		default:
-			fsnPropertyMap = descriptionService.getPreferredTerms(conceptIds, locales);
+			descriptionByConceptIdMap = descriptionService.getPreferredTerms(conceptIds, locales);
 			break;
 		}
 		
@@ -734,6 +738,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 					
 					@Override
 					public SnomedBrowserDescriptionResultDetails call() throws Exception {
+						final String typeId = description.getTypeId();
 						final String conceptId = description.getConceptId();
 						final SnomedConcept conceptIndexEntry = conceptMap.get(conceptId);
 						final SnomedBrowserDescriptionResultDetails details = new SnomedBrowserDescriptionResultDetails();
@@ -744,11 +749,22 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 							details.setDefinitionStatus(conceptIndexEntry.getDefinitionStatus());
 							details.setModuleId(conceptIndexEntry.getModuleId());
 							
-							if (fsnPropertyMap.containsKey(conceptId)) {
-								details.setFsn(fsnPropertyMap.get(conceptId).getTerm());
-							} else {
-								details.setFsn(conceptId);
+							if (Concepts.FULLY_SPECIFIED_NAME.equals(typeId)) {
+								
+								if (descriptionByConceptIdMap.containsKey(conceptId)) {
+									details.setFsn(descriptionByConceptIdMap.get(conceptId).getTerm());
+								} else {
+									details.setFsn(conceptId);
+								}
+							} else if (Concepts.SYNONYM.equals(typeId)) {
+								
+								if (descriptionByConceptIdMap.containsKey(conceptId)) {
+									details.setPreferredSynonym(descriptionByConceptIdMap.get(conceptId).getTerm());
+								} else {
+									details.setPreferredSynonym(conceptId);
+								}
 							}
+							
 						} else {
 							LOGGER.warn("Concept {} not found in map, properties will not be set.", conceptId);
 						}
