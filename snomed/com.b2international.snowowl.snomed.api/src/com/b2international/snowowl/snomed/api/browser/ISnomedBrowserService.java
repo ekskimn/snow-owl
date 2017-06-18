@@ -63,18 +63,22 @@ public interface ISnomedBrowserService {
 	 */
 	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef conceptRef, List<ExtendedLocale> locales);
 	
+	List<ISnomedBrowserParentConcept> getConceptParents(IComponentRef ref, List<ExtendedLocale> extendedLocales, SnomedBrowserDescriptionType preferredDescriptionType);
 	/**
 	 * Retrieves a list of child concepts for a single identifier.
 	 * 
 	 * @param conceptRef the component reference pointing to the concept whose children should be retrieved (may not be {@code null})
 	 * @param locales the {@link ExtendedLocale}s to inspect when determining FSN, in decreasing order of preference
 	 * @param stated {@code true} if stated children should be returned, {@code false} if inferred
+	 * @param preferredDescriptionType 
 	 * @return the child concept list for the requested concept
 	 * @throws CodeSystemNotFoundException if a code system with the given short name is not registered
 	 * @throws CodeSystemVersionNotFoundException if a code system version for the code system with the given identifier is not registered
 	 * @throws ComponentNotFoundException if the component identifier does not match any concept on the given task
 	 */
 	List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated);
+	
+	List<ISnomedBrowserChildConcept> getConceptChildren(IComponentRef conceptRef, List<ExtendedLocale> locales, boolean stated, SnomedBrowserDescriptionType preferredDescriptionType);
 	
 	/**
 	 * Retrieves a list of descriptions matching the entered query string.
@@ -112,4 +116,5 @@ public interface ISnomedBrowserService {
 	ISnomedBrowserBulkChangeRun beginBulkChange(String branch, List<? extends ISnomedBrowserConcept> newVersionConcepts, String userId, List<ExtendedLocale> locales);
 
 	ISnomedBrowserBulkChangeRun getBulkChange(String bulkChangeId);
+
 }

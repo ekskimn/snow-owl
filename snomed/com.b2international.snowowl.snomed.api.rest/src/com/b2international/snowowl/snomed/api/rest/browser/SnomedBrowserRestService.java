@@ -302,7 +302,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String languageSetting) {
+			final String languageSetting,
+			
+			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
+			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
+			final SnomedBrowserDescriptionType preferredDescriptionType) {
 		
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -315,7 +319,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final IComponentRef ref = createComponentRef(branchPath, conceptId);
-		return browserService.getConceptParents(ref, extendedLocales);
+		return browserService.getConceptParents(ref, extendedLocales, preferredDescriptionType);
 	}
 	
 	@ApiOperation(
@@ -344,7 +348,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Stated or inferred form", allowableValues="stated, inferred")
 			@RequestParam(value="form", defaultValue="inferred")
-			final String form) {
+			final String form,
+			
+			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
+			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
+			final SnomedBrowserDescriptionType preferredDescriptionType) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -358,7 +366,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		
 		if ("stated".equals(form) || "inferred".equals(form)) {
 			final IComponentRef ref = createComponentRef(branchPath, conceptId);
-			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form));
+			return browserService.getConceptChildren(ref, extendedLocales, "stated".equals(form), preferredDescriptionType);
 		}
 		
 		throw new BadRequestException("Form parameter should be either 'stated' or 'inferred'");
