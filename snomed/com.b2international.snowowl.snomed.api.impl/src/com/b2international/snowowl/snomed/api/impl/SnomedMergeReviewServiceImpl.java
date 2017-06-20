@@ -557,7 +557,6 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 	private final ListeningExecutorService executorService;
 	
 	public SnomedMergeReviewServiceImpl() {
-		System.out.println("SnomedMergeReviewServiceImpl constructor");
 		executorService = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(3));
 	}
 
