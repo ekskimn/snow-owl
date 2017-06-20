@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
+<<<<<<< HEAD
 <product name="Snow Owl Server" uid="com.b2international.snowowl.server" id="com.b2international.snowowl.server.product.product" application="com.b2international.snowowl.server.product.SnowOwlServer" version="5.10.5" useFeatures="true" includeLaunchers="true">
+=======
+<product name="Snow Owl Server" uid="com.b2international.snowowl.server" id="com.b2international.snowowl.server.product.product" application="com.b2international.snowowl.server.product.SnowOwlServer" version="4.7.13" useFeatures="true" includeLaunchers="true">
+>>>>>>> refs/heads/ms-master
 
    <configIni use="default">
    </configIni>

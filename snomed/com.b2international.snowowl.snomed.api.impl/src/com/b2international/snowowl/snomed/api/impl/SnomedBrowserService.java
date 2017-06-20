@@ -111,7 +111,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
-@Resource
 public class SnomedBrowserService implements ISnomedBrowserService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedBrowserService.class);

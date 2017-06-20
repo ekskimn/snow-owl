@@ -334,8 +334,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	}
 
 	/**
-	 * @param branchPath
+	 * @param storageRef
 	 * @param classificationId
+	 * @param userId
 	 * @return
 	 */
 	public List<IEquivalentConceptSet> getEquivalentConceptSets(final StorageRef storageRef, final String classificationId, final String userId) throws IOException {
@@ -344,11 +345,12 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	}
 
 	/**
-	 * @param branchPath
+	 * @param storageRef
 	 * @param classificationId
 	 * @param sourceConceptId used to restrict results, can be null
-	 * @param offset
+	 * @param userId
 	 * @param limit
+	 * @param offset
 	 * @return
 	 */
 	public IRelationshipChangeList getRelationshipChanges(final StorageRef storageRef, final String classificationId, final String sourceConceptId, final int offset, final int limit, final String userId) throws IOException {
