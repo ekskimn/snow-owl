@@ -51,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
@@ -494,24 +495,24 @@ public class SnomedConceptApiTest extends AbstractSnomedApiTest {
 		SnomedComponentRestRequests.getComponent(taskBPath, SnomedComponentType.CONCEPT, concept, "").assertThat().statusCode(404);
 		SnomedRestFixtures.merge(taskBPath, taskBPath.getParent(), "Merging task B into project").body("status", equalTo(Merge.Status.COMPLETED.name()));
 
+		
 		// Rebase task A - does not rebase as expected
 		
-		Collection<MergeConflict> conflicts = SnomedRestFixtures.merge(taskAPath, taskAPath.getParent(), "Rebasing task A should fail")
+		Collection<MergeConflict> conflicts = SnomedRestFixtures.merge(taskAPath.getParent(), taskAPath, "Rebasing task A should fail")
 								.body("status", equalTo(Merge.Status.CONFLICTS.name())) 
 								//	XXX:	"message"	: 	"Branch MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P/A should be in FORWARD state to be merged into MAIN/SnomedConceptApiTest/deleteConceptOnNestedBranchThenRebase/P. It's currently DIVERGED",
 								//	XXX:	"status" 	: 	"FAILED"
 								.extract().as(Merge.class)
 								.getConflicts();
-//		assertMergeJobFails(taskAPath.getParent(), taskAPath, "");
 		assertEquals(1, conflicts.size());
 
 		MergeConflict conflict = Iterables.getOnlyElement(conflicts);
-		assertEquals(ConflictType.CONFLICTING_CHANGE, conflict.getType());
+		assertEquals(ConflictType.CHANGED_WHILE_DELETED, conflict.getType());
 		
 		// Delete concept on task A and rebase again.
 		
 		SnomedComponentRestRequests.deleteComponent(taskAPath, SnomedComponentType.CONCEPT, concept, true).assertThat().statusCode(204);
-		SnomedRestFixtures.merge(taskAPath, taskAPath.getParent(), "Rebase task A").body("status", equalTo(Merge.Status.COMPLETED.name()));
+		SnomedRestFixtures.merge(taskAPath.getParent(), taskAPath, "Rebase task A").body("status", equalTo(Merge.Status.COMPLETED.name()));
 		
 	}
 	

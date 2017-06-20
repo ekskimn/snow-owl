@@ -184,7 +184,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		
 		final SnomedConcept concept = SnomedRequests.prepareGetConcept(conceptId)
 				.setLocales(locales)
-				.setExpand("fsn(),pt(),descriptions(limit:"+Integer.MAX_VALUE+",expand(inactivationProperties())),relationships(limit:"+Integer.MAX_VALUE+",expand(type(expand(fsn())),destination(expand(fsn()))))")
+				.setExpand("fsn(),pt(),inactivationProperties(),descriptions(limit:"+Integer.MAX_VALUE+",expand(inactivationProperties())),relationships(limit:"+Integer.MAX_VALUE+",expand(type(expand(fsn())),destination(expand(fsn()))))")
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(bus())
 				.getSync();

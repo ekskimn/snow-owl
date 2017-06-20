@@ -43,6 +43,7 @@ import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.browser.SnomedBrowserDescriptionType;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
+import com.b2international.snowowl.snomed.api.rest.CodeSystemRestRequests;
 import com.b2international.snowowl.snomed.api.rest.CodeSystemVersionRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedApiTestConstants;
 import com.b2international.snowowl.snomed.api.rest.SnomedBrowserRestRequests;
@@ -264,10 +265,7 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
   		SnomedBrowserRestRequests.updateBrowserConcept(branchPath, conceptId, responseBody2).statusCode(200)		
   									.and().body("inactivationIndicator", equalTo(InactivationReason.AMBIGUOUS.name()));
   		
-  		
   	}
-	
-	
 	
 	@Test
 	public void reactivateConcept() throws Exception {
@@ -275,15 +273,12 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
   		final ValidatableResponse response = SnomedBrowserRestRequests.createBrowserConcept(branchPath, requestBody)
   												.statusCode(200);
 		
-		
 		final String conceptId = response.extract().jsonPath().getString("conceptId");
 		final Map<String, Object> responseBody = response.extract().jsonPath().get();
 		
 		responseBody.put("active", false);
 		responseBody.put("inactivationIndicator", InactivationReason.DUPLICATE.name());
 		responseBody.put("associationTargets", ImmutableMultimap.<String, Object>of(AssociationType.REPLACED_BY.name(), MODULE_SCT_CORE).asMap());
-		
-		
 		
 		
 		final Map<String, Object> responseBody2 = SnomedBrowserRestRequests.updateBrowserConcept(branchPath, conceptId, responseBody)
@@ -308,12 +303,13 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 				.and().body("descriptions[1].inactivationIndicator", nullValue())
 				.and().body("relationships[0].active", equalTo(true));
 	}
-		
-	
 
 	@Test		
 	public void releasedFlagOnReleasedConceptAndComponents() {
-		
+		// A codeSystem is needed as versioning on the codeSystem's MAIN 
+		String shortName = "SNOMEDCT-released-flag";
+		CodeSystemRestRequests.createCodeSystem(branchPath, shortName).statusCode(201);
+
 		Map<String, Object> requestBody = Maps.newHashMap(createBrowserConceptRequest());
   		final ValidatableResponse response = SnomedBrowserRestRequests.createBrowserConcept(branchPath, requestBody)
   												.statusCode(200).body("released", equalTo(false));
@@ -325,9 +321,8 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		assertConceptIndexedBrowserPropertyEquals(branchPath, conceptId, "descriptions.released[0]", false);		
 		assertConceptIndexedBrowserPropertyEquals(branchPath, conceptId, "relationships.released[0]", false);		
 		
-		final String effectiveDate = CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString("SNOMEDCT");		
-//		whenCreatingVersion("2017-01-31", effectiveDate).then().assertThat().statusCode(201);
-		CodeSystemVersionRestRequests.createVersion("SNOMEDCT", effectiveDate, effectiveDate)
+		final String effectiveDate = CodeSystemVersionRestRequests.getNextAvailableEffectiveDateAsString(shortName);		
+		CodeSystemVersionRestRequests.createVersion(shortName, effectiveDate, effectiveDate)
 							.assertThat().statusCode(201);
 				
 		assertConceptIndexedBrowserPropertyEquals(branchPath, conceptId, "effectiveTime", effectiveDate);		
@@ -371,7 +366,6 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		final Map<String, Object> responseBody_1 = Maps.newHashMap(response_1.extract().jsonPath().get());
 		
 		final Map<String, Object> fsnOne = getFsn(responseBody_1);
-		
   		
 		Map<String, Object> requestBody_2 = Maps.newHashMap(createBrowserConceptRequest());
   		requestBody_2.put("descriptions", createDefaultDescriptions("pt-2", "fsn-2"));
@@ -416,7 +410,6 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 		String pt = "Special finding context";
 		requestBody.put("descriptions", createDefaultDescriptions(pt, fsn));
 		
-		
 		SnomedBrowserRestRequests.createBrowserConcept(branchPath, requestBody)
 									.assertThat().statusCode(200);
 		
@@ -430,7 +423,6 @@ public class SnomedBrowserApiTest extends AbstractSnomedApiTest {
 				.and().body("size()", equalTo(1))		
 				.and().body("[0].preferredSynonym", equalTo(pt));
 	}
-	
 	
 	@Test		
 	public void searchDescriptions() throws IOException {
