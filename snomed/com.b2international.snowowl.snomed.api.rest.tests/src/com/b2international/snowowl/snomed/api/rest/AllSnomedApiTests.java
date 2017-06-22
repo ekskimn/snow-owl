@@ -87,9 +87,9 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	//extension tests
 	SnomedExportApiExtensionTest.class,
 	SnomedExtensionCreationTest.class,
-	SnomedExtensionVersioningTest.class,
 	SnomedExtensionUpgradeTest.class,
 	SnomedExtensionDowngradeTest.class,
+	SnomedExtensionVersioningTest.class,
 	// Java API test cases
 	SnomedBranchRequestTest.class,
 	BranchCompareRequestTest.class
