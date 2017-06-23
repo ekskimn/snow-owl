@@ -769,15 +769,13 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 							details.setDefinitionStatus(conceptIndexEntry.getDefinitionStatus());
 							details.setModuleId(conceptIndexEntry.getModuleId());
 							
-							if (Concepts.FULLY_SPECIFIED_NAME.equals(typeId)) {
-								
+							if (resultConceptTermType == SnomedBrowserDescriptionType.FSN) {
 								if (descriptionByConceptIdMap.containsKey(conceptId)) {
 									details.setFsn(descriptionByConceptIdMap.get(conceptId).getTerm());
 								} else {
 									details.setFsn(conceptId);
 								}
-							} else if (Concepts.SYNONYM.equals(typeId)) {
-								
+							} else {
 								if (descriptionByConceptIdMap.containsKey(conceptId)) {
 									details.setPreferredSynonym(descriptionByConceptIdMap.get(conceptId).getTerm());
 								} else {
