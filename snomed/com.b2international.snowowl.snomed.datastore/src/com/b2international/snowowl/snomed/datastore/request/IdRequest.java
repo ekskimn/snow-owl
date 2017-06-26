@@ -111,12 +111,15 @@ final class IdRequest<C extends BranchContext, R> extends DelegatingRequest<C, C
 								.transform(request -> ((ConstantIdStrategy) request.getIdGenerationStrategy()).getId())
 								.toSet();
 						
-						final Set<String> existingIds = getExistingIds(context, userSuppliedIds, documentClass);
-						if (!existingIds.isEmpty()) {
-							// TODO: Report all existing identifiers
-							throw new AlreadyExistsException(category.getDisplayName(), Iterables.getFirst(existingIds, null));
-						} else {
-							recorder.register(userSuppliedIds);
+						
+						if (!userSuppliedIds.isEmpty()) {
+							final Set<String> existingIds = getExistingIds(context, userSuppliedIds, documentClass);
+							if (!existingIds.isEmpty()) {
+								// TODO: Report all existing identifiers
+								throw new AlreadyExistsException(category.getDisplayName(), Iterables.getFirst(existingIds, null));
+							} else if (!userSuppliedIds.isEmpty()) {
+								recorder.register(userSuppliedIds);
+							}
 						}
 						
 						final Multimap<String, BaseSnomedComponentCreateRequest> requestsByNamespace = FluentIterable.from(categoryRequests)
