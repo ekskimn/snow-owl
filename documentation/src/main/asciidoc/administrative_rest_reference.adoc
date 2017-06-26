@@ -72,3 +72,12 @@ as a placeholder for the mainline of the repository, from which a version may be
 ** Responses:
 *** `200 (OK)` - if the operation succeeded
 *** `404 (Not Found)` - if a repository with the given identifier could not be found
+
+=== Versioning and terminology indexes
+
+* `GET /snowowl/admin/info` -- Display information about the server's version, and it's repositories' health state.
+** Parameters:
+*** There are no parameters for this endpoint.
+** Returns: The version number and specified description of the server, and an array of healthstates for each of the repositories.
+** Responses:
+*** `200 (OK)` - if the operation succeeded
