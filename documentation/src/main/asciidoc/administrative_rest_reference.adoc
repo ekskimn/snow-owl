@@ -73,7 +73,7 @@ as a placeholder for the mainline of the repository, from which a version may be
 *** `200 (OK)` - if the operation succeeded
 *** `404 (Not Found)` - if a repository with the given identifier could not be found
 
-=== Versioning and terminology indexes
+=== Server Info 
 
 * `GET /snowowl/admin/info` -- Display information about the server's version, and it's repositories' health state.
 ** Parameters:
