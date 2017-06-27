@@ -81,7 +81,7 @@ public abstract class SnomedBrowserRestRequests {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
 				.with().contentType(JSON_CONTENT_UTF8_CHARSET)
-				.with().get("/browser/{path}/descriptions-fsn?query={query}", branchPath.getPath(), query)
+				.with().get("/browser/{path}/descriptions?query={query}", branchPath.getPath(), query)
 				.then();
 	}
 	
