@@ -16,7 +16,6 @@
 package com.b2international.snowowl.snomed.exporter.server;
 
 import static com.b2international.snowowl.core.ApplicationContext.getServiceForClass;
-import static com.google.common.base.Suppliers.memoize;
 import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.BufferedWriter;
@@ -39,7 +38,6 @@ import com.b2international.snowowl.snomed.exporter.server.sandbox.SnomedExporter
 import com.b2international.snowowl.snomed.exporter.server.sandbox.AbstractSnomedRelationshipExporter;
 import com.b2international.snowowl.snomed.exporter.server.sandbox.SnomedFileSwitchingExporter;
 import com.google.common.base.Joiner;
-import com.google.common.base.Supplier;
 
 
 /**
@@ -59,15 +57,8 @@ public class SnomedExportExecutor {
 	private final SnomedExporter snomedExporter;
 	private final Set<String> modulesToExport;
 	private final String clientNamespace;
-	private final Supplier<LongKeyLongMap> conceptIdToModuleIdSupplier = memoize(new Supplier<LongKeyLongMap>() {
-		public LongKeyLongMap get() {
-			return getServiceForClass(ISnomedComponentService.class).getConceptModuleMapping(configuration.getCurrentBranchPath());
-		}
-	});
 	private final Collection<String> visitedIdWithEffectiveTime;
 	private final Map<String, Writer> releaseFileWriters;
-
-	private SnomedExportConfiguration configuration;
 
 	public SnomedExportExecutor(final SnomedExporter snomedExporter, final String workingDirectory, final Set<String> modulesToExport, final String clientNamespace) {
 		this.snomedExporter = snomedExporter;
@@ -187,30 +178,13 @@ public class SnomedExportExecutor {
 		}
 		
 		final String moduleId = split[3];
-		if (isModuleToExport(moduleId)) {
-			if (snomedExporter instanceof AbstractSnomedRelationshipExporter) {
-				if (isSourceAndDestinationRight(split)) {
-					return true;
-				} else {
-					return false;
-				}
-			} else {
-				return true;
-			}
-		} else {
-			return false;
-		}
+		return isModuleToExport(moduleId);
 	}
 
 	private boolean isModuleToExport(final String moduleId) {
 		return modulesToExport.contains(moduleId);
 	}
 	
-	private boolean isSourceAndDestinationRight(final String[] split) {
-		final long moduleId = conceptIdToModuleIdSupplier.get().get(Long.parseLong(split[4])/*sourceModuleId*/);
-		return modulesToExport.contains(String.valueOf(moduleId));
-	}
-
 	public File writeExtendedDescriptionTypeExplanation() throws IOException {
 		final File extendedDescriptionTypePath = new File(
 				temporaryWorkingDirectory + 
