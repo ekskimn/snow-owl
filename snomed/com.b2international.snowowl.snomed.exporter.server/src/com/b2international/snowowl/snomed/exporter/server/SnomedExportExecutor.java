@@ -60,6 +60,8 @@ public class SnomedExportExecutor {
 	private final Collection<String> visitedIdWithEffectiveTime;
 	private final Map<String, Writer> releaseFileWriters;
 
+	private SnomedExportConfiguration configuration;
+
 	public SnomedExportExecutor(final SnomedExporter snomedExporter, final String workingDirectory, final Set<String> modulesToExport, final String clientNamespace) {
 		this.snomedExporter = snomedExporter;
 		this.modulesToExport = modulesToExport;
