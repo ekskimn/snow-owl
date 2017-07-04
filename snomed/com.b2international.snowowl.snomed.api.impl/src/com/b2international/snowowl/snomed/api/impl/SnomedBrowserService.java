@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +94,6 @@ import com.b2international.snowowl.snomed.core.domain.SnomedDescriptions;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.core.domain.SnomedRelationships;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
-import com.b2international.snowowl.snomed.datastore.index.entry.SnomedDescriptionIndexEntry;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptCreateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedConceptUpdateRequest;
 import com.b2international.snowowl.snomed.datastore.request.SnomedDescriptionCreateRequest;
@@ -112,6 +112,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.google.common.primitives.Ints;
 
 public class SnomedBrowserService implements ISnomedBrowserService {
 
@@ -714,13 +715,27 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 			.setOffset(offset)
 			.setLimit(limit)
 			.filterByTerm(query)
-			.sortBy(SearchResourceRequest.SCORE, new SearchResourceRequest.SortField(SnomedDescriptionIndexEntry.Fields.TERM, true))
+			.sortBy(SearchResourceRequest.SCORE)
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 			.execute(bus())
 			.getSync()
 			.getItems();
+		
+		final List<SnomedDescription> sortedDescriptions = FluentIterable.from(descriptions)
+			.toSortedList(new Comparator<SnomedDescription>() {
+				@Override
+				public int compare(SnomedDescription d1, SnomedDescription d2) {
+					int result = d2.getScore().compareTo(d1.getScore());
 
-		final Set<String> conceptIds = FluentIterable.from(descriptions)
+					if (result == 0) {
+						result = Ints.compare(d1.getTerm().length(), d2.getTerm().length());
+					}
+					
+					return result;
+				}
+			});
+
+		final Set<String> conceptIds = FluentIterable.from(sortedDescriptions)
 			.transform(new Function<SnomedDescription, String>() {
 				@Override public String apply(SnomedDescription input) {
 					return input.getConceptId();
@@ -744,7 +759,7 @@ public class SnomedBrowserService implements ISnomedBrowserService {
 		final Cache<String, SnomedBrowserDescriptionResultDetails> detailCache = CacheBuilder.newBuilder().build();
 		final ImmutableList.Builder<ISnomedBrowserDescriptionResult> resultBuilder = ImmutableList.builder();
 		
-		for (final SnomedDescription description : descriptions) {
+		for (final SnomedDescription description : sortedDescriptions) {
 			
 			final String typeId = description.getTypeId();
 			if (!Concepts.FULLY_SPECIFIED_NAME.equals(typeId) && !Concepts.SYNONYM.equals(typeId)) {
