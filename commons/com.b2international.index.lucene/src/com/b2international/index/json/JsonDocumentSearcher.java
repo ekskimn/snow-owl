@@ -427,7 +427,7 @@ public class JsonDocumentSearcher implements Searcher {
 		
 		// Tie-breaker, required to make "searchAfter" work
 		if (!sortById) {
-			convertedItems.add(new SortField(DocumentMapping._ID, SortField.Type.STRING_VAL, false));
+			convertedItems.add(new SortField(DocumentMapping._ID, SortField.Type.STRING_VAL, true));
 		}
 		
 		for (String nonSortedField : nonSortedFields) {
