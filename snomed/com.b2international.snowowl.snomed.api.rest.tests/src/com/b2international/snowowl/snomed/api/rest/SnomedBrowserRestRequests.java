@@ -69,19 +69,19 @@ public abstract class SnomedBrowserRestRequests {
 				.then();
 	}
 	
-	public static ValidatableResponse searchDescriptionsPT(final IBranchPath branchPath, final String query) {
+	public static ValidatableResponse searchDescriptionsReturnPT(final IBranchPath branchPath, final String query) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
 				.with().contentType(JSON_CONTENT_UTF8_CHARSET)
-				.when().get("/browser/{path}/descriptions?query={query}", branchPath.getPath(), query)
+				.when().get("/browser/{path}/descriptions?query={query}&preferredDescriptionType=SYNONYM", branchPath.getPath(), query)
 				.then();
 	}
 	
-	public static ValidatableResponse searchDescriptionsFSN(final IBranchPath branchPath, final String query) {
+	public static ValidatableResponse searchDescriptionsReturnFSN(final IBranchPath branchPath, final String query) {
 		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
 				.with().header("Accept-Language", "en-US;q=0.8,en-GB;q=0.6")
 				.with().contentType(JSON_CONTENT_UTF8_CHARSET)
-				.with().get("/browser/{path}/descriptions-fsn?query={query}", branchPath.getPath(), query)
+				.with().get("/browser/{path}/descriptions?query={query}", branchPath.getPath(), query)
 				.then();
 	}
 	

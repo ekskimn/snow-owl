@@ -81,11 +81,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 	public @ResponseBody CollectionResource<IClassificationRun> getAllClassificationRuns(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path") 
-			final String branchPath,
-			final Principal principal
-			) {
+			final String branchPath) {
 
-		return CollectionResource.of(delegate.getAllClassificationRuns(branchPath, principal.getName()));
+		return CollectionResource.of(delegate.getAllClassificationRuns(branchPath));
 	}
 
 	@ApiOperation(
@@ -131,11 +129,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="The classification identifier")
 			@PathVariable(value="classificationId") 
-			final String classificationId,
-			
-			final Principal principal) {
+			final String classificationId) {
 
-		return delegate.getClassificationRun(branchPath, classificationId, principal.getName());
+		return delegate.getClassificationRun(branchPath, classificationId);
 	}
 
 	@ApiOperation(
@@ -158,12 +154,10 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage,
-			
-			final Principal principal) {
+			final String acceptLanguage) {
 
 		final List<ExtendedLocale> extendedLocales = getExtendedLocales(acceptLanguage);
-		return CollectionResource.of(delegate.getEquivalentConceptSets(branchPath, classificationId, extendedLocales, principal.getName()));
+		return CollectionResource.of(delegate.getEquivalentConceptSets(branchPath, classificationId, extendedLocales));
 	}
 
 	@ApiOperation(
@@ -198,11 +192,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Accepted language tags, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false) 
-			final String acceptLanguage,
-			
-			final Principal principal) {
+			final String acceptLanguage) {
 
-		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, principal.getName(), offset, limit);
+		final IRelationshipChangeList relationshipChangeList = delegate.getRelationshipChanges(branchPath, classificationId, offset, limit);
 		List<IRelationshipChange> changes = relationshipChangeList.getChanges();
 		if (!changes.isEmpty()) {
 			changes = resourceExpander.expandRelationshipChanges(branchPath, changes, getExtendedLocales(acceptLanguage), expand);
@@ -218,8 +210,7 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
 	})
 	@RequestMapping(value="/{path:**}/classifications/{classificationId}/concept-preview/{conceptId}", method=RequestMethod.GET)
-	public @ResponseBody
-	ISnomedBrowserConcept getConceptDetails(
+	public @ResponseBody ISnomedBrowserConcept getConceptDetails(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -234,11 +225,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String acceptLanguage,
-			
-			final Principal principal) {
+			final String acceptLanguage) {
 
-		return delegate.getConceptPreview(branchPath, classificationId, conceptId, getExtendedLocales(acceptLanguage), principal.getName());
+		return delegate.getConceptPreview(branchPath, classificationId, conceptId, getExtendedLocales(acceptLanguage));
 	}
 
 	@ApiOperation(
@@ -293,11 +282,9 @@ public class SnomedClassificationRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="The classification identifier")
 			@PathVariable(value="classificationId") 
-			final String classificationId,
-
-			final Principal principal) {
+			final String classificationId) {
 		
-		delegate.removeClassificationRun(branchPath, classificationId, principal.getName());
+		delegate.removeClassificationRun(branchPath, classificationId);
 	}
 
 	private URI getClassificationUri(final String branchPath, final IClassificationRun classificationRun) {

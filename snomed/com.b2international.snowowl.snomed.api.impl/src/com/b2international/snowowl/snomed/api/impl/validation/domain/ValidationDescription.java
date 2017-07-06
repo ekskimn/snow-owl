@@ -36,6 +36,11 @@ public class ValidationDescription implements org.ihtsdo.drools.domain.Descripti
 	}
 	
 	@Override
+	public boolean isReleased() {
+		return browserDesciption.isReleased();
+	}
+	
+	@Override
 	public String getModuleId() {
 		return browserDesciption.getModuleId();
 	}

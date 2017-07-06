@@ -372,53 +372,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	}
 
 	@ApiOperation(
-			value = "Retrieve descriptions matching a query (sets FSN to property 'fsn' in concept section)",
-			notes = "Returns a list of descriptions which have a term matching the specified query string on a version.",
-			response=Void.class)
-	@ApiResponses({
-			@ApiResponse(code = 200, message = "OK"),
-			@ApiResponse(code = 404, message = "Code system version or concept not found", response = RestApiError.class)
-	})
-	@RequestMapping(
-			value="/{path:**}/descriptions-fsn",
-			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsFSN(
-			@ApiParam(value="The branch path")
-			@PathVariable(value="path")
-			final String branchPath,
-
-			@ApiParam(value="The query string")
-			@RequestParam(value="query")
-			final String query,
-
-			@ApiParam(value="The starting offset in the list")
-			@RequestParam(value="offset", defaultValue="0", required=false)
-			final int offset,
-
-			@ApiParam(value="The maximum number of items to return")
-			@RequestParam(value="limit", defaultValue="50", required=false)
-			final int limit,
-
-			@ApiParam(value="Language codes and reference sets, in order of preference")
-			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String languageSetting) {
-
-		final List<ExtendedLocale> extendedLocales;
-		
-		try {
-			extendedLocales = AcceptHeader.parseExtendedLocales(new StringReader(languageSetting));
-		} catch (IOException e) {
-			throw new BadRequestException(e.getMessage());
-		} catch (IllegalArgumentException e) {
-			throw new BadRequestException(e.getMessage());
-		}
-		
-		final StorageRef ref = new StorageRef(repositoryId, branchPath);
-		return browserService.getDescriptions(ref, query, extendedLocales, SnomedBrowserDescriptionType.FSN, offset, limit);
-	}
-
-	@ApiOperation(
-			value = "Retrieve descriptions matching a query (sets PT to property 'fsn' in concept section)",
+			value = "Retrieve descriptions matching a query.",
 			notes = "Returns a list of descriptions which have a term matching the specified query string on a version.",
 			response=Void.class)
 	@ApiResponses({
@@ -428,7 +382,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 	@RequestMapping(
 			value="/{path:**}/descriptions",
 			method = RequestMethod.GET)
-	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptionsPT(
+	public @ResponseBody List<ISnomedBrowserDescriptionResult> searchDescriptions(
 			@ApiParam(value="The branch path")
 			@PathVariable(value="path")
 			final String branchPath,
@@ -447,7 +401,11 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 
 			@ApiParam(value="Language codes and reference sets, in order of preference")
 			@RequestHeader(value="Accept-Language", defaultValue="en-US;q=0.8,en-GB;q=0.6", required=false)
-			final String languageSetting) {
+			final String languageSetting,
+			
+			@ApiParam(value="The type of the description to expand", allowableValues="FSN, SYNONYM")
+			@RequestParam(value="preferredDescriptionType", defaultValue="FSN")
+			final SnomedBrowserDescriptionType preferredDescriptionType) {
 
 		final List<ExtendedLocale> extendedLocales;
 		
@@ -460,7 +418,7 @@ public class SnomedBrowserRestService extends AbstractSnomedRestService {
 		}
 		
 		final StorageRef ref = new StorageRef(repositoryId, branchPath);
-		return browserService.getDescriptions(ref, query, extendedLocales, SnomedBrowserDescriptionType.SYNONYM, offset, limit);
+		return browserService.getDescriptions(ref, query, extendedLocales, preferredDescriptionType, offset, limit);
 	}
 
 	@ApiOperation(

@@ -47,7 +47,7 @@ public class SnowOwlConfiguration extends Configuration {
 	
 	private String description = "You Know, for Terminologies";
 
-	private boolean gzip = true;
+	private boolean gzip = false;
 
 	@JsonProperty
 	public String getDescription() {

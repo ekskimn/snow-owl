@@ -165,18 +165,17 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		}
 	}
 
-	public List<IClassificationRun> getAllClassificationRuns(final StorageRef storageRef, final String userId) throws IOException {
+	public List<IClassificationRun> getAllClassificationRuns(final StorageRef storageRef) throws IOException {
 		final Query query = Fields.newQuery()
 				.field(FIELD_CLASS, ClassificationRun.class.getSimpleName())
-				.field(FIELD_USER_ID, userId)
 				.field(FIELD_BRANCH_PATH, storageRef.getBranchPath())
 				.matchAll();
 		
 		return this.<IClassificationRun>search(query, ClassificationRun.class);
 	}
 
-	public IClassificationRun getClassificationRun(final StorageRef storageRef, final String classificationId, String userId) throws IOException {
-		final Query query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, storageRef, null, userId);
+	public IClassificationRun getClassificationRun(final StorageRef storageRef, final String classificationId) throws IOException {
+		final Query query = createClassQuery(ClassificationRun.class.getSimpleName(), classificationId, storageRef, null);
 
 		try {
 			return Iterables.getOnlyElement(search(query, ClassificationRun.class, 1));
@@ -336,11 +335,10 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	/**
 	 * @param storageRef
 	 * @param classificationId
-	 * @param userId
 	 * @return
 	 */
-	public List<IEquivalentConceptSet> getEquivalentConceptSets(final StorageRef storageRef, final String classificationId, final String userId) throws IOException {
-		final Query query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, storageRef, null, userId);
+	public List<IEquivalentConceptSet> getEquivalentConceptSets(final StorageRef storageRef, final String classificationId) throws IOException {
+		final Query query = createClassQuery(EquivalentConceptSet.class.getSimpleName(), classificationId, storageRef, null);
 		return this.<IEquivalentConceptSet>search(query, EquivalentConceptSet.class);
 	}
 
@@ -348,14 +346,13 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	 * @param storageRef
 	 * @param classificationId
 	 * @param sourceConceptId used to restrict results, can be null
-	 * @param userId
 	 * @param limit
 	 * @param offset
 	 * @return
 	 */
-	public IRelationshipChangeList getRelationshipChanges(final StorageRef storageRef, final String classificationId, final String sourceConceptId, final int offset, final int limit, final String userId) throws IOException {
+	public IRelationshipChangeList getRelationshipChanges(final StorageRef storageRef, final String classificationId, final String sourceConceptId, final int offset, final int limit) throws IOException {
 
-		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, storageRef, sourceConceptId, userId);
+		final Query query = createClassQuery(RelationshipChange.class.getSimpleName(), classificationId, storageRef, sourceConceptId);
 		final RelationshipChangeList result = new RelationshipChangeList();
 
 		result.setTotal(getHitCount(query));
@@ -388,11 +385,10 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		return Iterables.getFirst(search(query, 1), null);
 	}
 
-	private Query createClassQuery(final String className, final String classificationId, StorageRef storageRef, final String componentId, String userId) {
+	private Query createClassQuery(final String className, final String classificationId, StorageRef storageRef, final String componentId) {
 		final QueryBuilder query = Fields.newQuery()
 				.field(FIELD_CLASS, className)
 				.field(FIELD_ID, classificationId)
-				.field(FIELD_USER_ID, userId)
 				.field(FIELD_BRANCH_PATH, storageRef.getBranchPath());
 		if (componentId != null) {
 			query.field(FIELD_COMPONENT_ID, componentId);

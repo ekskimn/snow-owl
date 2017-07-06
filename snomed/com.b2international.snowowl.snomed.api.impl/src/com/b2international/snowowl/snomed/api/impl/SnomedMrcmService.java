@@ -17,6 +17,7 @@ import com.b2international.commons.http.ExtendedLocale;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.exceptions.ComponentNotFoundException;
+import com.b2international.snowowl.datastore.request.SearchResourceRequest;
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.impl.domain.Predicate;
@@ -92,7 +93,7 @@ public class SnomedMrcmService {
 			}
 			for (String typeExpression : typeExpressions) {
 				if (builder.length() > 0) {
-					builder.append(" UNION ");
+					builder.append(" OR ");
 				}
 				builder.append(typeExpression);
 			}
@@ -104,7 +105,7 @@ public class SnomedMrcmService {
 			.prepareSearchConcept()
 			.setLimit(limit)
 			.setOffset(offset)
-			.filterByEscg(builder.toString())
+			.filterByEcl(builder.toString())
 			.filterByActive(true)
 			.setExpand(expand)
 			.setLocales(locales)
@@ -171,11 +172,12 @@ public class SnomedMrcmService {
 				.prepareSearchConcept()
 				.setLimit(limit)
 				.setOffset(offset)
-				.filterByEscg(relationshipValueExpression)
+				.filterByEcl(relationshipValueExpression)
 				.filterByTerm(termPrefix)
 				.filterByActive(true)
 				.setExpand(expand)
 				.setLocales(locales)
+				.sortBy(SearchResourceRequest.SCORE)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 				.execute(bus)
 				.getSync();

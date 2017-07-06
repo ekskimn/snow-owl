@@ -20,7 +20,6 @@ import static com.google.common.collect.Sets.newHashSet;
 import java.io.File;
 import java.io.IOException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +39,7 @@ import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.SnowOwlApplication;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.core.config.SnowOwlConfiguration;
+import com.b2international.snowowl.core.domain.IComponentRef;
 import com.b2international.snowowl.core.events.Notifications;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.remotejobs.RemoteJobEntry;
@@ -66,6 +66,7 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Classif
 import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConcept;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
+import com.b2international.snowowl.snomed.core.domain.SnomedConcepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedDescription;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
@@ -75,7 +76,14 @@ import com.b2international.snowowl.snomed.reasoner.classification.Classification
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.PersistChangesResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.io.Closeables;
 
 import io.reactivex.disposables.Disposable;
@@ -308,12 +316,12 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public List<IClassificationRun> getAllClassificationRuns(final String branchPath, final String userId) {
+	public List<IClassificationRun> getAllClassificationRuns(final String branchPath) {
 		checkServices();
 		final StorageRef storageRef = createStorageRef(branchPath);
 
 		try {
-			return indexService.getAllClassificationRuns(storageRef, userId);
+			return indexService.getAllClassificationRuns(storageRef);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -347,25 +355,25 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId, final String userId) {
+	public IClassificationRun getClassificationRun(final String branchPath, final String classificationId) {
 		checkServices();
 		final StorageRef storageRef = createStorageRef(branchPath);
 		
 		try {
-			return indexService.getClassificationRun(storageRef, classificationId, userId);
+			return indexService.getClassificationRun(storageRef, classificationId);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
-	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales, final String userId) {
+	public List<IEquivalentConceptSet> getEquivalentConceptSets(final String branchPath, final String classificationId, final List<ExtendedLocale> locales) {
 		checkServices();
 		// Check if it exists
-		getClassificationRun(branchPath, classificationId, userId);
+		getClassificationRun(branchPath, classificationId);
 		StorageRef storageRef = createStorageRef(branchPath);
 		try {
-			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(storageRef, classificationId, userId);
+			final List<IEquivalentConceptSet> conceptSets = indexService.getEquivalentConceptSets(storageRef, classificationId);
 			final Set<String> conceptIds = newHashSet();
 			
 			for (final IEquivalentConceptSet conceptSet : conceptSets) {
@@ -394,59 +402,114 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 	
 	@Override
-	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final String userId, final int offset, final int limit) {
-		return getRelationshipChanges(branchPath, classificationId, null, userId, offset, limit);
+	public IRelationshipChangeList getRelationshipChanges(final String branchPath, final String classificationId, final int offset, final int limit) {
+		return getRelationshipChanges(branchPath, classificationId, null, offset, limit);
 	}
 	
-		
-	@Override
-	public IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, String userId, int offset, int limit) {
+	private IRelationshipChangeList getRelationshipChanges(String branchPath, String classificationId, String conceptId, int offset, int limit) {
 		checkServices();
 		// Check if it exists
-		getClassificationRun(branchPath, classificationId, userId);
+		getClassificationRun(branchPath, classificationId);
 		StorageRef storageRef = createStorageRef(branchPath);
 		try {
-			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, offset, limit, userId);
+			return indexService.getRelationshipChanges(storageRef, classificationId, conceptId, offset, limit);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
-	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales, String userId) {
-		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService().getConceptDetails(SnomedServiceHelper.createComponentRef(branchPath, conceptId), locales);
+	public ISnomedBrowserConcept getConceptPreview(String branchPath, String classificationId, String conceptId, List<ExtendedLocale> locales) {
+		final IComponentRef componentRef = SnomedServiceHelper.createComponentRef(branchPath, conceptId);
+		final SnomedBrowserConcept conceptDetails = (SnomedBrowserConcept) browserService.getConceptDetails(componentRef, locales);
 
-		// Replace ImmutableCollection of relationships
-		final List<ISnomedBrowserRelationship> relationships = new ArrayList<ISnomedBrowserRelationship>(conceptDetails.getRelationships());
-		conceptDetails.setRelationships(relationships);
+		final List<ISnomedBrowserRelationship> relationships = Lists.newArrayList(conceptDetails.getRelationships());
+		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, 0, 10000);
 
-		final IRelationshipChangeList relationshipChanges = getRelationshipChanges(branchPath, classificationId, conceptId, userId, 0, 10000);
+		/* 
+		 * XXX: We don't want to match anything that is part of the inferred set below, so we remove relationships from the existing list, 
+		 * all in advance. (Revisit should this assumption prove to be incorrect.)
+		 */
 		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
 			switch (relationshipChange.getChangeNature()) {
 				case REDUNDANT:
 					relationships.remove(findRelationship(relationships, relationshipChange));
 					break;
-				case INFERRED:
-					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();
-					inferred.setType(new SnomedBrowserRelationshipType(relationshipChange.getTypeId()));
-					inferred.setSourceId(relationshipChange.getSourceId());
-
-					final SnomedConcept targetConcept = SnomedRequests.prepareGetConcept(relationshipChange.getDestinationId())
-							.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
-							.execute(bus())
-							.getSync();
-					final SnomedBrowserRelationshipTarget relationshipTarget = browserService.getSnomedBrowserRelationshipTarget(targetConcept, branchPath, locales);
-					inferred.setTarget(relationshipTarget);
-
-					inferred.setGroupId(relationshipChange.getGroup());
-					inferred.setModifier(relationshipChange.getModifier());
-					inferred.setActive(true);
-					inferred.setCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP);
-
-					relationships.add(inferred);
+				default:
 					break;
 			}
 		}
+		
+		// Collect all concept representations that will be required for the conversion
+		final Set<String> relatedIds = Sets.newHashSet();
+		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+			switch (relationshipChange.getChangeNature()) {
+				case INFERRED:
+					relatedIds.add(relationshipChange.getDestinationId());
+					relatedIds.add(relationshipChange.getTypeId());
+					break;
+				default:
+					break;
+			}
+		}
+		
+		final SnomedConcepts relatedConcepts = SnomedRequests.prepareSearchConcept()
+				.setLimit(relatedIds.size())
+				.filterByIds(relatedIds)
+				.setLocales(locales)
+				.setExpand("fsn()")
+				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
+				.execute(bus())
+				.getSync();
+		
+		final Map<String, SnomedConcept> relatedConceptsById = Maps.uniqueIndex(relatedConcepts, new Function<SnomedConcept, String>() {
+			@Override public String apply(SnomedConcept input) { return input.getId(); }
+		});
+		
+		final LoadingCache<SnomedConcept, SnomedBrowserRelationshipType> types = CacheBuilder.newBuilder().build(new CacheLoader<SnomedConcept, SnomedBrowserRelationshipType>() {
+			@Override
+			public SnomedBrowserRelationshipType load(SnomedConcept key) throws Exception {
+				return browserService.convertBrowserRelationshipType(key);
+			}
+		});
+		
+		final LoadingCache<SnomedConcept, SnomedBrowserRelationshipTarget> targets = CacheBuilder.newBuilder().build(new CacheLoader<SnomedConcept, SnomedBrowserRelationshipTarget>() {
+			@Override
+			public SnomedBrowserRelationshipTarget load(SnomedConcept key) throws Exception {
+				return browserService.convertBrowserRelationshipTarget(key);
+			}
+		});
+		
+		for (IRelationshipChange relationshipChange : relationshipChanges.getChanges()) {
+			switch (relationshipChange.getChangeNature()) {
+				case INFERRED:
+					final SnomedBrowserRelationship inferred = new SnomedBrowserRelationship();
+					
+					// XXX: Default and/or not populated values are shown as commented lines below
+					inferred.setActive(true);
+					inferred.setCharacteristicType(CharacteristicType.INFERRED_RELATIONSHIP);
+					// inferred.setEffectiveTime(null);
+					inferred.setGroupId(relationshipChange.getGroup());
+					inferred.setModifier(relationshipChange.getModifier());
+					// inferred.setModuleId(null);
+					// inferred.setRelationshipId(null);
+					// inferred.setReleased(false);
+					inferred.setSourceId(relationshipChange.getSourceId());
+				
+					SnomedConcept destinationConcept = relatedConceptsById.get(relationshipChange.getDestinationId());
+					SnomedConcept typeConcept = relatedConceptsById.get(relationshipChange.getTypeId());
+					inferred.setTarget(targets.getUnchecked(destinationConcept));
+					inferred.setType(types.getUnchecked(typeConcept));
+
+					relationships.add(inferred);
+					break;
+				default:
+					break;
+			}
+		}
+		
+		// Replace immutable relationship list with preview
+		conceptDetails.setRelationships(relationships);
 		return conceptDetails;
 	}
 
@@ -469,7 +532,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	public void persistChanges(final String branchPath, final String classificationId, final String userId) {
 		checkServices();
 		// Check if it exists
-		IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId, userId);
+		IClassificationRun classificationRun = getClassificationRun(branchPath, classificationId);
 
 		if (!ClassificationStatus.COMPLETED.equals(classificationRun.getStatus())) {
 			return;
@@ -498,7 +561,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public void removeClassificationRun(final String branchPath, final String classificationId, final String userId) {
+	public void removeClassificationRun(final String branchPath, final String classificationId) {
 		checkServices();
 		JobRequests.prepareDelete(classificationId)
 				.buildAsync()
