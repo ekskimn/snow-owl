@@ -16,19 +16,16 @@
 package com.b2international.snowowl.datastore.server.snomed.version;
 
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.REFSET_MODULE_DEPENDENCY_TYPE;
-import static com.google.common.collect.Sets.newHashSet;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Date;
-import java.util.Set;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
 import com.b2international.collections.PrimitiveSets;
 import com.b2international.collections.longs.LongSet;
-import com.b2international.commons.CompareUtils;
 import com.b2international.index.revision.RevisionIndex;
 import com.b2international.index.revision.RevisionIndexRead;
 import com.b2international.index.revision.RevisionSearcher;
@@ -51,10 +48,8 @@ import com.b2international.snowowl.datastore.version.PublishOperationConfigurati
 import com.b2international.snowowl.eventbus.IEventBus;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.core.domain.SnomedComponent;
-import com.b2international.snowowl.snomed.core.domain.SnomedCoreComponent;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
-import com.b2international.snowowl.snomed.datastore.id.AbstractSnomedIdentifierService.SctIdStatusException;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedModuleDependencyRefSetMember;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetPackage;
@@ -74,7 +69,6 @@ import com.google.common.base.Function;
  */
 public class SnomedPublishManager extends PublishManager {
 
-	private Set<String> componentIdsToPublish = newHashSet();
 	private Collection<SnomedModuleDependencyRefSetMember> newModuleDependencyRefSetMembers;
 	
 	@Override
@@ -95,12 +89,6 @@ public class SnomedPublishManager extends PublishManager {
 						for (CollectionResource<?> hits : input.getResponses(CollectionResource.class)) {
 							for (Object hit : hits) {
 								if (hit instanceof SnomedComponent) {
-									final SnomedComponent component = (SnomedComponent) hit;
-									final String id = component.getId();
-									if (component instanceof SnomedCoreComponent) {
-										// if core component mark ID as publishable
-										componentIdsToPublish.add(id);
-									}
 									unpublishedStorageKeys.add(((SnomedComponent) hit).getStorageKey());
 								}
 							}
@@ -207,18 +195,6 @@ public class SnomedPublishManager extends PublishManager {
 	
 	@Override
 	public void postCommit() {
-		if (!CompareUtils.isEmpty(componentIdsToPublish)) {
-			try {
-				SnomedRequests.identifiers().preparePublish()
-					.setComponentIds(componentIdsToPublish)
-					.build(getRepositoryUuid())
-					.execute(getEventBus())
-					.getSync();
-			} catch (SctIdStatusException e) {
-				// report ID issues as warning instead of error
-				LOGGER.warn(e.getMessage(), e);
-			}
-		}
 		super.postCommit();
 	}
 	
