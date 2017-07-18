@@ -33,9 +33,9 @@ import com.jayway.restassured.response.ValidatableResponse;
 public abstract class CodeSystemRestRequests {
 
 	public static ValidatableResponse createCodeSystem(IBranchPath branchPath, String shortName) {
-		return createCodeSystem(branchPath, shortName, defaultCodeSystemBodyBuilder(branchPath, shortName).build());
+		return createCodeSystem(defaultCodeSystemBodyBuilder(branchPath, shortName).build());
 	}
-	public static ValidatableResponse createCodeSystem(IBranchPath branchPath, String shortName, Map<?,?> codeSystemRequestBody) {
+	public static ValidatableResponse createCodeSystem(Map<?,?> codeSystemRequestBody) {
 		Map<?,?> requestBody = codeSystemRequestBody;
 
 		return givenAuthenticatedRequest(SnomedApiTestConstants.ADMIN_API)
