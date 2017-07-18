@@ -16,19 +16,15 @@
 package com.b2international.snowowl.snomed.api.rest.branches;
 
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.SYNONYM;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.*;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
-import static com.b2international.snowowl.test.commons.rest.RestExtensions.lastPathSegment;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
@@ -50,61 +46,20 @@ import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.jayway.restassured.http.ContentType;
-import com.jayway.restassured.response.Response;
 
 /**
  * @since 4.6
  */
 public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 
-	private static final Set<String> FINISH_STATES = ImmutableSet.of(
-			ReviewStatus.CURRENT.toString(), 
-			ReviewStatus.FAILED.toString(), 
-			ReviewStatus.STALE.toString());
-
-	private static final long POLL_INTERVAL = TimeUnit.SECONDS.toMillis(1L);
-	private static final long POLL_TIMEOUT = TimeUnit.SECONDS.toMillis(30L);
 	
 	private static final String FINDING_CONTEXT = "408729009";
 	
-	private Response whenCreatingMergeReview(String source, String target) {
-		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-		.with()
-			.contentType(ContentType.JSON)
-			.body(ImmutableMap.builder().put("source", source).put("target", target).build())
-		.when()
-			.post("/merge-reviews");
-	}
-
-	private String andCreatedMergeReview(String source, String target) {
-		final String location = whenCreatingMergeReview(source, target)
-		.then()
-			.statusCode(201)
-			.header("Location", notNullValue())
-			.extract().header("Location");
-
-		return lastPathSegment(location);
-	}
-	
-	private Response whenRetrievingMergeReview(String reviewId) {
-		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-		.when()
-			.get("/merge-reviews/{id}", reviewId);
-	}
-	
-	private Response whenRetrievingMergeReviewDetails(String reviewId) {
-		return givenAuthenticatedRequest(SnomedApiTestConstants.SCT_API)
-				.with().header("Accept-Language", "en-GB")
-				.when()
-				.get("/merge-reviews/{id}/details", reviewId);
-	}
 	
 	@Test
 	public void createMergeReviewEmptyFields() {
-		whenCreatingMergeReview("", "")
-		.then()
+		createMergeReview("", "")
 			.statusCode(400)
 			.body("message", equalTo("2 validation errors"))
 			.body("violations", hasItem("'source' may not be empty (was '')"))
@@ -113,17 +68,15 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	
 	@Test
 	public void createMergeReviewNonExistentBranch() {
-		whenCreatingMergeReview(branchPath.getPath(), Branch.MAIN_PATH)
-		.then()
+		createMergeReview(branchPath.getPath(), Branch.MAIN_PATH)
 			.statusCode(400);
 	}
 	
 	@Test
 	public void createReview() {
 		SnomedBranchingRestRequests.createBranch(branchPath);
-		final String reviewId = andCreatedMergeReview(branchPath.getParentPath(), branchPath.getPath());
-		whenRetrievingMergeReview(reviewId)
-		.then()
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getParentPath(), branchPath.getPath()));
+		getMergeReview(reviewId)
 			.statusCode(200)
 			.body("status", CoreMatchers.anyOf(equalTo(ReviewStatus.CURRENT.toString()), equalTo(ReviewStatus.PENDING.toString())));
 		
@@ -131,30 +84,11 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	}
 
 	private void assertReviewCurrent(final String reviewId) {
-		final long endTime = System.currentTimeMillis() + POLL_TIMEOUT;
-		long currentTime;
-		String currentStatus;
-
-		do {
-
-			try {
-				Thread.sleep(POLL_INTERVAL);
-			} catch (final InterruptedException e) {
-				fail(e.toString());
-			}
-
-			currentStatus = whenRetrievingMergeReview(reviewId)
-			.then()
-				.statusCode(200)
-				.extract().body().path("status");
-
-			currentTime = System.currentTimeMillis();
-
-		} while (!FINISH_STATES.contains(currentStatus) && currentTime < endTime);
-
-		assertEquals("End state should be CURRENT.", currentStatus, ReviewStatus.CURRENT.toString());
+		waitForMergeReviewJob(reviewId)
+			.statusCode(200)
+			.body("status", equalTo(ReviewStatus.CURRENT.toString()));
 	}
-	
+
 	@Test
 	public void createEmptyMergeReview() {
 		SnomedBranchingRestRequests.createBranch(branchPath);
@@ -168,19 +102,13 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 //		// Another inferred relationship goes on the parent branch
 		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, CharacteristicType.INFERRED_RELATIONSHIP);
-//		assertComponentCreated(setupBranch.getParent(), SnomedComponentType.RELATIONSHIP, relationshipRequestBody);
 		
 		// See what happened on the sibling branch before merging changes to its parent
-		final String reviewId = andCreatedMergeReview(setupBranch.getPath(), setupBranch.getParentPath());
+		final String reviewId = reviewLocation(createMergeReview(setupBranch.getPath(), setupBranch.getParentPath()));
 		assertReviewCurrent(reviewId);
 		
 		
-		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
-			.statusCode(200)
-			.and()
-			.extract()
-			.body()
-			.as(JsonNode.class);
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
 		
 		assertTrue(reviewDetails.isArray());
 		assertEquals(0, reviewDetails.size());
@@ -199,15 +127,11 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, CharacteristicType.STATED_RELATIONSHIP);
 		
 		// See what happened on the sibling branch before merging changes to its parent
-		String reviewId = andCreatedMergeReview(setupBranch.getPath(), setupBranch.getParentPath());
+		String reviewId = reviewLocation(createMergeReview(setupBranch.getPath(), setupBranch.getParentPath()));
 		assertReviewCurrent(reviewId);
 		
 		
-		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then().assertThat().statusCode(200)
-		.and()
-		.extract()
-		.body()
-		.as(JsonNode.class);
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
 		
 		
 		assertTrue(reviewDetails.isArray());
@@ -227,15 +151,10 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		// Another inferred relationship goes on the parent branch
 		SnomedRestFixtures.createNewRelationship(setupBranch.getParent(), FINDING_CONTEXT, Concepts.IS_A, Concepts.MODULE_ROOT, CharacteristicType.INFERRED_RELATIONSHIP);
 		
-		String reviewId = andCreatedMergeReview(setupBranch.getPath(), setupBranch.getParentPath());
+		String reviewId = reviewLocation(createMergeReview(setupBranch.getPath(), setupBranch.getParentPath()));
 		// See what happened on the sibling branch before merging changes to its parent
 		assertReviewCurrent(reviewId);
-		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
-			.statusCode(200)
-			.and()
-			.extract()
-			.body()
-			.as(JsonNode.class);
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
 		
 		// Concept will still be returned as requiring manual merge.
 		assertTrue(reviewDetails.isArray());
@@ -247,7 +166,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		SnomedBranchingRestRequests.createBranch(branchPath);
 
 		// Set up a review...
-		String reviewId = andCreatedMergeReview(branchPath.getParentPath(), branchPath.getPath());
+		String reviewId = reviewLocation(createMergeReview(branchPath.getParentPath(), branchPath.getPath()));
 		assertReviewCurrent(reviewId);
 		
 		
@@ -256,8 +175,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		// wait 1s before checking review state 
 		Thread.sleep(1000);
 		
-		whenRetrievingMergeReview(reviewId)
-		.then()
+		waitForMergeReviewJob(reviewId)
 			.statusCode(200)
 			.body("status", equalTo(ReviewStatus.STALE.toString()));		
 	}
@@ -271,7 +189,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 
 		// Set up review for a rebase of MAIN/test/A
-		final String reviewId = andCreatedMergeReview(branchPath.getPath(), nestedBranchPath.getPath());
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), nestedBranchPath.getPath()));
 		assertReviewCurrent(reviewId);
 
 		// Rebase branchPath on MAIN
@@ -280,8 +198,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		// Create a new concept on MAIN
 		SnomedRestFixtures.createNewConcept(nestedBranchPath);
 
-		whenRetrievingMergeReview(reviewId)
-		.then()
+		waitForMergeReviewJob(reviewId)
 			.statusCode(200)
 			.body("status", equalTo(ReviewStatus.STALE.toString()));		
 	}
@@ -307,15 +224,10 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		SnomedRestFixtures.merge(thirdTaskPath, thirdTaskPath.getParent(), "Merging new description to project");
 		
-		final String reviewId = andCreatedMergeReview(branchPath.getPath(), secondTaskPath.getPath());
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), secondTaskPath.getPath()));
 		assertReviewCurrent(reviewId);
 		
-		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
-			.statusCode(200)
-			.and()
-			.extract()
-			.body()
-			.as(JsonNode.class);
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
 		
 		assertTrue(reviewDetails.isArray());
 		assertEquals(1, reviewDetails.size());
@@ -339,6 +251,64 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 			.statusCode(204);
 		
 	}
+	
+	@Test
+	public void taskRebaseWithMergeReviewApply() {
+		// create branches: project, task-A, task-B
+		SnomedBranchingRestRequests.createBranch(branchPath);
+		
+		IBranchPath task_A_path = BranchPathUtils.createPath(branchPath, "TASK-A");
+		SnomedBranchingRestRequests.createBranch(task_A_path);
+		
+		IBranchPath task_B_path = BranchPathUtils.createPath(branchPath, "TASK-B");
+		SnomedBranchingRestRequests.createBranch(task_B_path);
+		
+		// add new description to concept on task-A
+		SnomedRestFixtures.createNewDescription(task_A_path, FINDING_CONTEXT, SYNONYM);
+		SnomedComponentRestRequests.getComponent(task_A_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
+			.body("active", equalTo(true))
+			.body("descriptions.total", equalTo(3));
+		
+
+		// inactivate concept on task-B
+		SnomedRestFixtures.inactivateConcept(task_B_path, FINDING_CONTEXT);
+		SnomedComponentRestRequests.getComponent(task_B_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
+			.body("active", equalTo(false))
+			.body("descriptions.total", equalTo(2))
+			.body("descriptions.items[0].active", equalTo(true))
+			.body("descriptions.items[1].active", equalTo(true));
+		
+		// promote task-A to parent project
+		SnomedRestFixtures.merge(task_A_path, branchPath, "promote task-A to parent project");
+		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
+			.body("active", equalTo(true))
+			.body("descriptions.total", equalTo(3));
+		
+
+		// pull in changes from parent project to task-B
+		// by creating a review to resolve merge conflict 		
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), task_B_path.getPath()));
+		assertReviewCurrent(reviewId);
+		
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());
+		
+		// select suggested (middle) review as correct
+		JsonNode jsonNode = reviewDetails.get(0).get("autoMergedConcept");
+		
+		// store and apply proposed merged concept
+		storeConceptForMergeReview(reviewId, FINDING_CONTEXT, jsonNode);
+		mergeAndApply(reviewId);
+		
+		waitForMergeReviewJob(reviewId);
+
+		// assert that after review the correct content is merged to task-B
+		SnomedComponentRestRequests.getComponent(task_B_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
+			.body("active", equalTo(false))
+			.body("descriptions.total", equalTo(3));
+	}
+	
 	
 	@Test
 	public void noDescriptionIdsInChangedConceptIdsWhenConceptDeletedForMergeReview() {
@@ -369,15 +339,10 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.CONCEPT, concept).statusCode(404);
 		
-		final String reviewId = andCreatedMergeReview(branchPath.getPath(), secondTaskPath.getPath());
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), secondTaskPath.getPath()));
 		assertReviewCurrent(reviewId);
 		
-		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
-			.statusCode(200)
-			.and()
-			.extract()
-			.body()
-			.as(JsonNode.class);
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
 		
 		assertTrue(reviewDetails.isArray());
 		assertEquals(0, reviewDetails.size());
@@ -445,15 +410,10 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		SnomedRestFixtures.merge(thirdTaskPath, thirdTaskPath.getParent(), "Merging third task to project");
 		
-		final String reviewId = andCreatedMergeReview(branchPath.getPath(), secondTaskPath.getPath());
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), secondTaskPath.getPath()));
 		assertReviewCurrent(reviewId);
 		
-		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
-			.statusCode(200)
-			.and()
-			.extract()
-			.body()
-			.as(JsonNode.class);
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
 		
 		assertTrue(reviewDetails.isArray());
 		assertEquals(1, reviewDetails.size());
@@ -543,15 +503,10 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		
 		SnomedRestFixtures.merge(thirdTaskPath, thirdTaskPath.getParent(), "Merging third task to project");
 		
-		final String reviewId = andCreatedMergeReview(branchPath.getPath(), secondTaskPath.getPath());
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), secondTaskPath.getPath()));
 		assertReviewCurrent(reviewId);
 		
-		JsonNode reviewDetails = whenRetrievingMergeReviewDetails(reviewId).then()
-			.statusCode(200)
-			.and()
-			.extract()
-			.body()
-			.as(JsonNode.class);
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
 		
 		assertTrue(reviewDetails.isArray());
 		assertEquals(0, reviewDetails.size());
