@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.request;
 
+import java.util.UUID;
+
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchManager;
 import com.b2international.snowowl.core.domain.RepositoryContext;
@@ -32,6 +34,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public abstract class AbstractBranchChangeRequest<R> implements Request<RepositoryContext, R> {
 
 	@JsonProperty
+	protected final UUID id;
+	@JsonProperty
 	protected final String sourcePath;
 	@JsonProperty
 	protected final String targetPath;
@@ -40,7 +44,8 @@ public abstract class AbstractBranchChangeRequest<R> implements Request<Reposito
 	@JsonProperty
 	protected final String reviewId;
 
-	protected AbstractBranchChangeRequest(String sourcePath, String targetPath, String commitMessage, String reviewId) {
+	protected AbstractBranchChangeRequest(UUID id, String sourcePath, String targetPath, String commitMessage, String reviewId) {
+		this.id = id;
 		this.sourcePath = sourcePath;
 		this.targetPath = targetPath;
 		this.commitMessage = commitMessage;

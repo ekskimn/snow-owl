@@ -45,9 +45,9 @@ public class MergeServiceImpl implements MergeService {
 	}
 
 	@Override
-	public Merge enqueue(String source, String target, String commitMessage, String reviewId) {
-		AbstractBranchChangeRemoteJob job = AbstractBranchChangeRemoteJob.create(repository, source, target, commitMessage, reviewId);
-		merges.put(job.getMerge().getId(), job);
+	public Merge enqueue(UUID id, String source, String target, String commitMessage, String reviewId) {
+		AbstractBranchChangeRemoteJob job = AbstractBranchChangeRemoteJob.create(repository, id, source, target, commitMessage, reviewId);
+		merges.put(id, job);
 		job.schedule();
 		return job.getMerge();
 	}

@@ -15,6 +15,8 @@
  */
 package com.b2international.snowowl.datastore.server.internal.merge;
 
+import java.util.UUID;
+
 import com.b2international.snowowl.core.Repository;
 import com.b2international.snowowl.core.branch.Branch;
 import com.b2international.snowowl.core.branch.BranchMergeException;
@@ -36,7 +38,7 @@ public class BranchMergeJob extends AbstractBranchChangeRemoteJob {
 	private static class SyncMergeRequest extends AbstractBranchChangeRequest<Branch> {
 
 		SyncMergeRequest(final Merge merge, final String commitMessage, String reviewId) {
-			super(merge.getSource(), merge.getTarget(), commitMessage, reviewId);
+			super(merge.getId(), merge.getSource(), merge.getTarget(), commitMessage, reviewId);
 		}
 
 		@Override
@@ -53,8 +55,8 @@ public class BranchMergeJob extends AbstractBranchChangeRemoteJob {
 		}
 	}
 	
-	public BranchMergeJob(Repository repository, String source, String target, String commitMessage, String reviewId) {
-		super(repository, source, target, commitMessage, reviewId);
+	public BranchMergeJob(Repository repository, UUID id, String source, String target, String commitMessage, String reviewId) {
+		super(repository, id, source, target, commitMessage, reviewId);
 	}
 
 	@Override

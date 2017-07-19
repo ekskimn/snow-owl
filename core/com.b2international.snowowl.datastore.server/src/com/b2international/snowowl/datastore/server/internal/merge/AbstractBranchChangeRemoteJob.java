@@ -15,6 +15,7 @@
  */
 package com.b2international.snowowl.datastore.server.internal.merge;
 
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -38,14 +39,14 @@ import com.b2international.snowowl.datastore.server.remotejobs.BranchExclusiveRu
  */
 public abstract class AbstractBranchChangeRemoteJob extends Job {
 
-	public static AbstractBranchChangeRemoteJob create(Repository repository, String source, String target, String commitMessage, String reviewId) {
+	public static AbstractBranchChangeRemoteJob create(Repository repository, UUID id, String source, String target, String commitMessage, String reviewId) {
 		final IBranchPath sourcePath = BranchPathUtils.createPath(source);
 		final IBranchPath targetPath = BranchPathUtils.createPath(target);
 		
 		if (targetPath.getParent().equals(sourcePath)) {
-			return new BranchRebaseJob(repository, source, target, commitMessage, reviewId);
+			return new BranchRebaseJob(repository, id, source, target, commitMessage, reviewId);
 		} else {
-			return new BranchMergeJob(repository, source, target, commitMessage, reviewId);
+			return new BranchMergeJob(repository, id, source, target, commitMessage, reviewId);
 		}
 	}
 
@@ -55,14 +56,14 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 	protected String commitComment;
 	protected String reviewId;
 
-	protected AbstractBranchChangeRemoteJob(final Repository repository, final String sourcePath, final String targetPath, final String commitComment, final String reviewId) {
+	protected AbstractBranchChangeRemoteJob(final Repository repository, UUID id, final String sourcePath, final String targetPath, final String commitComment, final String reviewId) {
 		super(commitComment);
 		
 		this.repository = repository;
 		this.commitComment = commitComment;
 		this.reviewId = reviewId;
 		
-		merge.set(MergeImpl.builder(sourcePath, targetPath).build());
+		merge.set(MergeImpl.builder(sourcePath, targetPath).id(id).build());
 		
 		setSystem(true);
 		
@@ -84,6 +85,9 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 			merge.getAndUpdate(m -> m.failed(e.toApiError()));
 		} catch (RuntimeException e) {
 			merge.getAndUpdate(m -> m.failed(ApiError.Builder.of(e.getMessage()).build()));
+		} finally {
+			// Send a notification event with the final state to the global event bus
+			repository.events().publish(String.format(Merge.ADDRESS_TEMPLATE, repository.id(), merge.get().getId()), merge);
 		}
 		
 		return Statuses.ok();

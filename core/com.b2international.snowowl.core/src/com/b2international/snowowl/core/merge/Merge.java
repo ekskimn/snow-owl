@@ -98,32 +98,39 @@ public interface Merge {
 			this.target = target;
 		}
 
-		public void id(UUID id) {
+		public Builder id(UUID id) {
 			this.id = id;
+			return this;
 		}
 
-		public void status(Status status) {
+		public Builder status(Status status) {
 			this.status = status;
+			return this;
 		}
 
-		public void scheduledDate(Date scheduledDate) {
+		public Builder scheduledDate(Date scheduledDate) {
 			this.scheduledDate = scheduledDate;
+			return this;
 		}
 
-		public void startDate(Date startDate) {
+		public Builder startDate(Date startDate) {
 			this.startDate = startDate;
+			return this;
 		}
 
-		public void endDate(Date endDate) {
+		public Builder endDate(Date endDate) {
 			this.endDate = endDate;
+			return this;
 		}
 
-		public void apiError(ApiError apiError) {
+		public Builder apiError(ApiError apiError) {
 			this.apiError = apiError;
+			return this;
 		}
 
-		public void conflicts(Collection<MergeConflict> conflicts) {
+		public Builder conflicts(Collection<MergeConflict> conflicts) {
 			this.conflicts.addAll(conflicts);
+			return this;
 		}
 
 		public Merge build() {

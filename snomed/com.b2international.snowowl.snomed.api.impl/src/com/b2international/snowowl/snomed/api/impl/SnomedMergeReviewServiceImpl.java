@@ -770,14 +770,14 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		final String address = String.format(Merge.ADDRESS_TEMPLATE, SnomedDatastoreActivator.REPOSITORY_UUID, mergeId);
 
 		// Set up one-shot handlers that will be notified when the merge completes successfully
-		new ConceptUpdateHandler(address, bus, conceptUpdates, userId, extendedLocales, browserService).register();
-		new MergeReviewDeleteHandler(address, bus, mergeReview).register();
-		new ManualMergeDeleteHandler(address, bus, manualConceptMergeService, mergeReviewId).register();
+		new ConceptUpdateHandler(address, bus(), conceptUpdates, userId, extendedLocales, browserService()).register();
+		new MergeReviewDeleteHandler(address, bus(), mergeReview).register();
+		new ManualMergeDeleteHandler(address, bus(), manualConceptMergeService(), mergeReviewId).register();
 		
 		return RepositoryRequests
 			.merging()
 			.prepareCreate()
-//			.setId(mergeId)
+			.setId(mergeId)
 			.setSource(sourcePath)
 			.setTarget(targetPath)
 			.setReviewId(mergeReview.sourceToTargetReviewId())
