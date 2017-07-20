@@ -309,10 +309,6 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		storeConceptForMergeReview(reviewId, FINDING_CONTEXT, jsonNode);
 		mergeAndApply(reviewId);
 		
-		// even though merge is sync, but the apply of the stored concept happens on a different thread on the server 
-		// so we need to wait for it to finish 
-		Thread.sleep(1500);
-
 		// assert that after review the correct content is merged to task-B
 		SnomedComponentRestRequests.getComponent(task_B_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
 			.body("active", equalTo(false))
@@ -369,10 +365,6 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		// store and apply merged concept
 		storeConceptForMergeReview(reviewId, FINDING_CONTEXT, jsonNode);
 		mergeAndApply(reviewId);
-		
-		// even though merge is sync, but the apply of the stored concept happens on a different thread on the server 
-		// so we need to wait for it to finish
-		Thread.sleep(1500);
 		
 		// assert that after review the correct/merged content is present on task-B
 		SnomedComponentRestRequests.getComponent(task_B_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()").statusCode(200)

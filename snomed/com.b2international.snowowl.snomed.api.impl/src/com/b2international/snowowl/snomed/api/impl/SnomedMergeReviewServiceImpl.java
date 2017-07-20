@@ -24,8 +24,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
 
@@ -98,10 +100,12 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 
 		private final String address;
 		private final IEventBus bus;
+		private CountDownLatch latch;
 		
-		protected MergeReviewCompletionHandler(final String address, final IEventBus bus) {
+		protected MergeReviewCompletionHandler(final String address, final IEventBus bus, CountDownLatch latch) {
 			this.address = address;
 			this.bus = bus;
+			this.latch = latch;
 		}
 		
 		public void register() {
@@ -120,6 +124,7 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				
 			} finally {
 				bus.unregisterHandler(address, this);
+				latch.countDown();
 			}
 		}
 			
@@ -137,9 +142,9 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 				List<ISnomedBrowserConcept> updates,
 				String userId, 
 				List<ExtendedLocale> extendedLocales, 
-				ISnomedBrowserService browserService) {
+				ISnomedBrowserService browserService, CountDownLatch latch) {
 				
-			super(address, bus);
+			super(address, bus, latch);
 			this.updates = updates;
 			this.userId = userId;
 			this.extendedLocales = extendedLocales;
@@ -157,8 +162,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		private final SnomedManualConceptMergeServiceImpl manualMergeService;
 		private final String mergeReviewId;
 		
-		private ManualMergeDeleteHandler(String address, IEventBus bus, SnomedManualConceptMergeServiceImpl manualMergeService, String mergeReviewId) {
-			super(address, bus);
+		private ManualMergeDeleteHandler(String address, IEventBus bus, SnomedManualConceptMergeServiceImpl manualMergeService, String mergeReviewId, CountDownLatch latch) {
+			super(address, bus, latch);
 			this.manualMergeService = manualMergeService;
 			this.mergeReviewId = mergeReviewId;
 		}
@@ -173,8 +178,8 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 		
 		private final MergeReview mergeReview;
 		
-		private MergeReviewDeleteHandler(String address, IEventBus bus, MergeReview mergeReview) {
-			super(address, bus);
+		private MergeReviewDeleteHandler(String address, IEventBus bus, MergeReview mergeReview, CountDownLatch latch) {
+			super(address, bus, latch);
 			this.mergeReview = mergeReview;
 		}
 		
@@ -766,15 +771,20 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			}
 		}
 
+		
 		final UUID mergeId = UUID.randomUUID();
 		final String address = String.format(Merge.ADDRESS_TEMPLATE, SnomedDatastoreActivator.REPOSITORY_UUID, mergeId);
 
+
+		// using a latch here because the merge sends notification to these handlers on a different thread, so the actual concept apply may/or may not happen by the end of this method.
+		// the latch here makes sure that the handlers run before returning from this method.
+		CountDownLatch latch = new CountDownLatch(3);
 		// Set up one-shot handlers that will be notified when the merge completes successfully
-		new ConceptUpdateHandler(address, bus(), conceptUpdates, userId, extendedLocales, browserService()).register();
-		new MergeReviewDeleteHandler(address, bus(), mergeReview).register();
-		new ManualMergeDeleteHandler(address, bus(), manualConceptMergeService(), mergeReviewId).register();
+		new ConceptUpdateHandler(address, bus(), conceptUpdates, userId, extendedLocales, browserService(), latch).register();
+		new MergeReviewDeleteHandler(address, bus(), mergeReview, latch).register();
+		new ManualMergeDeleteHandler(address, bus(), manualConceptMergeService(), mergeReviewId, latch).register();
 		
-		return RepositoryRequests
+		Merge merge = RepositoryRequests
 			.merging()
 			.prepareCreate()
 			.setId(mergeId)
@@ -785,6 +795,10 @@ public class SnomedMergeReviewServiceImpl implements ISnomedMergeReviewService {
 			.build(SnomedDatastoreActivator.REPOSITORY_UUID)
 			.execute(bus())
 			.getSync();
+		
+		
+		latch.await(1, TimeUnit.MINUTES);
+		return merge;
 	}
 
 	@Override
