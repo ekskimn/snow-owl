@@ -16,7 +16,13 @@
 package com.b2international.snowowl.snomed.api.rest.branches;
 
 import static com.b2international.snowowl.snomed.SnomedConstants.Concepts.SYNONYM;
-import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.createMergeReview;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.getMergeReview;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.getMergeReviewDetailsResponse;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.mergeAndApply;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.reviewLocation;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.storeConceptForMergeReview;
+import static com.b2international.snowowl.snomed.api.rest.SnomedMergeReviewingRestRequests.waitForMergeReviewJob;
 import static com.b2international.snowowl.test.commons.rest.RestExtensions.givenAuthenticatedRequest;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -43,8 +49,10 @@ import com.b2international.snowowl.snomed.api.rest.SnomedMergingRestRequests;
 import com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures;
 import com.b2international.snowowl.snomed.core.domain.Acceptability;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.DefinitionStatus;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 import com.jayway.restassured.http.ContentType;
 
@@ -253,7 +261,7 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 	}
 	
 	@Test
-	public void taskRebaseWithMergeReviewApply() {
+	public void taskRebaseWithMergeReviewApplyAutomergedConcept() throws InterruptedException {
 		// create branches: project, task-A, task-B
 		SnomedBranchingRestRequests.createBranch(branchPath);
 		
@@ -301,7 +309,9 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 		storeConceptForMergeReview(reviewId, FINDING_CONTEXT, jsonNode);
 		mergeAndApply(reviewId);
 		
-		waitForMergeReviewJob(reviewId);
+		// even though merge is sync, but the apply of the stored concept happens on a different thread on the server 
+		// so we need to wait for it to finish 
+		Thread.sleep(1500);
 
 		// assert that after review the correct content is merged to task-B
 		SnomedComponentRestRequests.getComponent(task_B_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
@@ -309,6 +319,67 @@ public class SnomedMergeReviewApiTest extends AbstractSnomedApiTest {
 			.body("descriptions.total", equalTo(3));
 	}
 	
+	
+	@Test
+	public void taskRebaseWithMergeReviewApplyManuallyMergedConcept() throws InterruptedException {
+		// create branches: project, task-A, task-B
+		SnomedBranchingRestRequests.createBranch(branchPath);
+		
+		IBranchPath task_A_path = BranchPathUtils.createPath(branchPath, "TASK-A");
+		SnomedBranchingRestRequests.createBranch(task_A_path);
+		
+		IBranchPath task_B_path = BranchPathUtils.createPath(branchPath, "TASK-B");
+		SnomedBranchingRestRequests.createBranch(task_B_path);
+		
+		// add new description to concept on task-A
+		SnomedRestFixtures.createNewDescription(task_A_path, FINDING_CONTEXT, SYNONYM);
+		SnomedComponentRestRequests.getComponent(task_A_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
+			.body("active", equalTo(true))
+			.body("descriptions.total", equalTo(3));
+		
+		
+		// inactivate concept on task-B
+		SnomedRestFixtures.inactivateConcept(task_B_path, FINDING_CONTEXT);
+		SnomedComponentRestRequests.getComponent(task_B_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
+			.body("active", equalTo(false))
+			.body("descriptions.total", equalTo(2))
+			.body("descriptions.items[0].active", equalTo(true))
+			.body("descriptions.items[1].active", equalTo(true));
+		
+		// promote task-A to parent project
+		SnomedRestFixtures.merge(task_A_path, branchPath, "promote task-A to parent project");
+		SnomedComponentRestRequests.getComponent(branchPath, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()", "relationships()").statusCode(200)
+			.body("active", equalTo(true))
+			.body("descriptions.total", equalTo(3));
+		
+		
+		// pull in changes from parent project to task-B by creating a review to manually resolve merge conflict 		
+		final String reviewId = reviewLocation(createMergeReview(branchPath.getPath(), task_B_path.getPath()));
+		assertReviewCurrent(reviewId);
+		
+		JsonNode reviewDetails = getMergeReviewDetailsResponse(reviewId);
+		assertTrue(reviewDetails.isArray());
+		assertEquals(1, reviewDetails.size());
+		
+		// select the project version of the concept as correct and modify it a bit
+		JsonNode jsonNode = reviewDetails.get(0).get("sourceConcept");
+		ObjectNode objectNode = (ObjectNode) jsonNode;
+		objectNode.put("definitionStatus", DefinitionStatus.FULLY_DEFINED.name());
+		
+		// store and apply merged concept
+		storeConceptForMergeReview(reviewId, FINDING_CONTEXT, jsonNode);
+		mergeAndApply(reviewId);
+		
+		// even though merge is sync, but the apply of the stored concept happens on a different thread on the server 
+		// so we need to wait for it to finish
+		Thread.sleep(1500);
+		
+		// assert that after review the correct/merged content is present on task-B
+		SnomedComponentRestRequests.getComponent(task_B_path, SnomedComponentType.CONCEPT, FINDING_CONTEXT, "descriptions()").statusCode(200)
+			.body("active", equalTo(true))
+			.body("descriptions.total", equalTo(3))
+			.body("definitionStatus", equalTo(DefinitionStatus.FULLY_DEFINED.name()));
+	}
 	
 	@Test
 	public void noDescriptionIdsInChangedConceptIdsWhenConceptDeletedForMergeReview() {

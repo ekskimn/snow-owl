@@ -87,7 +87,7 @@ public abstract class AbstractBranchChangeRemoteJob extends Job {
 			merge.getAndUpdate(m -> m.failed(ApiError.Builder.of(e.getMessage()).build()));
 		} finally {
 			// Send a notification event with the final state to the global event bus
-			repository.events().publish(String.format(Merge.ADDRESS_TEMPLATE, repository.id(), merge.get().getId()), merge);
+			repository.events().publish(String.format(Merge.ADDRESS_TEMPLATE, repository.id(), merge.get().getId()), merge.get());
 		}
 		
 		return Statuses.ok();
