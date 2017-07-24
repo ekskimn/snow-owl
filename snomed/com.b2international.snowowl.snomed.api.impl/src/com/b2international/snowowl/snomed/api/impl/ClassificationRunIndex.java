@@ -306,6 +306,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 			} else {
 				final SnomedRelationship existingRelationship = getRelationship(branchPath, relationshipChange);
 				characteristicTypeId = existingRelationship.getCharacteristicType().getConceptId();
+				convertedRelationshipChange.setId(existingRelationship.getId());
 				if (changeNature == ChangeNature.REDUNDANT && characteristicTypeId.equals(Concepts.STATED_RELATIONSHIP)) {
 					classificationIssueFlags.setRedundantStatedFound(true);
 				}
