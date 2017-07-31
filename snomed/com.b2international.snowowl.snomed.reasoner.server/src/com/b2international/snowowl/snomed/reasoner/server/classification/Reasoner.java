@@ -18,12 +18,18 @@ package com.b2international.snowowl.snomed.reasoner.server.classification;
 import static com.b2international.snowowl.snomed.reasoner.server.SnomedReasonerServerActivator.CONSTRAINED_HEAP;
 import static com.google.common.base.Preconditions.checkState;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.text.MessageFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.coode.owlapi.functionalrenderer.OWLFunctionalSyntaxRenderer;
 import org.protege.editor.owl.model.inference.ProtegeOWLReasonerInfo;
+import org.semanticweb.owlapi.io.OWLRendererException;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.reasoner.ConsoleProgressMonitor;
@@ -103,6 +109,19 @@ public class Reasoner extends AbstractDisposableService {
 			
 			for (final ConceptDefinition conceptDefinition : additionalDefinitions) {
 				ontologyService.applyChanges(ontology, conceptDefinition.add(ontology));
+			}
+			
+			OWLFunctionalSyntaxRenderer ontologyRenderer = new OWLFunctionalSyntaxRenderer();
+			try {
+				File classificationsDirectory = new File("/tmp/classifications");
+				classificationsDirectory.mkdirs();
+				File owlFile = new File(classificationsDirectory, new Date().getTime() + ".owl");
+				LOGGER.info("Serialising OWL Ontology before classification to file {}", owlFile.getAbsolutePath());
+				try (FileWriter fileWriter = new FileWriter(owlFile)) {
+					ontologyRenderer.render(ontology, fileWriter);
+				}
+			} catch (OWLRendererException | IOException e) {
+				LOGGER.error("Failed to serialise OWL Ontology.", e);
 			}
 			
 			return ontology;
