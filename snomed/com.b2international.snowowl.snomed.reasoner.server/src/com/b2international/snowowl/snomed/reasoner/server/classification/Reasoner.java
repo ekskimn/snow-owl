@@ -97,6 +97,20 @@ public class Reasoner extends AbstractDisposableService {
 			reasoner = reasonerFactory.createReasoner(createOntology(additionalDefinitions), configuration);
 		}
 		
+		// Temporary code to serialise the Ontology to disk.
+		OWLFunctionalSyntaxRenderer ontologyRenderer = new OWLFunctionalSyntaxRenderer();
+		try {
+			File classificationsDirectory = new File("/tmp/classifications");
+			classificationsDirectory.mkdirs();
+			File owlFile = new File(classificationsDirectory, new Date().getTime() + ".owl");
+			LOGGER.info("Serialising OWL Ontology before classification to file {}", owlFile.getAbsolutePath());
+			try (FileWriter fileWriter = new FileWriter(owlFile)) {
+				ontologyRenderer.render(ontology, fileWriter);
+			}
+		} catch (OWLRendererException | IOException e) {
+			LOGGER.error("Failed to serialise OWL Ontology.", e);
+		}
+		
 		return reasoner;
 	}
 
@@ -109,19 +123,6 @@ public class Reasoner extends AbstractDisposableService {
 			
 			for (final ConceptDefinition conceptDefinition : additionalDefinitions) {
 				ontologyService.applyChanges(ontology, conceptDefinition.add(ontology));
-			}
-			
-			OWLFunctionalSyntaxRenderer ontologyRenderer = new OWLFunctionalSyntaxRenderer();
-			try {
-				File classificationsDirectory = new File("/tmp/classifications");
-				classificationsDirectory.mkdirs();
-				File owlFile = new File(classificationsDirectory, new Date().getTime() + ".owl");
-				LOGGER.info("Serialising OWL Ontology before classification to file {}", owlFile.getAbsolutePath());
-				try (FileWriter fileWriter = new FileWriter(owlFile)) {
-					ontologyRenderer.render(ontology, fileWriter);
-				}
-			} catch (OWLRendererException | IOException e) {
-				LOGGER.error("Failed to serialise OWL Ontology.", e);
 			}
 			
 			return ontology;
