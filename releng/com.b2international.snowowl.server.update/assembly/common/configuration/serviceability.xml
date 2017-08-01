@@ -251,11 +251,7 @@
 		<appender-ref ref="LOG_FILE" />
 	</logger>
 	
-	<logger level="TRACE" additivity="false" name="com.b2international.snowowl.internal.eventbus.EventBus">
-		<appender-ref ref="EVENT_BUS_LOG_FILE" />
-	</logger>
-	
-	<logger level="TRACE" additivity="false" name="request">
+	<logger level="INFO" additivity="false" name="request">
 		<appender-ref ref="EVENT_BUS_LOG_FILE" />
 	</logger>
 
