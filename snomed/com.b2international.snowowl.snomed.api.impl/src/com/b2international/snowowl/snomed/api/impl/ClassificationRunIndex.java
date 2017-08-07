@@ -59,7 +59,6 @@ import com.b2international.snowowl.snomed.api.impl.domain.classification.Equival
 import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChange;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChangeList;
 import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
-import com.b2international.snowowl.snomed.core.domain.SnomedRelationship;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
@@ -248,16 +247,17 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 		upsertClassificationRun(branchPath, classificationRun);
 	}
 
-	private SnomedRelationship getRelationship(IBranchPath branchPath, RelationshipChangeEntry relationshipChange) {
-		return Iterables.getOnlyElement(SnomedRequests.prepareSearchRelationship()
-				.setLimit(1)
+	private boolean isStatedRelationshipPairExists(IBranchPath branchPath, RelationshipChangeEntry relationshipChange) {
+		return SnomedRequests.prepareSearchRelationship()
+				.setLimit(0)
 				.filterBySource(relationshipChange.getSource().getId().toString())
 				.filterByDestination(relationshipChange.getDestination().getId().toString())
 				.filterByType(relationshipChange.getType().getId().toString())
-				.filterByGroup(relationshipChange.getGroup())
+				.filterByGroup(relationshipChange.getGroup()) // this is questionable?
+				.filterByCharacteristicType(Concepts.STATED_RELATIONSHIP)
 				.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath.getPath())
 				.execute(ApplicationContext.getServiceForClass(IEventBus.class))
-				.getSync(), null);
+				.getSync().getTotal() > 0;
 	}
 
 	public void deleteClassificationData(final String classificationId) throws IOException {
@@ -305,10 +305,9 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 			if (changeNature == ChangeNature.INFERRED) {
 				characteristicTypeId = Concepts.INFERRED_RELATIONSHIP;
 			} else {
-				final SnomedRelationship existingRelationship = getRelationship(branchPath, relationshipChange);
-				characteristicTypeId = existingRelationship.getCharacteristicType().getConceptId();
-				convertedRelationshipChange.setId(existingRelationship.getId());
-				if (changeNature == ChangeNature.REDUNDANT && characteristicTypeId.equals(Concepts.STATED_RELATIONSHIP)) {
+				final boolean statedRelationshipExists = isStatedRelationshipPairExists(branchPath, relationshipChange);
+				characteristicTypeId = statedRelationshipExists ? Concepts.STATED_RELATIONSHIP : Concepts.INFERRED_RELATIONSHIP;
+				if (statedRelationshipExists) {
 					classificationIssueFlags.setRedundantStatedFound(true);
 				}
 			}
