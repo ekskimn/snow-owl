@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.collections.PrimitiveCollectionModule;
 import com.b2international.index.Index;
+import com.b2international.index.IndexClientFactory;
 import com.b2international.index.Indexes;
 import com.b2international.index.mapping.Mappings;
 import com.b2international.snowowl.core.Repository;
@@ -104,9 +105,20 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 	public void preRun(SnowOwlConfiguration configuration, Environment env) {
 		if (env.isServer() || env.isEmbedded()) {
 			LOG.debug(">>> Starting server-side datastore bundle.");
+			
 			if (isInReindexMode()) {
-				makeConfigReindexFriendly(configuration);
+				initReindexSettings(configuration);
+			} else {
+				
+				RepositoryConfiguration repositoryConfiguration = configuration.getModuleConfig(RepositoryConfiguration.class);
+				LOG.info("Revision cache is {}", repositoryConfiguration.isRevisionCacheEnabled() ? "enabled" : "disabled");
+				
+				IndexConfiguration indexConfiguration = repositoryConfiguration.getIndexConfiguration();
+				LOG.info("Index commit interval is set to {} (default value is {})", indexConfiguration.getCommitInterval(), IndexClientFactory.DEFAULT_COMMIT_INTERVAL);
+				LOG.info("Index translog sync interval is set to {} (default value is {})", indexConfiguration.getTranslogSyncInterval(), IndexClientFactory.DEFAULT_TRANSLOG_SYNC_INTERVAL);
+				
 			}
+			
 			final IManagedContainer container = env.container();
 			final Stopwatch serverStopwatch = Stopwatch.createStarted();
 			
@@ -151,13 +163,15 @@ public class DatastoreServerBootstrap implements PreRunCapableBootstrapFragment 
 		env.services().registerService(Notifications.class, new Notifications(env.service(IEventBus.class), classLoader));
 	}
 
-	private void makeConfigReindexFriendly(SnowOwlConfiguration configuration) {
+	private void initReindexSettings(SnowOwlConfiguration configuration) {
 		RepositoryConfiguration repositoryConfig = configuration.getModuleConfig(RepositoryConfiguration.class);
 		IndexConfiguration indexConfiguration = repositoryConfig.getIndexConfiguration();
 		repositoryConfig.setRevisionCacheEnabled(false);
+		LOG.info("Set revision cache to {} for reindexing", repositoryConfig.isRevisionCacheEnabled());
 		indexConfiguration.setCommitInterval(900000L);
+		LOG.info("Set index commit interval to {} for reindexing", indexConfiguration.getCommitInterval());
 		indexConfiguration.setTranslogSyncInterval(300000L);
-		LOG.debug("Modified runtime terminology server configuration, with values necessary for the reindexing process.");
+		LOG.info("Set index translog sync interval to {} for reindexing", indexConfiguration.getTranslogSyncInterval());
 	}
 
 	private boolean isInReindexMode() {
