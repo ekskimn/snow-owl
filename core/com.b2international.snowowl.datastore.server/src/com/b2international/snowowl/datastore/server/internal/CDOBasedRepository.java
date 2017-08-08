@@ -394,7 +394,7 @@ public final class CDOBasedRepository extends DelegatingServiceProvider implemen
 		}
 		
 		if (firstMissingCdoCommitTimestamp != -1) {
-			return String.format(REINDEX_DIAGNOSIS_TEMPLATE, id(), firstMissingCdoCommitTimestamp);
+			return String.format(REINDEX_DIAGNOSIS_TEMPLATE, id(), String.format(" %s", firstMissingCdoCommitTimestamp));
 		}
 		
 		return null;
