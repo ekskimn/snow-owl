@@ -580,6 +580,7 @@
 					<groupId>org.ihtsdo.drools</groupId>
 					<artifactId>snomed-drools-engine</artifactId>
 					<version>1.4.0-SNAPSHOT</version>
+					<classifier>bundle</classifier>
 					<scope>provided</scope>
 				</dependency>
 				<dependency>

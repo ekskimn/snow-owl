@@ -1,6 +1,7 @@
 package com.b2international.snowowl.snomed.api.impl.validation;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -62,7 +63,7 @@ public class SnomedBrowserValidationService implements ISnomedBrowserValidationS
 		ValidationDescriptionService validationDescriptionService = new ValidationDescriptionService(descriptionService, branchPath, bus);
 		ValidationRelationshipService validationRelationshipService = new ValidationRelationshipService(branchPath, bus);
 		try {
-			List<InvalidContent> list = ruleExecutor.execute(assertionGroupNames, new ValidationConcept(browserConcept), 
+			List<InvalidContent> list = ruleExecutor.execute(assertionGroupNames, Collections.singleton(new ValidationConcept(browserConcept)), 
 					validationConceptService, validationDescriptionService, validationRelationshipService, false, false);
 			List<ISnomedInvalidContent> invalidContent = Lists.transform(list, new Function<InvalidContent, ISnomedInvalidContent>() {
 				@Override
