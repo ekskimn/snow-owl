@@ -578,7 +578,7 @@
 				</dependency>
 				<dependency>
 					<groupId>org.ihtsdo.drools</groupId>
-					<artifactId>snomed-drools</artifactId>
+					<artifactId>snomed-drools-engine</artifactId>
 					<version>1.4.0-SNAPSHOT</version>
 					<scope>provided</scope>
 				</dependency>
