@@ -15,10 +15,16 @@
  */
 package com.b2international.snowowl.snomed.api.rest.classification;
 
-import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.*;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassification;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassificationSave;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getClassificationJobId;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getRelationshipChanges;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.waitForClassificationJob;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.waitForClassificationSaveJob;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.getComponent;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateRelationship;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -56,6 +62,13 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 	private static final ObjectMapper MAPPER = getObjectMapper();
 	private static final TypeReference<PageableCollectionResource<IRelationshipChange>> RELATIONSHIP_CHANGES_REFERENCE = new TypeReference<PageableCollectionResource<IRelationshipChange>>() { };
 
+	private static final String ACCESS = "260507000";
+	private static final String BLADDER_FILLING_TECHNIQUE = "246502009";
+	
+	private static final String ASSOCIATED_FINDING = "246090004";
+	private static final String POST_PROCESSING = "260931002";
+	private static final String PROVOCATION_TECHNIQUE = "246506007";
+	
 	private static ObjectMapper getObjectMapper() {
 		ObjectMapper objectMapper = new ObjectMapper();
 		SimpleModule module = new SimpleModule("classification", Version.unknownVersion());
@@ -212,5 +225,62 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		}
 
 		assertTrue("No redundant relationships found in response.", redundantFound);
+	}
+	
+	@Test
+	public void issue_APDS_327_testNoStatedRedundantRelationshipChanges() throws Exception {
+		
+		String conceptId = createNewConcept(branchPath);
+		
+		createNewRelationship(branchPath, conceptId, Concepts.IS_A, Concepts.ROOT_CONCEPT, CharacteristicType.INFERRED_RELATIONSHIP);
+		
+		// group 1
+		createNewRelationship(branchPath, conceptId, ACCESS, BLADDER_FILLING_TECHNIQUE, CharacteristicType.STATED_RELATIONSHIP, 1);
+		createNewRelationship(branchPath, conceptId, ASSOCIATED_FINDING, POST_PROCESSING, CharacteristicType.STATED_RELATIONSHIP, 1);
+		
+		createNewRelationship(branchPath, conceptId, ACCESS, BLADDER_FILLING_TECHNIQUE, CharacteristicType.INFERRED_RELATIONSHIP, 1);
+		createNewRelationship(branchPath, conceptId, ASSOCIATED_FINDING, PROVOCATION_TECHNIQUE, CharacteristicType.INFERRED_RELATIONSHIP, 1);
+		
+		// group 2
+		String relationshipId = createNewRelationship(branchPath, conceptId, ACCESS, BLADDER_FILLING_TECHNIQUE, CharacteristicType.STATED_RELATIONSHIP, 2);
+		createNewRelationship(branchPath, conceptId, ASSOCIATED_FINDING, PROVOCATION_TECHNIQUE, CharacteristicType.STATED_RELATIONSHIP, 2);
+		
+		createNewRelationship(branchPath, conceptId, ACCESS, BLADDER_FILLING_TECHNIQUE, CharacteristicType.INFERRED_RELATIONSHIP, 2);
+		createNewRelationship(branchPath, conceptId, ASSOCIATED_FINDING, POST_PROCESSING, CharacteristicType.INFERRED_RELATIONSHIP, 2);
+		
+		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		waitForClassificationJob(branchPath, classificationId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+
+		PageableCollectionResource<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId)
+				.statusCode(200)
+				.extract()
+				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+
+		assertTrue(changes.isEmpty());
+		
+		inactivateRelationship(branchPath, relationshipId);
+		getComponent(branchPath, SnomedComponentType.RELATIONSHIP, relationshipId)
+			.statusCode(200)
+			.body("active", equalTo(false));
+		
+		String secondClassificationId = getClassificationJobId(beginClassification(branchPath));
+		waitForClassificationJob(branchPath, secondClassificationId)
+			.statusCode(200)
+			.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+
+		PageableCollectionResource<IRelationshipChange> secondChanges = MAPPER.readValue(getRelationshipChanges(branchPath, secondClassificationId)
+				.statusCode(200)
+				.extract()
+				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+		
+		for (IRelationshipChange relationshipChange : secondChanges) {
+			if (ChangeNature.REDUNDANT.equals(relationshipChange.getChangeNature())) {
+				getComponent(branchPath, SnomedComponentType.RELATIONSHIP, relationshipChange.getId())
+					.statusCode(200)
+					.body("characteristicType", equalTo(CharacteristicType.INFERRED_RELATIONSHIP.name()));
+			}
+		}
 	}
 }
