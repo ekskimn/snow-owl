@@ -250,6 +250,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 	private boolean isStatedRelationshipPairExists(IBranchPath branchPath, RelationshipChangeEntry relationshipChange) {
 		return SnomedRequests.prepareSearchRelationship()
 				.setLimit(0)
+				.filterByActive(true)
 				.filterBySource(relationshipChange.getSource().getId().toString())
 				.filterByDestination(relationshipChange.getDestination().getId().toString())
 				.filterByType(relationshipChange.getType().getId().toString())
