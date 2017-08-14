@@ -382,7 +382,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private Integer maxReasonerRuns() {
 		
 		return maxReasonerRuns == null ? 
-					maxReasonerRuns = ApplicationContext.getInstance().getServiceChecked(SnowOwlConfiguration.class).getModuleConfig(SnomedCoreConfiguration.class).getMaxReasonerRuns() 
+					maxReasonerRuns = ApplicationContext.getInstance().getServiceChecked(SnowOwlConfiguration.class).getModuleConfig(SnomedCoreConfiguration.class).getClassificationConfig().getMaxReasonerRuns() 
 				: 
 					maxReasonerRuns;
 	}
