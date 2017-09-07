@@ -1,5 +1,6 @@
 package com.b2international.snowowl.snomed.api.impl.validation.service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -60,13 +61,17 @@ public class ValidationConceptService implements ConceptService {
 		   r.getCharacteristicTypeId().equals(Concepts.STATED_RELATIONSHIP) && r.getTypeId().equals(Concepts.IS_A)).collect(Collectors.toList());
 		
 		Set<Concept> matches = new HashSet<>();
-		for(Relationship statedParent : statedParents) {
-			SnomedConcepts concepts = SnomedRequests.prepareGetConcept(statedParent.getDestinationId()).setExpand("ancestors(limit:"+Integer.MAX_VALUE+",direct:false,form:\"inferred\")")
+		int limit = Integer.MAX_VALUE;
+		for(Relationship statedParentRelationship : statedParents) {
+			SnomedConcepts concepts = SnomedRequests.prepareGetConcept(statedParentRelationship.getDestinationId()).setExpand("ancestors(limit:"+limit+",direct:false,form:\"stated\")")
 					.build(SnomedDatastoreActivator.REPOSITORY_UUID, branchPath)
 					.execute(bus)
 					.then(new Function<SnomedConcept, SnomedConcepts>() {
 						public SnomedConcepts apply(SnomedConcept input) {
-							return input.getAncestors();
+							SnomedConcepts ancestors = input.getAncestors();
+							List<SnomedConcept> items = new ArrayList<>(input.getAncestors().getItems());
+							items.add(input);							
+							return new SnomedConcepts(items, 0, limit, ancestors.getTotal());
 						}
 					})
 					.getSync();
