@@ -103,6 +103,8 @@ import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.ClassificationSettings;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedExternalReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
@@ -416,6 +418,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		String type = (String) remoteJob.getParameters().get("type");
 		
 		switch (type) {
+			case "ExternalClassifyRequest": // fall through
 			case "ClassifyRequest":
 				onClassifyJobChanged(remoteJob);
 				break;
@@ -463,7 +466,8 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			public void run() {
 				try {
 					
-					final GetResultResponse result = getReasonerService().getResult(remoteJob.getId());
+					boolean isExternalClassificationRequest = isExternalClassificationRequest(remoteJob);
+					final GetResultResponse result = getReasonerService(isExternalClassificationRequest).getResult(remoteJob.getId());
 					final Type responseType = result.getType();
 	
 					switch (responseType) {
@@ -481,13 +485,20 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 					}
 					
 					// Remove reasoner taxonomy immediately after processing it
-					getReasonerService().removeResult(remoteJob.getId());
+					getReasonerService(isExternalClassificationRequest).removeResult(remoteJob.getId());
 	
 				} catch (final IOException e) {
 					LOG.error("Caught IOException while registering classification data.", e);
 				}
 			}
+
 		});
+	}
+	
+	@SuppressWarnings("unchecked")
+	private boolean isExternalClassificationRequest(RemoteJobEntry remoteJobEntry) {
+		Map<String, Object> settings = (Map<String, Object>) remoteJobEntry.getParameters().get("settings");
+		return (Boolean) settings.get("useExternalService");
 	}
 
 	@PreDestroy
@@ -532,7 +543,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	private Integer getMaxReasonerRuns() {
 		if (maxReasonerRuns == null) {
 			maxReasonerRuns = ApplicationContext.getInstance().getServiceChecked(SnowOwlConfiguration.class)
-					.getModuleConfig(SnomedCoreConfiguration.class).getMaxReasonerRuns();
+					.getModuleConfig(SnomedCoreConfiguration.class).getClassificationConfig().getMaxReasonerRuns();
 		}
 		return Preconditions.checkNotNull(maxReasonerRuns, "maximum number of reasoner runs must be configured");
 	}
@@ -551,8 +562,11 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 		}
 	}
 
-	private static SnomedReasonerService getReasonerService() {
-		return ApplicationContext.getServiceForClass(SnomedReasonerService.class);
+	private static SnomedReasonerService getReasonerService(boolean isExternalClassificationRequest) {
+		if (isExternalClassificationRequest) {
+			return ApplicationContext.getServiceForClass(SnomedExternalReasonerService.class);
+		}
+		return ApplicationContext.getServiceForClass(SnomedInternalReasonerService.class);
 	}
 
 	private static Notifications getNotifications() {
@@ -571,12 +585,13 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 	}
 
 	@Override
-	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final String userId) {
+	public IClassificationRun beginClassification(final String branchPath, final String reasonerId, final boolean useExternalService, final String userId) {
 		checkServices();
 		Branch branch = getBranchIfExists(branchPath);
 
 		final ClassificationSettings settings = new ClassificationSettings(userId, branch.branchPath())
 				.withParentContextDescription(DatastoreLockContextDescriptions.ROOT)
+				.withExternalService(useExternalService)
 				.withReasonerId(reasonerId);
 
 		final ClassificationRun classificationRun = new ClassificationRun();
@@ -593,7 +608,7 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			throw new RuntimeException(e);
 		}
 		
-		getReasonerService().beginClassification(settings);
+		getReasonerService(useExternalService).beginClassification(settings);
 		return classificationRun;
 	}
 

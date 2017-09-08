@@ -49,7 +49,7 @@ import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -151,7 +151,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		assertEquals(2, getPersistedInferredRelationshipCount(branchPath, childConceptId));
 		
 		// assert that classification results are removed from the taxonomy result registry
-		SnomedReasonerService snomedReasonerService = ApplicationContext.getServiceForClass(SnomedReasonerService.class);
+		SnomedInternalReasonerService snomedReasonerService = ApplicationContext.getServiceForClass(SnomedInternalReasonerService.class);
 		GetResultResponse response = snomedReasonerService.getResult(classificationId);
 		assertEquals(Type.NOT_AVAILABLE, response.getType()); 
 	}
