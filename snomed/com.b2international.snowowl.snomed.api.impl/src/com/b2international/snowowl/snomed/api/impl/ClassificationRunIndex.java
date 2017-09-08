@@ -236,8 +236,7 @@ public class ClassificationRunIndex extends SingleDirectoryIndexImpl {
 			}
 			
 			final ClassificationIssueFlags issueFlags = indexChanges(sourceDocument, id, changes);
-			classificationRun.setInferredRelationshipChangesFound(
-					changes.getRelationshipEntries().stream().anyMatch(change -> change.getNature() == Nature.INFERRED));
+			classificationRun.setInferredRelationshipChangesFound(!changes.getRelationshipEntries().isEmpty());
 			classificationRun.setRedundantStatedRelationshipsFound(issueFlags.isRedundantStatedFound());
 			classificationRun.setEquivalentConceptsFound(issueFlags.isEquivalentConceptsFound());
 		} else if (ClassificationStatus.SAVED.equals(newStatus)) {
