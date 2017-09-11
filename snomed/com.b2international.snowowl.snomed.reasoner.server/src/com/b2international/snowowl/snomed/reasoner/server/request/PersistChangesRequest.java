@@ -189,9 +189,9 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 
 			return new ApiError.Builder("OK").code(200).build();
 		} catch (CommitException e) {
-			if (editingContext != null) {
-				editingContext.releaseIds();
-			}
+			// if (editingContext != null) {
+			//	editingContext.releaseIds();
+			// }
 			throw e;
 		} finally {
 			if (editingContext != null) {
