@@ -21,7 +21,6 @@ import com.b2international.snowowl.core.domain.RepositoryContext;
 import com.b2international.snowowl.core.terminology.ComponentCategory;
 import com.b2international.snowowl.snomed.datastore.id.domain.SnomedComponentIds;
 import com.b2international.snowowl.snomed.datastore.id.request.AbstractSnomedIdentifierCountedRequestBuilder;
-import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableSet;
 
@@ -54,14 +53,14 @@ abstract class AbstractCountedIdAction extends AbstractIdAction<Set<String>> {
 	
 	protected abstract AbstractSnomedIdentifierCountedRequestBuilder<?> createRequestBuilder();
 
-	@Override
-	protected final void doRollback(RepositoryContext context, Set<String> storedResults) {
-		SnomedRequests.identifiers()
-				.prepareRelease()
-				.setComponentIds(storedResults)
-				.build()
-				.execute(context);
-	}
+//	@Override
+//	protected final void doRollback(RepositoryContext context, Set<String> storedResults) {
+//		SnomedRequests.identifiers()
+//				.prepareRelease()
+//				.setComponentIds(storedResults)
+//				.build()
+//				.execute(context);
+//	}
 	
 	@Override
 	public String toString() {

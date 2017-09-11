@@ -397,7 +397,7 @@ public class SnomedEditingContext extends BaseSnomedEditingContext {
 		try {
 			return super.commit(commitMessage, monitor);
 		} catch (Exception e) {
-			releaseIds();
+			// releaseIds();
 			throw e;
 		}
 	}
