@@ -305,6 +305,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		}
 	}
 
+	@Test
 	public void issue_SO_1830_testInferredEquivalentConceptParents() throws Exception {
 		String parentConceptId = createNewConcept(branchPath);
 		String childConceptId = createNewConcept(branchPath, parentConceptId);
