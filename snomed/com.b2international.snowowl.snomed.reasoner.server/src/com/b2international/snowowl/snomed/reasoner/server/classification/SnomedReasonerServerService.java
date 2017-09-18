@@ -55,6 +55,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.datastore.ConcreteDomainFragment;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
@@ -151,11 +152,14 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	};
 	
 	private final Cache<String, ReasonerTaxonomy> taxonomyResultRegistry;
+
+	private boolean concreteDomainSupportEnabled;
 	
 	public SnomedReasonerServerService(int maximumReasonerCount, int maximumTaxonomiesToKeep) {
 		super(maximumReasonerCount);
 		this.taxonomyResultRegistry = CacheBuilder.newBuilder().maximumSize(maximumTaxonomiesToKeep).build();
 		LOGGER.info("Initialized SNOMED CT reasoner server with maximum of {} reasoner(s) instances and {} saveable taxonomies to keep.", maximumReasonerCount, maximumTaxonomiesToKeep);
+		this.concreteDomainSupportEnabled = ApplicationContext.getInstance().getServiceChecked(SnomedCoreConfiguration.class).isConcreteDomainSupported();
 	}
 
 	public void registerListeners() {
@@ -303,56 +307,63 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 				
 				relationshipBuilder.add(entry);
 				
-				// look up all CDEs from the original relationship and add them as inferred
-				Collection<ConcreteDomainFragment> relationshipConcreteDomainElements = reasonerTaxonomyBuilder.getStatementConcreteDomainFragments(subject.getStatementId());
-				
-				for (ConcreteDomainFragment concreteDomainElementIndexEntry : relationshipConcreteDomainElements) {
+				if (concreteDomainSupportEnabled) {
+					// look up all CDEs from the original relationship and add them as inferred
+					Collection<ConcreteDomainFragment> relationshipConcreteDomainElements = reasonerTaxonomyBuilder.getStatementConcreteDomainFragments(subject.getStatementId());
 					
-					ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
-							branchPath, 
-							concreteDomainElementIndexEntry);
-					
-					RelationshipConcreteDomainChangeEntry relationshipConcreteDomainElementEntry = 
-							new RelationshipConcreteDomainChangeEntry(
-									changeNature, 
-									sourceComponent, 
-									typeComponent, 
-									destinationComponent, 
-									concreteDomainElement);
-					
-					concreteDomainBuilder.add(relationshipConcreteDomainElementEntry);
+					for (ConcreteDomainFragment concreteDomainElementIndexEntry : relationshipConcreteDomainElements) {
+						
+						ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
+								branchPath, 
+								concreteDomainElementIndexEntry);
+						
+						RelationshipConcreteDomainChangeEntry relationshipConcreteDomainElementEntry = 
+								new RelationshipConcreteDomainChangeEntry(
+										changeNature, 
+										sourceComponent, 
+										typeComponent, 
+										destinationComponent, 
+										concreteDomainElement);
+						
+						concreteDomainBuilder.add(relationshipConcreteDomainElementEntry);
+					}
 				}
+				
 			}
 		});
 		
-		new ConceptConcreteDomainNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder).collectNormalFormChanges(null, new OntologyChangeProcessor<ConcreteDomainFragment>() {
-			@Override 
-			protected void handleAddedSubject(long conceptId, ConcreteDomainFragment addedSubject) {
-				registerEntry(conceptId, addedSubject, Nature.INFERRED);
-			}
+		if (concreteDomainSupportEnabled) {
 			
-			@Override 
-			protected void handleRemovedSubject(long conceptId, ConcreteDomainFragment removedSubject) {
-				registerEntry(conceptId, removedSubject, Nature.REDUNDANT);
-			}
-	
-			private void registerEntry(long conceptId, ConcreteDomainFragment subject, Nature changeNature) {
-				ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
-						branchPath, 
-						subject);
+			new ConceptConcreteDomainNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder).collectNormalFormChanges(null, new OntologyChangeProcessor<ConcreteDomainFragment>() {
+				@Override 
+				protected void handleAddedSubject(long conceptId, ConcreteDomainFragment addedSubject) {
+					registerEntry(conceptId, addedSubject, Nature.INFERRED);
+				}
 				
-				ChangeConcept sourceComponent = getOrCreateChangeConcept(changeConceptCache,
-						branchPath, 
-						conceptId);
+				@Override 
+				protected void handleRemovedSubject(long conceptId, ConcreteDomainFragment removedSubject) {
+					registerEntry(conceptId, removedSubject, Nature.REDUNDANT);
+				}
 				
-				ConceptConcreteDomainChangeEntry responseEntry = new ConceptConcreteDomainChangeEntry(
-						changeNature, 
-						sourceComponent, 
-						concreteDomainElement);
-				
-				concreteDomainBuilder.add(responseEntry);
-			}
-		});
+				private void registerEntry(long conceptId, ConcreteDomainFragment subject, Nature changeNature) {
+					ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
+							branchPath, 
+							subject);
+					
+					ChangeConcept sourceComponent = getOrCreateChangeConcept(changeConceptCache,
+							branchPath, 
+							conceptId);
+					
+					ConceptConcreteDomainChangeEntry responseEntry = new ConceptConcreteDomainChangeEntry(
+							changeNature, 
+							sourceComponent, 
+							concreteDomainElement);
+					
+					concreteDomainBuilder.add(responseEntry);
+				}
+			});
+			
+		}
 		
 		List<AbstractEquivalenceSet> equivalentConcepts = doGetEquivalentConcepts(taxonomy);
 		GetResultResponseChanges convertedChanges = new GetResultResponseChanges(taxonomy.getElapsedTimeMillis(), 

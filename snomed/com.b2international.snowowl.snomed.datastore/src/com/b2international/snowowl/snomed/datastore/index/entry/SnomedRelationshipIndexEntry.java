@@ -381,8 +381,8 @@ public final class SnomedRelationshipIndexEntry extends SnomedComponentDocument 
 				referringMappingRefSets);
 
 		// XXX -1 is the default value
-		checkArgument(group >= -1, String.format("Group number '%s' may not be negative (relationship ID: %s).", group, id));
-		checkArgument(unionGroup >= -1, String.format("Union group number '%s' may not be negative (relationship ID: %s).", unionGroup, id));
+		checkArgument(group >= -1);
+		checkArgument(unionGroup >= -1);
 
 		this.sourceId = sourceId;
 		this.typeId = typeId;
