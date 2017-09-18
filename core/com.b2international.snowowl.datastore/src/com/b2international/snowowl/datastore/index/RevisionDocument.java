@@ -59,6 +59,37 @@ public abstract class RevisionDocument extends Revision implements IIndexEntry, 
 			
 		}
 		
+		public static class IdAndStorageKeyOnly extends IdOnly {
+
+			private long storageKey;
+			
+			@JsonCreator
+			public IdAndStorageKeyOnly(@JsonProperty("id") final String id, @JsonProperty("storageKey") final long storageKey) {
+				super(id);
+				this.storageKey = storageKey;
+			}
+			
+			public long getStorageKey() {
+				return storageKey;
+			}
+			
+			@Override
+			public int hashCode() {
+				return java.util.Objects.hash(getId(), getStorageKey());
+			}
+			
+			@Override
+			public boolean equals(Object obj) {
+				if (this == obj) return true;
+				if (obj == null) return false;
+				if (getClass() != obj.getClass()) return false;
+				final IdAndStorageKeyOnly other = (IdAndStorageKeyOnly) obj;
+				return java.util.Objects.equals(getId(), other.getId())
+						&& java.util.Objects.equals(getStorageKey(), other.getStorageKey());
+			}
+			
+		}
+		
 	}
 	
 	public static abstract class Expressions {
