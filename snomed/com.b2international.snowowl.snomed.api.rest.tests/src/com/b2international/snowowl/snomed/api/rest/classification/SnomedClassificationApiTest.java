@@ -18,10 +18,12 @@ package com.b2international.snowowl.snomed.api.rest.classification;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassification;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.beginClassificationSave;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getClassificationJobId;
+import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getEquivalentConceptSets;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.getRelationshipChanges;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.waitForClassificationJob;
 import static com.b2international.snowowl.snomed.api.rest.SnomedClassificationRestRequests.waitForClassificationSaveJob;
 import static com.b2international.snowowl.snomed.api.rest.SnomedComponentRestRequests.getComponent;
+import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.changeToDefining;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewConcept;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.createNewRelationship;
 import static com.b2international.snowowl.snomed.api.rest.SnomedRestFixtures.inactivateRelationship;
@@ -38,15 +40,21 @@ import org.junit.Test;
 
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.api.IBranchPath;
+import com.b2international.snowowl.core.domain.CollectionResource;
 import com.b2international.snowowl.core.domain.PageableCollectionResource;
 import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.api.domain.classification.ChangeNature;
 import com.b2international.snowowl.snomed.api.domain.classification.ClassificationStatus;
+import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConcept;
+import com.b2international.snowowl.snomed.api.domain.classification.IEquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.domain.classification.IRelationshipChange;
+import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConcept;
+import com.b2international.snowowl.snomed.api.impl.domain.classification.EquivalentConceptSet;
 import com.b2international.snowowl.snomed.api.impl.domain.classification.RelationshipChange;
 import com.b2international.snowowl.snomed.api.rest.AbstractSnomedApiTest;
 import com.b2international.snowowl.snomed.api.rest.SnomedComponentType;
 import com.b2international.snowowl.snomed.core.domain.CharacteristicType;
+import com.b2international.snowowl.snomed.core.domain.RelationshipModifier;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
@@ -54,6 +62,7 @@ import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
@@ -65,6 +74,7 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 
 	private static final ObjectMapper MAPPER = getObjectMapper();
 	private static final TypeReference<PageableCollectionResource<IRelationshipChange>> RELATIONSHIP_CHANGES_REFERENCE = new TypeReference<PageableCollectionResource<IRelationshipChange>>() { };
+	private static final TypeReference<CollectionResource<IEquivalentConceptSet>> EQUIVALENT_CONCEPTS_REFERENCE = new TypeReference<CollectionResource<IEquivalentConceptSet>>() { };
 
 	private static final String ACCESS = "260507000";
 	private static final String BLADDER_FILLING_TECHNIQUE = "246502009";
@@ -77,6 +87,8 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 		ObjectMapper objectMapper = new ObjectMapper();
 		SimpleModule module = new SimpleModule("classification", Version.unknownVersion());
 		module.addAbstractTypeMapping(IRelationshipChange.class, RelationshipChange.class);
+		module.addAbstractTypeMapping(IEquivalentConceptSet.class, EquivalentConceptSet.class);
+		module.addAbstractTypeMapping(IEquivalentConcept.class, EquivalentConcept.class);
 		objectMapper.registerModule(module);
 		return objectMapper;
 	}
@@ -291,5 +303,66 @@ public class SnomedClassificationApiTest extends AbstractSnomedApiTest {
 					.body("characteristicType", equalTo(CharacteristicType.INFERRED_RELATIONSHIP.name()));
 			}
 		}
+	}
+
+	@Test
+	public void issue_SO_1830_testInferredEquivalentConceptParents() throws Exception {
+		String parentConceptId = createNewConcept(branchPath);
+		String childConceptId = createNewConcept(branchPath, parentConceptId);
+		String equivalentConceptId = createNewConcept(branchPath, parentConceptId);
+
+		changeToDefining(branchPath, equivalentConceptId);
+
+		String classificationId = getClassificationJobId(beginClassification(branchPath));
+		waitForClassificationJob(branchPath, classificationId)
+		.statusCode(200)
+		.body("status", equalTo(ClassificationStatus.COMPLETED.name()));
+
+		/* 
+		 * Expecting that childConceptId will get two inferred IS A-s pointing to parentConceptId and equivalentConceptId, respectively, 
+		 * while parentConceptId and equivalentConceptId each will get a single inferred IS A pointing to the root concept.
+		 */
+		PageableCollectionResource<IRelationshipChange> changes = MAPPER.readValue(getRelationshipChanges(branchPath, classificationId).statusCode(200)
+				.extract()
+				.asInputStream(), RELATIONSHIP_CHANGES_REFERENCE);
+
+		FluentIterable<IRelationshipChange> changesIterable = FluentIterable.from(changes);
+		
+		assertEquals(4, changes.getTotal());
+		assertTrue("All changes should be inferred.", changesIterable.allMatch(relationshipChange -> ChangeNature.INFERRED.equals(relationshipChange.getChangeNature())));
+		
+		assertInferredIsAExists(changesIterable, childConceptId, parentConceptId);
+		assertInferredIsAExists(changesIterable, childConceptId, equivalentConceptId);
+		assertInferredIsAExists(changesIterable, parentConceptId, Concepts.ROOT_CONCEPT);
+		assertInferredIsAExists(changesIterable, equivalentConceptId, Concepts.ROOT_CONCEPT);
+		
+		CollectionResource<IEquivalentConceptSet> equivalentConceptSets = MAPPER.readValue(getEquivalentConceptSets(branchPath, classificationId).statusCode(200)
+				.extract()
+				.asInputStream(), EQUIVALENT_CONCEPTS_REFERENCE);
+		
+		assertEquals(1, equivalentConceptSets.getItems().size());
+		
+		List<IEquivalentConcept> equivalentConceptsInFirstSet = equivalentConceptSets.first().get().getEquivalentConcepts();
+		FluentIterable<IEquivalentConcept> equivalentConceptsIterable = FluentIterable.from(equivalentConceptsInFirstSet);
+		
+		assertEquals(2, equivalentConceptsInFirstSet.size());
+		assertEquivalentConceptPresent(equivalentConceptsIterable, parentConceptId);
+		assertEquivalentConceptPresent(equivalentConceptsIterable, equivalentConceptId);
+	}
+
+	private static void assertInferredIsAExists(FluentIterable<IRelationshipChange> changesIterable, String childConceptId, String parentConceptId) {
+		assertTrue("Inferred IS A between " + childConceptId + " and " + parentConceptId + " not found.", 
+				changesIterable.anyMatch(relationshipChange -> Concepts.IS_A.equals(relationshipChange.getTypeId())
+				&& childConceptId.equals(relationshipChange.getSourceId())
+				&& parentConceptId.equals(relationshipChange.getDestinationId())
+				&& relationshipChange.getGroup() == 0
+				&& relationshipChange.getUnionGroup() == 0
+				&& RelationshipModifier.EXISTENTIAL.equals(relationshipChange.getModifier())
+				&& Concepts.INFERRED_RELATIONSHIP.equals(relationshipChange.getCharacteristicTypeId())));
+	}
+	
+	private static void assertEquivalentConceptPresent(FluentIterable<IEquivalentConcept> equivalentConceptsIterable, String conceptId) {
+		assertTrue("Equivalent concept with ID " + conceptId + " not found in set.", 
+				equivalentConceptsIterable.anyMatch(equivalentConcept -> conceptId.equals(equivalentConcept.getId())));
 	}
 }
