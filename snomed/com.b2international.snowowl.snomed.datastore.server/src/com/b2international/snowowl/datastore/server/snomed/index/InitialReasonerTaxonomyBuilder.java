@@ -62,6 +62,7 @@ import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRefSetMemb
 import com.b2international.snowowl.snomed.datastore.index.entry.SnomedRelationshipIndexEntry;
 import com.b2international.snowowl.snomed.snomedrefset.SnomedRefSetType;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
 /**
@@ -87,7 +88,9 @@ public class InitialReasonerTaxonomyBuilder extends AbstractReasonerTaxonomyBuil
 		@Override
 		public void run() {
 			final Query<SnomedRelationshipIndexEntry.Views.StatementWithId> query = Query
-					.selectPartial(SnomedRelationshipIndexEntry.Views.StatementWithId.class, SnomedRelationshipIndexEntry.class)
+					.selectPartial(SnomedRelationshipIndexEntry.Views.StatementWithId.class, SnomedRelationshipIndexEntry.class,
+							ImmutableSet.of(SnomedRelationshipIndexEntry.Fields.ID, SnomedRelationshipIndexEntry.Fields.SOURCE_ID,
+									SnomedRelationshipIndexEntry.Fields.DESTINATION_ID))
 					.where(Expressions.builder()
 							.filter(active())
 							.filter(typeId(Concepts.IS_A))
@@ -132,7 +135,8 @@ public class InitialReasonerTaxonomyBuilder extends AbstractReasonerTaxonomyBuil
 
 		@Override
 		public void run() {
-			Query<IdOnly> query = Query.selectPartial(RevisionDocument.Views.IdOnly.class, SnomedConceptDocument.class)
+			Query<IdOnly> query = Query
+					.selectPartial(RevisionDocument.Views.IdOnly.class, SnomedConceptDocument.class, ImmutableSet.of(SnomedConceptDocument.Fields.ID))
 					.where(Expressions.builder()
 							.filter(active())
 							.filter(additionalClause)
@@ -172,7 +176,9 @@ public class InitialReasonerTaxonomyBuilder extends AbstractReasonerTaxonomyBuil
 
 		@Override
 		public void run() {
-			final Query<IdAndStorageKeyOnly> query = Query.selectPartial(RevisionDocument.Views.IdAndStorageKeyOnly.class, SnomedConceptDocument.class)
+			final Query<IdAndStorageKeyOnly> query = Query
+					.selectPartial(RevisionDocument.Views.IdAndStorageKeyOnly.class, SnomedConceptDocument.class,
+							ImmutableSet.of(SnomedConceptDocument.Fields.ID, "storageKey"))
 					.where(Expressions.builder()
 							.filter(active())
 							.build())
