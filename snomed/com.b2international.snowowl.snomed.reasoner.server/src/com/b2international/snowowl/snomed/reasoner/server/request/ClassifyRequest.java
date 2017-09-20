@@ -82,7 +82,10 @@ public class ClassifyRequest implements Request<ServiceProvider, ApiError> {
 
 			reasonerReference = serverService.takeServiceReference(snomedBranchPath, additionalDefinitions.isEmpty(), settings);
 			ReasonerTaxonomy reasonerTaxonomy = reasonerReference.getService().classify(userId, parentContextDescription, additionalDefinitions);
+			
+			serverService.registerTaxonomyBuilder(classificationId, reasonerReference.getService().getTaxonomyBuilder().get());
 			serverService.registerResult(classificationId, reasonerTaxonomy);
+			
 			return new ApiError.Builder("OK").code(200).build();
 		} catch (Exception e) {
 			caughtException = e;
