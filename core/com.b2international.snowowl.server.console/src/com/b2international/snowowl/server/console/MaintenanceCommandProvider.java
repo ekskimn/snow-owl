@@ -62,6 +62,7 @@ import com.b2international.snowowl.datastore.request.repository.RepositorySearch
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
 import com.b2international.snowowl.datastore.server.internal.branch.BranchManagerImpl;
 import com.b2international.snowowl.datastore.server.internal.branch.InternalCDOBasedBranch;
+import com.b2international.snowowl.datastore.server.migrate.MigrateRequest;
 import com.b2international.snowowl.datastore.server.reindex.OptimizeRequest;
 import com.b2international.snowowl.datastore.server.reindex.PurgeRequest;
 import com.b2international.snowowl.datastore.server.reindex.ReindexRequest;
@@ -118,6 +119,7 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		buffer.append("\tsnowowl reindex [repositoryId] [failedCommitTimestamp]- reindexes the content for the given repository ID from the given failed commit timestamp (optional, default timestamp is 1 which means no failed commit).\n");
 		buffer.append("\tsnowowl optimize [repositoryId] [maxSegments] - optimizes the underlying index for the repository to have the supplied maximum number of segments (default number is 1)\n");
 		buffer.append("\tsnowowl purge [repositoryId] [branchPath] [ALL|LATEST|HISTORY] - optimizes the underlying index by deleting unnecessary documents from the given branch using the given purge strategy (default strategy is LATEST)\n");
+		buffer.append("\tsnowowl migrate [repositoryId] [remoteLocation] - migrates content from a remote database into the given repository.\n");
 		buffer.append("\tsnowowl repositories [repositoryId] - prints all currently available repositories and their health statuses");
 		return buffer.toString();
 	}
@@ -180,6 +182,10 @@ public class MaintenanceCommandProvider implements CommandProvider {
 			
 			if ("fixrelationships".equals(cmd)) {
 				fixRelationships(interpreter);
+			}
+			
+			if ("migrate".equals(cmd)) {
+				migrate(interpreter);
 				return;
 			}
 			
@@ -449,7 +455,6 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		return "";
 	}
 
-
 	private static final String COLUMN_FORMAT = "|%-16s|%-16s|%-16s|";
 	
 	private void repositories(CommandInterpreter interpreter) {
@@ -554,6 +559,26 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				.getSync();
 		
 		interpreter.println(result.getMessage());
+	}
+	
+	private void migrate(CommandInterpreter interpreter) {
+		final String repositoryId = interpreter.nextArgument();
+		
+		if (Strings.isNullOrEmpty(repositoryId)) {
+			interpreter.println("RepositoryId parameter is required");
+			return;
+		}
+		
+		final String remoteLocation = interpreter.nextArgument();
+		
+		if (Strings.isNullOrEmpty(remoteLocation)) {
+			interpreter.println("Remote location parameter is required (host:[port])");
+			return;
+		}
+		
+		MigrateRequest.builder(remoteLocation).build(repositoryId).execute(getBus()).getSync();
+		
+		interpreter.println(String.format("Migration of '%s' repository successfully completed from source '%s'.", repositoryId, remoteLocation));
 	}
 
 	private static IEventBus getBus() {
