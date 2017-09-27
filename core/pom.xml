@@ -9,7 +9,7 @@
 	<parent>
 		<groupId>com.b2international.snowowl</groupId>
 		<artifactId>snowowl-parent</artifactId>
-		<version>5.10.13-SNAPSHOT</version>
+		<version>5.10.16-SNAPSHOT</version>
 	</parent>
 	
 	<modules>
@@ -56,6 +56,8 @@
 		<module>com.b2international.snowowl.server.core.feature</module>
 		<module>com.b2international.snowowl.server.dependencies.feature</module>
 		<module>com.b2international.snowowl.server.product.feature</module>
+		
+		<module>com.b2international.snowowl.retrofit</module>
 	</modules>
 	
 </project>

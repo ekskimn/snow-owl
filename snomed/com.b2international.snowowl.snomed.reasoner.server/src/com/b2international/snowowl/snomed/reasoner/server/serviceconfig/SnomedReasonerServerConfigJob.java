@@ -23,11 +23,14 @@ import com.b2international.snowowl.core.config.ClientPreferences;
 import com.b2international.snowowl.datastore.serviceconfig.ServiceConfigJob;
 import com.b2international.snowowl.rpc.RpcSession;
 import com.b2international.snowowl.rpc.RpcUtil;
+import com.b2international.snowowl.snomed.datastore.config.SnomedClassificationConfiguration;
 import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedExternalReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.preferences.IReasonerPreferencesService;
 import com.b2international.snowowl.snomed.reasoner.server.SnomedReasonerServerActivator;
 import com.b2international.snowowl.snomed.reasoner.server.classification.SnomedReasonerServerService;
+import com.b2international.snowowl.snomed.reasoner.server.classification.external.SnomedExternalReasonerServiceImpl;
 import com.b2international.snowowl.snomed.reasoner.server.ontology.SnomedOntologyService;
 import com.b2international.snowowl.snomed.reasoner.server.preferences.ReasonerPreferencesService;
 
@@ -53,16 +56,22 @@ public class SnomedReasonerServerConfigJob extends ServiceConfigJob {
 		ApplicationContext.getInstance().registerService(SnomedOntologyService.class, new SnomedOntologyService());
 		ApplicationContext.getInstance().registerService(IReasonerPreferencesService.class, new ReasonerPreferencesService());
 
-		final SnomedCoreConfiguration snomedConfiguration = getSnowOwlConfiguration().getModuleConfig(SnomedCoreConfiguration.class);
-		final int maximumReasonerCount = snomedConfiguration.getMaxReasonerCount();
-		final int maximumTaxonomiesToKeep = snomedConfiguration.getMaxReasonerResults();
+		SnomedClassificationConfiguration classificationConfig = getSnowOwlConfiguration().getModuleConfig(SnomedCoreConfiguration.class).getClassificationConfig();
+		final int maximumReasonerCount = classificationConfig.getMaxReasonerCount();
+		final int maximumTaxonomiesToKeep = classificationConfig.getMaxReasonerResults();
 		final SnomedReasonerServerService reasonerService = new SnomedReasonerServerService(maximumReasonerCount, maximumTaxonomiesToKeep);
-		ApplicationContext.getInstance().registerService(SnomedReasonerService.class, reasonerService);
+		ApplicationContext.getInstance().registerService(SnomedInternalReasonerService.class, reasonerService);
 		reasonerService.registerListeners();
 
 		final RpcSession session = RpcUtil.getInitialServerSession(IPluginContainer.INSTANCE);
-		session.registerClassLoader(SnomedReasonerService.class, reasonerService.getClass().getClassLoader());
+		session.registerClassLoader(SnomedInternalReasonerService.class, reasonerService.getClass().getClassLoader());
 		session.registerClassLoader(IReasonerPreferencesService.class, new ReasonerPreferencesService().getClass().getClassLoader());
+		
+		if (classificationConfig.isExternalClassificationServiceConfigured()) {
+			SnomedExternalReasonerServiceImpl externalReasonerService = new SnomedExternalReasonerServiceImpl(classificationConfig);
+			ApplicationContext.getInstance().registerService(SnomedExternalReasonerService.class, externalReasonerService);
+		}
+		
 		return true;
 	}
 }

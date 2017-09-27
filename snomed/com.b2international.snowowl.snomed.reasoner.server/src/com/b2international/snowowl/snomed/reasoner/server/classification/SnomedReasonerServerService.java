@@ -19,7 +19,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 
-import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.List;
@@ -35,13 +34,9 @@ import org.slf4j.LoggerFactory;
 
 import com.b2international.collections.longs.LongSet;
 import com.b2international.commons.collect.LongSets;
-import com.b2international.index.revision.RevisionIndex;
-import com.b2international.index.revision.RevisionIndexRead;
-import com.b2international.index.revision.RevisionSearcher;
 import com.b2international.snowowl.core.ApplicationContext;
 import com.b2international.snowowl.core.IDisposableService;
 import com.b2international.snowowl.core.IServiceChangeListener;
-import com.b2international.snowowl.core.RepositoryManager;
 import com.b2international.snowowl.core.api.IBranchPath;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDOConnection;
@@ -55,6 +50,7 @@ import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.datastore.ConcreteDomainFragment;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.StatementFragment;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractEquivalenceSet;
 import com.b2international.snowowl.snomed.reasoner.classification.AbstractResponse.Type;
@@ -64,7 +60,7 @@ import com.b2international.snowowl.snomed.reasoner.classification.GetEquivalentC
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponse;
 import com.b2international.snowowl.snomed.reasoner.classification.GetResultResponseChanges;
 import com.b2international.snowowl.snomed.reasoner.classification.PersistChangesResponse;
-import com.b2international.snowowl.snomed.reasoner.classification.SnomedReasonerService;
+import com.b2international.snowowl.snomed.reasoner.classification.SnomedInternalReasonerService;
 import com.b2international.snowowl.snomed.reasoner.classification.UnsatisfiableSet;
 import com.b2international.snowowl.snomed.reasoner.classification.entry.AbstractChangeEntry.Nature;
 import com.b2international.snowowl.snomed.reasoner.classification.entry.ChangeConcept;
@@ -87,7 +83,7 @@ import com.google.common.collect.ImmutableList;
 /**
  * Manages reasoners that operate on the OWL representation of a SNOMED&nbsp;CT repository branch path. 
  */
-public class SnomedReasonerServerService extends CollectingService<Reasoner, ClassificationSettings> implements SnomedReasonerService, IDisposableService {
+public class SnomedReasonerServerService extends CollectingService<Reasoner, ClassificationSettings> implements SnomedInternalReasonerService, IDisposableService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(SnomedReasonerServerService.class);
 	
@@ -151,11 +147,16 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	};
 	
 	private final Cache<String, ReasonerTaxonomy> taxonomyResultRegistry;
+	private final Cache<String, InitialReasonerTaxonomyBuilder> taxonomyBuilderRegistry;
+
+	private boolean concreteDomainSupportEnabled;
 	
 	public SnomedReasonerServerService(int maximumReasonerCount, int maximumTaxonomiesToKeep) {
 		super(maximumReasonerCount);
 		this.taxonomyResultRegistry = CacheBuilder.newBuilder().maximumSize(maximumTaxonomiesToKeep).build();
+		this.taxonomyBuilderRegistry = CacheBuilder.newBuilder().maximumSize(maximumTaxonomiesToKeep).build();
 		LOGGER.info("Initialized SNOMED CT reasoner server with maximum of {} reasoner(s) instances and {} saveable taxonomies to keep.", maximumReasonerCount, maximumTaxonomiesToKeep);
+		this.concreteDomainSupportEnabled = ApplicationContext.getInstance().getServiceChecked(SnomedCoreConfiguration.class).isConcreteDomainSupported();
 	}
 
 	public void registerListeners() {
@@ -167,6 +168,8 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	protected void onDispose() {
 		taxonomyResultRegistry.invalidateAll();
 		taxonomyResultRegistry.cleanUp();
+		taxonomyBuilderRegistry.invalidateAll();
+		taxonomyBuilderRegistry.cleanUp();
 		getApplicationContext().removeServiceListener(IReasonerPreferencesService.class, preferencesListenerRegistrator);
 		getApplicationContext().removeServiceListener(ICDOConnectionManager.class, invalidationListenerRegistrator);
 		super.onDispose();
@@ -174,12 +177,6 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 
 	private static ApplicationContext getApplicationContext() {
 		return ApplicationContext.getInstance();
-	}
-	
-	private static RevisionIndex getIndex() {
-		return ApplicationContext.getServiceForClass(RepositoryManager.class)
-				.get(SnomedDatastoreActivator.REPOSITORY_UUID)
-				.service(RevisionIndex.class);
 	}
 	
 	private static IEventBus getEventBus() {
@@ -224,6 +221,10 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	public void registerResult(String remoteJobId, ReasonerTaxonomy reasonerTaxonomy) {
 		taxonomyResultRegistry.put(remoteJobId, reasonerTaxonomy);
 	}
+	
+	public void registerTaxonomyBuilder(String classificationId, InitialReasonerTaxonomyBuilder reasonerTaxonomyBuilder) {
+		taxonomyBuilderRegistry.put(classificationId, checkNotNull(reasonerTaxonomyBuilder));
+	}
 
 	@Override
 	public void beginClassification(ClassificationSettings settings) {
@@ -256,12 +257,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	private GetResultResponseChanges doGetResult(String classificationId, ReasonerTaxonomy taxonomy) {
 		
 		IBranchPath branchPath = taxonomy.getBranchPath();
-		InitialReasonerTaxonomyBuilder reasonerTaxonomyBuilder = getIndex().read(branchPath.getPath(), new RevisionIndexRead<InitialReasonerTaxonomyBuilder>() {
-			@Override
-			public InitialReasonerTaxonomyBuilder execute(RevisionSearcher searcher) throws IOException {
-				return new InitialReasonerTaxonomyBuilder(searcher, InitialReasonerTaxonomyBuilder.Type.REASONER);
-			}
-		});
+		InitialReasonerTaxonomyBuilder reasonerTaxonomyBuilder = taxonomyBuilderRegistry.getIfPresent(classificationId);
 		
 		ImmutableList.Builder<RelationshipChangeEntry> relationshipBuilder = ImmutableList.builder();
 		ImmutableList.Builder<IConcreteDomainChangeEntry> concreteDomainBuilder = ImmutableList.builder();
@@ -303,56 +299,63 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 				
 				relationshipBuilder.add(entry);
 				
-				// look up all CDEs from the original relationship and add them as inferred
-				Collection<ConcreteDomainFragment> relationshipConcreteDomainElements = reasonerTaxonomyBuilder.getStatementConcreteDomainFragments(subject.getStatementId());
-				
-				for (ConcreteDomainFragment concreteDomainElementIndexEntry : relationshipConcreteDomainElements) {
+				if (concreteDomainSupportEnabled) {
+					// look up all CDEs from the original relationship and add them as inferred
+					Collection<ConcreteDomainFragment> relationshipConcreteDomainElements = reasonerTaxonomyBuilder.getStatementConcreteDomainFragments(subject.getStatementId());
 					
-					ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
-							branchPath, 
-							concreteDomainElementIndexEntry);
-					
-					RelationshipConcreteDomainChangeEntry relationshipConcreteDomainElementEntry = 
-							new RelationshipConcreteDomainChangeEntry(
-									changeNature, 
-									sourceComponent, 
-									typeComponent, 
-									destinationComponent, 
-									concreteDomainElement);
-					
-					concreteDomainBuilder.add(relationshipConcreteDomainElementEntry);
+					for (ConcreteDomainFragment concreteDomainElementIndexEntry : relationshipConcreteDomainElements) {
+						
+						ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
+								branchPath, 
+								concreteDomainElementIndexEntry);
+						
+						RelationshipConcreteDomainChangeEntry relationshipConcreteDomainElementEntry = 
+								new RelationshipConcreteDomainChangeEntry(
+										changeNature, 
+										sourceComponent, 
+										typeComponent, 
+										destinationComponent, 
+										concreteDomainElement);
+						
+						concreteDomainBuilder.add(relationshipConcreteDomainElementEntry);
+					}
 				}
+				
 			}
 		});
 		
-		new ConceptConcreteDomainNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder).collectNormalFormChanges(null, new OntologyChangeProcessor<ConcreteDomainFragment>() {
-			@Override 
-			protected void handleAddedSubject(long conceptId, ConcreteDomainFragment addedSubject) {
-				registerEntry(conceptId, addedSubject, Nature.INFERRED);
-			}
+		if (concreteDomainSupportEnabled) {
 			
-			@Override 
-			protected void handleRemovedSubject(long conceptId, ConcreteDomainFragment removedSubject) {
-				registerEntry(conceptId, removedSubject, Nature.REDUNDANT);
-			}
-	
-			private void registerEntry(long conceptId, ConcreteDomainFragment subject, Nature changeNature) {
-				ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
-						branchPath, 
-						subject);
+			new ConceptConcreteDomainNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder).collectNormalFormChanges(null, new OntologyChangeProcessor<ConcreteDomainFragment>() {
+				@Override 
+				protected void handleAddedSubject(long conceptId, ConcreteDomainFragment addedSubject) {
+					registerEntry(conceptId, addedSubject, Nature.INFERRED);
+				}
 				
-				ChangeConcept sourceComponent = getOrCreateChangeConcept(changeConceptCache,
-						branchPath, 
-						conceptId);
+				@Override 
+				protected void handleRemovedSubject(long conceptId, ConcreteDomainFragment removedSubject) {
+					registerEntry(conceptId, removedSubject, Nature.REDUNDANT);
+				}
 				
-				ConceptConcreteDomainChangeEntry responseEntry = new ConceptConcreteDomainChangeEntry(
-						changeNature, 
-						sourceComponent, 
-						concreteDomainElement);
-				
-				concreteDomainBuilder.add(responseEntry);
-			}
-		});
+				private void registerEntry(long conceptId, ConcreteDomainFragment subject, Nature changeNature) {
+					ConcreteDomainElement concreteDomainElement = createConcreteDomainElement(changeConceptCache,
+							branchPath, 
+							subject);
+					
+					ChangeConcept sourceComponent = getOrCreateChangeConcept(changeConceptCache,
+							branchPath, 
+							conceptId);
+					
+					ConceptConcreteDomainChangeEntry responseEntry = new ConceptConcreteDomainChangeEntry(
+							changeNature, 
+							sourceComponent, 
+							concreteDomainElement);
+					
+					concreteDomainBuilder.add(responseEntry);
+				}
+			});
+			
+		}
 		
 		List<AbstractEquivalenceSet> equivalentConcepts = doGetEquivalentConcepts(taxonomy);
 		GetResultResponseChanges convertedChanges = new GetResultResponseChanges(taxonomy.getElapsedTimeMillis(), 
@@ -474,6 +477,7 @@ public class SnomedReasonerServerService extends CollectingService<Reasoner, Cla
 	@Override
 	public void removeResult(String classificationId) {
 		taxonomyResultRegistry.asMap().remove(classificationId);
+		taxonomyBuilderRegistry.asMap().remove(classificationId);
 	}
 		
 }

@@ -20,7 +20,6 @@ import static com.b2international.snowowl.datastore.oplock.impl.DatastoreLockCon
 import static com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions.SAVE_CLASSIFICATION_RESULTS;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -55,8 +54,8 @@ import com.b2international.snowowl.snomed.SnomedConstants.Concepts;
 import com.b2international.snowowl.snomed.core.domain.SnomedConcept;
 import com.b2international.snowowl.snomed.datastore.SnomedDatastoreActivator;
 import com.b2international.snowowl.snomed.datastore.SnomedEditingContext;
+import com.b2international.snowowl.snomed.datastore.config.SnomedCoreConfiguration;
 import com.b2international.snowowl.snomed.datastore.request.SnomedRequests;
-import com.b2international.snowowl.snomed.reasoner.server.classification.EquivalentConceptMerger;
 import com.b2international.snowowl.snomed.reasoner.server.classification.ReasonerTaxonomy;
 import com.b2international.snowowl.snomed.reasoner.server.diff.OntologyChange;
 import com.b2international.snowowl.snomed.reasoner.server.diff.concretedomain.ConcreteDomainPersister;
@@ -65,7 +64,6 @@ import com.b2international.snowowl.snomed.reasoner.server.normalform.ConceptConc
 import com.b2international.snowowl.snomed.reasoner.server.normalform.RelationshipNormalFormGenerator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Function;
-import com.google.common.collect.Lists;
 
 /**
  * @since 5.7
@@ -85,10 +83,13 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 	private IOperationLockTarget lockTarget;
 	private LongSet statedDescendantsOfSmp;
 
+	private boolean concreteDomainSupportEnabled;
+
 	public PersistChangesRequest(String classificationId, ReasonerTaxonomy taxonomy, String userId) {
 		this.classificationId = classificationId;
 		this.taxonomy = taxonomy;
 		this.userId = userId;
+		this.concreteDomainSupportEnabled = ApplicationContext.getInstance().getServiceChecked(SnomedCoreConfiguration.class).isConcreteDomainSupported();
 	}
 
 	@Override
@@ -162,23 +163,25 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 			relationshipGenerator.collectNormalFormChanges(subMonitor.newChild(1), relationshipAddPersister);
 			relationshipGenerator.collectNormalFormChanges(subMonitor.newChild(1), relationshipRemovePersister);
 
-			ConceptConcreteDomainNormalFormGenerator conceptConcreteDomainGenerator = new ConceptConcreteDomainNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder);
-			conceptConcreteDomainGenerator.collectNormalFormChanges(subMonitor.newChild(1), new ConcreteDomainPersister(editingContext, OntologyChange.Nature.ADD));
-			conceptConcreteDomainGenerator.collectNormalFormChanges(subMonitor.newChild(1), new ConcreteDomainPersister(editingContext, OntologyChange.Nature.REMOVE));
-
-			List<LongSet> equivalenciesToFix = Lists.newArrayList();
-
-			for (LongSet equivalentSet : taxonomy.getEquivalentConceptIds()) {
-				long firstConceptId = equivalentSet.iterator().next();
-				String firstConceptIdString = Long.toString(firstConceptId);
-
-				// FIXME: make equivalence set to fix user-selectable, only subtype of SMP can be auto-merged
-				if (isSubTypeOfSMP(branchPath, firstConceptIdString)) {
-					equivalenciesToFix.add(equivalentSet);
-				}
+			if (concreteDomainSupportEnabled) {
+				ConceptConcreteDomainNormalFormGenerator conceptConcreteDomainGenerator = new ConceptConcreteDomainNormalFormGenerator(taxonomy, reasonerTaxonomyBuilder);
+				conceptConcreteDomainGenerator.collectNormalFormChanges(subMonitor.newChild(1), new ConcreteDomainPersister(editingContext, OntologyChange.Nature.ADD));
+				conceptConcreteDomainGenerator.collectNormalFormChanges(subMonitor.newChild(1), new ConcreteDomainPersister(editingContext, OntologyChange.Nature.REMOVE));
 			}
 
-			new EquivalentConceptMerger(editingContext, equivalenciesToFix).fixEquivalencies();
+//			List<LongSet> equivalenciesToFix = Lists.newArrayList();
+//
+//			for (LongSet equivalentSet : taxonomy.getEquivalentConceptIds()) {
+//				long firstConceptId = equivalentSet.iterator().next();
+//				String firstConceptIdString = Long.toString(firstConceptId);
+//
+//				// FIXME: make equivalence set to fix user-selectable, only subtype of SMP can be auto-merged
+//				if (isSubTypeOfSMP(branchPath, firstConceptIdString)) {
+//					equivalenciesToFix.add(equivalentSet);
+//				}
+//			}
+//
+//			new EquivalentConceptMerger(editingContext, equivalenciesToFix).fixEquivalencies();
 
 			CDOTransaction editingContextTransaction = editingContext.getTransaction();
 			editingContext.preCommit();
@@ -189,9 +192,9 @@ public class PersistChangesRequest implements Request<ServiceProvider, ApiError>
 
 			return new ApiError.Builder("OK").code(200).build();
 		} catch (CommitException e) {
-			if (editingContext != null) {
-				editingContext.releaseIds();
-			}
+			// if (editingContext != null) {
+			//	editingContext.releaseIds();
+			// }
 			throw e;
 		} finally {
 			if (editingContext != null) {

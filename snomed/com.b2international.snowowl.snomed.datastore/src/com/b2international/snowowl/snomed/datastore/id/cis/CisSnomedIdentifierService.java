@@ -275,7 +275,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			return;
 		}
 
-		HttpPost releaseRequest = null;
+		HttpPut releaseRequest = null;
 		String currentNamespace = null;
 		
 		try {
@@ -287,7 +287,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 					
 					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), BULK_LIMIT)) {
 						LOGGER.debug(String.format("Sending bulk release request for namespace %s with size %d.", currentNamespace, bulkIds.size()));
-						releaseRequest = httpPost(String.format("sct/bulk/release?token=%s", getToken()), createBulkReleaseData(currentNamespace, bulkIds));
+						releaseRequest = httpPut(String.format("sct/bulk/release?token=%s", getToken()), createBulkReleaseData(currentNamespace, bulkIds));
 						execute(releaseRequest);
 					}
 				}
@@ -296,7 +296,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				
 				final String componentId = Iterables.getOnlyElement(assignedOrReservedSctIds.keySet());
 				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
-				releaseRequest = httpPost(String.format("sct/release?token=%s", getToken()), createReleaseData(componentId));
+				releaseRequest = httpPut(String.format("sct/release?token=%s", getToken()), createReleaseData(componentId));
 				execute(releaseRequest);
 			}
 		
@@ -329,7 +329,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 			return;
 		}
 
-		HttpPost deprecateRequest = null;
+		HttpPut deprecateRequest = null;
 		String currentNamespace = null;
 		
 		try {
@@ -341,7 +341,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 					
 					for (final Collection<String> bulkIds : Iterables.partition(entry.getValue(), BULK_LIMIT)) {
 						LOGGER.debug(String.format("Sending bulk deprecation request for namespace %s with size %d.", currentNamespace, bulkIds.size()));
-						deprecateRequest = httpPost(String.format("sct/bulk/deprecate?token=%s", getToken()), createBulkDeprecationData(currentNamespace, bulkIds));
+						deprecateRequest = httpPut(String.format("sct/bulk/deprecate?token=%s", getToken()), createBulkDeprecationData(currentNamespace, bulkIds));
 						execute(deprecateRequest);
 					}
 				}
@@ -350,7 +350,7 @@ public class CisSnomedIdentifierService extends AbstractSnomedIdentifierService 
 				
 				final String componentId = Iterables.getOnlyElement(assignedOrPublishedSctIds.keySet());
 				currentNamespace = SnomedIdentifiers.getNamespace(componentId);
-				deprecateRequest = httpPost(String.format("sct/deprecate?token=%s", getToken()), createDeprecationData(componentId));
+				deprecateRequest = httpPut(String.format("sct/deprecate?token=%s", getToken()), createDeprecationData(componentId));
 				execute(deprecateRequest);
 			}
 		

@@ -192,10 +192,6 @@ then
         JAVA_OPTS="$JAVA_OPTS \
         			-Xms12g \
                     -Xmx12g \
-                    -XX:+UseConcMarkSweepGC \
-                    -XX:CMSInitiatingOccupancyFraction=75 \
-                    -XX:+UseCMSInitiatingOccupancyOnly \
-                    -XX:+DisableExplicitGC \
                     -XX:+AlwaysPreTouch \
                     -Xss1m \
                     -Djavax.xml.parsers.DocumentBuilderFactory=com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl \

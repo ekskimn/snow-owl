@@ -18,18 +18,13 @@ package com.b2international.snowowl.snomed.reasoner.server.classification;
 import static com.b2international.snowowl.snomed.reasoner.server.SnomedReasonerServerActivator.CONSTRAINED_HEAP;
 import static com.google.common.base.Preconditions.checkState;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.text.MessageFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
-import org.coode.owlapi.functionalrenderer.OWLFunctionalSyntaxRenderer;
 import org.protege.editor.owl.model.inference.ProtegeOWLReasonerInfo;
-import org.semanticweb.owlapi.io.OWLRendererException;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.reasoner.ConsoleProgressMonitor;
@@ -52,11 +47,13 @@ import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContext;
 import com.b2international.snowowl.datastore.oplock.impl.DatastoreLockContextDescriptions;
 import com.b2international.snowowl.datastore.oplock.impl.IDatastoreOperationLockManager;
 import com.b2international.snowowl.datastore.oplock.impl.SingleRepositoryAndBranchLockTarget;
+import com.b2international.snowowl.datastore.server.snomed.index.InitialReasonerTaxonomyBuilder;
 import com.b2international.snowowl.snomed.SnomedPackage;
 import com.b2international.snowowl.snomed.reasoner.exceptions.ReasonerException;
 import com.b2international.snowowl.snomed.reasoner.model.ConceptDefinition;
 import com.b2international.snowowl.snomed.reasoner.preferences.IReasonerPreferencesService;
 import com.b2international.snowowl.snomed.reasoner.server.SnomedReasonerServerActivator;
+import com.b2international.snowowl.snomed.reasoner.server.ontology.DelegateOntology;
 import com.b2international.snowowl.snomed.reasoner.server.ontology.SnomedOntologyService;
 import com.google.common.base.Stopwatch;
 
@@ -74,6 +71,7 @@ public class Reasoner extends AbstractDisposableService {
 	
 	private OWLOntology ontology;
 	private OWLReasoner reasoner;
+	private AtomicReference<InitialReasonerTaxonomyBuilder> taxonomyBuilder = new AtomicReference<>();
 	
 	public Reasoner(final String reasonerId, final IBranchPath branchPath, final boolean shared) {
 		this.reasonerId = reasonerId;
@@ -97,19 +95,19 @@ public class Reasoner extends AbstractDisposableService {
 			reasoner = reasonerFactory.createReasoner(createOntology(additionalDefinitions), configuration);
 		}
 		
-		// Temporary code to serialise the Ontology to disk.
-		OWLFunctionalSyntaxRenderer ontologyRenderer = new OWLFunctionalSyntaxRenderer();
-		try {
-			File classificationsDirectory = new File("/tmp/classifications");
-			classificationsDirectory.mkdirs();
-			File owlFile = new File(classificationsDirectory, new Date().getTime() + ".owl");
-			LOGGER.info("Serialising OWL Ontology before classification to file {}", owlFile.getAbsolutePath());
-			try (FileWriter fileWriter = new FileWriter(owlFile)) {
-				ontologyRenderer.render(ontology, fileWriter);
-			}
-		} catch (OWLRendererException | IOException e) {
-			LOGGER.error("Failed to serialise OWL Ontology.", e);
-		}
+//		// Temporary code to serialise the Ontology to disk.
+//		OWLFunctionalSyntaxRenderer ontologyRenderer = new OWLFunctionalSyntaxRenderer();
+//		try {
+//			File classificationsDirectory = new File("/tmp/classifications");
+//			classificationsDirectory.mkdirs();
+//			File owlFile = new File(classificationsDirectory, new Date().getTime() + ".owl");
+//			LOGGER.info("Serialising OWL Ontology before classification to file {}", owlFile.getAbsolutePath());
+//			try (FileWriter fileWriter = new FileWriter(owlFile)) {
+//				ontologyRenderer.render(ontology, fileWriter);
+//			}
+//		} catch (OWLRendererException | IOException e) {
+//			LOGGER.error("Failed to serialise OWL Ontology.", e);
+//		}
 		
 		return reasoner;
 	}
@@ -123,6 +121,12 @@ public class Reasoner extends AbstractDisposableService {
 			
 			for (final ConceptDefinition conceptDefinition : additionalDefinitions) {
 				ontologyService.applyChanges(ontology, conceptDefinition.add(ontology));
+			}
+			
+			// must happen before any unload
+			if (ontology instanceof DelegateOntology) {
+				DelegateOntology delegateOntology = (DelegateOntology) ontology;
+				taxonomyBuilder.set(delegateOntology.getReasonerTaxonomyBuilder());
 			}
 			
 			return ontology;
@@ -222,6 +226,10 @@ public class Reasoner extends AbstractDisposableService {
 			LOGGER.error(MessageFormat.format("Caught exception while marking reasoner as stale on branch path ''{0}''.", branchPath), e);
 			stateMachine.fail();
 		}
+	}
+	
+	public AtomicReference<InitialReasonerTaxonomyBuilder> getTaxonomyBuilder() {
+		return taxonomyBuilder;
 	}
 	
 	@Override

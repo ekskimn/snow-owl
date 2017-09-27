@@ -1143,7 +1143,7 @@ public class DelegateOntology extends OWLObjectImpl implements OWLMutableOntolog
 		return actuallyAppliedChanges;
 	}
 
-	private InitialReasonerTaxonomyBuilder getReasonerTaxonomyBuilder() {
+	public InitialReasonerTaxonomyBuilder getReasonerTaxonomyBuilder() {
 
 		if (null == reasonerTaxonomyBuilder) {
 			reasonerTaxonomyBuilder = index.read(branchPath.getPath(), new RevisionIndexRead<InitialReasonerTaxonomyBuilder>() {

@@ -19,12 +19,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 
+import com.b2international.snowowl.core.date.EffectiveTimes;
 import com.b2international.snowowl.core.domain.BranchContext;
 import com.b2international.snowowl.core.events.BaseRequestBuilder;
 import com.b2international.snowowl.core.events.Request;
 import com.b2international.snowowl.datastore.request.RevisionIndexRequestBuilder;
 import com.b2international.snowowl.snomed.common.SnomedTerminologyComponentConstants;
 import com.b2international.snowowl.snomed.core.domain.Rf2ReleaseType;
+import com.b2international.snowowl.snomed.datastore.id.SnomedIdentifiers;
 
 /**
  * @since 5.7
@@ -33,14 +35,15 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 
 	private String codeSystem = SnomedTerminologyComponentConstants.SNOMED_SHORT_NAME;
 	private boolean includeUnpublished;
-	private String startEffectiveTime;
-	private String endEffectiveTime;
+	private String startEffectiveTime = EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL;
+	private String endEffectiveTime = EffectiveTimes.UNSET_EFFECTIVE_TIME_LABEL;
 	private Rf2ReleaseType releaseType;
 	private Collection<String> modules = Collections.emptySet();
 	private String transientEffectiveTime;
-	private boolean extensionOnly;
-	private String namespace;
+	private boolean extensionOnly = false;
+	private String namespace = SnomedIdentifiers.INT_NAMESPACE;
 	private Collection<String> refSets = Collections.emptySet();
+	private boolean conceptsAndRelationshipsOnly = false;
 	
 	SnomedRf2ExportRequestBuilder() {}
 	
@@ -93,6 +96,11 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 		this.refSets = refSets;
 		return getSelf();
 	}
+	
+	public SnomedRf2ExportRequestBuilder setConceptsAndRelationshipOnly(boolean conceptsAndRelationshipsOnly) {
+		this.conceptsAndRelationshipsOnly = conceptsAndRelationshipsOnly;
+		return getSelf();
+	}
 
 	@Override
 	protected Request<BranchContext, UUID> doBuild() {
@@ -107,6 +115,7 @@ public final class SnomedRf2ExportRequestBuilder extends BaseRequestBuilder<Snom
 		req.setTransientEffectiveTime(transientEffectiveTime);
 		req.setNamespace(namespace);
 		req.setRefSets(refSets);
+		req.setConceptsAndRelationshipsOnly(conceptsAndRelationshipsOnly);
 		return req;
 	}
 
