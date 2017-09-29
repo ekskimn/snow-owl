@@ -87,5 +87,10 @@ public class ValidationSnomedConcept implements org.ihtsdo.drools.domain.Concept
 		return true;
 	}
 
+	@Override
+	public String toString() {
+		return "ValidationSnomedConcept [concept=" + concept.getId() + "]";
+	}
+
 	
 }
