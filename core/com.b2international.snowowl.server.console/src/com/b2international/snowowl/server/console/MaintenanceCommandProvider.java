@@ -56,9 +56,12 @@ import com.b2international.snowowl.core.date.Dates;
 import com.b2international.snowowl.core.exceptions.NotFoundException;
 import com.b2international.snowowl.datastore.BranchPathUtils;
 import com.b2international.snowowl.datastore.cdo.ICDORepositoryManager;
+import com.b2international.snowowl.datastore.commitinfo.CommitInfo;
+import com.b2international.snowowl.datastore.commitinfo.CommitInfoDocument;
 import com.b2international.snowowl.datastore.index.RevisionDocument;
 import com.b2international.snowowl.datastore.internal.branch.InternalBranch;
 import com.b2international.snowowl.datastore.request.RepositoryRequests;
+import com.b2international.snowowl.datastore.request.SearchResourceRequest.SortField;
 import com.b2international.snowowl.datastore.request.repository.RepositorySearchRequestBuilder;
 import com.b2international.snowowl.datastore.server.ServerDbUtils;
 import com.b2international.snowowl.datastore.server.internal.branch.BranchManagerImpl;
@@ -121,7 +124,9 @@ public class MaintenanceCommandProvider implements CommandProvider {
 		buffer.append("\tsnowowl reindex [repositoryId] [failedCommitTimestamp]- reindexes the content for the given repository ID from the given failed commit timestamp (optional, default timestamp is 1 which means no failed commit).\n");
 		buffer.append("\tsnowowl optimize [repositoryId] [maxSegments] - optimizes the underlying index for the repository to have the supplied maximum number of segments (default number is 1)\n");
 		buffer.append("\tsnowowl purge [repositoryId] [branchPath] [ALL|LATEST|HISTORY] - optimizes the underlying index by deleting unnecessary documents from the given branch using the given purge strategy (default strategy is LATEST)\n");
-		buffer.append("\tsnowowl migrate [repositoryId] [remoteLocation] [-s scriptLocation] [-t commitTimestamp] - migrates content from a remote database into the given repository (optionally you can specify a script to run before each commit and/or the start commit timestamp).\n");
+		buffer.append("\tsnowowl migrate [repositoryId] [remoteLocation] [-s scriptLocation] [-t commitTimestamp]"
+				+ " - migrates content from a remote database into the given repository (optionally you can specify a script to run before each"
+				+ " commit and/or the start commit timestamp). If commitTimestamp is not specified the latest commit of the current dataset will be used \n");
 		buffer.append("\tsnowowl repositories [repositoryId] - prints all currently available repositories and their health statuses");
 		return buffer.toString();
 	}
@@ -580,13 +585,15 @@ public class MaintenanceCommandProvider implements CommandProvider {
 
 		final MigrateRequestBuilder req = MigrateRequest.builder(remoteLocation);
 		
+		Long providedTimestamp = null;
+		
 		String nextArg;
 		while (!Strings.isNullOrEmpty((nextArg = interpreter.nextArgument()))) {
 			final String value = interpreter.nextArgument();
 			switch (nextArg) {
 			case "-t":
 				try {
-					req.setCommitTimestamp(Long.parseLong(value));
+					providedTimestamp = Long.parseLong(value);
 				} catch (NumberFormatException e) {
 					interpreter.println(String.format("Error: Invalid commitTimestamp value (was: '%s', expected long number)", value));
 					return;
@@ -607,6 +614,23 @@ public class MaintenanceCommandProvider implements CommandProvider {
 				interpreter.println("Error: Unknown optional parameter " + nextArg);
 				return;
 			}
+		}
+		
+		if (providedTimestamp != null) {
+			req.setCommitTimestamp(providedTimestamp);
+		} else {
+			
+			RepositoryRequests.commitInfos().prepareSearchCommitInfo()
+				.one()
+				.sortBy(new SortField(CommitInfoDocument.Fields.TIME_STAMP, false))
+				.build(repositoryId)
+				.execute(getBus())
+				.getSync()
+				.first()
+				.map(CommitInfo::getTimeStamp)
+				.map(value -> value + 1)
+				.ifPresent(req::setCommitTimestamp);
+			
 		}
 		
 		req.build(repositoryId).execute(getBus()).getSync();
