@@ -25,6 +25,7 @@ import com.b2international.commons.platform.PlatformUtil;
 import com.b2international.snowowl.snomed.api.japi.branches.BranchCompareRequestTest;
 import com.b2international.snowowl.snomed.api.japi.branches.SnomedBranchRequestTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedBranchingApiTest;
+import com.b2international.snowowl.snomed.api.rest.branches.SnomedListFeaturesTests;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeApiTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeConflictTest;
 import com.b2international.snowowl.snomed.api.rest.branches.SnomedMergeReviewApiTest;
@@ -65,6 +66,7 @@ import com.b2international.snowowl.test.commons.SnowOwlAppRule;
 	// RESTful API test cases
 	SnomedBranchingApiTest.class,
 	SnomedMergeApiTest.class,
+	SnomedListFeaturesTests.class,
 	SnomedMergeConflictTest.class,
 	SnomedReviewApiTest.class,
 	SnomedMergeReviewApiTest.class,
