@@ -86,6 +86,17 @@ public class ValidationConceptService implements ConceptService {
 	
 	@Override
 	public Set<Concept> findAllTopLevelHierachiesOfConcept(Concept concept){
-		return Sets.intersection(getAllTopLevelHierachies(), findAllStatedAncestorsOfConcept(concept));
+		Set<Concept> allTopLevelHierachies = this.getAllTopLevelHierachies();
+		Set<Concept> allStatedAncestorsOfConcept = this.findAllStatedAncestorsOfConcept(concept);
+		Set<Concept> matchResults = new HashSet<Concept>();
+		for (Concept conceptStatedAncestorsOfConcept : allStatedAncestorsOfConcept) {
+			for (Concept conceptTopLevelHierachies : allTopLevelHierachies) {
+				if (conceptStatedAncestorsOfConcept.getId().equals(conceptTopLevelHierachies.getId())) {
+					matchResults.add(conceptStatedAncestorsOfConcept);
+				}
+			}
+			
+		}
+		return matchResults;
 	}
 }
