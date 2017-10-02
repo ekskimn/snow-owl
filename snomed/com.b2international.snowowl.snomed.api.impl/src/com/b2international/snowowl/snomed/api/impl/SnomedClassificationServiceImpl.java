@@ -608,7 +608,11 @@ public class SnomedClassificationServiceImpl implements ISnomedClassificationSer
 			throw new RuntimeException(e);
 		}
 		
-		getReasonerService(useExternalService).beginClassification(settings);
+		//getReasonerService(useExternalService).beginClassification(settings);
+		//TODO Investigating why we're using external service when flag set to false
+		SnomedReasonerService reasoner = getReasonerService(useExternalService);
+		LOG.info("Classifier selected {} due to {} use external flag.",reasoner.getClass().getSimpleName(), useExternalService);
+		reasoner.beginClassification(settings);
 		return classificationRun;
 	}
 
