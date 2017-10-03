@@ -82,7 +82,7 @@ public class ValidationSnomedConcept implements org.ihtsdo.drools.domain.Concept
 		if (concept == null) {
 			if (other.concept != null)
 				return false;
-		} else if (!concept.getIconId().equals(other.concept.getId()))
+		} else if (!concept.getId().equals(other.concept.getId()))
 			return false;
 		return true;
 	}

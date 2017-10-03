@@ -77,6 +77,11 @@ public class ValidationConceptService implements ConceptService {
 					.getSync();
 			
 			for (SnomedConcept iSnomedConcept : concepts) {
+				
+				// Ignore root concept
+				if (Concepts.ROOT_CONCEPT.equals(iSnomedConcept.getId())) {
+					continue;
+				}
 				matches.add(new ValidationSnomedConcept(iSnomedConcept));
 			}
 		}
