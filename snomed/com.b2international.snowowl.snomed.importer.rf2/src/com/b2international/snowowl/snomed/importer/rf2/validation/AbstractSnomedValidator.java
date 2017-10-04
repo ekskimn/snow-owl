@@ -135,18 +135,19 @@ public abstract class AbstractSnomedValidator {
 			if (!StringUtils.equalsIgnoreCase(header, expectedHeader)) {
 				addDefect(DefectType.HEADER_DIFFERENCES, String.format("Invalid header in '%s'", releaseFileName));
 			}
-
+			
+			long lineCount = 0;
 			while (true) {
 				final List<String> row = releaseFileListReader.read();
-
+				lineCount++;
 				if (null == row) {
 					break;
 				}
 				
 				String effectiveTimeKey="";
-				if (row.size() == 0) {
-					System.out.println("IndexOutOfBoundsException avoided in processing of " + releaseFileName);
-					addDefect(DefectType.IO_PROBLEM, String.format("Zero lines encountered in '%s'", releaseFileName));
+				if (row.size() < 2) {
+					System.out.println("IndexOutOfBoundsException avoided in processing of " + releaseFileName + " at line " + lineCount);
+					addDefect(DefectType.INCORRECT_COLUMN_NUMBER, String.format("Insufficient columns encountered in '%s'", releaseFileName));
 				} else {
 					effectiveTimeKey = getEffectiveTimeKey(row.get(1));
 				}
