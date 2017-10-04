@@ -143,7 +143,13 @@ public abstract class AbstractSnomedValidator {
 					break;
 				}
 				
-				final String effectiveTimeKey = getEffectiveTimeKey(row.get(1));
+				String effectiveTimeKey="";
+				if (row.size() == 0) {
+					System.out.println("IndexOutOfBoundsException avoided in processing of " + releaseFileName);
+					addDefect(DefectType.IO_PROBLEM, String.format("Zero lines encountered in '%s'", releaseFileName));
+				} else {
+					effectiveTimeKey = getEffectiveTimeKey(row.get(1));
+				}
 				
 				if (!effectiveTimes.contains(effectiveTimeKey)) {
 					effectiveTimes.add(effectiveTimeKey);
